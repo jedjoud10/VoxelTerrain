@@ -9,7 +9,8 @@ public class VoxelGeneratorEditor : Editor {
         var script = (VoxelGenerator)target;
 
         if (GUILayout.Button("Recompile")) {
-            script.Compile();
+            script.Compile(true);
+            script.OnPropertiesChanged();
         }
 
         if (GUILayout.Button("Randomize Seed")) {

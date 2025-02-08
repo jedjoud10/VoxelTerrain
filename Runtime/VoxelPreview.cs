@@ -46,8 +46,8 @@ public class VoxelPreview : MonoBehaviour {
 
         commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { aaa });
 
-        tempVertexTexture = GraphUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
-        maxHeightAtomic = GraphUtils.Create2DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
+        tempVertexTexture = TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
+        maxHeightAtomic = TextureUtils.Create2DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
     }
 
     private void OnDisable() {
@@ -74,8 +74,6 @@ public class VoxelPreview : MonoBehaviour {
 
     public void Meshify(RenderTexture voxels, RenderTexture colors) {
         if (useHeightSimplification) {
-            // TODO: For some reason does not work on dx12
-            // wut???????? why????????
             ExecuteHeightMapMesher(voxels, colors, -1, Vector3Int.zero);
         } else {
             ExecuteSurfaceNetsMesher(voxels, colors);

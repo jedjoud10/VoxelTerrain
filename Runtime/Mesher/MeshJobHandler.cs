@@ -65,12 +65,8 @@ internal class MeshJobHandler {
         VertexAttributeDescriptor uvDesc = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2, 2);
 
         List<VertexAttributeDescriptor> descriptors = new List<VertexAttributeDescriptor> {
-            positionDesc
+            positionDesc, normalDesc, uvDesc
         };
-        if (VoxelUtils.PerVertexNormals)
-            descriptors.Add(normalDesc);
-        if (VoxelUtils.PerVertexUvs)
-            descriptors.Add(uvDesc);
         vertexAttributeDescriptors = descriptors.ToArray();
     }
     public bool Free { get; private set; } = true;
@@ -201,12 +197,8 @@ internal class MeshJobHandler {
 
         mesh.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
         mesh.SetVertexBufferData(vertices.Reinterpret<Vector3>(), 0, 0, maxVertices, 0, MeshUpdateFlags.DontValidateIndices);
-        
-        if (VoxelUtils.PerVertexNormals)
-            mesh.SetVertexBufferData(normals.Reinterpret<Vector3>(), 0, 0, maxVertices, 1, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
-
-        if (VoxelUtils.PerVertexUvs)
-            mesh.SetVertexBufferData(uvs.Reinterpret<Vector2>(), 0, 0, maxVertices, 2, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+        mesh.SetVertexBufferData(normals.Reinterpret<Vector3>(), 0, 0, maxVertices, 1, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+        mesh.SetVertexBufferData(uvs.Reinterpret<Vector2>(), 0, 0, maxVertices, 2, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
 
         // Set mesh indices
         mesh.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);

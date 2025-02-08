@@ -64,7 +64,6 @@ public class GradientNode<T> : Variable<T> {
             context.DefineAndBindNode<T>(this, $"{textureName}_gradient_sampled", context[sample]);
         }
 
-
         context.textures.Add(gradientTextureName, new GradientTextureDescriptor {
             size = size,
             name = gradientTextureName,

@@ -1,19 +1,22 @@
+using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 
 // Script added to all game objects that represent a chunk
 public partial class VoxelChunk : MonoBehaviour {
-    // Either the chunk's own voxel data (in case collisions are enabled) 
-    // OR the voxel request data (temp)
-    // If null it means the chunk cannot be generated (no voxel data!!)
-    public VoxelContainer container;
+    [HideInInspector]
+    public NativeArray<Voxel> voxels;
 
     // Pending job dependency that we must pass to the mesher
+    [HideInInspector]
     public JobHandle dependency;
 
     // Shared generated mesh
+    [HideInInspector]
     public Mesh sharedMesh;
+    [HideInInspector]
     public int[] voxelMaterialsLookup;
+    [HideInInspector]
     public (byte, int)[] triangleOffsetLocalMaterials;
 
     // Convert a specific sub-mesh index (from physics collision for example) to voxel material index

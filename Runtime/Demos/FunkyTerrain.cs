@@ -31,7 +31,6 @@ public class Test : VoxelGenerator {
     public Inject<float2> textureScale;
     public Inject<float2> textureOffset;
     public Inject<float> smoother;
-    public int reduction;
     public int gradientSize = 128;
     [Range(1, 10)]
     public int octaves;
@@ -48,7 +47,6 @@ public class Test : VoxelGenerator {
         var voronoi = new Voronoi(scale, amplitude);
         var fractal = Fractal<float2>.Evaluate(temp, voronoi, mode, octaves, lacunarity, persistence);
         var ramp = Ramp<float>.Evaluate(fractal, gradient, minRange, maxRange, gradientSize);
-        var cached = ramp.Cached(reduction, "xz");
 
         // 3D secondary transformed layer
         var transformer2 = new ApplyTransformation(transform2);
@@ -62,7 +60,7 @@ public class Test : VoxelGenerator {
         var diagonals = Ramp<float>.Evaluate(-((fractal2 - spikeOffset).Min(0.0f)), spikeGradient2, minRange3, maxRange3, gradientSize);
         //var diagonals = new Ramp<float>(spikeGradient2, minRange3, maxRange3).Evaluate((-(fractal2 - spikeOffset).Min(0.0f)));
 
-        density = cached + output - diagonals;
+        density = ramp + output - diagonals;
 
         var aaaa = new ApplyTransformation(transform3).Transform(pos2);
 

@@ -1,4 +1,3 @@
-using UnityEditor;
 using UnityEngine;
 
 // Used internally by the classes that handle terrain
@@ -10,12 +9,7 @@ public class VoxelBehaviour : MonoBehaviour {
     [HideInInspector]
     public VoxelTerrain terrain;
 
-    // Initialize the voxel behaviour (called from the voxel terrain)
-    public virtual void Init() { }
-
-    // Called after all other voxel behaviours have been initialized
-    public virtual void LateInit() { }
-
-    // Dispose of any internally stored memory
-    public virtual void Dispose() { }
+    public virtual void CallerStart() { }
+    public virtual void CallerUpdate() { }
+    public virtual void CallerDispose() { }
 }

@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using Unity.Jobs;
 using UnityEngine;
 using System.Linq;
-using Unity.Mathematics;
 using Unity.Collections;
-using UnityEditorInternal;
 
 // Responsible for creating and executing the mesh generation jobs
 public class VoxelMesher : VoxelBehaviour {
@@ -18,9 +16,6 @@ public class VoxelMesher : VoxelBehaviour {
 
     [Header("Mesh Mode & Settings")]
     public bool smoothing = true;
-    public bool skirts = true;
-    public bool perVertexNormals = true;
-    public bool perVertexUvs = true;
 
     [Header("Mesh Ambient Occlusion")]
     public float ambientOcclusionOffset = 0.4f;
@@ -39,19 +34,10 @@ public class VoxelMesher : VoxelBehaviour {
     public event OnVoxelMeshingComplete onVoxelMeshingComplete;
     internal Queue<PendingMeshJob> pendingMeshJobs;
 
-    // Checks if the voxel mesher has completed all the work
-    public bool Free {
-        get {
-            bool pending = pendingMeshJobs.Count == 0;
-            bool handlersFree = handlers.All(x => x.Free);
-            return pending && handlersFree;
-        }
-    }
-
     private void UpdateParams() {
         VoxelUtils.Smoothing = smoothing;
-        VoxelUtils.PerVertexUvs = perVertexUvs;
-        VoxelUtils.PerVertexNormals = perVertexNormals;
+        VoxelUtils.PerVertexUvs = true;
+        VoxelUtils.PerVertexNormals = true;
         VoxelUtils.AmbientOcclusionOffset = ambientOcclusionOffset;
         VoxelUtils.AmbientOcclusionPower = ambientOcclusionPower;
         VoxelUtils.AmbientOcclusionSpread = ambientOcclusionSpread;
@@ -63,7 +49,7 @@ public class VoxelMesher : VoxelBehaviour {
     }
 
     // Initialize the voxel mesher
-    public override void Init() {
+    public override void CallerStart() {
         handlers = new List<MeshJobHandler>(meshJobsPerFrame);
         pendingMeshJobs = new Queue<PendingMeshJob>();
         UpdateParams();
@@ -74,9 +60,11 @@ public class VoxelMesher : VoxelBehaviour {
     }
 
     // Begin generating the mesh data using the given chunk and voxel container
-    public void GenerateMesh(VoxelChunk chunk, bool collisions, int maxFrames = 5) {
+    public void GenerateMesh(VoxelChunk chunk, bool collisions = true, int maxFrames = 5) {
+        /*
         if (chunk.container == null)
             return;
+        */
 
         var job = new PendingMeshJob {
             chunk = chunk,
@@ -98,7 +86,7 @@ public class VoxelMesher : VoxelBehaviour {
         }
     }
 
-    void Update() {
+    public override void CallerUpdate() {
         // Complete the jobs that finished and create the meshes
         foreach (var handler in handlers) {
             if ((handler.finalJobHandle.IsCompleted || (Time.frameCount - handler.startingFrame) > handler.maxFrames) && !handler.Free) {
@@ -149,13 +137,13 @@ public class VoxelMesher : VoxelBehaviour {
                 JobHandle voxelEdit = terrain.VoxelEdits.TryGetApplyVoxelEditJobDependency(request.chunk, ref handler.voxels, handler.voxelCounters, dynamicEdit);
                 */
                 JobHandle temp = request.chunk.dependency;
-                var copy = new CustomCopy { src = request.chunk.container.voxels, dst = handler.voxels }.Schedule(temp);
+                var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule(temp);
                 handler.BeginJob(copy);
             }
         }
     }
 
-    public override void Dispose() {
+    public override void CallerDispose() {
         foreach (MeshJobHandler handler in handlers) {
             handler.Complete(new Mesh());
             handler.Dispose();

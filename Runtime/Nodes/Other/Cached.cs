@@ -3,6 +3,12 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
+// TODO: fix weird texture clamping that occurs when using reduction factor.
+// TODO: fix weird texture clamping that occurs when using reduction factor.
+// TODO: fix weird texture clamping that occurs when using reduction factor.
+// TODO: fix weird texture clamping that occurs when using reduction factor.
+// TODO: fix weird texture clamping that occurs when using reduction factor.
+
 
 // TODO: Keep track of the inputs used for this variable so that we can use a 2d texture instead of a 3d one each time
 // technically no need for this since we can just always pass the given position (since we always branch off of there)
@@ -18,6 +24,9 @@ using UnityEngine;
 
 // TODO: dedupe stuff pls thx
 // fixed
+
+// TODO: fix weird texture clamping that occurs when using reduction factor.
+/*
 public class CachedNode<T> : Variable<T> {
     public Variable<T> inner;
     public int sizeReductionPower;
@@ -66,7 +75,8 @@ public class CachedNode<T> : Variable<T> {
 
         TreeNode positionNode = context.position.node;
         string positionName = context[context.position.node];
-        
+
+
         context.scopes.Add(new TreeScope(context.scopeDepth + 1) {
             name = scopeName,
             arguments = new ScopeArgument[] { context.position, output, },
@@ -91,14 +101,16 @@ public class CachedNode<T> : Variable<T> {
         context.currentScope = oldScopeIndex;
 
         int frac = (1 << sizeReductionPower);
-        string aa = $"(float(size) / {frac})";
+        //string aa = $"(float(size) / {frac}) + 1";
 
         string idCtor = _3d ? $"ConvertFromWorldPosition({positionName})" : $"ConvertFromWorldPosition({positionName}).{swizzle}";
         if (sampler.bicubic) {
             context.DefineAndBindNode<T>(this, $"{tempName}_cached", $"SampleBicubic({textureName}_read, sampler{textureName}_read, ({idCtor} / size) * {context[sampler.scale]}.{swizzle} + {context[sampler.offset]}.{swizzle}, {context[sampler.level]}, {aa}).{GraphUtils.SwizzleFromFloat4<T>()}");
         } else {
-            context.DefineAndBindNode<T>(this, $"{tempName}_cached", $"SampleBounded({textureName}_read, sampler{textureName}_read, ({idCtor} / size) * {context[sampler.scale]}.{swizzle} + {context[sampler.offset]}.{swizzle}, {context[sampler.level]}, {aa}).{GraphUtils.SwizzleFromFloat4<T>()}");
+            context.DefineAndBindNode<T>(this, $"{tempName}_cached", $"SampleBounded({textureName}_read, sampler{textureName}_read, ({idCtor} / (size+1)) * {context[sampler.scale]}.{swizzle} + {context[sampler.offset]}.{swizzle}, {context[sampler.level]}, {aa}).{GraphUtils.SwizzleFromFloat4<T>()}");
         }
+
+        //context.DefineAndBindNode<T>(this, $"{tempName}_cached", $"SampleBounded({textureName}_read, sampler{textureName}_read, ({idCtor} / (size+1)), {context[sampler.level]}, {frac}, uint2({idCtor})).{GraphUtils.SwizzleFromFloat4<T>()}");
 
         string numThreads = dimensions == 2 ? "[numthreads(32, 32, 1)]" : "[numthreads(8, 8, 8)]";
         string writeCoords = _3d ? "xyz" : "xy";
@@ -219,3 +231,4 @@ public class CachedSampler {
         this.generateMips = false;
     }
 }
+*/

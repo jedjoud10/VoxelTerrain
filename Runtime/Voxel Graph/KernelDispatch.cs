@@ -12,7 +12,7 @@ public class KernelDispatch {
     public int scopeIndex;
     public string numThreads;
     public string remappedCoords;
-    public bool morton;
+    public bool mortonate;
     public string writeCoords;
     public KernelOutput[] outputs;
 
@@ -25,7 +25,11 @@ public class KernelDispatch {
         string kernelOutputSetter = "";
         foreach (var item in outputs) {
             string input = $"id.{writeCoords}";
-            input = $"morton ? indexToPos(encodeMorton32({input})).xzy : {input}";
+
+            if (mortonate) {
+                input = $"morton ? indexToPos(encodeMorton32({input})).xzy : {input}";
+            }
+
             kernelOutputSetter += $"    {item.outputTextureName}_write[{input}] = {item.output.name};\n";
         }
 

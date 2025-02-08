@@ -14,6 +14,7 @@ public class FractalTerrain : VoxelGenerator {
     public Gradient gradient;
     [Range(1, 10)]
     public int octaves;
+    public int val;
 
     public override void Execute(Variable<float3> position, out Variable<float> density, out Variable<float3> color) {
         // Project the position using the main transformation
@@ -26,7 +27,13 @@ public class FractalTerrain : VoxelGenerator {
 
         // Create fractal 2D simplex noise
         Fractal<float2> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence);
+        //var cached = fractal.Evaluate(xz).Cached(val, "xz");
+
+
+
         density = y + Ramp<float>.Evaluate(fractal.Evaluate(xz), gradient, -(Variable<float>)amplitude, amplitude);
+
+        
 
         // Simple color based on height uwu
         color = ((y / amplitude) * 0.5f + 0.5f).Broadcast<float3>();

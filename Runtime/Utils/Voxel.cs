@@ -1,7 +1,4 @@
-using System;
 using System.Runtime.InteropServices;
-using Unity.Collections;
-using Unity.Jobs;
 using Unity.Mathematics;
 
 // CPU representation of what a voxel is. The most important value here is the density value
@@ -13,33 +10,17 @@ public struct Voxel {
     public half density;
 
     // Material of the voxel that depicts its color and other parameters
-    public byte material;
+    //public byte material;
 
     // Used for extra color data on a per vertex basis
-    public byte _padding;
+    //public byte _padding;
+
+    public byte material => 0;
 
     // Empty voxel with the empty material
     public readonly static Voxel Empty = new Voxel {
         density = half.zero,
-        material = byte.MaxValue,
-        _padding = 0,
+        //material = byte.MaxValue,
+        //_padding = 0,
     };
-}
-
-// Voxel container with custom dispose methods
-// (implemented for voxel readback request and voxel edit request)
-public abstract class VoxelContainer : IDisposable {
-    public NativeArray<Voxel> voxels;
-    public abstract void Dispose();
-}
-
-// Voxel container that contains a unique voxel native array that is not to be shared with any other chunk
-public class UniqueVoxelContainer : VoxelContainer, IDisposable {
-    public UniqueVoxelContainer() {
-        voxels = new NativeArray<Voxel>(VoxelUtils.Volume, Allocator.Persistent);
-    }
-
-    public override void Dispose() {
-        voxels.Dispose();
-    }
 }

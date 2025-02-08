@@ -10,9 +10,11 @@ GameObject:
   m_Component:
   - component: {fileID: 5361457892440788241}
   - component: {fileID: 261666173128335063}
+  - component: {fileID: 7297409102708731828}
   - component: {fileID: 5435573634283810322}
   - component: {fileID: 2489052534160842304}
   - component: {fileID: 5281816153287127206}
+  - component: {fileID: 7318964257985538370}
   m_Layer: 0
   m_Name: Voxel Terrain
   m_TagString: Untagged
@@ -49,6 +51,76 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   chunkPrefab: {fileID: 6177338312385691531, guid: 4d388002189c96345901f85821f1a600,
     type: 3}
+  collisions: {fileID: 0}
+  spawner: {fileID: 0}
+  mesher: {fileID: 0}
+  generator: {fileID: 0}
+--- !u!114 &7297409102708731828
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1679815499248925888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1964f9915237e104bbf6a80ee84a37c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  terrain: {fileID: 0}
+  shader: {fileID: 7200000, guid: d05dcadf2cc675b48b35a564a0163a09, type: 3}
+  seed: -9915
+  permutationSeed: {x: 146, y: -875, z: -533}
+  moduloSeed: {x: 689, y: 374, z: -489}
+  asyncReadbacks: 1
+  hash: 528556998
+  debugName: 1
+  autoCompile: 1
+  transform1:
+    position: {x: 3.81, y: -12.89, z: 0.47}
+    rotation: {x: 0, y: 0, z: 0}
+    scale: {x: 1, y: 1, z: 1}
+  scale:
+    x: 0.01
+  amplitude:
+    x: 11.88
+  persistence:
+    x: 0.2
+  lacunarity:
+    x: 2
+  mode: 0
+  gradient:
+    serializedVersion: 2
+    key0: {r: 0, g: 0, b: 0, a: 1}
+    key1: {r: 0.066037714, g: 0.066037714, b: 0.066037714, a: 1}
+    key2: {r: 0.6603774, g: 0.6603774, b: 0.6603774, a: 0}
+    key3: {r: 0.6132076, g: 0.6103151, b: 0.6103151, a: 0}
+    key4: {r: 0.46226418, g: 0.46226418, b: 0.46226418, a: 0}
+    key5: {r: 1, g: 1, b: 1, a: 0}
+    key6: {r: 0.8993384, g: 0.8828682, b: 0.8828682, a: 0}
+    key7: {r: 0, g: 0, b: 0, a: 0}
+    ctime0: 0
+    ctime1: 3277
+    ctime2: 18311
+    ctime3: 24287
+    ctime4: 40863
+    ctime5: 58211
+    ctime6: 65535
+    ctime7: 0
+    atime0: 0
+    atime1: 65535
+    atime2: 0
+    atime3: 0
+    atime4: 0
+    atime5: 0
+    atime6: 0
+    atime7: 0
+    m_Mode: 0
+    m_ColorSpace: 0
+    m_NumColorKeys: 6
+    m_NumAlphaKeys: 2
+  octaves: 4
+  val: 0
 --- !u!114 &5435573634283810322
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -61,6 +133,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 901e500f95df29d48bd82e980dc5039f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  terrain: {fileID: 0}
   mapChunkSize: {x: 2, y: 2, z: 2}
 --- !u!114 &2489052534160842304
 MonoBehaviour:
@@ -74,6 +147,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5bef0f1433829e458439ecec3acd6bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  terrain: {fileID: 0}
 --- !u!114 &5281816153287127206
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -86,14 +160,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 998d14371a252d844953b5096474c997, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  terrain: {fileID: 0}
   meshJobsPerFrame: 1
   smoothing: 1
-  skirts: 1
-  perVertexNormals: 1
-  perVertexUvs: 1
   ambientOcclusionOffset: 0.4
   ambientOcclusionPower: 2
   ambientOcclusionSpread: 0.4
   ambientOcclusionGlobalOffset: 0
   voxelMaterials:
-  - {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 4bbc706fa70a1944bae8b0ae28245548, type: 2}
+--- !u!114 &7318964257985538370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1679815499248925888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d5b58044d28b37438ea9d1c7f58d879, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  surfaceNetsCompute: {fileID: 7200000, guid: 414c71a72bcba394d921913198296aac, type: 3}
+  heightMapCompute: {fileID: 7200000, guid: de7c990be885cc84292f8dc0e8dd3f48, type: 3}
+  customRenderingMaterial: {fileID: 2100000, guid: ab77a143e630ac94daa1218f76ccb619,
+    type: 2}
+  blocky: 0
+  useHeightSimplification: 0
+  flatshaded: 1
+  size: 256

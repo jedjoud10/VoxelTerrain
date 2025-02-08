@@ -1,10 +1,8 @@
-using System.Drawing;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 
 // Common terrain utility methods
 public static class VoxelUtils {
@@ -159,29 +157,5 @@ public static class VoxelUtils {
         float zVal = voxels[PosToIndex(position + math.uint3(0, 0, 1))].density;
 
         return new float3(baseVal - xVal, baseVal - yVal, baseVal - zVal);
-    }
-
-    // Calculate ambient occlusion around a specific point
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float CalculateVertexAmbientOcclusion(float3 position, ref NativeArray<Voxel> voxels, int size, float offset, float power, float spread, float globalOffset) {
-        float ao = 0.0f;
-        float minimum = 200000;
-        
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
-                    // 2 => 0.5
-                    // 1 = 1.5
-                    float density = SampleGridInterpolated(position + new float3(x, y, z) * spread + new float3(globalOffset), ref voxels, size);
-                    density = math.min(density, 0);
-                    ao += density;
-                    minimum = math.min(minimum, density);
-                }
-            }
-        }
-
-        ao = ao / (3 * 3 * 3 * (minimum + 0.001f));
-        ao = math.clamp(1 - math.pow(ao + offset, power), 0, 1);
-        return ao;
     }
 }

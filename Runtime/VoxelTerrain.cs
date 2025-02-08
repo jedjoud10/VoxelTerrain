@@ -1,45 +1,83 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using Unity.Mathematics;
+using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class VoxelTerrain : MonoBehaviour {
     public GameObject chunkPrefab;
     private List<GameObject> totalChunks;
     public static VoxelTerrain Instance { get; private set; }
-    private Dictionary<Type, VoxelBehaviour> behaviours;
+
+    [HideInInspector]
+    public VoxelCollisions collisions;
+
+    [HideInInspector]
+    public VoxelGridSpawner spawner;
+
+    [HideInInspector]
+    public VoxelMesher mesher;
+
+    [HideInInspector]
+    public VoxelGenerator generator;
+
+    public delegate void OnCompleted();
+    public event OnCompleted onComplete;
+    private int pendingChunks;
 
     public void Start() {
+        void Init(VoxelBehaviour val){
+            val.terrain = this;
+            val.CallerStart();
+        }
+
         Instance = this;
-        behaviours = new Dictionary<Type, VoxelBehaviour>();
         totalChunks = new List<GameObject>();
-        List<VoxelBehaviour> list = GetComponents<VoxelBehaviour>().ToList();
-        list.Sort((a, b) => a.Priority.CompareTo(b.Priority));
 
-        foreach (VoxelBehaviour v in list) {
-            v.terrain = this;
-            v.Init();
-            behaviours.Add(v.GetType(), v);
-        }
+        collisions = GetComponent<VoxelCollisions>();
+        spawner = GetComponent<VoxelGridSpawner>();
+        mesher = GetComponent<VoxelMesher>();
+        generator = GetComponent<VoxelGenerator>();
 
-        foreach (VoxelBehaviour v in list) {
-            v.LateInit();
-        }
+        spawner.onChunkSpawned += (VoxelChunk chunk) => {
+            generator.GenerateVoxels(chunk);
+            pendingChunks++;
+        };
+
+        generator.onReadbackSuccessful += (VoxelChunk chunk) => mesher.GenerateMesh(chunk, true);
+
+        mesher.onVoxelMeshingComplete += (VoxelChunk chunk, VoxelMesh mesh) => collisions.GenerateCollisions(chunk, mesh);
+
+        collisions.onCollisionBakingComplete += (VoxelChunk chunk) => {
+            pendingChunks--;
+
+            if (pendingChunks == 0) {
+                onComplete?.Invoke();
+            }
+        };
+
+        Init(mesher);
+        Init(collisions);
+        Init(generator);
+        Init(spawner);
+    }
+
+    public void Update() {
+        generator.CallerUpdate();
+        mesher.CallerUpdate();
+        collisions.CallerUpdate();
     }
 
     public void OnApplicationQuit() {
-        foreach (var item in behaviours) {
-            item.Value.Dispose();
-        }
+        mesher.CallerDispose();
+        generator.CallerDispose();
 
         foreach (var item in totalChunks) {
-            item.GetComponent<VoxelChunk>().container.Dispose();
+            item.GetComponent<VoxelChunk>().voxels.Dispose();
         }
     }
 
     // Instantiates a new chunk and returns it
-    public VoxelChunk FetchChunk(VoxelContainer container, Vector3 position, float scale) {
+    public VoxelChunk FetchChunk(Vector3 position, float scale) {
         VoxelChunk chunk;
 
         GameObject obj = Instantiate(chunkPrefab, transform);
@@ -52,32 +90,8 @@ public class VoxelTerrain : MonoBehaviour {
         GameObject chunkGameObject = chunk.gameObject;
         chunkGameObject.transform.position = position;
         chunkGameObject.transform.localScale = scale * Vector3.one;
-        chunk.container = container;
+        chunk.voxels = new NativeArray<Voxel>(VoxelUtils.Volume, Allocator.Persistent);
         totalChunks.Add(chunkGameObject);
         return chunk;
-    }
-
-    // Get the value of a singular voxel at a world point
-    public bool TryGetVoxel(Vector3 position, out Voxel voxel) {
-        throw new NotImplementedException();
-    }
-
-
-    public T GetBehaviour<T>() where T: VoxelBehaviour {
-        return behaviours[typeof(T)] as T;
-    }
-        
-    public bool HasBehaviour<T>() where T : VoxelBehaviour {
-        return behaviours.ContainsKey(typeof(T));
-    }
-
-    public bool TryGetBehaviour<T>(out T behaviour) where T : VoxelBehaviour {
-        if (behaviours.TryGetValue(typeof(T), out VoxelBehaviour value)) {
-            behaviour = value as T;
-            return true;
-        }
-
-        behaviour = null;
-        return false;
     }
 }

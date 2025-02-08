@@ -24,9 +24,9 @@ public class TempTextureDescriptor : TextureDescriptor {
         textureSize = Mathf.Max(textureSize, 1);
 
         if (threeDimensions) {
-            rt = GraphUtils.Create3DRenderTexture(textureSize, GraphUtils.ToGfxFormat(type), filter, wrap, mips);
+            rt = TextureUtils.Create3DRenderTexture(textureSize, GraphUtils.ToGfxFormat(type), filter, wrap, mips);
         } else {
-            rt = GraphUtils.Create2DRenderTexture(textureSize, GraphUtils.ToGfxFormat(type), filter, wrap, mips);
+            rt = TextureUtils.Create2DRenderTexture(textureSize, GraphUtils.ToGfxFormat(type), filter, wrap, mips);
         }
 
         return new TemporaryExecutorTexture(name, readKernels, rt, writeKernel, mips);

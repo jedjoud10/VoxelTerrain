@@ -175,17 +175,23 @@ public struct VertexJob : IJobParallelFor {
         vertices[vertexIndex] = outputVertex * vertexScale * voxelScale;
 
         // Calculate per vertex normals and apply it
-        normal = perVertexNormals ? -math.normalizesafe(normal, new float3(0, 1, 0)) : new float3(0, 1, 0);
+        normal = -math.normalizesafe(normal, new float3(0, 1, 0));
         normals[vertexIndex] = normal;
 
 
         // Calculate per vertex ambient occlusion and apply it
-        float ambientOcclusion = perVertexUvs ? VoxelUtils.CalculateVertexAmbientOcclusion(outputVertex, ref voxels, size, aoOffset, aoPower, aoSpread, aoGlobalOffset) : 1.0f;
+        //float ambientOcclusion = perVertexUvs ? VoxelUtils.CalculateVertexAmbientOcclusion(outputVertex, ref voxels, size, aoOffset, aoPower, aoSpread, aoGlobalOffset) : 1.0f;
+        //float ambientOcclusion = VoxelUtils.CalculateVertexAmbientOcclusion2(position, ref voxels, size, aoOffset, aoPower, aoSpread, aoGlobalOffset);
+        //float ambientOcclusion = VoxelUtils.CalculateVertexAmbientOcclusion(outputVertex, ref voxels, size, aoOffset, aoPower, aoSpread, aoGlobalOffset);
         
+        // TODO: please fix this ambient occlusion
+        float ambientOcclusion = 1.0f;
+
+
         if (float.IsNaN(ambientOcclusion)) {
             ambientOcclusion = 1;
         }
 
-        uvs[vertexIndex] = new float2(ambientOcclusion, 0.0f);
+        uvs[vertexIndex] = new float2(math.clamp(ambientOcclusion, 0, 1), 0.0f);
     }
 }

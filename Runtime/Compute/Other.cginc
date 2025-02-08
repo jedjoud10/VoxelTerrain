@@ -78,32 +78,6 @@ float4 SampleBicubic(Texture2D tex, SamplerState test, float2 uv, float lod, flo
 	return result;
 }
 
-float4 SampleBicubic(Texture1D tex, SamplerState test, float uv, float lod, float texSize)
-{
-    // Map uv to texture space and calculate base and fractional coordinates
-	float texel = uv * texSize - 0.5;
-	float base = floor(texel);
-	float frac = texel - base;
-
-	float4 result = float4(0.0, 0.0, 0.0, 0.0);
-
-    // Loop through a 4x4 grid of texels
-	for (int i = -1; i <= 2; i++)
-	{
-		float offset = float(i);
-		float sampleUV = (base + offset + 1.0) / texSize;
-		float4 texelColor = tex.SampleLevel(test, sampleUV, lod);
-
-		// Compute cubic weights for x and y
-		float weightX = CubicWeight(frac.x - i);
-
-		// Accumulate weighted color
-		result += texelColor * weightX;
-	}
-
-	return result;
-}
-
 // https://gist.github.com/supertask/702439b84a341e5f45c79358135c9df6
 float Remap(float v, float minOld, float maxOld, float minNew, float maxNew)
 {
@@ -137,8 +111,9 @@ float4 SampleBounded(Texture3D tex, SamplerState test, float3 uv, float lod, flo
 	return tex.SampleLevel(test, uv + (0.5 / texSize), lod);
 }
 
-float4 SampleBounded(Texture2D tex, SamplerState test, float2 uv, float lod, float texSize)
+float4 SampleBounded(Texture2D tex, SamplerState test, float2 uv, float lod, int reduction, uint2 id2)
 {
+	/*
 	if (any(uv < 0.0) || any(uv >= 1.0))
 	{
 		const float aaa = -10000;
@@ -146,6 +121,17 @@ float4 SampleBounded(Texture2D tex, SamplerState test, float2 uv, float lod, flo
 	}
 	
 	//return tex[uint3(uv * texSize + 1.0/texSize)];
-	return tex.SampleLevel(test, uv + (0.5 / texSize), lod);
 	//return tex.SampleLevel(test, uv, lod);
+	*/
+	//return float4(uv.x* 100, 0, 0, 0);
+	//uv -= 0.5;
+	
+	float redfactor = size / reduction;
+	
+	
+	//uv += 0.5;
+
+	uv *= (redfactor / (redfactor + 1));
+	//return tex.SampleLevel(test, uv, lod);
+	return tex.Load(uint3(id2 / 2, 0));
 }
