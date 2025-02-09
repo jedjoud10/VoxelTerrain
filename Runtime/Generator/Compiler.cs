@@ -6,75 +6,77 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-public partial class VoxelGenerator : VoxelBehaviour {
-    public ComputeShader shader;
+namespace jedjoud.VoxelTerrain.Generation {
+    public partial class VoxelGenerator : VoxelBehaviour {
+        public ComputeShader shader;
 
-    // Checks if we need to recompile the shader by checking the hash changes.
-    // If the context hash changed, then we will recompile the shader
-    public void SoftRecompile() {
-        if (!gameObject.activeSelf)
-            return;
-        
-        ParsedTranspilation();
-        if (hash != ctx.hashinator.hash) {
-            hash = ctx.hashinator.hash;
-            textures = null;
+        // Checks if we need to recompile the shader by checking the hash changes.
+        // If the context hash changed, then we will recompile the shader
+        public void SoftRecompile() {
+            if (!gameObject.activeSelf)
+                return;
 
-            if (autoCompile) {
-                Compile(false);
+            ParsedTranspilation();
+            if (hash != ctx.hashinator.hash) {
+                hash = ctx.hashinator.hash;
+                textures = null;
+
+                if (autoCompile) {
+                    Compile(false);
+                }
             }
         }
-    }
 
 
-    // Writes the transpiled shader code to a file and recompiles it automatically (through AssetDatabase)
-    public void Compile(bool force) {
+        // Writes the transpiled shader code to a file and recompiles it automatically (through AssetDatabase)
+        public void Compile(bool force) {
 #if UNITY_EDITOR
-        textures = null;
-        if (force) {
-            ctx = null;
-        }
+            textures = null;
+            if (force) {
+                ctx = null;
+            }
 
-        string source = Transpile();
+            string source = Transpile();
 
-        if (!AssetDatabase.IsValidFolder("Assets/Voxel Terrain/Compute/")) {
-            // TODO: Use package cache instead? would it work???
-            AssetDatabase.CreateFolder("Assets", "Voxel Terrain");
-            AssetDatabase.CreateFolder("Assets/Voxel Terrain", "Compute");
-        }
+            if (!AssetDatabase.IsValidFolder("Assets/Voxel Terrain/Compute/")) {
+                // TODO: Use package cache instead? would it work???
+                AssetDatabase.CreateFolder("Assets", "Voxel Terrain");
+                AssetDatabase.CreateFolder("Assets/Voxel Terrain", "Compute");
+            }
 
-        string filePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute";
-        using (StreamWriter sw = File.CreateText(filePath)) {
-            sw.Write(source);
-        }
+            string filePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute";
+            using (StreamWriter sw = File.CreateText(filePath)) {
+                sw.Write(source);
+            }
 
-        AssetDatabase.ImportAsset(filePath);
-        shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(filePath);
-        EditorUtility.SetDirty(shader);
-        AssetDatabase.SaveAssetIfDirty(shader);
-        EditorUtility.SetDirty(this);
+            AssetDatabase.ImportAsset(filePath);
+            shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(filePath);
+            EditorUtility.SetDirty(shader);
+            AssetDatabase.SaveAssetIfDirty(shader);
+            EditorUtility.SetDirty(this);
 
-        if (!gameObject.activeSelf)
-            return;
+            if (!gameObject.activeSelf)
+                return;
 
-        var visualizer = GetComponent<VoxelPreview>();
-        visualizer?.InitializeForSize();
+            var visualizer = GetComponent<VoxelPreview>();
+            visualizer?.InitializeForSize();
 #else
             Debug.LogError("Cannot transpile code at runtime");
 #endif
-    }
+        }
 
 #if UNITY_EDITOR
-    // Recompiles the graph every time we reload the domain
-    [InitializeOnLoadMethod]
-    static void RecompileOnDomainReload() {
-        VoxelGenerator[] graph = Object.FindObjectsByType<VoxelGenerator>(FindObjectsSortMode.None);
+        // Recompiles the graph every time we reload the domain
+        [InitializeOnLoadMethod]
+        static void RecompileOnDomainReload() {
+            VoxelGenerator[] graph = Object.FindObjectsByType<VoxelGenerator>(FindObjectsSortMode.None);
 
-        /*
-        foreach (var item in graph) {
-            //item.Compile();
+            /*
+            foreach (var item in graph) {
+                //item.Compile();
+            }
+            */
         }
-        */
-    }
 #endif
+    }
 }

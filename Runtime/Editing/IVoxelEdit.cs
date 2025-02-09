@@ -4,28 +4,31 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
-// Interface for voxel edits that will modify pre-existing terrain chunk data
-public interface IVoxelEdit {
-    // Modify pre-generated or pre-modified terrain voxel data
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Voxel Modify(float3 position, Voxel voxel);
+namespace jedjoud.VoxelTerrain.Edits {
 
-    // Get the AABB bounds of this voxel edit
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Bounds GetBounds();
+    // Interface for voxel edits that will modify pre-existing terrain chunk data
+    public interface IVoxelEdit {
+        // Modify pre-generated or pre-modified terrain voxel data
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Voxel Modify(float3 position, Voxel voxel);
 
-    // MUST CALL THE "ApplyGeneric" function because we can't hide away generics
-    public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, NativeMultiCounter counters);
+        // Get the AABB bounds of this voxel edit
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Bounds GetBounds();
 
-    // Apply any generic voxel edit onto oncoming data
-    public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, NativeMultiCounter counters) where T : struct, IVoxelEdit {
-        VoxelEditJob<T> job = new VoxelEditJob<T> {
-            offset = offset,
-            edit = edit,
-            voxels = voxels,
-            voxelScale = VoxelUtils.VoxelSizeFactor,
-            vertexScale = VoxelUtils.VertexScaling,
-        };
-        return job.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
+        // MUST CALL THE "ApplyGeneric" function because we can't hide away generics
+        public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters);
+
+        // Apply any generic voxel edit onto oncoming data
+        public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters) where T : struct, IVoxelEdit {
+            VoxelEditJob<T> job = new VoxelEditJob<T> {
+                offset = offset,
+                edit = edit,
+                voxels = voxels,
+                voxelScale = VoxelUtils.VoxelSizeFactor,
+                vertexScale = VoxelUtils.VertexScaling,
+            };
+            return job.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
+        }
     }
 }

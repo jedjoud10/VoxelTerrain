@@ -4,47 +4,48 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-// Common terrain utility methods
-public static class VoxelUtils {
-    // Scaling value applied to the vertices
-    public static float VertexScaling => (float)Size / ((float)Size - 3.0F);
+namespace jedjoud.VoxelTerrain {
+    // Common terrain utility methods
+    public static class VoxelUtils {
+        // Scaling value applied to the vertices
+        public static float VertexScaling => (float)Size / ((float)Size - 3.0F);
 
-    // Voxel scaling size
-    public static int VoxelSizeReduction { get; set; }
+        // Voxel scaling size
+        public static int VoxelSizeReduction { get; set; }
 
-    // Used for parallelism control for the CPU side meshing and editing
-    public static int SchedulingInnerloopBatchCount { get; set; } = 16;
+        // Used for parallelism control for the CPU side meshing and editing
+        public static int SchedulingInnerloopBatchCount { get; set; } = 16;
 
-    // Scaling factor when using voxel size reduction
-    // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)
-    public static float VoxelSizeFactor => 1F / Mathf.Pow(2F, VoxelSizeReduction);
+        // Scaling factor when using voxel size reduction
+        // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)
+        public static float VoxelSizeFactor => 1F / Mathf.Pow(2F, VoxelSizeReduction);
 
-    // Current chunk resolution
-    public static int Size = 64;
+        // Current chunk resolution
+        public static int Size = 64;
 
-    // Total number of voxels in a chunk
-    public static int Volume => Size * Size * Size;
+        // Total number of voxels in a chunk
+        public static int Volume => Size * Size * Size;
 
-    // Should we calculate per vertex normals
-    public static bool PerVertexNormals { get; set; }
+        // Should we calculate per vertex normals
+        public static bool PerVertexNormals { get; set; }
 
-    // Should we calculate per vertex density and ambient occlusion?
-    public static bool PerVertexUvs { get; set; }
+        // Should we calculate per vertex density and ambient occlusion?
+        public static bool PerVertexUvs { get; set; }
 
-    // Should we enable smoothing when meshing?
-    public static bool Smoothing { get; set; }
+        // Should we enable smoothing when meshing?
+        public static bool Smoothing { get; set; }
 
-    // Full control over how the ambient occlusion is calculated
-    public static float AmbientOcclusionOffset { get; set; }
-    public static float AmbientOcclusionPower { get; set; }
-    public static float AmbientOcclusionSpread { get; set; }
-    public static float AmbientOcclusionGlobalOffset { get; set; }
-    
-    // Max possible number of materials supported by the terrain mesh
-    public const int MAX_MATERIAL_COUNT = 256;
+        // Full control over how the ambient occlusion is calculated
+        public static float AmbientOcclusionOffset { get; set; }
+        public static float AmbientOcclusionPower { get; set; }
+        public static float AmbientOcclusionSpread { get; set; }
+        public static float AmbientOcclusionGlobalOffset { get; set; }
 
-    // Offsets used for octree generation
-    public static readonly int3[] OctreeChildOffset = {
+        // Max possible number of materials supported by the terrain mesh
+        public const int MAX_MATERIAL_COUNT = 256;
+
+        // Offsets used for octree generation
+        public static readonly int3[] OctreeChildOffset = {
         new int3(0, 0, 0),
         new int3(0, 0, 1),
         new int3(1, 0, 0),
@@ -55,8 +56,8 @@ public static class VoxelUtils {
         new int3(1, 1, 1),
     };
 
-    // Stolen from https://gist.github.com/dwilliamson/c041e3454a713e58baf6e4f8e5fffecd
-    public static readonly ushort[] EdgeMasks = new ushort[] {
+        // Stolen from https://gist.github.com/dwilliamson/c041e3454a713e58baf6e4f8e5fffecd
+        public static readonly ushort[] EdgeMasks = new ushort[] {
         0x0, 0x109, 0x203, 0x30a, 0x80c, 0x905, 0xa0f, 0xb06,
         0x406, 0x50f, 0x605, 0x70c, 0xc0a, 0xd03, 0xe09, 0xf00,
         0x190, 0x99, 0x393, 0x29a, 0x99c, 0x895, 0xb9f, 0xa96,
@@ -91,74 +92,75 @@ public static class VoxelUtils {
         0xb06, 0xa0f, 0x905, 0x80c, 0x30a, 0x203, 0x109, 0x0,
     };
 
-    // Custom modulo operator to discard negative numbers
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint3 Mod(int3 val, int size) {
-        int3 r = val % size;
-        return (uint3)math.select(r, r + size, r < 0);
-    }
+        // Custom modulo operator to discard negative numbers
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint3 Mod(int3 val, int size) {
+            int3 r = val % size;
+            return (uint3)math.select(r, r + size, r < 0);
+        }
 
-    // Custom modulo operator to discard negative numbers
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 Mod(float3 val, float size) {
-        float3 r = val % size;
-        return math.select(r, r + size, r < 0);
-    }
+        // Custom modulo operator to discard negative numbers
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 Mod(float3 val, float size) {
+            float3 r = val % size;
+            return math.select(r, r + size, r < 0);
+        }
 
-    // Convert an index to a 3D position (morton coding)
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint3 IndexToPos(int index) {
-        return Morton.DecodeMorton32((uint)index);
-    }
+        // Convert an index to a 3D position (morton coding)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint3 IndexToPos(int index) {
+            return Morton.DecodeMorton32((uint)index);
+        }
 
-    // Convert a 3D position into an index (morton coding)
-    [return: AssumeRange(0u, 262144)]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int PosToIndex(uint3 position) {
-        return (int)Morton.EncodeMorton32(position);
-    }
+        // Convert a 3D position into an index (morton coding)
+        [return: AssumeRange(0u, 262144)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int PosToIndex(uint3 position) {
+            return (int)Morton.EncodeMorton32(position);
+        }
 
-    // Sampled the voxel grid using trilinear filtering
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static half SampleGridInterpolated(float3 position, ref NativeArray<Voxel> voxels, int size) {
-        float3 frac = math.frac(position);
-        uint3 voxPos = (uint3)math.floor(position);
-        voxPos = math.min(voxPos, math.uint3(size - 2));
-        voxPos = math.max(voxPos, math.uint3(0));
+        // Sampled the voxel grid using trilinear filtering
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static half SampleGridInterpolated(float3 position, ref NativeArray<Voxel> voxels, int size) {
+            float3 frac = math.frac(position);
+            uint3 voxPos = (uint3)math.floor(position);
+            voxPos = math.min(voxPos, math.uint3(size - 2));
+            voxPos = math.max(voxPos, math.uint3(0));
 
-        float d000 = voxels[PosToIndex(voxPos)].density;
-        float d100 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 0))].density;
-        float d010 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 0))].density;
-        float d110 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
+            float d000 = voxels[PosToIndex(voxPos)].density;
+            float d100 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 0))].density;
+            float d010 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 0))].density;
+            float d110 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
 
-        float d001 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
-        float d101 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 1))].density;
-        float d011 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 1))].density;
-        float d111 = voxels[PosToIndex(voxPos + math.uint3(1, 1, 1))].density;
+            float d001 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
+            float d101 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 1))].density;
+            float d011 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 1))].density;
+            float d111 = voxels[PosToIndex(voxPos + math.uint3(1, 1, 1))].density;
 
-        float mixed0 = math.lerp(d000, d100, frac.x);
-        float mixed1 = math.lerp(d010, d110, frac.x);
-        float mixed2 = math.lerp(d001, d101, frac.x);
-        float mixed3 = math.lerp(d011, d111, frac.x);
+            float mixed0 = math.lerp(d000, d100, frac.x);
+            float mixed1 = math.lerp(d010, d110, frac.x);
+            float mixed2 = math.lerp(d001, d101, frac.x);
+            float mixed3 = math.lerp(d011, d111, frac.x);
 
-        float mixed4 = math.lerp(mixed0, mixed2, frac.z);
-        float mixed5 = math.lerp(mixed1, mixed3, frac.z);
+            float mixed4 = math.lerp(mixed0, mixed2, frac.z);
+            float mixed5 = math.lerp(mixed1, mixed3, frac.z);
 
-        float mixed6 = math.lerp(mixed4, mixed5, frac.y);
+            float mixed6 = math.lerp(mixed4, mixed5, frac.y);
 
-        return (half)mixed6;
-    }
+            return (half)mixed6;
+        }
 
-    // Calculate the normals at a specific position
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 SampleGridNormal(uint3 position, ref NativeArray<Voxel> voxels, int size) {
-        position = math.min(position, math.uint3(size - 2));
+        // Calculate the normals at a specific position
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float3 SampleGridNormal(uint3 position, ref NativeArray<Voxel> voxels, int size) {
+            position = math.min(position, math.uint3(size - 2));
 
-        float baseVal = voxels[PosToIndex(position)].density;
-        float xVal = voxels[PosToIndex(position + math.uint3(1, 0, 0))].density;
-        float yVal = voxels[PosToIndex(position + math.uint3(0, 1, 0))].density;
-        float zVal = voxels[PosToIndex(position + math.uint3(0, 0, 1))].density;
+            float baseVal = voxels[PosToIndex(position)].density;
+            float xVal = voxels[PosToIndex(position + math.uint3(1, 0, 0))].density;
+            float yVal = voxels[PosToIndex(position + math.uint3(0, 1, 0))].density;
+            float zVal = voxels[PosToIndex(position + math.uint3(0, 0, 1))].density;
 
-        return new float3(baseVal - xVal, baseVal - yVal, baseVal - zVal);
+            return new float3(baseVal - xVal, baseVal - yVal, baseVal - zVal);
+        }
     }
 }

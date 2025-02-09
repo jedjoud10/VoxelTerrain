@@ -13,71 +13,74 @@ using Unity.Collections;
 using UnityEditor;
 #endif
 
-// A voxel graph is the base class to inherit from to be able to write custom voxel stuff
-public abstract partial class VoxelGenerator : VoxelBehaviour {
-    [Header("Compilation")]
-    public bool debugName = true;
-    public bool autoCompile = true;
+namespace jedjoud.VoxelTerrain.Generation {
 
-    // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
-    // Also executing the shader at the specified size as well
-    private void OnValidate() {
-        
-        if (!gameObject.activeSelf)
-            return;
+    // A voxel graph is the base class to inherit from to be able to write custom voxel stuff
+    public abstract partial class VoxelGenerator : VoxelBehaviour {
+        [Header("Compilation")]
+        public bool debugName = true;
+        public bool autoCompile = true;
 
-        ComputeSecondarySeeds();
-        SoftRecompile();
-        OnPropertiesChanged();
-        /*
-        */
-    }
+        // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
+        // Also executing the shader at the specified size as well
+        private void OnValidate() {
 
-    // Called when the voxel graph's properties get modified
-    public void OnPropertiesChanged() {
-        if (!gameObject.activeSelf)
-            return;
+            if (!gameObject.activeSelf)
+                return;
+
+            ComputeSecondarySeeds();
+            SoftRecompile();
+            OnPropertiesChanged();
+            /*
+            */
+        }
+
+        // Called when the voxel graph's properties get modified
+        public void OnPropertiesChanged() {
+            if (!gameObject.activeSelf)
+                return;
 
 #if UNITY_EDITOR
-        var visualizer = GetComponent<VoxelPreview>();
+            var visualizer = GetComponent<VoxelPreview>();
 
-        if (visualizer != null && visualizer.isActiveAndEnabled) {
-            ExecuteShader(visualizer.size, Vector3.zero, Vector3.one, false, true);
-            RenderTexture density = (RenderTexture)textures["voxels"];
-            RenderTexture colors = (RenderTexture)textures["colors"];
-            visualizer.Meshify(density, colors);
-        }
+            if (visualizer != null && visualizer.isActiveAndEnabled) {
+                ExecuteShader(visualizer.size, Vector3.zero, Vector3.one, false, true);
+                RenderTexture density = (RenderTexture)textures["voxels"];
+                RenderTexture colors = (RenderTexture)textures["colors"];
+                visualizer.Meshify(density, colors);
+            }
 #endif
-    }
+        }
 
-    public class AllInputs {
-        public Variable<float3> position;
-    }
+        public class AllInputs {
+            public Variable<float3> position;
+        }
 
-    public class AllOutputs {
-        public Variable<float> density;
-        public Variable<float3> color;
-        public Variable<float> metallic;
-        public Variable<float> smoothness;
-    }
+        public class AllOutputs {
+            public Variable<float> density;
+            public Variable<float3> color;
+            public Variable<float> metallic;
+            public Variable<float> smoothness;
+        }
 
-    // Execute the voxel graph at a specific position and fetch the density and material values
-    public abstract void Execute(Variable<float3> position, out Variable<float> density, out Variable<float3> color);
+        // Execute the voxel graph at a specific position and fetch the density and material values
+        public abstract void Execute(Variable<float3> position, out Variable<float> density, out Variable<float3> color);
 
-    // Even lower execution function that allows you to override metallic and smoothness values (and even probably pass your own uv values if needed)
-    public virtual void ExecuteWithEverything(AllInputs input, out AllOutputs output) {
-        output = new AllOutputs();
-        output.metallic = 0.0f;
-        output.smoothness = 0.0f;
-        Execute(input.position, out output.density, out output.color);
-    }
+        // Even lower execution function that allows you to override metallic and smoothness values (and even probably pass your own uv values if needed)
+        public virtual void ExecuteWithEverything(AllInputs input, out AllOutputs output) {
+            output = new AllOutputs();
+            output.metallic = 0.0f;
+            output.smoothness = 0.0f;
+            Execute(input.position, out output.density, out output.color);
+        }
 
-    public override void CallerStart() {
-        InitializeReadbackBuffers();
-    }
+        public override void CallerStart() {
+            InitializeReadbackBuffers();
+        }
 
-    public override void CallerDispose() {
-        DisposeIntermediateTextures();
-        DisposeReadbackBuffers();
+        public override void CallerDispose() {
+            DisposeIntermediateTextures();
+            DisposeReadbackBuffers();
+        }
     }
 }
