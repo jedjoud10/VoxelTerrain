@@ -173,7 +173,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Complete the jobs and return a mesh
         internal VoxelMesh Complete(Mesh mesh) {
             if (voxels == null || chunk == null) {
-                return VoxelMesh.Empty;
+                return default;
             }
 
             finalJobHandle.Complete();

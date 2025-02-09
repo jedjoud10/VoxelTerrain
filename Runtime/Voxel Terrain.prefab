@@ -76,7 +76,7 @@ MonoBehaviour:
   permutationSeed: {x: 894, y: -748, z: 173}
   moduloSeed: {x: -515, y: -299, z: -55}
   asyncReadbacks: 4
-  hash: 1068962340
+  hash: 1588009538
   debugName: 1
   autoCompile: 1
   transform1:
@@ -137,7 +137,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   terrain: {fileID: 0}
-  editJobsPerFrame: 1
 --- !u!114 &5435573634283810322
 MonoBehaviour:
   m_ObjectHideFlags: 0

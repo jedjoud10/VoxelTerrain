@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Unity.Jobs;
+using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh baking jobs
@@ -7,10 +8,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public class VoxelCollisions : VoxelBehaviour {
         public delegate void OnCollisionBakingComplete(VoxelChunk chunk);
         public event OnCollisionBakingComplete onCollisionBakingComplete;
-        internal List<(JobHandle, VoxelChunk, VoxelMesh)> ongoingBakeJobs;
+        internal List<(JobHandle, VoxelChunk)> ongoingBakeJobs;
 
         public override void CallerStart() {
-            ongoingBakeJobs = new List<(JobHandle, VoxelChunk, VoxelMesh)>();
+            ongoingBakeJobs = new List<(JobHandle, VoxelChunk)>();
         }
 
         public void GenerateCollisions(VoxelChunk chunk, VoxelMesh voxelMesh) {
@@ -20,16 +21,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 };
 
                 var handle = bakeJob.Schedule();
-                ongoingBakeJobs.Add((handle, chunk, voxelMesh));
+                ongoingBakeJobs.Add((handle, chunk));
             } else {
                 onCollisionBakingComplete?.Invoke(chunk);
             }
         }
 
         public override void CallerUpdate() {
-            foreach (var (handle, chunk, mesh) in ongoingBakeJobs) {
+            foreach (var (handle, chunk) in ongoingBakeJobs) {
                 if (handle.IsCompleted) {
                     handle.Complete();
+                    chunk.GetComponent<MeshCollider>().sharedMesh = chunk.sharedMesh;
                     onCollisionBakingComplete?.Invoke(chunk);
                 }
             }
