@@ -51,15 +51,12 @@ public partial class VoxelGenerator : VoxelBehaviour {
     }
 
     public void ExecuteShader(int newSize, Vector3 offset, Vector3 scale, bool morton, bool updateInjected) {
-        Debug.Log("Execute Shader...");
         if (ctx == null) {
-            Debug.Log("Context = null, Calling Parsed Transpilation...");
             ParsedTranspilation();
         }
 
         if (newSize != setSize || textures == null) {
             setSize = newSize;
-            Debug.Log("Re-creating Intermediate Textures...");
             CreateIntermediateTextures(newSize);
         }
 
@@ -84,7 +81,6 @@ public partial class VoxelGenerator : VoxelBehaviour {
         buffer.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
         */
         // Execute the kernels sequentially
-        Debug.Log("Dispatching...");
         foreach (var kernel in ctx.dispatches) {
             int id = shader.FindKernel(kernel.name);
             int tempSize = newSize / (1 << kernel.sizeReductionPower);

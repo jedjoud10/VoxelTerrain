@@ -4,11 +4,10 @@ using Unity.Jobs;
 using UnityEngine;
 using System.Linq;
 using Unity.Collections;
+using Unity.Burst;
 
 // Responsible for creating and executing the mesh generation jobs
 public class VoxelMesher : VoxelBehaviour {
-    public override int Priority => -10;
-
     // Number of simultaneous mesh generation tasks that happen during one frame
     [Range(1, 8)]
     public int meshJobsPerFrame = 1;
@@ -60,26 +59,31 @@ public class VoxelMesher : VoxelBehaviour {
     }
 
     // Begin generating the mesh data using the given chunk and voxel container
-    public void GenerateMesh(VoxelChunk chunk, bool collisions = true, int maxFrames = 5) {
-        /*
-        if (chunk.container == null)
-            return;
-        */
-
+    public void GenerateMesh(VoxelChunk chunk, bool immediate) {
         var job = new PendingMeshJob {
             chunk = chunk,
-            collisions = collisions,
-            maxFrames = maxFrames,
+            collisions = true,
+            maxFrames = 5,
         };
 
         if (pendingMeshJobs.Contains(job))
             return;
 
+        if (immediate) {
+            FinishJob(handlers[0]);
+            BeginJob(handlers[0], job);
+            FinishJob(handlers[0]);
+            return;
+        }
+
         pendingMeshJobs.Enqueue(job);
     }
 
+    [BurstCompile(CompileSynchronously = true)]
     struct CustomCopy : IJob {
+        [ReadOnly]
         public NativeArray<Voxel> src;
+        [WriteOnly]
         public NativeArray<Voxel> dst;
         public void Execute() {
             dst.CopyFrom(src);
@@ -87,59 +91,48 @@ public class VoxelMesher : VoxelBehaviour {
     }
 
     public override void CallerUpdate() {
-        // Complete the jobs that finished and create the meshes
         foreach (var handler in handlers) {
             if ((handler.finalJobHandle.IsCompleted || (Time.frameCount - handler.startingFrame) > handler.maxFrames) && !handler.Free) {
-                VoxelChunk voxelChunk = handler.chunk;
-
-                if (voxelChunk == null)
-                    return;
-
-
-                var stats = handler.Complete(voxelChunk.sharedMesh);
-                onVoxelMeshingComplete?.Invoke(voxelChunk, stats);
-                voxelChunk.GetComponent<MeshFilter>().sharedMesh = voxelChunk.sharedMesh;
-                var renderer = voxelChunk.GetComponent<MeshRenderer>();
-
-                renderer.materials = stats.VoxelMaterialsLookup.Select(x => voxelMaterials[x]).ToArray();
-
-                // Set renderer bounds
-                renderer.bounds = new Bounds {
-                    min = voxelChunk.transform.position,
-                    max = voxelChunk.transform.position + VoxelUtils.Size * Vector3.one,
-                };
-
+                FinishJob(handler);
             }
         }
 
-        
-
-        // Begin the jobs for the meshes
         for (int i = 0; i < meshJobsPerFrame; i++) {
-            PendingMeshJob request = PendingMeshJob.Empty;
-            if (pendingMeshJobs.TryDequeue(out request)) {
-                if (!handlers[i].Free) {
-                    pendingMeshJobs.Enqueue(request);
-                    continue;
+            if (handlers[i].Free) {
+                if (pendingMeshJobs.TryDequeue(out PendingMeshJob request)) {
+                    BeginJob(handlers[i], request);
                 }
-
-
-                MeshJobHandler handler = handlers[i];
-                handler.chunk = request.chunk;
-                handler.colisions = request.collisions;
-                handler.maxFrames = request.maxFrames;
-                handler.startingFrame = Time.frameCount;
-
-                /*
-                // Pass through the edit system for any chunks that should be modifiable
-                handler.voxelCounters.Reset();
-                JobHandle dynamicEdit = terrain.VoxelEdits.TryGetApplyDynamicEditJobDependency(request.chunk, ref handler.voxels);
-                JobHandle voxelEdit = terrain.VoxelEdits.TryGetApplyVoxelEditJobDependency(request.chunk, ref handler.voxels, handler.voxelCounters, dynamicEdit);
-                */
-                JobHandle temp = request.chunk.dependency;
-                var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule(temp);
-                handler.BeginJob(copy);
             }
+        }
+    }
+
+    private void BeginJob(MeshJobHandler handler, PendingMeshJob request) {
+        handler.chunk = request.chunk;
+        handler.colisions = request.collisions;
+        handler.maxFrames = request.maxFrames;
+        handler.startingFrame = Time.frameCount;
+
+        JobHandle temp = request.chunk.dependency;
+        var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule(temp);
+        handler.BeginJob(copy);
+    }
+
+    private void FinishJob(MeshJobHandler handler) {
+        if (handler.chunk != null) {
+            VoxelChunk voxelChunk = handler.chunk;
+            var stats = handler.Complete(voxelChunk.sharedMesh);
+            voxelChunk.dependency = default;
+            onVoxelMeshingComplete?.Invoke(voxelChunk, stats);
+            voxelChunk.GetComponent<MeshFilter>().sharedMesh = voxelChunk.sharedMesh;
+            var renderer = voxelChunk.GetComponent<MeshRenderer>();
+
+            renderer.materials = stats.VoxelMaterialsLookup.Select(x => voxelMaterials[x]).ToArray();
+
+            // Set renderer bounds
+            renderer.bounds = new Bounds {
+                min = voxelChunk.transform.position,
+                max = voxelChunk.transform.position + VoxelUtils.Size * Vector3.one,
+            };
         }
     }
 

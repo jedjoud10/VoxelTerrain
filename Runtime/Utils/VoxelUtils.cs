@@ -12,6 +12,9 @@ public static class VoxelUtils {
     // Voxel scaling size
     public static int VoxelSizeReduction { get; set; }
 
+    // Used for parallelism control for the CPU side meshing and editing
+    public static int SchedulingInnerloopBatchCount { get; set; } = 16;
+
     // Scaling factor when using voxel size reduction
     // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)
     public static float VoxelSizeFactor => 1F / Mathf.Pow(2F, VoxelSizeReduction);
@@ -36,7 +39,7 @@ public static class VoxelUtils {
     public static float AmbientOcclusionPower { get; set; }
     public static float AmbientOcclusionSpread { get; set; }
     public static float AmbientOcclusionGlobalOffset { get; set; }
-
+    
     // Max possible number of materials supported by the terrain mesh
     public const int MAX_MATERIAL_COUNT = 256;
 

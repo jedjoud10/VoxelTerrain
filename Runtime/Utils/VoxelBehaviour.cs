@@ -2,9 +2,6 @@ using UnityEngine;
 
 // Used internally by the classes that handle terrain
 public class VoxelBehaviour : MonoBehaviour {
-    public virtual int Priority { get; }
-
-
     // Fetch the parent terrain heheheha
     [HideInInspector]
     public VoxelTerrain terrain;

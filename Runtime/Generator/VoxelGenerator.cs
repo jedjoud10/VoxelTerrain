@@ -22,7 +22,6 @@ public abstract partial class VoxelGenerator : VoxelBehaviour {
     // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
     // Also executing the shader at the specified size as well
     private void OnValidate() {
-        Debug.Log("OnValidate Called");
         
         if (!gameObject.activeSelf)
             return;
@@ -43,7 +42,6 @@ public abstract partial class VoxelGenerator : VoxelBehaviour {
         var visualizer = GetComponent<VoxelPreview>();
 
         if (visualizer != null && visualizer.isActiveAndEnabled) {
-            Debug.Log("Update visualizer");
             ExecuteShader(visualizer.size, Vector3.zero, Vector3.one, false, true);
             RenderTexture density = (RenderTexture)textures["voxels"];
             RenderTexture colors = (RenderTexture)textures["colors"];

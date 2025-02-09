@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using Unity.Collections;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 public class VoxelTerrain : MonoBehaviour {
     public GameObject chunkPrefab;
-    private List<GameObject> totalChunks;
+
+    [HideInInspector]
+    public List<GameObject> totalChunks;
     public static VoxelTerrain Instance { get; private set; }
 
     [HideInInspector]
@@ -20,9 +23,13 @@ public class VoxelTerrain : MonoBehaviour {
     [HideInInspector]
     public VoxelGenerator generator;
 
+    [HideInInspector]
+    public VoxelEdits edits;
+
     public delegate void OnCompleted();
     public event OnCompleted onComplete;
     private int pendingChunks;
+    private bool complete;
 
     public void Start() {
         void Init(VoxelBehaviour val){
@@ -30,6 +37,7 @@ public class VoxelTerrain : MonoBehaviour {
             val.CallerStart();
         }
 
+        complete = false;
         Instance = this;
         totalChunks = new List<GameObject>();
 
@@ -37,39 +45,56 @@ public class VoxelTerrain : MonoBehaviour {
         spawner = GetComponent<VoxelGridSpawner>();
         mesher = GetComponent<VoxelMesher>();
         generator = GetComponent<VoxelGenerator>();
+        edits = GetComponent<VoxelEdits>();
 
         spawner.onChunkSpawned += (VoxelChunk chunk) => {
             generator.GenerateVoxels(chunk);
             pendingChunks++;
         };
 
-        generator.onReadbackSuccessful += (VoxelChunk chunk) => mesher.GenerateMesh(chunk, true);
+        generator.onReadbackSuccessful += (VoxelChunk chunk) => mesher.GenerateMesh(chunk, false);
 
         mesher.onVoxelMeshingComplete += (VoxelChunk chunk, VoxelMesh mesh) => collisions.GenerateCollisions(chunk, mesh);
 
         collisions.onCollisionBakingComplete += (VoxelChunk chunk) => {
             pendingChunks--;
+            complete = true;
+        };
 
-            if (pendingChunks == 0) {
-                onComplete?.Invoke();
-            }
+        onComplete += () => {
+            edits.ApplyVoxelEdit(new AddVoxelEdit() {
+                center = Vector3.zero,
+                strength = -100f,
+                writeMaterial = true,
+                material = 0,
+                radius = 100,
+                scale = Vector3.one,
+            }, false);
         };
 
         Init(mesher);
         Init(collisions);
         Init(generator);
         Init(spawner);
+        Init(edits);
     }
 
     public void Update() {
         generator.CallerUpdate();
         mesher.CallerUpdate();
         collisions.CallerUpdate();
+        edits.CallerUpdate();
+
+        if (complete && pendingChunks == 0) {
+            onComplete?.Invoke();
+            complete = false;
+        }
     }
 
     public void OnApplicationQuit() {
         mesher.CallerDispose();
         generator.CallerDispose();
+        edits.CallerDispose();
 
         foreach (var item in totalChunks) {
             item.GetComponent<VoxelChunk>().voxels.Dispose();

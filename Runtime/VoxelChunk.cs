@@ -19,6 +19,14 @@ public partial class VoxelChunk : MonoBehaviour {
     [HideInInspector]
     public (byte, int)[] triangleOffsetLocalMaterials;
 
+    // Get the AABB world bounds of this chunk
+    public Bounds GetBounds() {
+        return new Bounds {
+            min = transform.position,
+            max = transform.position + Vector3.one * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor,
+        };
+    }
+
     // Convert a specific sub-mesh index (from physics collision for example) to voxel material index
     public bool TryGetVoxelMaterialFromSubmesh(int submeshIndex, out int voxelMaterialIndex) {
         if (voxelMaterialsLookup != null && submeshIndex < voxelMaterialsLookup.Length) {

@@ -11,7 +11,6 @@ public partial class VoxelGenerator : VoxelBehaviour {
 
     // Parses the voxel graph into a tree context with all required nodes and everything!!!
     private void ParsedTranspilation() {
-        Debug.Log("Parsed Transpilation...");
         ctx = new TreeContext(debugName);
         ctx.Hash(debugName);
 
@@ -67,12 +66,9 @@ public partial class VoxelGenerator : VoxelBehaviour {
     // This transpile the voxel graph into HLSL code that can be executed on the GPU
     // This can be done outside the editor, but shader compilation MUST be done in editor
     private string Transpile() {
-        Debug.Log("Transpile...");
-
         if (ctx == null) {
             ParsedTranspilation();
         } else {
-            Debug.Log("Context already set!");
         }
 
         List<string> lines = new List<string>();
