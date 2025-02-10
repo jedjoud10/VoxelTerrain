@@ -1,16 +1,6 @@
 using System;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public static class MathOps {
-        public static Variable<float> Length<T>(Variable<T> position) {
-            return new LengthNode<T>() { a = position };
-        }
-
-        public static Variable<T> Normalize<T>(Variable<T> position) {
-            return new NormalizeNode<T>() { a = position };
-        }
-    }
-
     public class DefineNode<T> : Variable<T> {
         public string value;
         public bool constant;

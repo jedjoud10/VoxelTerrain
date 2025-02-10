@@ -15,7 +15,7 @@ namespace jedjoud.VoxelTerrain.Edits {
         public T edit;
         public NativeArray<Voxel> voxels;
 
-        //public NativeMultiCounter.Concurrent counters;
+        public Unsafe.NativeMultiCounter.Concurrent counters;
 
         public void Execute(int index) {
             uint3 id = VoxelUtils.IndexToPos(index);
@@ -34,16 +34,14 @@ namespace jedjoud.VoxelTerrain.Edits {
             Voxel newVoxel = edit.Modify(position, oldVoxel);
             voxels[index] = newVoxel;
 
-            /*
             // Keep track the number of valid voxels of each materials
             half oldDensity = oldVoxel.density;
             half newDensity = newVoxel.density;
             if (newDensity > 0.0f && oldDensity < 0.0f) {
-                counters.Increment(newVoxel.material);
-            } else if (newDensity < 0.0f && oldDensity > 0.0f) {
                 counters.Decrement(newVoxel.material);
+            } else if (newDensity < 0.0f && oldDensity > 0.0f) {
+                counters.Increment(newVoxel.material);
             }
-            */
         }
     }
 }

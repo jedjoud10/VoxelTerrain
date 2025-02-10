@@ -17,18 +17,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [ReadOnly]
         static readonly uint4x3[] offsets = {
-        new uint4x3(
-            new uint4(0, 1, 0, 1),
-            new uint4(0, 0, 1, 1),
-            new uint4(0, 0, 0, 0)
-        ),
+            new uint4x3(
+                new uint4(0, 1, 0, 1),
+                new uint4(0, 0, 1, 1),
+                new uint4(0, 0, 0, 0)
+            ),
 
-        new uint4x3(
-            new uint4(0, 1, 0, 1),
-            new uint4(0, 0, 1, 1),
-            new uint4(1, 1, 1, 1)
-        )
-    };
+            new uint4x3(
+                new uint4(0, 1, 0, 1),
+                new uint4(0, 0, 1, 1),
+                new uint4(1, 1, 1, 1)
+            )
+        };
 
         // Static settings
         [ReadOnly] public int size;
@@ -58,19 +58,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool4 check2 = test2 < math.float4(0.0);
 
             int value = math.bitmask(check1) | (math.bitmask(check2) << 4);
-
-            /*
-            bool3 firstTest = position == math.uint3(0);
-            bool3 secondTest = position == math.uint3(size - 2);
-            if ((math.any(firstTest) ^ math.any(secondTest)) && (value != 0 || value != 255)) {
-                int firstTahini = math.bitmask(new bool4(firstTest, false));
-                int secondTahini = math.bitmask(new bool4(secondTest, false));
-                int combinedTahinis = firstTahini << 3 | secondTahini;
-                int face = math.lzcnt(combinedTahinis);
-                face = math.clamp(face, 0, 5);
-                intersectingCases.Increment(face);
-            }
-            */
 
             enabled[index] = (byte)value;
         }

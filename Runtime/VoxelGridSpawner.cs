@@ -18,7 +18,8 @@ namespace jedjoud.VoxelTerrain {
         }
 
         private void OnDrawGizmosSelected() {
-            Gizmos.DrawWireCube(transform.position, mapChunkSize * VoxelUtils.Size * 2);
+            if (terrain.drawGizmos) 
+                Gizmos.DrawWireCube(transform.position, (Vector3)(mapChunkSize * VoxelUtils.Size * 2) * VoxelUtils.VoxelSizeFactor);
         }
     }
 }

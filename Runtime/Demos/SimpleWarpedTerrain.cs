@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-
+/*
 namespace jedjoud.VoxelTerrain.Generation.Demo {
     public class SimpleWarpingTerrain : VoxelGenerator {
         // Main transform
@@ -45,4 +45,4 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             //color = (warped - projected) / ((Variable<float>)warpingAmplitude).Swizzle<float3>("xxx");
         }
     }
-}
+}*/

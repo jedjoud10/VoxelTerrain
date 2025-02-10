@@ -2,6 +2,7 @@ using System;
 using Unity.Mathematics;
 using UnityEngine;
 
+/*
 namespace jedjoud.VoxelTerrain.Generation.Demo {
     public class Test : VoxelGenerator {
         public Inject<float> scale;
@@ -79,3 +80,4 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         }
     }
 }
+*/

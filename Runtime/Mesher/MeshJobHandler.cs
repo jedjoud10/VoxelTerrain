@@ -33,9 +33,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Unsafe.NativeCounter materialCounter;
         public JobHandle finalJobHandle;
         public VoxelChunk chunk;
-        public bool colisions = false;
-        public int startingFrame = 0;
-        public int maxFrames = 0;
+        public PendingMeshJob request;
+        public int startingFrame;
         internal VertexAttributeDescriptor[] vertexAttributeDescriptors;
 
         internal MeshJobHandler() {
@@ -66,8 +65,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             VertexAttributeDescriptor uvDesc = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2, 2);
 
             List<VertexAttributeDescriptor> descriptors = new List<VertexAttributeDescriptor> {
-            positionDesc, normalDesc, uvDesc
-        };
+                positionDesc, normalDesc, uvDesc
+            };
             vertexAttributeDescriptors = descriptors.ToArray();
         }
         public bool Free { get; private set; } = true;
@@ -109,13 +108,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 voxelScale = VoxelUtils.VoxelSizeFactor,
                 vertexScale = VoxelUtils.VertexScaling,
                 size = VoxelUtils.Size,
-                smoothing = VoxelUtils.Smoothing,
-                perVertexNormals = VoxelUtils.PerVertexNormals,
-                perVertexUvs =  VoxelUtils.PerVertexUvs,
-                aoOffset = VoxelUtils.AmbientOcclusionOffset,
-                aoPower = VoxelUtils.AmbientOcclusionPower,
-                aoSpread = VoxelUtils.AmbientOcclusionSpread,
-                aoGlobalOffset = VoxelUtils.AmbientOcclusionGlobalOffset,
             };
 
             // Generate the quads of the mesh (handles materials internally)
@@ -161,7 +153,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle quadJobHandle = quadJob.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount, merged);
 
             // Start the sum job 
-            JobHandle sumJobHandle = sumJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, quadJobHandle);
+            JobHandle sumJobHandle = sumJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 4 * VoxelUtils.SchedulingInnerloopBatchCount, quadJobHandle);
 
             // Start the copy job
             JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 1, sumJobHandle);
@@ -197,7 +189,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             mesh.Clear();
 
             mesh.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
-            mesh.SetVertexBufferData(vertices.Reinterpret<Vector3>(), 0, 0, maxVertices, 0, MeshUpdateFlags.DontValidateIndices);
+            mesh.SetVertexBufferData(vertices.Reinterpret<Vector3>(), 0, 0, maxVertices, 0, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
             mesh.SetVertexBufferData(normals.Reinterpret<Vector3>(), 0, 0, maxVertices, 1, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
             mesh.SetVertexBufferData(uvs.Reinterpret<Vector2>(), 0, 0, maxVertices, 2, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
 
@@ -224,14 +216,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         indexStart = segmentOffset,
                         indexCount = countIndices,
                         topology = MeshTopology.Triangles,
-                    }, MeshUpdateFlags.DontValidateIndices);
+                    }, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+
                 }
             }
 
             chunk = null;
             return new VoxelMesh {
                 VoxelMaterialsLookup = lookup,
-                ComputeCollisions = colisions,
+                ComputeCollisions = request.collisions,
                 VertexCount = maxVertices,
                 TriangleCount = maxIndices / 3,
             };

@@ -27,6 +27,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                 voxels = voxels,
                 voxelScale = VoxelUtils.VoxelSizeFactor,
                 vertexScale = VoxelUtils.VertexScaling,
+                counters = counters,
             };
             return job.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
         }

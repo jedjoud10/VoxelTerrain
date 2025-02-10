@@ -54,6 +54,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             EditorUtility.SetDirty(shader);
             AssetDatabase.SaveAssetIfDirty(shader);
             EditorUtility.SetDirty(this);
+            //AssetDatabase.SaveAssetIfDirty(this);
 
             if (!gameObject.activeSelf)
                 return;

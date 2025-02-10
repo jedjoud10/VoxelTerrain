@@ -5,10 +5,10 @@ namespace jedjoud.VoxelTerrain {
     public class VoxelBehaviour : MonoBehaviour {
         // Fetch the parent terrain heheheha
         [HideInInspector]
-        public VoxelTerrain terrain;
+        public VoxelTerrain terrain => GetComponent<VoxelTerrain>();
 
         public virtual void CallerStart() { }
-        public virtual void CallerUpdate() { }
+        public virtual void CallerTick() { }
         public virtual void CallerDispose() { }
     }
 }

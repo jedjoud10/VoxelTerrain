@@ -64,7 +64,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         // Get the latest chunk in the queue and generate voxel data for it
-        public override void CallerUpdate() {
+        public override void CallerTick() {
             for (int i = 0; i < asyncReadbacks; i++) {
                 if (!freeVoxelNativeArrays[i]) {
                     continue;
@@ -74,27 +74,20 @@ namespace jedjoud.VoxelTerrain.Generation {
                 NativeArray<half> data = voxelNativeArrays[i];
                 if (pendingVoxelGenerationChunks.TryDequeue(out VoxelChunk chunk)) {
                     freeVoxelNativeArrays[i] = false;
-                    terrain.generator.ExecuteShader(VoxelUtils.Size, chunk.transform.position / VoxelUtils.VertexScaling, Vector3.one, true, true);
+                    terrain.generator.ExecuteShader(VoxelUtils.Size, chunk.transform.position / VoxelUtils.VertexScaling, Vector3.one * VoxelUtils.VoxelSizeFactor, true, true);
                     AsyncGPUReadback.RequestIntoNativeArray(
                         ref data,
                         terrain.generator.textures["voxels"], 0,
                         delegate (AsyncGPUReadbackRequest asyncRequest) {
                             NativeArray<half> temp = new NativeArray<half>(VoxelUtils.Volume, Allocator.TempJob);
                             temp.CopyFrom(data);
-                            /*
-                            chunk.dependency = new FillUp() {
-                                densities = data,
-                                voxels = chunk.voxels,
-                            }.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
-                            */
 
-                            new FillUp() {
+                            var handle = new FillUp() {
                                 densities = temp,
                                 voxels = chunk.voxels,
-                            }.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount).Complete();
-
-                            temp.Dispose();
-
+                            }.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
+                            temp.Dispose(handle);
+                            chunk.dependency = handle;
                             onReadbackSuccessful?.Invoke(chunk);
                             freeVoxelNativeArrays[cpy] = true;
                         }

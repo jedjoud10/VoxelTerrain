@@ -1,5 +1,6 @@
 using Unity.Mathematics;
 
+/*
 
 namespace jedjoud.VoxelTerrain.Generation.Demo {
     public class SimpleTerrain : VoxelGenerator {
@@ -27,3 +28,4 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         }
     }
 }
+*/

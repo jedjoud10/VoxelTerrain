@@ -64,18 +64,25 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new SmoothAbs<T> { a = this, smoothing = smoothing };
         }
 
-        public static Variable<T> Lerp(Variable<T> a, Variable<T> b, Variable<T> t, bool clamp = false) {
-            return new LerpNode<T> { a = a, b = b, t = t, clamp = clamp };
+        public Variable<T> Lerp(Variable<T> a, Variable<T> b, bool clamp = false) {
+            return new LerpNode<T> { a = a, b = b, t = this, clamp = clamp };
         }
 
-        public static Variable<T> Clamp(Variable<T> t, Variable<T> a, Variable<T> b) {
-            return new ClampNode<T> { a = a, b = b, t = t };
+        public Variable<T> Clamp(Variable<T> a, Variable<T> b) {
+            return new ClampNode<T> { a = a, b = b, t = this };
         }
 
-        public static Variable<T> ClampZeroOne(Variable<T> t) {
-            return new ClampNode<T> { a = GraphUtils.Zero<T>(), b = GraphUtils.One<T>(), t = t };
+        public Variable<T> ClampZeroOne() {
+            return new ClampNode<T> { a = GraphUtils.Zero<T>(), b = GraphUtils.One<T>(), t = this };
         }
 
+        public Variable<float> Length() {
+            return new LengthNode<T>() { a = this };
+        }
+
+        public Variable<T> Normalize() {
+            return new NormalizeNode<T>() { a = this };
+        }
         internal Variable<O> Broadcast<O>() {
             if (GraphUtils.Dimensionality<T>() != 1) {
                 throw new Exception("breh");

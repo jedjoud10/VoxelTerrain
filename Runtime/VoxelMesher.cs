@@ -13,16 +13,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [Range(1, 8)]
         public int meshJobsPerFrame = 1;
 
-
-        [Header("Mesh Mode & Settings")]
-        public bool smoothing = true;
-
-        [Header("Mesh Ambient Occlusion")]
-        public float ambientOcclusionOffset = 0.4f;
-        public float ambientOcclusionPower = 2f;
-        public float ambientOcclusionSpread = 0.4f;
-        public float ambientOcclusionGlobalOffset = 0f;
-
         [Header("Mesh Materials")]
         public Material[] voxelMaterials;
 
@@ -34,41 +24,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public event OnVoxelMeshingComplete onVoxelMeshingComplete;
         internal Queue<PendingMeshJob> pendingMeshJobs;
 
-        private void UpdateParams() {
-            VoxelUtils.Smoothing = smoothing;
-            VoxelUtils.PerVertexUvs = true;
-            VoxelUtils.PerVertexNormals = true;
-            VoxelUtils.AmbientOcclusionOffset = ambientOcclusionOffset;
-            VoxelUtils.AmbientOcclusionPower = ambientOcclusionPower;
-            VoxelUtils.AmbientOcclusionSpread = ambientOcclusionSpread;
-            VoxelUtils.AmbientOcclusionGlobalOffset = ambientOcclusionGlobalOffset;
-        }
-
-        private void OnValidate() {
-            UpdateParams();
-        }
-
         // Initialize the voxel mesher
         public override void CallerStart() {
             handlers = new List<MeshJobHandler>(meshJobsPerFrame);
             pendingMeshJobs = new Queue<PendingMeshJob>();
-            UpdateParams();
-
+            
             for (int i = 0; i < meshJobsPerFrame; i++) {
                 handlers.Add(new MeshJobHandler());
             }
         }
 
         // Begin generating the mesh data using the given chunk and voxel container
-        public void GenerateMesh(VoxelChunk chunk, bool immediate) {
+        public void GenerateMesh(VoxelChunk chunk, bool immediate, Action<VoxelChunk> completed = null) {
             var job = new PendingMeshJob {
                 chunk = chunk,
                 collisions = true,
                 maxFrames = 5,
+                callback = completed,
             };
-
-            if (pendingMeshJobs.Contains(job))
-                return;
 
             if (immediate) {
                 FinishJob(handlers[0]);
@@ -77,7 +50,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
             }
 
+            if (pendingMeshJobs.Contains(job))
+                return;
+
             pendingMeshJobs.Enqueue(job);
+            return;
         }
 
         [BurstCompile(CompileSynchronously = true)]
@@ -91,9 +68,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-        public override void CallerUpdate() {
+        public override void CallerTick() {
             foreach (var handler in handlers) {
-                if ((handler.finalJobHandle.IsCompleted || (Time.frameCount - handler.startingFrame) > handler.maxFrames) && !handler.Free) {
+                if ((handler.finalJobHandle.IsCompleted || (Time.frameCount - handler.startingFrame) > handler.request.maxFrames) && !handler.Free) {
                     FinishJob(handler);
                 }
             }
@@ -109,11 +86,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         private void BeginJob(MeshJobHandler handler, PendingMeshJob request) {
             handler.chunk = request.chunk;
-            handler.colisions = request.collisions;
-            handler.maxFrames = request.maxFrames;
+            handler.request = request;
             handler.startingFrame = Time.frameCount;
 
-            JobHandle temp = request.chunk.dependency;
+            JobHandle temp = request.chunk.dependency.GetValueOrDefault();
             var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule(temp);
             handler.BeginJob(copy);
         }
@@ -123,16 +99,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 VoxelChunk voxelChunk = handler.chunk;
                 var stats = handler.Complete(voxelChunk.sharedMesh);
                 voxelChunk.dependency = default;
+
                 onVoxelMeshingComplete?.Invoke(voxelChunk, stats);
+                handler.request.callback?.Invoke(handler.chunk);
+
                 voxelChunk.GetComponent<MeshFilter>().sharedMesh = voxelChunk.sharedMesh;
                 var renderer = voxelChunk.GetComponent<MeshRenderer>();
 
                 renderer.materials = stats.VoxelMaterialsLookup.Select(x => voxelMaterials[x]).ToArray();
 
-                // Set renderer bounds
+                // TODO: make bounds fit more tightly using atomic ops. on vertices during vertex job
                 renderer.bounds = new Bounds {
                     min = voxelChunk.transform.position,
-                    max = voxelChunk.transform.position + VoxelUtils.Size * Vector3.one,
+                    max = voxelChunk.transform.position + VoxelUtils.Size * VoxelUtils.VoxelSizeFactor * Vector3.one,
                 };
             }
         }

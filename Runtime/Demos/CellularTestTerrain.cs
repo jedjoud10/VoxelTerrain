@@ -1,6 +1,7 @@
 using jedjoud.VoxelTerrain.Generation;
 using Unity.Mathematics;
 
+/*
 namespace jedjoud.VoxelTerrain.Generation.Demo {
     public class CellularTestTerrain : VoxelGenerator {
         // Main transform
@@ -47,3 +48,4 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         }
     }
 }
+*/

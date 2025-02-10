@@ -50,8 +50,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c5e6b6604d0aba4aace8d256007cf0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ticksPerSecond: 128
+  maxTicksPerFrame: 3
   chunkPrefab: {fileID: 6177338312385691531, guid: 4d388002189c96345901f85821f1a600,
     type: 3}
+  drawGizmos: 0
+  voxelSizeReduction: 0
   totalChunks: []
   collisions: {fileID: 0}
   spawner: {fileID: 0}
@@ -70,13 +74,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1964f9915237e104bbf6a80ee84a37c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrain: {fileID: 0}
   shader: {fileID: 7200000, guid: d05dcadf2cc675b48b35a564a0163a09, type: 3}
   seed: -3934
   permutationSeed: {x: 894, y: -748, z: 173}
   moduloSeed: {x: -515, y: -299, z: -55}
   asyncReadbacks: 4
-  hash: 1588009538
+  hash: -1538136416
   debugName: 1
   autoCompile: 1
   transform1:
@@ -123,7 +126,6 @@ MonoBehaviour:
     m_NumColorKeys: 6
     m_NumAlphaKeys: 2
   octaves: 3
-  val: 0
 --- !u!114 &3418539688097572871
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -136,7 +138,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d5da6706848b7e4ca676a4598898911, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrain: {fileID: 0}
+  expandAmount: 5
 --- !u!114 &5435573634283810322
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -149,7 +151,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 901e500f95df29d48bd82e980dc5039f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrain: {fileID: 0}
   mapChunkSize: {x: 2, y: 2, z: 2}
 --- !u!114 &2489052534160842304
 MonoBehaviour:
@@ -163,7 +164,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5bef0f1433829e458439ecec3acd6bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrain: {fileID: 0}
 --- !u!114 &5281816153287127206
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -176,13 +176,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 998d14371a252d844953b5096474c997, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrain: {fileID: 0}
   meshJobsPerFrame: 4
-  smoothing: 1
-  ambientOcclusionOffset: -10
-  ambientOcclusionPower: 5
-  ambientOcclusionSpread: 1
-  ambientOcclusionGlobalOffset: 1.4
   voxelMaterials:
   - {fileID: 2100000, guid: 4bbc706fa70a1944bae8b0ae28245548, type: 2}
 --- !u!114 &7318964257985538370
@@ -205,3 +199,5 @@ MonoBehaviour:
   useHeightSimplification: 0
   flatshaded: 0
   size: 128
+  scale: {x: 1, y: 1, z: 1}
+  offset: {x: 0, y: 0, z: 0}

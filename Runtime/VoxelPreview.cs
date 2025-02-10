@@ -22,6 +22,9 @@ namespace jedjoud.VoxelTerrain.Generation {
         public bool flatshaded;
         public int size = 64;
 
+        public Vector3 scale = Vector3.one;
+        public Vector3 offset;
+
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
                 return;

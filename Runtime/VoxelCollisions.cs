@@ -27,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-        public override void CallerUpdate() {
+        public override void CallerTick() {
             foreach (var (handle, chunk) in ongoingBakeJobs) {
                 if (handle.IsCompleted) {
                     handle.Complete();

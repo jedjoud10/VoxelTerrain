@@ -1,3 +1,5 @@
+using jedjoud.VoxelTerrain.Meshing;
+using System;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -10,7 +12,9 @@ namespace jedjoud.VoxelTerrain {
 
         // Pending job dependency that we must pass to the mesher
         [HideInInspector]
-        public JobHandle dependency;
+        public JobHandle? dependency;
+
+
 
         // Shared generated mesh
         [HideInInspector]
@@ -19,6 +23,7 @@ namespace jedjoud.VoxelTerrain {
         public int[] voxelMaterialsLookup;
         [HideInInspector]
         public (byte, int)[] triangleOffsetLocalMaterials;
+
 
         // Get the AABB world bounds of this chunk
         public Bounds GetBounds() {

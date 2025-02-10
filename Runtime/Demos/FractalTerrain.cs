@@ -16,7 +16,6 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Gradient gradient;
         [Range(1, 10)]
         public int octaves;
-        public int val;
 
         public override void Execute(Variable<float3> position, out Variable<float> density, out Variable<float3> color) {
             // Project the position using the main transformation
