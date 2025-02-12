@@ -3,6 +3,7 @@ using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 using static jedjoud.VoxelTerrain.VoxelTerrain;
 
 namespace jedjoud.VoxelTerrain {
@@ -19,7 +20,7 @@ namespace jedjoud.VoxelTerrain {
         public int voxelSizeReduction;
 
         [HideInInspector]
-        public List<GameObject> totalChunks;
+        public Dictionary<Vector3Int, GameObject> totalChunks;
         public static VoxelTerrain Instance {
             get {
                 return Object.FindObjectsByType<VoxelTerrain>(FindObjectsSortMode.None)[0];
@@ -52,10 +53,11 @@ namespace jedjoud.VoxelTerrain {
         public void Start() {
             complete = false;
             //Instance = this;
-            totalChunks = new List<GameObject>();
+            totalChunks = new Dictionary<Vector3Int, GameObject>();
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
+            VoxelUtils.SchedulingInnerloopBatchCount = 16;
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
             spawner = GetComponent<VoxelGridSpawner>();
@@ -122,15 +124,15 @@ namespace jedjoud.VoxelTerrain {
             generator.CallerDispose();
             edits.CallerDispose();
 
-            foreach (var item in totalChunks) {
-                VoxelChunk voxelChunk = item.GetComponent<VoxelChunk>();
+            foreach (var (key, value) in totalChunks) {
+                VoxelChunk voxelChunk = value.GetComponent<VoxelChunk>();
                 voxelChunk.dependency?.Complete();
                 voxelChunk.voxels.Dispose();
             }
         }
 
         // Instantiates a new chunk and returns it
-        public VoxelChunk FetchChunk(Vector3 position, float scale) {
+        public VoxelChunk FetchChunk(Vector3Int chunkPosition, float scale) {
             VoxelChunk chunk;
 
             GameObject obj = Instantiate(chunkPrefab, transform);
@@ -141,16 +143,17 @@ namespace jedjoud.VoxelTerrain {
             chunk.sharedMesh = mesh;
 
             GameObject chunkGameObject = chunk.gameObject;
-            chunkGameObject.transform.position = position;
+            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
             chunkGameObject.transform.localScale = scale * Vector3.one;
+            chunk.chunkPosition = chunkPosition;
             chunk.voxels = new NativeArray<Voxel>(VoxelUtils.Volume, Allocator.Persistent);
-            totalChunks.Add(chunkGameObject);
+            totalChunks.Add(chunkPosition, chunkGameObject);
             return chunk;
         }
 
         private void OnDrawGizmosSelected() {
             if (totalChunks != null && drawGizmos) {
-                foreach (var go in totalChunks) {
+                foreach (var (key, go) in totalChunks) {
                     VoxelChunk chunk = go.GetComponent<VoxelChunk>();
                     
                     if (chunk.sharedMesh != null && chunk.sharedMesh.vertexCount > 0) {

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -188,6 +189,27 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Set mesh shared vertices
             mesh.Clear();
 
+            Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(1);
+            Mesh.MeshData data = array[0];
+
+            NativeArray<VertexAttributeDescriptor> descr = new NativeArray<VertexAttributeDescriptor>(3, Allocator.TempJob);
+            descr.CopyFrom(vertexAttributeDescriptors);
+            SetMeshDataJob test = new SetMeshDataJob() {
+                vertexAttributeDescriptors = descr,
+                vertices = vertices.Slice(0, maxVertices),
+                normals = normals.Slice(0, maxVertices),
+                uvs = uvs.Slice(0, maxVertices),
+                permTriangles = permTriangles.Slice(0, maxIndices),
+                maxMaterials = maxMaterials,
+                maxVertices = maxVertices,
+                maxIndices = maxIndices,
+                data = data,
+            };
+            test.Schedule().Complete();
+
+            Mesh.ApplyAndDisposeWritableMeshData(array, mesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
+
+            /*
             mesh.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
             mesh.SetVertexBufferData(vertices.Reinterpret<Vector3>(), 0, 0, maxVertices, 0, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
             mesh.SetVertexBufferData(normals.Reinterpret<Vector3>(), 0, 0, maxVertices, 1, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
@@ -197,6 +219,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             mesh.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);
             mesh.SetIndexBufferData(permTriangles, 0, 0, maxIndices);
             mesh.subMeshCount = maxMaterials;
+            */
 
             // Create a material array for the new materials
             int[] lookup = new int[maxMaterials];
@@ -247,6 +270,39 @@ namespace jedjoud.VoxelTerrain.Meshing {
             materialSegmentOffsets.Dispose();
             enabled.Dispose();
             voxelCounters.Dispose();
+        }
+    }
+
+    [BurstCompile]
+    public struct SetMeshDataJob : IJob {
+        [WriteOnly]
+        public Mesh.MeshData data;
+        [ReadOnly]
+        public NativeSlice<float3> vertices;
+        [ReadOnly]
+        public NativeSlice<float3> normals;
+        [ReadOnly]
+        public NativeSlice<float2> uvs;
+        public int maxVertices;
+        public int maxIndices;
+        public int maxMaterials;
+        [ReadOnly]
+        public NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
+        [ReadOnly]
+        public NativeSlice<int> permTriangles;
+
+        public void Execute() {
+            data.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
+
+            vertices.CopyTo(data.GetVertexData<float3>(0)); // (vertices.Reinterpret<Vector3>(), 0, 0, maxVertices, 0, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+            normals.CopyTo(data.GetVertexData<float3>(1)); //data.SetVertexBufferData(normals.Reinterpret<Vector3>(), 0, 0, maxVertices, 1, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+            uvs.CopyTo(data.GetVertexData<float2>(2)); //data.SetVertexBufferData(uvs.Reinterpret<Vector2>(), 0, 0, maxVertices, 2, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+
+            // Set mesh indices
+            data.SetIndexBufferParams(maxIndices, IndexFormat.UInt32); // mesh.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);
+            permTriangles.CopyTo(data.GetIndexData<int>()); // .SetIndexBufferData(permTriangles, 0, 0, maxIndices);
+            //data.subMeshCount = maxMaterials;
+            data.subMeshCount = maxMaterials;
         }
     }
 }

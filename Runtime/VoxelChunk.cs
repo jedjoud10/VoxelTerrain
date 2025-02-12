@@ -14,7 +14,8 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public JobHandle? dependency;
 
-
+        // Chunk position relative to the map origin
+        public Vector3Int chunkPosition;
 
         // Shared generated mesh
         [HideInInspector]

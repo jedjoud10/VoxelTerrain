@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Edits {
             VoxelEditResults results = new VoxelEditResults() { counters = counters, finishedChunksCount = 0 };
 
             int affected = 0;
-            foreach (var chunk in terrain.totalChunks) {
+            foreach (var (key, chunk) in terrain.totalChunks) {
                 var voxelChunk = chunk.GetComponent<VoxelChunk>();
 
                 if (voxelChunk.GetBounds().Intersects(editBounds)) {
@@ -39,7 +39,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                 }
             }
 
-            foreach (var chunk in terrain.totalChunks) {
+            foreach (var (key, chunk) in terrain.totalChunks) {
                 var voxelChunk = chunk.GetComponent<VoxelChunk>();
 
                 if (voxelChunk.GetBounds().Intersects(editBounds)) {

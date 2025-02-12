@@ -51,13 +51,17 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             AssetDatabase.ImportAsset(filePath);
             shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(filePath);
+
+            if (shader == null)
+                return;
+
             EditorUtility.SetDirty(shader);
             AssetDatabase.SaveAssetIfDirty(shader);
-            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssets();
             //AssetDatabase.SaveAssetIfDirty(this);
-
             if (!gameObject.activeSelf)
                 return;
+            // amongus
 
             var visualizer = GetComponent<VoxelPreview>();
             visualizer?.InitializeForSize();

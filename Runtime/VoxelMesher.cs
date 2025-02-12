@@ -9,9 +9,8 @@ using Unity.Burst;
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
     public class VoxelMesher : VoxelBehaviour {
-        // Number of simultaneous mesh generation tasks that happen during one frame
         [Range(1, 8)]
-        public int meshJobsPerFrame = 1;
+        public int meshJobsPerTick = 1;
 
         [Header("Mesh Materials")]
         public Material[] voxelMaterials;
@@ -22,14 +21,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Called when a chunk finishes generating its voxel data
         public delegate void OnVoxelMeshingComplete(VoxelChunk chunk, VoxelMesh mesh);
         public event OnVoxelMeshingComplete onVoxelMeshingComplete;
-        internal Queue<PendingMeshJob> pendingMeshJobs;
+        internal Queue<PendingMeshJob> queuedJob;
+        internal HashSet<PendingMeshJob> pendingJobs;
 
         // Initialize the voxel mesher
         public override void CallerStart() {
-            handlers = new List<MeshJobHandler>(meshJobsPerFrame);
-            pendingMeshJobs = new Queue<PendingMeshJob>();
+            handlers = new List<MeshJobHandler>(meshJobsPerTick);
+            queuedJob = new Queue<PendingMeshJob>();
+            pendingJobs = new HashSet<PendingMeshJob>();
             
-            for (int i = 0; i < meshJobsPerFrame; i++) {
+            for (int i = 0; i < meshJobsPerTick; i++) {
                 handlers.Add(new MeshJobHandler());
             }
         }
@@ -50,10 +51,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
             }
 
-            if (pendingMeshJobs.Contains(job))
+            if (pendingJobs.Contains(job))
                 return;
 
-            pendingMeshJobs.Enqueue(job);
+            queuedJob.Enqueue(job);
+            pendingJobs.Add(job);
             return;
         }
 
@@ -75,9 +77,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            for (int i = 0; i < meshJobsPerFrame; i++) {
+            for (int i = 0; i < meshJobsPerTick; i++) {
                 if (handlers[i].Free) {
-                    if (pendingMeshJobs.TryDequeue(out PendingMeshJob request)) {
+                    if (queuedJob.TryDequeue(out PendingMeshJob request)) {
+                        pendingJobs.Remove(request);
                         BeginJob(handlers[i], request);
                     }
                 }

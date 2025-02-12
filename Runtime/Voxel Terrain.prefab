@@ -78,8 +78,8 @@ MonoBehaviour:
   seed: -3934
   permutationSeed: {x: 894, y: -748, z: 173}
   moduloSeed: {x: -515, y: -299, z: -55}
-  asyncReadbacks: 4
-  hash: -1538136416
+  asyncReadbackPerTick: 1
+  hash: -1462804768
   debugName: 1
   autoCompile: 1
   transform1:
@@ -176,7 +176,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 998d14371a252d844953b5096474c997, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  meshJobsPerFrame: 4
+  meshJobsPerTick: 1
   voxelMaterials:
   - {fileID: 2100000, guid: 4bbc706fa70a1944bae8b0ae28245548, type: 2}
 --- !u!114 &7318964257985538370
