@@ -16,7 +16,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         internal List<NativeArray<half>> voxelNativeArrays;
         internal BitArray freeVoxelNativeArrays;
-        internal Queue<Vector3Int> queuedOctalUnits;
+        internal Queue<(Vector3Int, VoxelChunk)> queuedOctalUnits;
         internal HashSet<Vector3Int> pendingOctalUnits;
 
         public delegate void OnReadbackSuccessful(VoxelChunk chunk);
@@ -26,10 +26,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             //Debug.Log($"Async Compute: {SystemInfo.supportsAsyncCompute}, Async Readback: {SystemInfo.supportsAsyncGPUReadback}");
             freeVoxelNativeArrays = new BitArray(asyncReadbackPerTick, true);
             pendingOctalUnits = new HashSet<Vector3Int>();
-            queuedOctalUnits = new Queue<Vector3Int>();
+            //pendingOctalUnits = new HashSet<Vector3Int>();
+            queuedOctalUnits = new Queue<(Vector3Int, VoxelChunk)>();
+            //queuedOctalUnits = new Queue<Vector3Int>();
             voxelNativeArrays = new List<NativeArray<half>>(asyncReadbackPerTick);
             for (int i = 0; i < asyncReadbackPerTick; i++) {
-                voxelNativeArrays.Add(new NativeArray<half>(VoxelUtils.Volume*8, Allocator.Persistent));
+                voxelNativeArrays.Add(new NativeArray<half>(VoxelUtils.Volume, Allocator.Persistent));
+                //voxelNativeArrays.Add(new NativeArray<half>(VoxelUtils.Volume*8, Allocator.Persistent));
             }
             terrain.generator.DisposeIntermediateTextures();
         }
@@ -44,19 +47,36 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         // Add the given chunk inside the queue for voxel generation
         public void GenerateVoxels(VoxelChunk chunk) {
-            Vector3Int octalPosition = chunk.chunkPosition / 2;
+            //Vector3Int octalPosition = chunk.chunkPosition / 2;
+            Vector3Int octalPosition = chunk.chunkPosition;
 
             if (pendingOctalUnits.Contains(octalPosition)) return;
 
-            queuedOctalUnits.Enqueue(octalPosition);
+            queuedOctalUnits.Enqueue((octalPosition, chunk));
             pendingOctalUnits.Add(octalPosition);
         }
 
+        /*
         [BurstCompile]
         unsafe struct FillUp : IJobParallelFor {
             [ReadOnly]
             [NativeDisableUnsafePtrRestriction]
             public half* densities;
+            [WriteOnly]
+            public NativeArray<Voxel> voxels;
+            public void Execute(int index) {
+                voxels[index] = new Voxel {
+                    density = densities[index],
+                    material = 0,
+                };
+            }
+        }
+        */
+
+        [BurstCompile]
+        struct FillUp : IJobParallelFor {
+            [ReadOnly]
+            public NativeArray<half> densities;
             [WriteOnly]
             public NativeArray<Voxel> voxels;
             public void Execute(int index) {
@@ -76,16 +96,29 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                 int cpy = i;
                 NativeArray<half> data = voxelNativeArrays[i];
-                if (queuedOctalUnits.TryDequeue(out Vector3Int position)) {
+                if (queuedOctalUnits.TryDequeue(out var temp)) {
+                    (Vector3Int position, VoxelChunk chunk) = temp;
                     pendingOctalUnits.Remove(position);
-                    Vector3 worldPosition = (Vector3)position * VoxelUtils.Size;
 
                     freeVoxelNativeArrays[i] = false;
-                    terrain.generator.ExecuteShader(VoxelUtils.Size*2, worldPosition * 2.0f, Vector3.one, true, true);
+                    //terrain.generator.ExecuteShader(VoxelUtils.Size*2, worldPosition * 2.0f, Vector3.one, true, true);
+                    terrain.generator.ExecuteShader(VoxelUtils.Size, ((Vector3)position * VoxelUtils.Size) / (VoxelUtils.VertexScaling * VoxelUtils.VoxelSizeFactor), Vector3.one * VoxelUtils.VoxelSizeFactor, true, true);
                     AsyncGPUReadback.RequestIntoNativeArray(
                         ref data,
                         terrain.generator.textures["voxels"], 0, TextureFormat.RHalf,
                         delegate (AsyncGPUReadbackRequest asyncRequest) {
+                            NativeArray<half> temp = new NativeArray<half>(VoxelUtils.Volume, Allocator.TempJob);
+                            temp.CopyFrom(data);
+                            var handle = new FillUp() {
+                                densities = temp,
+                                voxels = chunk.voxels,
+                            }.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
+                            temp.Dispose(handle);
+                            chunk.dependency = handle;
+                            onReadbackSuccessful?.Invoke(chunk);
+                            freeVoxelNativeArrays[cpy] = true;
+
+                            /*
                             unsafe {
                                 half* pointer = (half*)NativeArrayUnsafeUtility.GetUnsafePtr<half>(data);
 
@@ -114,6 +147,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                                 freeVoxelNativeArrays[cpy] = true;
                             }
+                            */
                         }
                     );
                 }

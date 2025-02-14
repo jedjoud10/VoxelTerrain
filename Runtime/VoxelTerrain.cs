@@ -23,7 +23,16 @@ namespace jedjoud.VoxelTerrain {
         public Dictionary<Vector3Int, GameObject> totalChunks;
         public static VoxelTerrain Instance {
             get {
-                return Object.FindObjectsByType<VoxelTerrain>(FindObjectsSortMode.None)[0];
+                VoxelTerrain[] terrains = Object.FindObjectsByType<VoxelTerrain>(FindObjectsSortMode.None);
+
+                if (terrains.Length > 1) {
+                    Debug.LogWarning("Can't have more than one VoxelTerrain per scene!");
+                    return null;
+                } else if (terrains.Length == 0) {
+                    return null;
+                } else {
+                    return terrains[0];
+                }
             }
         }
 

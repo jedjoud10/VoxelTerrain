@@ -85,8 +85,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 gradient = gradient,
                 mixer = mixer,
                 size = size,
-                inputMin = inputMin != null ? inputMin : 0.0f,
-                inputMax = inputMax != null ? inputMax : 1.0f,
+                inputMin = inputMin ?? 0.0f,
+                inputMax = inputMax ?? 1.0f,
                 remapOutput = remapOutput
             };
         }
