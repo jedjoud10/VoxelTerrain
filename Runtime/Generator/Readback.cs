@@ -102,7 +102,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                     freeVoxelNativeArrays[i] = false;
                     //terrain.generator.ExecuteShader(VoxelUtils.Size*2, worldPosition * 2.0f, Vector3.one, true, true);
-                    terrain.generator.ExecuteShader(VoxelUtils.Size, ((Vector3)position * VoxelUtils.Size) / (VoxelUtils.VertexScaling * VoxelUtils.VoxelSizeFactor), Vector3.one * VoxelUtils.VoxelSizeFactor, true, true);
+                    terrain.generator.ExecuteShader(VoxelUtils.Size, ((Vector3)position * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor) / (VoxelUtils.VertexScaling), Vector3.one * VoxelUtils.VoxelSizeFactor, true, true);
                     AsyncGPUReadback.RequestIntoNativeArray(
                         ref data,
                         terrain.generator.textures["voxels"], 0, TextureFormat.RHalf,
