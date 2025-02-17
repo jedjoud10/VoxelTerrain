@@ -10,8 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 5361457892440788241}
   - component: {fileID: 261666173128335063}
-  - component: {fileID: 7297409102708731828}
   - component: {fileID: 3418539688097572871}
+  - component: {fileID: 8066351110700312546}
+  - component: {fileID: 8197692837568637671}
+  - component: {fileID: 4459649915349211665}
   - component: {fileID: 5435573634283810322}
   - component: {fileID: 2489052534160842304}
   - component: {fileID: 5281816153287127206}
@@ -56,76 +58,14 @@ MonoBehaviour:
     type: 3}
   drawGizmos: 0
   voxelSizeReduction: 0
-  totalChunks: []
   collisions: {fileID: 0}
   spawner: {fileID: 0}
   mesher: {fileID: 0}
-  generator: {fileID: 0}
+  graph: {fileID: 0}
+  executor: {fileID: 0}
+  readback: {fileID: 0}
+  props: {fileID: 0}
   edits: {fileID: 0}
---- !u!114 &7297409102708731828
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1679815499248925888}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1964f9915237e104bbf6a80ee84a37c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  shader: {fileID: 7200000, guid: d05dcadf2cc675b48b35a564a0163a09, type: 3}
-  seed: -3934
-  permutationSeed: {x: 894, y: -748, z: 173}
-  moduloSeed: {x: -515, y: -299, z: -55}
-  asyncReadbackPerTick: 1
-  hash: -1462804768
-  debugName: 1
-  autoCompile: 1
-  transform1:
-    position: {x: -3.1, y: -58, z: 0}
-    rotation: {x: 0, y: 0, z: 0}
-    scale: {x: 1, y: 1, z: 1}
-  scale:
-    x: 0.01
-  amplitude:
-    x: 10
-  persistence:
-    x: 0.2
-  lacunarity:
-    x: 2
-  mode: 0
-  gradient:
-    serializedVersion: 2
-    key0: {r: 0, g: 0, b: 0, a: 1}
-    key1: {r: 0.066037714, g: 0.066037714, b: 0.066037714, a: 1}
-    key2: {r: 0.6603774, g: 0.6603774, b: 0.6603774, a: 0}
-    key3: {r: 0.6132076, g: 0.6103151, b: 0.6103151, a: 0}
-    key4: {r: 0.46226418, g: 0.46226418, b: 0.46226418, a: 0}
-    key5: {r: 1, g: 1, b: 1, a: 0}
-    key6: {r: 0.8993384, g: 0.8828682, b: 0.8828682, a: 0}
-    key7: {r: 0, g: 0, b: 0, a: 0}
-    ctime0: 0
-    ctime1: 4819
-    ctime2: 18311
-    ctime3: 24287
-    ctime4: 40863
-    ctime5: 58211
-    ctime6: 65535
-    ctime7: 0
-    atime0: 0
-    atime1: 65535
-    atime2: 0
-    atime3: 0
-    atime4: 0
-    atime5: 0
-    atime6: 0
-    atime7: 0
-    m_Mode: 0
-    m_ColorSpace: 0
-    m_NumColorKeys: 6
-    m_NumAlphaKeys: 2
-  octaves: 3
 --- !u!114 &3418539688097572871
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -139,6 +79,47 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   expandAmount: 5
+--- !u!114 &8066351110700312546
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1679815499248925888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 574bbe1e4b4f7d54c800acb1d6d8d7d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  seed: 671
+  permutationSeed: {x: -453, y: 402, z: 577}
+  moduloSeed: {x: 556, y: -695, z: 888}
+--- !u!114 &8197692837568637671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1679815499248925888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62faa8992fd92d043b860fa8cf274527, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  asyncReadbackPerTick: 1
+--- !u!114 &4459649915349211665
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1679815499248925888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d800c3402111294a8fdf82c0957b603, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prop: {fileID: 2094315427237674077, guid: 299877e1a2ebe174aabed1b12f06a690, type: 3}
 --- !u!114 &5435573634283810322
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -186,7 +167,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1679815499248925888}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2d5b58044d28b37438ea9d1c7f58d879, type: 3}
   m_Name: 

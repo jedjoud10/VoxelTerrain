@@ -36,7 +36,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public VoxelChunk chunk;
         public PendingMeshJob request;
         public int startingFrame;
-        internal VertexAttributeDescriptor[] vertexAttributeDescriptors;
+        internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
         internal MeshJobHandler() {
             // Native buffers for mesh data
@@ -64,11 +64,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             VertexAttributeDescriptor positionDesc = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
             VertexAttributeDescriptor normalDesc = new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3, 1);
             VertexAttributeDescriptor uvDesc = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2, 2);
-
-            List<VertexAttributeDescriptor> descriptors = new List<VertexAttributeDescriptor> {
-                positionDesc, normalDesc, uvDesc
-            };
-            vertexAttributeDescriptors = descriptors.ToArray();
+            vertexAttributeDescriptors = new NativeArray<VertexAttributeDescriptor>(new VertexAttributeDescriptor[] { positionDesc, normalDesc, uvDesc }, Allocator.Persistent);
         }
         public bool Free { get; private set; } = true;
 
@@ -189,13 +185,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Set mesh shared vertices
             mesh.Clear();
 
+            // TODO: batch this
             Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(1);
             Mesh.MeshData data = array[0];
 
-            NativeArray<VertexAttributeDescriptor> descr = new NativeArray<VertexAttributeDescriptor>(3, Allocator.TempJob);
-            descr.CopyFrom(vertexAttributeDescriptors);
             SetMeshDataJob test = new SetMeshDataJob() {
-                vertexAttributeDescriptors = descr,
+                vertexAttributeDescriptors = vertexAttributeDescriptors,
                 vertices = vertices.Slice(0, maxVertices),
                 normals = normals.Slice(0, maxVertices),
                 uvs = uvs.Slice(0, maxVertices),
@@ -268,6 +263,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             materialHashMap.Dispose();
             materialHashSet.Dispose();
             materialSegmentOffsets.Dispose();
+            vertexAttributeDescriptors.Dispose();
             enabled.Dispose();
             voxelCounters.Dispose();
         }

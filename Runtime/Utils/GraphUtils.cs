@@ -6,55 +6,21 @@ using UnityEngine.Experimental.Rendering;
 // Common utils and shorthand forms
 namespace jedjoud.VoxelTerrain {
     using jedjoud.VoxelTerrain.Generation;
+    using jedjoud.VoxelTerrain.Props;
+    using System;
+    using System.Runtime.InteropServices.WindowsRuntime;
+
     public static class GraphUtils {
-        public enum StrictType {
-            Float,
-            Float2,
-            Float3,
-            Float4,
-            Uint,
-            Uint2,
-            Uint3,
-            Int,
-        }
-
-        public static string ToStringType(this StrictType data) {
-            return data.ToString().ToLower();
-        }
-
-        public static string ToStringType<T>() {
-            return TypeOf<T>().ToString().ToLower();
-        }
-
-        public static string ToDefinableString<T>(T value) {
-            string a = value.ToString();
-            object temp = (object)value;
-
-            switch (TypeOf<T>()) {
-                case StrictType.Float2:
-                    float2 f2 = (float2)temp;
-                    return $"float2({f2.x},{f2.y})";
-                case StrictType.Float3:
-                    float3 f3 = (float3)temp;
-                    return $"float3({f3.x},{f3.y},{f3.z})";
-                case StrictType.Float4:
-                    float4 f4 = (float4)temp;
-                    return $"float4({f4.x},{f4.y},{f4.z},{f4.w})";
-                default:
-                    return value.ToString();
-            }
-        }
-
         // Convert a strict type to a graphics format to be used for texture format
-        public static GraphicsFormat ToGfxFormat(StrictType type) {
-            switch (type) {
-                case StrictType.Float:
+        public static GraphicsFormat ToGfxFormat(VariableType type) {
+            switch (type.strict) {
+                case VariableType.StrictType.Float:
                     return GraphicsFormat.R16_SFloat;
-                case StrictType.Float2:
+                case VariableType.StrictType.Float2:
                     return GraphicsFormat.R16G16_SFloat;
-                case StrictType.Float3:
+                case VariableType.StrictType.Float3:
                     return GraphicsFormat.R16G16B16A16_SFloat;
-                case StrictType.Float4:
+                case VariableType.StrictType.Float4:
                     return GraphicsFormat.R16G16B16A16_SFloat;
                 default:
                     throw new System.Exception();
@@ -63,24 +29,40 @@ namespace jedjoud.VoxelTerrain {
 
         public static Variable<T> Zero<T>() {
             T def = default(T);
-            return new DefineNode<T> { value = ToDefinableString(def), constant = true };
+            return new DefineNode<T> { value = VariableType.ToDefinableString(def), constant = true };
         }
 
         public static Variable<T> One<T>(bool negate = false) {
-            string Test(StrictType value) {
-                switch (value) {
-                    case GraphUtils.StrictType.Float2:
+            string Test(VariableType value) {
+                switch (value.strict) {
+                    case VariableType.StrictType.Float2:
                         return "float2(1.0,1.0)";
-                    case GraphUtils.StrictType.Float3:
+                    case VariableType.StrictType.Float3:
                         return "float3(1.0,1.0,1.0)";
-                    case GraphUtils.StrictType.Float4:
+                    case VariableType.StrictType.Float4:
                         return "float4(1.0,1.0,1.0)";
+                    case VariableType.StrictType.Float or VariableType.StrictType.Int:
+                        return "1";
+                    case VariableType.StrictType.Int2:
+                        return "int2(1,1)";
+                    case VariableType.StrictType.Int3:
+                        return "int3(1,1,1)";
+                    case VariableType.StrictType.Int4:
+                        return "int4(1,1,1,1)";
+                    case VariableType.StrictType.Bool2:
+                        return "bool2(true,true)";
+                    case VariableType.StrictType.Bool3:
+                        return "bool3(true,true,true)";
+                    case VariableType.StrictType.Bool4:
+                        return "bool4(true,true,true,true)";
+                    case VariableType.StrictType.Bool:
+                        return "true";
                     default:
-                        return value.ToString();
+                        throw new Exception("jed forgot to implement the rest");
                 }
             }
 
-            string temp = Test(TypeOf<T>());
+            string temp = Test(VariableType.TypeOf<T>());
 
             if (negate) {
                 temp = $"(-{temp})";
@@ -89,93 +71,47 @@ namespace jedjoud.VoxelTerrain {
             return new DefineNode<T> { value = temp, constant = true };
         }
 
-        // Convert type data to string
-        public static StrictType TypeOf<T>() {
-            string tn = typeof(T).Name;
-            StrictType output;
 
-            switch (tn) {
-                case "Single":
-                    output = StrictType.Float; break;
-                case "float2":
-                    output = StrictType.Float2; break;
-                case "float3":
-                    output = StrictType.Float3; break;
-                case "float4":
-                    output = StrictType.Float4; break;
-                case "uint2":
-                    output = StrictType.Uint2; break;
-                case "uint3":
-                    output = StrictType.Uint3; break;
-                case "UInt32":
-                    output = StrictType.Uint; break;
-                case "Int32":
-                    output = StrictType.Int; break;
-                default:
-                    throw new System.Exception("Type not supported");
-            }
-
-            return output;
-        }
-
-        public static int Dimensionality<T>() {
-            switch (TypeOf<T>()) {
-                case StrictType.Float: return 1;
-                case StrictType.Float2: return 2;
-                case StrictType.Float3: return 3;
-                case StrictType.Float4: return 3;
-                case StrictType.Uint: return 1;
-                case StrictType.Uint2: return 2;
-                case StrictType.Uint3: return 3;
-                case StrictType.Int: return 1;
-                default:
-                    throw new System.Exception("Type not supported");
-            }
-        }
-
-        public static void SetComputeShaderObj(ComputeShader shader, string id, object val, StrictType type) {
-            switch (type) {
-                case StrictType.Float:
+        public static void SetComputeShaderObj(ComputeShader shader, string id, object val, VariableType type) {
+            switch (type.strict) {
+                case VariableType.StrictType.Float:
                     shader.SetFloat(id, (float)val);
                     break;
-                case StrictType.Float2:
+                case VariableType.StrictType.Float2:
                     float2 temp = (float2)val;
                     shader.SetVector(id, new float4(temp, 0.0f));
                     break;
-                case StrictType.Float3:
+                case VariableType.StrictType.Float3:
                     float3 temp2 = (float3)val;
                     shader.SetVector(id, new float4(temp2, 0.0f));
                     break;
-                case StrictType.Float4:
+                case VariableType.StrictType.Float4:
                     float4 temp3 = (float4)val;
                     shader.SetVector(id, temp3);
                     break;
-                case StrictType.Uint:
-                    shader.SetInt(id, (int)(uint)val);
+                case VariableType.StrictType.Int:
+                    shader.SetInt(id, (int)val);
                     break;
-                case StrictType.Uint2:
+                case VariableType.StrictType.Int2:
                     uint2 temp4 = (uint2)val;
                     shader.SetInts(id, (int)temp4.x, (int)temp4.y);
                     break;
-                case StrictType.Uint3:
+                case VariableType.StrictType.Int3:
                     uint3 temp5 = (uint3)val;
                     shader.SetInts(id, (int)temp5.x, (int)temp5.y, (int)temp5.z);
-                    break;
-                case StrictType.Int:
-                    shader.SetInt(id, (int)val);
                     break;
             }
         }
 
         public static string SwizzleFromFloat4<T>() {
-            switch (TypeOf<T>()) {
-                case StrictType.Float:
+            switch (VariableType.TypeOf<T>().strict) {
+                case VariableType.StrictType.Float:
                     return "x";
-                case StrictType.Float2:
+                case VariableType.StrictType.Float2:
                     return "xy";
-                case StrictType.Float3:
+                case VariableType.StrictType.Float3:
                     return "xyz";
-                case StrictType.Float4:
+                case VariableType.StrictType.Float4:
                     return "xyzw";
                 default:
                     throw new System.Exception();
@@ -183,16 +119,20 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public static string VectorConstructor<T>() {
-            switch (TypeOf<T>()) {
-                case StrictType.Float2:
+            switch (VariableType.TypeOf<T>().strict) {
+                case VariableType.StrictType.Float2:
                     return "x, y";
-                case StrictType.Float3:
+                case VariableType.StrictType.Float3:
                     return "x, y, z";
-                case StrictType.Float4:
+                case VariableType.StrictType.Float4:
                     return "x, y, z, w";
                 default:
                     throw new System.Exception();
             }
+        }
+
+        internal static Variable<T> CreateStruct<T>(params (string, object)[] values) {
+            return null;
         }
     }
 }
