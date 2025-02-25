@@ -38,6 +38,12 @@ namespace jedjoud.VoxelTerrain.Props {
         public override void CallerDispose() {
             AsyncGPUReadback.WaitAllRequests();
             Handle();
+
+            foreach (var item in frameIdTempData) {
+                if (item.Value.data.IsCreated) {
+                    item.Value.data.Dispose();
+                }
+            }
         }
 
 
@@ -98,8 +104,6 @@ namespace jedjoud.VoxelTerrain.Props {
                         Prop unpacked = PropUtils.UnpackProp(packed);
 
                         Vector3 position = unpacked.position;
-                        float scale = unpacked.scale;
-
                         position = (position / val.scale - val.offset);
 
                         //position *= VoxelUtils.VoxelSizeFactor;
@@ -116,8 +120,8 @@ namespace jedjoud.VoxelTerrain.Props {
 
                         GameObject go = Instantiate(prop, transform);
                         go.transform.position = position;
-                        go.transform.localScale = Vector3.one * scale;
-                        go.transform.rotation = Quaternion.identity;
+                        go.transform.localScale = Vector3.one * unpacked.scale;
+                        go.transform.rotation = Quaternion.Euler(unpacked.rotation);
                     }
 
 

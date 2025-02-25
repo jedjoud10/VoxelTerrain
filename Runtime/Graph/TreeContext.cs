@@ -20,6 +20,9 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int currentScope = 0;
         public int scopeDepth = 0;
 
+        public ScopeArgument position;
+        public ScopeArgument id;
+
         public string this[UntypedVariable node] {
             get => scopes[currentScope].namesToNodes[node];
         }

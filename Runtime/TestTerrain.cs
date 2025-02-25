@@ -36,7 +36,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
 
             Variable<float> tahini = Ramp<float>.Evaluate(fractal.Evaluate(xz), gradient, -(Variable<float>)amplitude, amplitude);
-            var density = tahini + y;
+            Variable<float> amogus = tahini.Cached();
+            var density = amogus + y;
             //tahini = new SdfBox(new float3(30.0)).Evaluate(position);
             //density = Sdf.Union(y, tahini);
 
@@ -47,13 +48,19 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<float> test = position.Swizzle<float>("y");
             Variable<float2> flat = position.Swizzle<float2>("xz");
             Variable<bool> check = density > -0.2f & density < 0.2f;
-            Variable<float> val = (new Simplex(0.02f, 1.0f).Evaluate(flat) - 0.2f).ClampZeroOne();
-            val -= Random.Evaluate<float3, float>(position);
+            Variable<float> val = (new Simplex(0.01f, 1.0f).Evaluate(flat) - 0.2f).ClampZeroOne();
+            check &= Random.Evaluate<float3, float>(position) > 0.99f;
+
+            Variable<float3> rotation = Random.Evaluate<float3, float3>(position, true);
 
             output = new AllOutputs();
             output.density = density;
             output.color = color;
-            output.prop = (GraphUtils.Zero<Prop>()).With(("position", position), ("scale", check.Select<float>(0.0f, val)));
+            output.prop = (GraphUtils.Zero<Prop>()).With(
+                ("position", position),
+                ("rotation", rotation),
+                ("scale", check.Select<float>(0.0f, val * 3))
+            );
             //context.SpawnProp(GpuProp.Empty);
             //prop = GpuProp.Empty;
             //prop = prop.With(("xyz", position), ("w", (check & val).Select<float>(0.0f, 1.0f)));

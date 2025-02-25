@@ -40,7 +40,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             if (buffers != null) {
                 foreach (var (name, buffer) in buffers) {
-                    Debug.Log("dipose buffers");
                     buffer.Dispose();
                 }
 
@@ -60,7 +59,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
 
             buffers = new Dictionary<string, ExecutorBuffer> {
-                { "props", new ExecutorBuffer("props", new List<string>() { "CSProps" }, new ComputeBuffer(VoxelUtils.Volume, sizeof(uint) * 2, ComputeBufferType.Structured)) },
+                { "props", new ExecutorBuffer("props", new List<string>() { "CSProps" }, new ComputeBuffer(VoxelUtils.Volume, BlittableProp.size, ComputeBufferType.Structured)) },
                 { "props_counter", new ExecutorBufferCounter("props_counter", new List<string>() { "CSProps" }, 1) }
             };
 

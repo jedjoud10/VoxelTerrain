@@ -4,11 +4,12 @@
 
 struct BlittableProp {
     uint2 packed_position_and_scale;
-    // uint2 packed_rotation_dispatch_index_prop_variant_padding;
+    uint2 packed_rotation_dispatch_index_prop_variant_padding;
 };
 
 struct Prop {
     float3 position;
+	float3 rotation;
     float scale;
 };
 
@@ -65,5 +66,6 @@ uint UnpackVariant(uint2 packed) {
 BlittableProp PackProp(Prop input) {
 	BlittableProp packed;
 	packed.packed_position_and_scale = PackPositionAndScale(input.position, input.scale);
+	packed.packed_rotation_dispatch_index_prop_variant_padding = PackRotationAndVariantAndId(input.rotation, 0, 0);
 	return packed;
 }

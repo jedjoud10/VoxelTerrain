@@ -28,7 +28,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Create the external inputs that we use inside the function scope
             Variable<float3> position = new NoOp<float3>();
             var tempPos = new ScopeArgument("position", VariableType.StrictType.Float3, position, false);
-            
+            Variable<int3> id = new NoOp<int3>();
+            var tempId = new ScopeArgument("id", VariableType.StrictType.Int3, id, false);
+            ctx.position = tempPos;
+            ctx.id = tempId;
+
             // Execute the voxel graph to get all required output variables 
             // We will contextualize the variables in their separate passes ({ density + color + material }, { props }, etc)
             AllInputs inputs = new AllInputs() { position = position };
@@ -40,7 +44,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             ctx.currentScope = 0;
             ctx.scopes[0].name = "Voxel";
             ctx.scopes[0].arguments = new ScopeArgument[] {
-                tempPos, voxelArgument, colorArgument
+                tempPos, tempId, voxelArgument, colorArgument
             };
             ctx.Add(position, "position");
             outputs.density.Handle(ctx);
@@ -51,7 +55,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             ctx.Add(position, "position");
             ctx.scopes[1].name = "Props";
             ctx.scopes[1].arguments = new ScopeArgument[] {
-                tempPos, propArgument
+                tempPos, tempId, propArgument
             };
             outputs.prop.Handle(ctx);
 
