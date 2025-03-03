@@ -130,9 +130,9 @@ float output = 100.0;
         public Variable<float> offset;
         public Variable<float> factor;
 
-        public Cellular(Distance distance = null, ShouldSpawn shouldSpawn = null, float ilingModSize = -1) {
+        public Cellular(Distance distance = null, ShouldSpawn shouldSpawn = null, float tilingModSize = -1) {
             this.distance = distance;
-            this.tilingModSize = ilingModSize;
+            this.tilingModSize = tilingModSize;
             this.shouldSpawn = shouldSpawn;
             this.offset = 0.0f;
             this.factor = 1.0f;

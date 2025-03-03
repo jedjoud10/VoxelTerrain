@@ -16,7 +16,6 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> lacunarity;
         public Inject<float> detail;
         public FractalMode mode;
-        //public Gradient gradient;
         public AnimationCurve curve;
         [Range(1, 10)]
         public int octaves;
@@ -36,7 +35,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Fractal<float2> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence);
             //var cached = fractal.Evaluate(xz).Cached(val, "xz");
             Variable<float> tahini = fractal.Evaluate(xz).Curve(curve, -(Variable<float>)amplitude, amplitude);
-            Variable<float> extra = Noise.Simplex(position * new float3(1, 3, 1), 0.04f, 4.0f) * detail;
+            Variable<float> extra = Noise.VoronoiF2(position * new float3(1, 3, 1), 0.04f, 4.0f) * detail;
             Variable<float> amogus = tahini + extra;
             var density = amogus + y;
             //tahini = new SdfBox(new float3(30.0)).Evaluate(position);
