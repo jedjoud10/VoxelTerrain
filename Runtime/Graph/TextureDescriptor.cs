@@ -38,7 +38,19 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int size;
 
         public override ExecutorTexture Create(int volumeSize) {
-            Texture2D texture = new Texture2D(size, 1, GraphicsFormat.R32G32B32A32_SFloat, TextureCreationFlags.None);
+            Texture2D texture = new Texture2D(size, 1, GraphicsFormat.R8G8B8A8_UNorm, TextureCreationFlags.None);
+            texture.wrapMode = wrap;
+            texture.filterMode = filter;
+
+            return new ExecutorTexture(name, readKernels, texture);
+        }
+    }
+
+    public class CurveTextureDescriptor : TextureDescriptor {
+        public int size;
+
+        public override ExecutorTexture Create(int volumeSize) {
+            Texture2D texture = new Texture2D(size, 1, GraphicsFormat.R32_SFloat, TextureCreationFlags.None);
             texture.wrapMode = wrap;
             texture.filterMode = filter;
 

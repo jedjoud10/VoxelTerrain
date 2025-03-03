@@ -93,11 +93,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Variable<float> lacunarity;
         public int octaves;
 
-        public static Remap CreatePreFoldRemapFromNoise(Noise noise, FractalMode mode) {
+        public static Remap CreatePreFoldRemapFromNoise(AbstractNoise noise, FractalMode mode) {
             return (current) => new CreatePreFoldRemapFromModeNode<T>() { current = current, mode = mode, upperBound = noise.CreateAbstractYetToEval<T>().amplitude };
         }
 
-        public Fractal(Noise noise, FractalMode mode, int octaves, Variable<float> lacunarity = null, Variable<float> persistence = null) {
+        public Fractal(AbstractNoise noise, FractalMode mode, int octaves, Variable<float> lacunarity = null, Variable<float> persistence = null) {
             this.lacunarity = lacunarity;
             this.persistence = persistence;
             this.inner = (Variable<T> position) => { return noise.Evaluate(position); };
@@ -131,7 +131,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
         }
 
-        public static Variable<float> Evaluate(Variable<T> position, Noise noise, FractalMode mode, int octaves, Variable<float> lacunarity = null, Variable<float> persistence = null) {
+        public static Variable<float> Evaluate(Variable<T> position, AbstractNoise noise, FractalMode mode, int octaves, Variable<float> lacunarity = null, Variable<float> persistence = null) {
             Fractal<T> test = new Fractal<T>(noise, mode, octaves, lacunarity, persistence);
             return test.Evaluate(position);
         }

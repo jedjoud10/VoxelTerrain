@@ -92,7 +92,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public Variable<T> Cached(string swizzle = "xyz") {
-            return new CachedNode<T> { inner = this, swizzle = swizzle };
+            throw new NotImplementedException();
+            //return new CachedNode<T> { inner = this, swizzle = swizzle };
         }
         public Variable<T> Min(Variable<T> other) {
             return new SimpleBinFuncNode<T> { a = this, b = other, func = "min" };
@@ -137,6 +138,36 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public static class VariableExtensions {
+        public static Variable<float4> Gradient(this Variable<float> mixer, UnityEngine.Gradient gradient, int size = 128) {
+            if (gradient == null) {
+                throw new NullReferenceException("Unity Gradient is not set");
+            }
+
+            return new GradientNode {
+                gradient = gradient,
+                mixer = mixer,
+                size = size,
+            };
+        }
+
+        public static Variable<float> Curve(this Variable<float> mixer, UnityEngine.AnimationCurve curve, Variable<float> inputMin, Variable<float> inputMax, int size = 128) {
+            if (curve == null) {
+                throw new NullReferenceException("Unity AnimationCurve is not set");
+            }
+
+            if (inputMin == null || inputMax == null) {
+                throw new NullReferenceException("inputMin and inputMax need to be set");
+            }
+
+            return new CurveNode {
+                curve = curve,
+                mixer = mixer,
+                size = size,
+                inputMin = inputMin,
+                inputMax = inputMax,
+            };
+        }
+
         public static Variable<T> Select<T>(this Variable<bool> self, Variable<T> falseVal, Variable<T> trueVal) {
             return new SelectorOpNode<T>() { falseVal = falseVal, trueVal = trueVal, selector = self };
         }

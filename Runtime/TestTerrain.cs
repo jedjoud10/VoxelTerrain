@@ -14,8 +14,10 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> amplitude;
         public Inject<float> persistence;
         public Inject<float> lacunarity;
+        public Inject<float> detail;
         public FractalMode mode;
-        public Gradient gradient;
+        //public Gradient gradient;
+        public AnimationCurve curve;
         [Range(1, 10)]
         public int octaves;
 
@@ -33,10 +35,9 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             // Create fractal 2D simplex noise
             Fractal<float2> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence);
             //var cached = fractal.Evaluate(xz).Cached(val, "xz");
-
-
-            Variable<float> tahini = Ramp<float>.Evaluate(fractal.Evaluate(xz), gradient, -(Variable<float>)amplitude, amplitude);
-            Variable<float> amogus = tahini.Cached();
+            Variable<float> tahini = fractal.Evaluate(xz).Curve(curve, -(Variable<float>)amplitude, amplitude);
+            Variable<float> extra = Noise.Simplex(position * new float3(1, 3, 1), 0.04f, 4.0f) * detail;
+            Variable<float> amogus = tahini + extra;
             var density = amogus + y;
             //tahini = new SdfBox(new float3(30.0)).Evaluate(position);
             //density = Sdf.Union(y, tahini);
@@ -55,7 +56,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             output = new AllOutputs();
             output.density = density;
-            output.color = color;
+            output.color = new float3(1.0);
             output.prop = (GraphUtils.Zero<Prop>()).With(
                 ("position", position),
                 ("rotation", rotation),

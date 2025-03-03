@@ -54,7 +54,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Variable<T> axialAmplitude;
         public Warping warping;
 
-        public Warper(Noise noise, Variable<T> axialScale = null, Variable<T> axialAmplitude = null) {
+        public Warper(AbstractNoise noise, Variable<T> axialScale = null, Variable<T> axialAmplitude = null) {
             this.warping = (Variable<T> input) => {
                 var test = (AbstractNoiseNode<T>)noise.CreateAbstractYetToEval<T>().Clone();
                 test.position = input;

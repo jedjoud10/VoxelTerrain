@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public class GradientNode<T> : Variable<T> {
+    public class GradientNode : Variable<float4> {
         public Gradient gradient;
         public Variable<float> mixer;
-        public Variable<float> inputMin;
-        public Variable<float> inputMax;
-        public bool remapOutput;
         public int size;
 
         private string gradientTextureName;
@@ -22,8 +20,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public override void HandleInternal(TreeContext context) {
-            inputMin.Handle(context);
-            inputMax.Handle(context);
             mixer.Handle(context);
             context.Hash(size);
 
@@ -35,16 +31,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             context.Inject2((compute, textures) => {
                 Texture2D tex = (Texture2D)textures[textureName].texture;
 
-                /*
                 Color32[] colors = new Color32[size];
-                for (int i = 0; i < size; i++) {
-                    float t = (float)i / size;
-                    colors[i] = gradient.Evaluate(t);
-                }
-                tex.SetPixels32(colors);
-                */
-
-                Color[] colors = new Color[size];
                 for (int i = 0; i < size; i++) {
                     float t = (float)i / size;
                     colors[i] = gradient.Evaluate(t);
@@ -53,17 +40,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 tex.Apply();
             });
 
-            string swizzle = GraphUtils.SwizzleFromFloat4<T>();
-            Variable<float> firstRemap = context.AssignTempVariable<float>($"{context[mixer]}_gradient_remapped", $"Remap({context[mixer]}, {context[inputMin]}, {context[inputMax]}, 0.0, 1.0)");
-            Variable<T> sample = context.AssignTempVariable<T>($"{textureName}_gradient", $"{textureName}_read.SampleLevel(sampler{textureName}_read, float2({context[firstRemap]}, 0), 0).{swizzle}");
-            //Variable<T> sample = context.AssignTempVariable<T>( $"{textureName}_gradient", $"SampleBicubic({textureName}_read, sampler{textureName}_read, {context[firstRemap]}, 0, 128).{swizzle}"); ;
-
-            if (remapOutput) {
-                Variable<T> secondRemap = context.AssignTempVariable<T>($"{context[mixer]}_gradient_second_remapped", $"Remap({context[sample]}, 0.0, 1.0, {context[inputMin]}, {context[inputMax]})");
-                context.DefineAndBindNode<T>(this, $"{textureName}_gradient_sampled", context[secondRemap]);
-            } else {
-                context.DefineAndBindNode<T>(this, $"{textureName}_gradient_sampled", context[sample]);
-            }
+            Variable<float> firstRemap = context.AssignTempVariable<float>($"{context[mixer]}_gradient_remapped", $"{context[mixer]}");
+            context.DefineAndBindNode<float4>(this, $"{textureName}_gradient_sampled", $"{textureName}_read.SampleLevel(sampler{textureName}_read, float2({context[firstRemap]}, 0), 0)");
 
             context.textures.Add(gradientTextureName, new GradientTextureDescriptor {
                 size = size,
@@ -72,23 +50,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 wrap = TextureWrapMode.Clamp,
                 readKernels = new List<string>() { $"CS{context.scopes[context.currentScope].name}" },
             });
-        }
-    }
-
-    public class Ramp<T> {
-        public static Variable<T> Evaluate(Variable<float> mixer, Gradient gradient, Variable<float> inputMin = null, Variable<float> inputMax = null, int size = 128, bool remapOutput = true) {
-            if (gradient == null) {
-                throw new NullReferenceException("Ramp gradient is not set");
-            }
-
-            return new GradientNode<T> {
-                gradient = gradient,
-                mixer = mixer,
-                size = size,
-                inputMin = inputMin ?? 0.0f,
-                inputMax = inputMax ?? 1.0f,
-                remapOutput = remapOutput
-            };
         }
     }
 }

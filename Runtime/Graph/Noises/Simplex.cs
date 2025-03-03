@@ -18,7 +18,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class Simplex : Noise {
+    public class Simplex : AbstractNoise {
         public Variable<float> amplitude;
         public Variable<float> scale;
 

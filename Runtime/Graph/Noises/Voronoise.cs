@@ -24,7 +24,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             context.DefineAndBindNode<float>(this, $"{context[position]}_noised", value);
         }
     }
-    public class Voronoise : Noise {
+    public class Voronoise : AbstractNoise {
         public Variable<float> amplitude;
         public Variable<float> scale;
         public Variable<float> lerpValue;

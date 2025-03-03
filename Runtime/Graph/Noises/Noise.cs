@@ -16,8 +16,22 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public abstract class Noise {
+    public abstract class AbstractNoise {
         public abstract AbstractNoiseNode<I> CreateAbstractYetToEval<I>();
         public abstract Variable<float> Evaluate<T>(Variable<T> position);
+    }
+
+    public static class Noise {
+        public static Variable<float> Simplex<T>(Variable<T> input, float scale, float amplitude) {
+            return new Simplex(scale, amplitude).Evaluate(input);
+        }
+
+        public static Variable<float> VoronoiF1<T>(Variable<T> input, float scale, float amplitude) {
+            return new Voronoi(scale, amplitude, Voronoi.Type.F1).Evaluate(input);
+        }
+
+        public static Variable<float> VoronoiF2<T>(Variable<T> input, float scale, float amplitude) {
+            return new Voronoi(scale, amplitude, Voronoi.Type.F2).Evaluate(input);
+        }
     }
 }
