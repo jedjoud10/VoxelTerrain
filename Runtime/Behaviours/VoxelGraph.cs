@@ -62,6 +62,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             public Variable<float> density;
             public Variable<float3> color;
             public Variable<Prop> prop;
+            public Variable<int> material;
         }
 
         public abstract void Execute(AllInputs input, out AllOutputs output);

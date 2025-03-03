@@ -56,6 +56,7 @@ namespace jedjoud.VoxelTerrain.Props {
 
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {
+            return;
             if (queuedOctalUnits.TryDequeue(out var temp)) {
                 (Vector3Int position, VoxelChunk chunk) = temp;
                 pendingOctalUnits.Remove(position);

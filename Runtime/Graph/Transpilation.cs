@@ -1,4 +1,5 @@
 using jedjoud.VoxelTerrain.Props;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
@@ -40,15 +41,17 @@ namespace jedjoud.VoxelTerrain.Generation {
             ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
             ScopeArgument colorArgument = new ScopeArgument("color", VariableType.StrictType.Float3, outputs.color, true);
             ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
+            ScopeArgument materialArgument = new ScopeArgument("material", VariableType.StrictType.Int, outputs.material, true);
 
             ctx.currentScope = 0;
             ctx.scopes[0].name = "Voxel";
             ctx.scopes[0].arguments = new ScopeArgument[] {
-                tempPos, tempId, voxelArgument, colorArgument
+                tempPos, tempId, voxelArgument, colorArgument, materialArgument
             };
             ctx.Add(position, "position");
             outputs.density.Handle(ctx);
             outputs.color.Handle(ctx);
+            outputs.material.Handle(ctx);
 
             
             ctx.currentScope = 1;
@@ -74,8 +77,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 remappedCoords = "id.xyz",
                 writeCoords = "xyz",
                 outputs = new KernelOutput[] {
-                    new KernelOutput { output = voxelArgument, outputTextureName = "voxels" },
-                    new KernelOutput { output = colorArgument, outputTextureName = "colors" },
+                    new KernelOutput { setter = "packVoxelData(voxel, material)", outputTextureName = "voxels" },
+                    new KernelOutput { setter = "color", outputTextureName = "colors" },
                 }
             });
 
@@ -93,7 +96,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 remappedCoords = "id.xyz",
                 writeCoords = "xyz",
                 outputs = new KernelOutput[] {
-                    new KernelOutput { output = propArgument, outputBufferName = "props", buffer = true }
+                    new KernelOutput { setter = "prop", outputBufferName = "props", buffer = true }
                 }
             });
 
@@ -140,6 +143,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 // Set the output arguments inside of the scope
                 foreach (var item in scope.arguments) {
                     if (item.output) {
+                        if (item.node == null) {
+                            throw new NullReferenceException($"Output argument '{item.name}' was not set in the graph");
+                        }
+
                         scope.AddLine($"{item.name} = {scope.namesToNodes[item.node]};");
                     }
                 }

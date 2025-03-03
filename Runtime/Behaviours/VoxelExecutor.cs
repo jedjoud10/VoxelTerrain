@@ -54,10 +54,12 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Creates dictionary with the default voxel graph textures (density + custom data)
             textures = new Dictionary<string, ExecutorTexture> {
-                { "voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R16_SFloat)) },
+                { "voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt)) },
                 { "colors", new OutputExecutorTexture("colors", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R8G8B8A8_UNorm)) },
             };
 
+            // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??
+            // I dispose of them just like the render textures idk why it's complaining
             buffers = new Dictionary<string, ExecutorBuffer> {
                 { "props", new ExecutorBuffer("props", new List<string>() { "CSProps" }, new ComputeBuffer(VoxelUtils.Volume, BlittableProp.size, ComputeBufferType.Structured)) },
                 { "props_counter", new ExecutorBufferCounter("props_counter", new List<string>() { "CSProps" }, 1) }

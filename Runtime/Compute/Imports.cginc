@@ -12,7 +12,11 @@ float3 offset;
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/SDF.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Other.cginc"
 
-RWTexture3D<float> voxels_write;
+uint packVoxelData(float density, uint material) {
+    return f32tof16(density) | (material << 16);
+}
+
+RWTexture3D<uint> voxels_write;
 RWTexture3D<float3> colors_write;
 RWTexture3D<float2> uvs_write;
 RWStructuredBuffer<BlittableProp> props;

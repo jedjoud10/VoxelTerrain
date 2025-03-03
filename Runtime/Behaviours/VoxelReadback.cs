@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         [Range(1, 8)]
         public int asyncReadbackPerTick = 1;
 
-        internal List<NativeArray<half>> voxelNativeArrays;
+        internal List<NativeArray<uint>> voxelNativeArrays;
         internal BitArray freeVoxelNativeArrays;
         internal Queue<(Vector3Int, VoxelChunk)> queuedOctalUnits;
         internal HashSet<Vector3Int> pendingOctalUnits;
@@ -29,17 +29,17 @@ namespace jedjoud.VoxelTerrain.Generation {
             //pendingOctalUnits = new HashSet<Vector3Int>();
             queuedOctalUnits = new Queue<(Vector3Int, VoxelChunk)>();
             //queuedOctalUnits = new Queue<Vector3Int>();
-            voxelNativeArrays = new List<NativeArray<half>>(asyncReadbackPerTick);
+            voxelNativeArrays = new List<NativeArray<uint>>(asyncReadbackPerTick);
             for (int i = 0; i < asyncReadbackPerTick; i++) {
-                voxelNativeArrays.Add(new NativeArray<half>(VoxelUtils.Volume, Allocator.Persistent));
+                voxelNativeArrays.Add(new NativeArray<uint>(VoxelUtils.Volume, Allocator.Persistent));
                 //voxelNativeArrays.Add(new NativeArray<half>(VoxelUtils.Volume*8, Allocator.Persistent));
             }
         }
 
         public override void CallerDispose() {
             AsyncGPUReadback.WaitAllRequests();
-            foreach (var nativeArrays in voxelNativeArrays) {
-                nativeArrays.Dispose();
+            foreach (var item in voxelNativeArrays) {
+                item.Dispose();
             }
         }
 
@@ -75,13 +75,15 @@ namespace jedjoud.VoxelTerrain.Generation {
         [BurstCompile]
         struct FillUp : IJobParallelFor {
             [ReadOnly]
-            public NativeArray<half> densities;
+            public NativeArray<uint> raw;
             [WriteOnly]
             public NativeArray<Voxel> voxels;
             public void Execute(int index) {
                 voxels[index] = new Voxel {
-                    density = densities[index],
-                    material = 0,
+                    density = (half)math.f16tof32(raw[index]),
+                    //density = UnsafeUtility.As()
+                    //density = (half)raw[index],
+                    material = (byte)((raw[index] >> 16) & 0xF),
                 };
             }
         }
@@ -94,24 +96,24 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
 
                 int cpy = i;
-                NativeArray<half> data = voxelNativeArrays[i];
+                NativeArray<uint> data = voxelNativeArrays[i];
                 if (queuedOctalUnits.TryDequeue(out var temp)) {
                     (Vector3Int position, VoxelChunk chunk) = temp;
                     pendingOctalUnits.Remove(position);
 
                     freeVoxelNativeArrays[i] = false;
 
-                    // TODO: Move this stuff to it's own readback class, separate from the voxel generator.
                     //terrain.generator.ExecuteShader(VoxelUtils.Size*2, worldPosition * 2.0f, Vector3.one, true, true);
+
                     terrain.executor.ExecuteShader(VoxelUtils.Size, 0, ((Vector3)position * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor) / (VoxelUtils.VertexScaling), Vector3.one * VoxelUtils.VoxelSizeFactor, true, true);
                     AsyncGPUReadback.RequestIntoNativeArray(
                         ref data,
-                        terrain.executor.textures["voxels"], 0, TextureFormat.RHalf,
+                        terrain.executor.textures["voxels"], 0,
                         delegate (AsyncGPUReadbackRequest asyncRequest) {
-                            NativeArray<half> temp = new NativeArray<half>(VoxelUtils.Volume, Allocator.TempJob);
+                            NativeArray<uint> temp = new NativeArray<uint>(VoxelUtils.Volume, Allocator.TempJob);
                             temp.CopyFrom(data);
                             var handle = new FillUp() {
-                                densities = temp,
+                                raw = temp,
                                 voxels = chunk.voxels,
                             }.Schedule(VoxelUtils.Volume, 8192 * VoxelUtils.SchedulingInnerloopBatchCount);
                             temp.Dispose(handle);

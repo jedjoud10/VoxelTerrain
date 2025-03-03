@@ -122,6 +122,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                 remappedCoords = $"{Clean(temp6[0])}, {Clean(temp6[1])}, {Clean(temp6[2])}";
             }
 
+            // todo: jeddie weddie pls fix
+            throw new NotImplementedException();
+            /*
             context.dispatches.Add(new KernelDispatch {
                 name = $"CS{scopeName}",
                 depth = context.scopeDepth + 1,
@@ -149,6 +152,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 readKernels = new List<string>() { $"CS{context.scopes[oldScopeIndex].name}" },
                 name = tempTextureName,
             });
+            */
         }
     }
 }

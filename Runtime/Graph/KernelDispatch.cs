@@ -1,10 +1,12 @@
 
+using System;
+using System.Xml.Schema;
 using UnityEditor;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class KernelOutput {
-        public ScopeArgument output;
+        public string setter;
         public string outputTextureName;
         public string outputBufferName;
         public bool buffer;
@@ -39,15 +41,15 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                 if (item.buffer) {
                     kernelOutputSetter += $@"
-    if ({item.output.name}.scale > 0.0) {{
+    if ({item.setter}.scale > 0.0) {{
         int index = 0;
         InterlockedAdd({item.outputBufferName}_counter[0], 1, index);
-        {item.outputBufferName}[index] = PackProp({item.output.name});
+        {item.outputBufferName}[index] = PackProp({item.setter});
     }}
 ";
 
                 } else {
-                    kernelOutputSetter += $"    {item.outputTextureName}_write[{input}] = {item.output.name};\n";
+                    kernelOutputSetter += $"    {item.outputTextureName}_write[{input}] = {item.setter};\n";
                 }
             }
 

@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain {
         // Material of the voxel that depicts its color and other parameters
         public byte material;
 
-        // Used for extra color data on a per vertex basis
+        // Not used
         public byte _padding;
 
         // Empty voxel with the empty material
