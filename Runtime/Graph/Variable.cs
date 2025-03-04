@@ -143,7 +143,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 throw new NullReferenceException("Unity Gradient is not set");
             }
 
-            return new GradientNode {
+            return new ColorGradientNode {
                 gradient = gradient,
                 mixer = mixer,
                 size = size,

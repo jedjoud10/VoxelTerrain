@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Dictionary<string, int> varNamesToId;
         public PropertyInjector injector;
         public List<string> properties;
-        public Hashinator hashinator;
+        public Hasher hashinator;
         public int counter;
         public bool debugNames;
         public List<TreeScope> scopes;
@@ -44,7 +44,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 new TreeScope(0)
             };
 
-            this.hashinator = new Hashinator();
+            this.hashinator = new Hasher();
 
             this.currentScope = 0;
             this.scopeDepth = 0;

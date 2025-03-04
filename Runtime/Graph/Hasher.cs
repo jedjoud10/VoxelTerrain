@@ -1,10 +1,10 @@
 using System;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public class Hashinator {
+    public class Hasher {
         public int hash;
 
-        public Hashinator() {
+        public Hasher() {
             this.hash = 0;
         }
 

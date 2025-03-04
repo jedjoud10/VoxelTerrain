@@ -12,6 +12,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     // given a variable, calculate the min/max value of the variable across all thread groups by splitting the execution into two kernels
     // after the first kernel execution, run an atomic max/min op to keep track of the value during the first compute,
     // then read it in the second kernel
+    // this obviously does not work across chunks!!
     public class AtomicOrderer {
         public enum Axis {
             X, Y, Z

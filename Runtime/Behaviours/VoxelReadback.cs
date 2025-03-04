@@ -80,10 +80,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             public NativeArray<Voxel> voxels;
             public void Execute(int index) {
                 voxels[index] = new Voxel {
-                    density = (half)math.f16tof32(raw[index] & 0xFF),
+                    density = (half)math.f16tof32(raw[index] & 0xFFFF),
                     //density = UnsafeUtility.As()
                     //density = (half)raw[index],
-                    material = (byte)((raw[index] >> 16) & 0xF),
+                    material = (byte)((raw[index] >> 16) & 0xFF),
                 };
             }
         }

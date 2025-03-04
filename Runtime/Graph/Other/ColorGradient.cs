@@ -4,7 +4,7 @@ using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public class GradientNode : Variable<float4> {
+    public class ColorGradientNode : Variable<float4> {
         public Gradient gradient;
         public Variable<float> mixer;
         public int size;
