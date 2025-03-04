@@ -65,7 +65,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public static implicit operator Variable<T>(CustomCode<T> value) {
-            return value.DoStuff();
+            return value.Execute();
         }
 
         private static void VerifyEqCheck() {

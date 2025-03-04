@@ -15,7 +15,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.callback = callback;
         }
 
-        public Variable<T> DoStuff() {
+        public Variable<T> Execute() {
             return new CustomCodeNode<T> {
                 callback = callback,
             };

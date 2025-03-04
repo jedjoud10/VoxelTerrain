@@ -1,5 +1,4 @@
 using System.IO;
-using UnityEditor;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -70,7 +69,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             var visualizer = GetComponent<VoxelPreview>();
             visualizer?.InitializeForSize();
 #else
-            Debug.LogError("Cannot transpile code at runtime");
+            throw new System.Exception("Cannot transpile code at runtime");
 #endif
         }
 

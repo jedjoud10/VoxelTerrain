@@ -179,7 +179,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                         break;
                     default:
                         throw new Exception();
-                        break;
                 }
             }
         }
@@ -213,7 +212,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                     break;
                 default:
                     throw new Exception();
-                    break;
             }
         }
     }

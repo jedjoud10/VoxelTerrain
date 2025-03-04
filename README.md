@@ -1,14 +1,15 @@
 # TODO
-- Figure out how to handle per voxel color (nointerpolation in shader trick
+- Figure out how to handle per voxel color (nointerpolation in shader trick)
 - Re-implement AO calculations (but based on a larger scale / blurred voxel repr.)
 - Re-implement props with hopefully better implementation
-- Research into ways to render procedural indexed indirect meshes using Shader Graph (without making them non-indexed)
-  - This would allow us to generate meshes on the GPU and render them directly (and use the height map approximation as well)
-- Biome generation (custom data readback)
+  - Currently WIP, got prop readback working, but need to clean up that mess graph wise
+- Wait until Shader Graph supports indirect indexed rendering
+  - This would allow us to generate meshes on the GPU and render them directly
+- Biome generation (custom data readback?)
 - Custom graph buffer initialization and readback (material, color, smoothness / metallic, custom user data)
+  - Works for props, but I don't know if I should extend it to make it work with custom user input
 - Figure out ``CachedVar`` node stuff
-- Fix ``Compile()`` errors ughhh
 - Implement some sort of ``Diff`` node that create intermediate texture of size ``n+1``, and calculates finite diffs. from it.
 - Figure out how to get Async Compute Queue working
 - Implement smart range checking using texture value summation (cached textures)
-- Tick based instead of frame based (WIP)
+- Go octal mode and add inter chunk dependency unfortunately (will be good though since we can read a LOT more data back from the gpu)

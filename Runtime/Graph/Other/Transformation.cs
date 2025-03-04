@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             string matrixName = ctx.GenId("matrix");
             ctx.properties.Add($"float4x4 {matrixName};");
 
-            ctx.Inject2((compute, textures) => {
+            ctx.Inject((compute, textures) => {
                 float4x4 matrix = math.AffineTransform(position, Quaternion.Euler(rotation), scale);
 
                 compute.SetMatrix(matrixName, matrix);

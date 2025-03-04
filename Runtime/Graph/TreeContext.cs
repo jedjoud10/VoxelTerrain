@@ -9,6 +9,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public List<string> computeKernels;
 
         // TODO: Move dispatches to be stored inside the scopes themselves
+        // that would require use to define scopes for the dispatches though...
         public List<KernelDispatch> dispatches;
         public Dictionary<string, int> varNamesToId;
         public PropertyInjector injector;
@@ -64,7 +65,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        public void Inject2(Action<ComputeShader, Dictionary<string, ExecutorTexture>> func) {
+        public void Inject(Action<ComputeShader, Dictionary<string, ExecutorTexture>> func) {
             injector.injected.Add(func);
         }
 

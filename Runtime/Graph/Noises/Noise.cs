@@ -33,5 +33,9 @@ namespace jedjoud.VoxelTerrain.Generation {
         public static Variable<float> VoronoiF2<T>(Variable<T> input, float scale, float amplitude) {
             return new Voronoi(scale, amplitude, Voronoi.Type.F2).Evaluate(input);
         }
+
+        public static Variable<O> Random<I, O>(Variable<I> input, bool signed = false) {
+            return jedjoud.VoxelTerrain.Generation.Random.Evaluate<I, O>(input, signed);
+        }
     }
 }

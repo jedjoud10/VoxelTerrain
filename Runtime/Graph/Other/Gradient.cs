@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             context.properties.Add($"Texture2D {textureName}_read;");
             context.properties.Add($"SamplerState sampler{textureName}_read;");
 
-            context.Inject2((compute, textures) => {
+            context.Inject((compute, textures) => {
                 Texture2D tex = (Texture2D)textures[textureName].texture;
 
                 Color32[] colors = new Color32[size];
