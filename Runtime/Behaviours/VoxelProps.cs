@@ -61,7 +61,7 @@ namespace jedjoud.VoxelTerrain.Props {
                 (Vector3Int position, VoxelChunk chunk) = temp;
                 pendingOctalUnits.Remove(position);
 
-                Vector3 offset = ((Vector3)position * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor) / (VoxelUtils.VertexScaling);
+                Vector3 offset = ((Vector3)position * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor);
                 float scale =  VoxelUtils.VoxelSizeFactor;
                 terrain.executor.ExecuteShader(VoxelUtils.Size, 1, offset, Vector3.one * scale, true, true);
                 int frame = Time.frameCount;
@@ -111,7 +111,7 @@ namespace jedjoud.VoxelTerrain.Props {
                         //position -= Vector3.one * 1.5f * VoxelUtils.VoxelSizeFactor;
 
                         //position -= math.float3(1);
-                        position *= VoxelUtils.VertexScaling;
+                        position *= 1.0f;
                         position += (Vector3)val.chunkOffset * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
                         position *= VoxelUtils.VoxelSizeFactor;
                         position += -Vector3.one * VoxelUtils.VoxelSizeFactor;

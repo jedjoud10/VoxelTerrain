@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Jobs;
@@ -21,12 +22,13 @@ namespace jedjoud.VoxelTerrain.Edits {
 
         // Apply any generic voxel edit onto oncoming data
         public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters) where T : struct, IVoxelEdit {
+            throw new NotImplementedException();
             VoxelEditJob<T> job = new VoxelEditJob<T> {
                 offset = offset,
                 edit = edit,
                 voxels = voxels,
                 voxelScale = VoxelUtils.VoxelSizeFactor,
-                vertexScale = VoxelUtils.VertexScaling,
+                vertexScale = 1.0f,
                 counters = counters,
             };
             return job.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);

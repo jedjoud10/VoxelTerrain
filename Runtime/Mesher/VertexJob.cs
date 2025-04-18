@@ -47,6 +47,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
+        // Voxel native array from the next X,Y,Z chunks
+        [ReadOnly]
+        public NativeArray<Voxel> neighbouringVoxels;
+
         // Used for fast traversal
         [ReadOnly]
         public NativeArray<byte> enabled;
@@ -84,7 +88,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             indices[index] = int.MaxValue;
 
             // Idk bruh
-            if (math.any(position > math.uint3(size - 2)))
+            if (math.any(position > math.uint3(size)))
                 return;
 
             float3 vertex = float3.zero;

@@ -8,16 +8,21 @@ using static jedjoud.VoxelTerrain.VoxelTerrain;
 
 namespace jedjoud.VoxelTerrain {
     public class VoxelTerrain : MonoBehaviour {
+        [Header("Tick System")]
         public int ticksPerSecond = 128;
         public int maxTicksPerFrame = 3;
         private float tickDelta;
         private float accumulator;
 
+        [Header("General")]
         public GameObject chunkPrefab;
-        public bool drawGizmos;
+        public List<VoxelMaterial> materials;
 
         [Range(0, 4)]
         public int voxelSizeReduction;
+
+        [Header("Debug")]
+        public bool drawGizmos;
 
         [HideInInspector]
         public Dictionary<Vector3Int, GameObject> totalChunks;
@@ -69,6 +74,10 @@ namespace jedjoud.VoxelTerrain {
         private bool complete;
 
         public void Start() {
+            if (materials.Count == 0) {
+                throw new System.Exception("Need at least 1 voxel material to be set");
+            }
+
             complete = false;
             //Instance = this;
             totalChunks = new Dictionary<Vector3Int, GameObject>();

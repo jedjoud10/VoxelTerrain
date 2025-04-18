@@ -12,9 +12,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
 
-        [Header("Mesh Materials")]
-        public Material[] voxelMaterials;
-
         // List of persistently allocated mesh data
         internal List<MeshJobHandler> handlers;
 
@@ -109,7 +106,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 voxelChunk.GetComponent<MeshFilter>().sharedMesh = voxelChunk.sharedMesh;
                 var renderer = voxelChunk.GetComponent<MeshRenderer>();
 
-                renderer.materials = stats.VoxelMaterialsLookup.Select(x => voxelMaterials[x]).ToArray();
+                renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
                 // TODO: make bounds fit more tightly using atomic ops. on vertices during vertex job
                 renderer.bounds = new Bounds {

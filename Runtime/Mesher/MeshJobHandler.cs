@@ -13,6 +13,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Copy of the voxel data that we will use for meshing
         public NativeArray<Voxel> voxels;
 
+        // Copy of the neighbouring voxel data in the positive x,y,z directions
+        // All stored in one native array that is indexed in the jobs manually
+        public NativeArray<Voxel> neighbouringVoxels;
+
         // Native buffers for mesh data
         public NativeArray<float3> vertices;
         public NativeArray<float3> normals;
@@ -103,7 +107,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uvs = uvs,
                 counter = counter,
                 voxelScale = VoxelUtils.VoxelSizeFactor,
-                vertexScale = VoxelUtils.VertexScaling,
+                vertexScale = 1.0f,
                 size = VoxelUtils.Size,
             };
 

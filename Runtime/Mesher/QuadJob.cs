@@ -24,36 +24,36 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         static readonly uint3[] quadForwardDirection = new uint3[3]
         {
-        new uint3(1, 0, 0),
-        new uint3(0, 1, 0),
-        new uint3(0, 0, 1),
+            new uint3(1, 0, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 0, 1),
         };
 
         // Quad vertices offsets based on direction
         [ReadOnly]
         static readonly uint3[] quadPerpendicularOffsets = new uint3[12]
         {
-        new uint3(0, 0, 0),
-        new uint3(0, 1, 0),
-        new uint3(0, 1, 1),
-        new uint3(0, 0, 1),
+            new uint3(0, 0, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 1, 1),
+            new uint3(0, 0, 1),
 
-        new uint3(0, 0, 0),
-        new uint3(0, 0, 1),
-        new uint3(1, 0, 1),
-        new uint3(1, 0, 0),
+            new uint3(0, 0, 0),
+            new uint3(0, 0, 1),
+            new uint3(1, 0, 1),
+            new uint3(1, 0, 0),
 
-        new uint3(0, 0, 0),
-        new uint3(1, 0, 0),
-        new uint3(1, 1, 0),
-        new uint3(0, 1, 0)
+            new uint3(0, 0, 0),
+            new uint3(1, 0, 0),
+            new uint3(1, 1, 0),
+            new uint3(0, 1, 0)
         };
 
         // Bit shift used to check for edges
         [ReadOnly]
         static readonly int[] shifts = new int[3]
         {
-        0, 3, 8
+            0, 3, 8
         };
 
         // Used for fast traversal
@@ -136,25 +136,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Allows us to save two voxel fetches (very important)
             ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];
 
-            // Used for skirts
-            bool3 base_ = (position == math.uint3(1)) & skirtsBase;
-            bool3 end_ = (position == math.uint3(size - 2)) & skirtsEnd;
-            bool3 skirt = base_ | end_;
-
-
             bool3 valPos = (position < math.uint3(size - 1)) & (position > math.uint3(1));
             for (int i = 0; i < 3; i++) {
-                // Handle creating the quad normally
                 if (((enabledEdges >> shifts[i]) & 1) == 1 && math.all(valPos)) {
                     CheckEdge(position, i, false, false);
-                }
-
-                // Mane idfk what I'm doing any more
-                bool limiter = math.all(valPos | math.bool3(i == 0, i == 1, i == 2));
-
-                // Handle creating the skirt 
-                if (skirt[i] && limiter) {
-                    CheckEdge(position, i, true, end_[i]);
                 }
             }
         }

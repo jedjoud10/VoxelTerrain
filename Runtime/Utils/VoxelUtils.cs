@@ -8,9 +8,6 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
-        // Scaling value applied to the vertices
-        public static float VertexScaling => (float)Size / ((float)Size - 3.0F);
-
         // Voxel scaling size
         public static int VoxelSizeReduction { get; set; } = 1;
 
