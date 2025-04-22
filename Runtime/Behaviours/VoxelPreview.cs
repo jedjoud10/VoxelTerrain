@@ -24,6 +24,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public Vector3 scale = Vector3.one;
         public Vector3 offset;
+        public Mesh test;
+        public Material test2;
 
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
@@ -117,6 +119,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             shader.SetBuffer(id, "atomicCounters", atomicCounters);
 
             shader.Dispatch(id, minDispatch, minDispatch, minDispatch);
+            Debug.Log("test2");
         }
 
         public void ExecuteHeightMapMesher(RenderTexture voxels, RenderTexture colors, int indexed, Vector3Int chunkOffset) {
@@ -178,7 +181,14 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // FIXME: Why do I need to use this instead of just render mesh primitives indexed inderect???
             // Also why do I need to handle the indexing myself???
-            Graphics.DrawProceduralIndirect(customRenderingMaterial, bounds, MeshTopology.Triangles, commandBuffer, properties: mat, castShadows: ShadowCastingMode.TwoSided);
+            RenderParams rparams = new RenderParams();
+            rparams.matProps = mat;
+            rparams.material = customRenderingMaterial;
+
+            Graphics.RenderPrimitivesIndirect(rparams, MeshTopology.Triangles, commandBuffer);
+            //Graphics.DrawProceduralIndirect(customRenderingMaterial, bounds, MeshTopology.Triangles, commandBuffer, properties: mat, castShadows: ShadowCastingMode.TwoSided);
+            //Graphics.DrawMesh(test, Matrix4x4.identity, test2, 0);
+            Debug.Log("test");
         }
     }
 }

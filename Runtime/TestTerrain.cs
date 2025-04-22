@@ -55,13 +55,15 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             output = new AllOutputs();
             output.density = density;
+            output.density = y;
             output.color = new float3(1.0);
             output.prop = (GraphUtils.Zero<Prop>()).With(
                 ("position", position),
                 ("rotation", rotation),
                 ("scale", check.Select<float>(0.0f, val * 3))
             );
-            output.material = (Noise.Simplex(position, 0.2f, 1.0f) > 0).Select<int>(1, 0);
+            output.material = 0;
+            //output.material = (Noise.Simplex(position, 0.2f, 1.0f) > 0).Select<int>(1, 0);
             //context.SpawnProp(GpuProp.Empty);
             //prop = GpuProp.Empty;
             //prop = prop.With(("xyz", position), ("w", (check & val).Select<float>(0.0f, 1.0f)));

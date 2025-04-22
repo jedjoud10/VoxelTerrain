@@ -16,9 +16,10 @@ namespace jedjoud.VoxelTerrain.Generation {
         [HideInInspector]
         [NonSerialized]
         public Dictionary<string, ExecutorTexture> textures;
-
+        [NonSerialized]
         public Dictionary<string, ExecutorBuffer> buffers;
-        // amogus
+
+        // Cache the size so that we don't need to re-initialize the texture and buffers
         private int setSize;
 
         public override void CallerStart() {
