@@ -11,6 +11,7 @@ namespace jedjoud.VoxelTerrain {
                     for (int z = -mapChunkSize.z; z < mapChunkSize.z; z++) {
                         Vector3Int chunkPosition = new Vector3Int(x, y, z);
                         VoxelChunk chunk = terrain.FetchChunk(chunkPosition, 1.0f);
+                        chunk.state = VoxelChunk.ChunkState.Idle;
                         onChunkSpawned?.Invoke(chunk);
                     }
                 }

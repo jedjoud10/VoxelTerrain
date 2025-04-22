@@ -3,22 +3,9 @@
 
 #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
 #include "UnityIndirect.cginc"
-#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 
 RWTexture3D<uint> voxels;
-float fetch(uint3 id) {
-    float density;
-    uint material;
-    unpackVoxelData(voxels[id], density, material);
-    return density;
-}
-
-float3 matId(uint3 id) {
-    float density;
-    uint material;
-    unpackVoxelData(voxels[id], density, material);
-    return density;
-}
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Fetcher.cginc"
 
 RWTexture2D<uint> maxHeight;
 int indexOffset;
@@ -60,7 +47,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
     int index = id.x + id.y * size + indexOffset * size * size;
     uint3 idTemp = float3(id.x, maxHeight[id.xy], id.y);
 
-    if (idTemp.y == 0 || idTemp.y == size-1) {
+    if (idTemp.y == 0 || idTemp.y == (uint)(size-1)) {
         return;
     }
 
@@ -73,7 +60,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
     colors[index] = 1.0;
     normals[index] = -normalize(lerp(normalMaxx(idTemp), normalMaxx(idTemp + uint3(0, 1, 0)), factor));
 
-    if (any(id >= size-1)) {
+    if (any(id >= (uint)(size-1))) {
         return;
     }
 

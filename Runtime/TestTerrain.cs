@@ -60,8 +60,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
                 ("rotation", rotation),
                 ("scale", check.Select<float>(0.0f, val * 3))
             );
-            output.material = 0;
-            //output.material = (Noise.Simplex(position, 0.2f, 1.0f) > 0).Select<int>(1, 0);
+            //output.material = 0;
+            output.material = (Noise.Simplex(position, 0.2f, 1.0f) > 0).Select<int>(1, 0);
             //context.SpawnProp(GpuProp.Empty);
             //prop = GpuProp.Empty;
             //prop = prop.With(("xyz", position), ("w", (check & val).Select<float>(0.0f, 1.0f)));

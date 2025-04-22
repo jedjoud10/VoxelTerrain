@@ -18,6 +18,7 @@ namespace jedjoud.VoxelTerrain.Edits {
         public Unsafe.NativeMultiCounter.Concurrent counters;
 
         public void Execute(int index) {
+            /*
             uint3 id = VoxelUtils.IndexToPos(index);
             float3 position = (math.float3(id));
 
@@ -42,6 +43,7 @@ namespace jedjoud.VoxelTerrain.Edits {
             } else if (newDensity < 0.0f && oldDensity > 0.0f) {
                 counters.Increment(newVoxel.material);
             }
+            */
         }
     }
 }

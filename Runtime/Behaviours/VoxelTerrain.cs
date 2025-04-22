@@ -211,10 +211,14 @@ namespace jedjoud.VoxelTerrain {
                 foreach (var (key, go) in totalChunks) {
                     VoxelChunk chunk = go.GetComponent<VoxelChunk>();
                     
+                    Bounds bounds = chunk.GetBounds();
                     if (chunk.sharedMesh != null && chunk.sharedMesh.vertexCount > 0) {
-                        //Bounds bounds = chunk.GetBounds();
-                        Bounds bounds = chunk.GetComponent<MeshRenderer>().bounds;
-                        
+                        //Bounds bounds = chunk.GetComponent<MeshRenderer>().bounds;
+
+                        Gizmos.color = Color.white;
+                        Gizmos.DrawWireCube(bounds.center, bounds.size);
+                    } else if (chunk.HasVoxelData()) {
+                        Gizmos.color = Color.red;
                         Gizmos.DrawWireCube(bounds.center, bounds.size);
                     }
                 }

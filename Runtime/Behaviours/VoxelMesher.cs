@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Linq;
 using Unity.Collections;
 using Unity.Burst;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
@@ -26,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             handlers = new List<MeshJobHandler>(meshJobsPerTick);
             queuedJob = new Queue<PendingMeshJob>();
             pendingJobs = new HashSet<PendingMeshJob>();
-            
+
             for (int i = 0; i < meshJobsPerTick; i++) {
                 handlers.Add(new MeshJobHandler());
             }
@@ -34,6 +35,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Begin generating the mesh data using the given chunk and voxel container
         public void GenerateMesh(VoxelChunk chunk, bool immediate, Action<VoxelChunk> completed = null) {
+            chunk.state = VoxelChunk.ChunkState.Meshing;
             var job = new PendingMeshJob {
                 chunk = chunk,
                 collisions = true,
@@ -42,10 +44,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             if (immediate) {
+                Debug.LogWarning("impl neighbour fetching here too pls");
+                /*
                 FinishJob(handlers[0]);
                 BeginJob(handlers[0], job);
                 FinishJob(handlers[0]);
                 return;
+                */
             }
 
             if (pendingJobs.Contains(job))
@@ -76,42 +81,76 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 if (handlers[i].Free) {
-                    if (queuedJob.TryDequeue(out PendingMeshJob request)) {
-                        pendingJobs.Remove(request);
-                        BeginJob(handlers[i], request);
+                    // Check if the chunk has valid neighbours
+                    if (queuedJob.TryPeek(out PendingMeshJob job)) {
+                        Vector3Int pos = job.chunk.chunkPosition;
+
+                        bool all = true;
+                        NativeArray<Voxel>[] neighbours = new NativeArray<Voxel>[7];
+                        bool3 axisEdgeBitmask = false;
+                        for (int j = 0; j < 7; j++) {
+                            // Since we use morton encoding here, inside the Job we can do this step but in the other direction to fetch the chunk ID based on the index
+                            // This only works because we are using morton encoding for voxel data indexing.
+                            uint3 _offset = VoxelUtils.IndexToPosMorton(j + 1);
+                            Vector3Int offset = new Vector3Int((int)_offset.x, (int)_offset.y, (int)_offset.z);
+
+                            if (terrain.totalChunks.TryGetValue(pos + offset, out var chunk)) {
+                                VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
+                                all &= neighbour.HasVoxelData();
+                                neighbours[j] = neighbour.voxels;
+                            } else {
+                                // only for now...
+                                all = false;
+
+
+                                // happens when the chunk will never have a valid neighbour in a specific direction
+                                //edge = true;
+                            }
+                        }
+
+                        if (queuedJob.TryDequeue(out PendingMeshJob request)) {
+                            if (all) {
+                                pendingJobs.Remove(request);
+                                BeginJob(handlers[i], request, neighbours);
+                            } else {
+                                // if we don't have all the neighbours ready yet, just take the job and put it at the end of the queue again
+                                queuedJob.Enqueue(request);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        private void BeginJob(MeshJobHandler handler, PendingMeshJob request) {
+        private void BeginJob(MeshJobHandler handler, PendingMeshJob request, NativeArray<Voxel>[] neighbours) {
             handler.chunk = request.chunk;
             handler.request = request;
             handler.startingFrame = Time.frameCount;
 
             JobHandle temp = request.chunk.dependency.GetValueOrDefault();
             var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule(temp);
-            handler.BeginJob(copy);
+            handler.BeginJob(copy, neighbours);
         }
 
         private void FinishJob(MeshJobHandler handler) {
             if (handler.chunk != null) {
-                VoxelChunk voxelChunk = handler.chunk;
-                var stats = handler.Complete(voxelChunk.sharedMesh);
-                voxelChunk.dependency = default;
+                VoxelChunk chunk = handler.chunk;
+                var stats = handler.Complete(chunk.sharedMesh);
+                chunk.dependency = default;
 
-                onVoxelMeshingComplete?.Invoke(voxelChunk, stats);
+                chunk.state = VoxelChunk.ChunkState.Done;
+                onVoxelMeshingComplete?.Invoke(chunk, stats);
                 handler.request.callback?.Invoke(handler.chunk);
 
-                voxelChunk.GetComponent<MeshFilter>().sharedMesh = voxelChunk.sharedMesh;
-                var renderer = voxelChunk.GetComponent<MeshRenderer>();
+                chunk.GetComponent<MeshFilter>().sharedMesh = chunk.sharedMesh;
+                var renderer = chunk.GetComponent<MeshRenderer>();
 
                 renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
                 // TODO: make bounds fit more tightly using atomic ops. on vertices during vertex job
                 renderer.bounds = new Bounds {
-                    min = voxelChunk.transform.position,
-                    max = voxelChunk.transform.position + VoxelUtils.Size * VoxelUtils.VoxelSizeFactor * Vector3.one,
+                    min = chunk.transform.position,
+                    max = chunk.transform.position + VoxelUtils.Size * VoxelUtils.VoxelSizeFactor * Vector3.one,
                 };
             }
         }

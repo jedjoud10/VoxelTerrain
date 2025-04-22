@@ -8,6 +8,7 @@ using Unity.Jobs;
 using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
 using System;
+using System.Reflection;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoxelReadback : VoxelBehaviour {
@@ -44,6 +45,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         // Add the given chunk inside the queue for voxel generation
         public void GenerateVoxels(VoxelChunk chunk) {
+            chunk.state = VoxelChunk.ChunkState.VoxelGeneration;
             Vector3Int octalPosition = chunk.chunkPosition / 2;
             //Vector3Int octalPosition = chunk.chunkPosition;
 
@@ -101,8 +103,23 @@ namespace jedjoud.VoxelTerrain.Generation {
                     pendingOctalUnits.Remove(position);
                     freeVoxelNativeArrays[i] = false;
 
+
+                    // Size*2 since we are using octal generation!
                     Vector3 worldPosition = (Vector3)position * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
-                    terrain.executor.ExecuteShader(VoxelUtils.Size*2, 0, worldPosition * 2.0f, Vector3.one / 2, true, true);
+                    Vector3 worldScale = (Vector3.one / 2) * VoxelUtils.VoxelSizeFactor;
+                    terrain.executor.ExecuteShader(VoxelUtils.Size*2, 0, worldPosition, worldScale, true, true);
+
+                    // Change chunk states
+                    for (int j = 0; j < 8; j++) {
+                        int3 temp2 = (int3)VoxelUtils.IndexToPosMorton(j);
+                        Vector3Int offset = new Vector3Int(temp2.x, temp2.y, temp2.z);
+
+                        if (terrain.totalChunks.ContainsKey(position * 2 + offset)) {
+                            var chunk = terrain.totalChunks[position * 2 + offset].GetComponent<VoxelChunk>();
+                            chunk.state = VoxelChunk.ChunkState.VoxelReadback;
+                        }
+                    }
+
                     AsyncGPUReadback.RequestIntoNativeArray(
                         ref data,
                         terrain.executor.textures["voxels"], 0,
@@ -114,20 +131,22 @@ namespace jedjoud.VoxelTerrain.Generation {
                                 //BulkAsyncRequest bulk = new BulkAsyncRequest() { currentChunkCount = 0, bitArray = freeVoxelNativeArrays, index = cpy };
 
                                 for (int j = 0; j < 8; j++) {
-                                    // TODO: do funny silly check!!!
+                                    // TODO: do the smart count neg/pos check here when we implement it
+                                    // Allows us to avoid generating meshes for specific chunks.
 
-                                    int3 temp2 = (int3)VoxelUtils.IndexToPos(j);
+                                    int3 temp2 = (int3)VoxelUtils.IndexToPosMorton(j);
                                     Vector3Int offset = new Vector3Int(temp2.x, temp2.y, temp2.z);
 
                                     if (terrain.totalChunks.ContainsKey(position * 2 + offset)) {
                                         var chunk = terrain.totalChunks[position * 2 + offset].GetComponent<VoxelChunk>();
-
+                                        
                                         JobHandle handle = new FillUp() {
                                             // nghh I love unsafe pointers... 🤤👅
                                             raw = pointer + (VoxelUtils.Volume * j),
                                             voxels = chunk.voxels,
                                         }.Schedule(VoxelUtils.Volume, 8192 * VoxelUtils.SchedulingInnerloopBatchCount);
                                         handle.Complete();
+                                        chunk.state = VoxelChunk.ChunkState.Temp;
 
                                         // FIXME: Really unsafe, since we're assuming that meshing takes less time (takes one tick or less) for all the chunks
                                         // If not, then we could theoretically be doing another async request on a texture that's still in use by chunks that have not copied their data over yet
