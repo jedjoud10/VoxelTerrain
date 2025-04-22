@@ -10,6 +10,9 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             var script = (VoxelExecutor)target;
 
+            GUILayout.Label("Supports Async Compute: " + SystemInfo.supportsAsyncCompute);
+            GUILayout.Label("Supports Async Readback: " + SystemInfo.supportsAsyncGPUReadback);
+
             if (GUILayout.Button("Randomize Seed")) {
                 script.RandomizeSeed();
             }

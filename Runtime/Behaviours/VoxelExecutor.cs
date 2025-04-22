@@ -16,9 +16,10 @@ namespace jedjoud.VoxelTerrain.Generation {
         [HideInInspector]
         [NonSerialized]
         public Dictionary<string, ExecutorTexture> textures;
-
+        [NonSerialized]
         public Dictionary<string, ExecutorBuffer> buffers;
-        // amogus
+
+        // Cache the size so that we don't need to re-initialize the texture and buffers
         private int setSize;
 
         public override void CallerStart() {
@@ -55,7 +56,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Creates dictionary with the default voxel graph textures (density + custom data)
             textures = new Dictionary<string, ExecutorTexture> {
                 { "voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt)) },
-                { "colors", new OutputExecutorTexture("colors", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R8G8B8A8_UNorm)) },
             };
 
             // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??

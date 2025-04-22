@@ -3,9 +3,23 @@
 
 #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
 #include "UnityIndirect.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 
-RWTexture3D<float> densities;
-RWTexture3D<float3> colorsIn;
+RWTexture3D<uint> voxels;
+float fetch(uint3 id) {
+    float density;
+    uint material;
+    unpackVoxelData(voxels[id], density, material);
+    return density;
+}
+
+float3 matId(uint3 id) {
+    float density;
+    uint material;
+    unpackVoxelData(voxels[id], density, material);
+    return density;
+}
+
 RWTexture2D<uint> maxHeight;
 int indexOffset;
 float3 vertexOffset;
@@ -19,10 +33,10 @@ RWStructuredBuffer<int> indices;
 RWStructuredBuffer<UNITY_INDIRECT_DRAW_ARGS> cmdBuffer;
 
 float3 normalMaxx(uint3 id) {
-    float base = densities[id];
-    float x = densities[id + uint3(1, 0, 0)];
-    float y = densities[id + uint3(0, 1, 0)];
-    float z = densities[id + uint3(0, 0, 1)];
+    float base = fetch(id);
+    float x = fetch(id + uint3(1, 0, 0));
+    float y = fetch(id + uint3(0, 1, 0));
+    float z = fetch(id + uint3(0, 0, 1));
     return normalize(float3(base-x, base-y, base-z));
 }
 
@@ -33,8 +47,8 @@ float invLerp(float from, float to, float value){
 
 [numthreads(8, 8, 8)]
 void CSFlatten(uint3 id : SV_DispatchThreadID) {
-    float base = densities[id];
-    float offset = densities[id + uint3(0, 1, 0)];
+    float base = fetch(id);
+    float offset = fetch(id + uint3(0, 1, 0));
     
     if (base < 0.0 && offset >= 0.0) {
         InterlockedMax(maxHeight[id.xz], id.y);
@@ -50,13 +64,13 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         return;
     }
 
-    float base = densities[idTemp];
-    float offset = densities[idTemp + uint3(0, 1, 0)];
+    float base = fetch(idTemp);
+    float offset = fetch(idTemp + uint3(0, 1, 0));
     float factor = invLerp(base, offset, 0.0);
     float floatHeight = factor + idTemp.y;
 
     vertices[index] = float3(id.x, floatHeight, id.y) + vertexOffset;
-    colors[index] = lerp(colorsIn[idTemp], colorsIn[idTemp + uint3(0, 1, 0)], factor);
+    colors[index] = 1.0;
     normals[index] = -normalize(lerp(normalMaxx(idTemp), normalMaxx(idTemp + uint3(0, 1, 0)), factor));
 
     if (any(id >= size-1)) {

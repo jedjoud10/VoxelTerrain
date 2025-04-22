@@ -16,7 +16,6 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> lacunarity;
         public Inject<float> detail;
         public FractalMode mode;
-        public AnimationCurve curve;
         [Range(1, 10)]
         public int octaves;
 
@@ -34,7 +33,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             // Create fractal 2D simplex noise
             Fractal<float2> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence);
             //var cached = fractal.Evaluate(xz).Cached(val, "xz");
-            Variable<float> tahini = fractal.Evaluate(xz).Curve(curve, -(Variable<float>)amplitude, amplitude);
+            Variable<float> tahini = fractal.Evaluate(xz);
             Variable<float> extra = Noise.VoronoiF2(position * new float3(1, 3, 1), 0.04f, 4.0f) * detail;
             Variable<float> amogus = tahini + extra;
             var density = amogus + y;
@@ -61,7 +60,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
                 ("rotation", rotation),
                 ("scale", check.Select<float>(0.0f, val * 3))
             );
-            output.material = (Noise.Simplex(position, 0.2f, 1.0f) > 0).Select<int>(1, 0);
+            output.material = 0;
+            //output.material = (Noise.Simplex(position, 0.2f, 1.0f) > 0).Select<int>(1, 0);
             //context.SpawnProp(GpuProp.Empty);
             //prop = GpuProp.Empty;
             //prop = prop.With(("xyz", position), ("w", (check & val).Select<float>(0.0f, 1.0f)));

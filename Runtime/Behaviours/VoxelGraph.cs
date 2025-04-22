@@ -48,8 +48,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 var exec = GetComponent<VoxelExecutor>();
                 exec.ExecuteShader(visualizer.size, 0, visualizer.offset, visualizer.scale, false, true);
                 RenderTexture density = (RenderTexture)exec.textures["voxels"];
-                RenderTexture colors = (RenderTexture)exec.textures["colors"];
-                visualizer.Meshify(density, colors);
+                //RenderTexture colors = (RenderTexture)exec.textures["colors"];
+                visualizer.Meshify(density);
             }
 #endif
         }

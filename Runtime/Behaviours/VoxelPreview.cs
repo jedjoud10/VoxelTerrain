@@ -24,6 +24,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public Vector3 scale = Vector3.one;
         public Vector3 offset;
+        public Mesh test;
+        public Material test2;
 
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
@@ -76,16 +78,15 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        public void Meshify(RenderTexture voxels, RenderTexture colors) {
+        public void Meshify(RenderTexture voxels) {
             if (useHeightSimplification) {
-                ExecuteHeightMapMesher(voxels, colors, -1, Vector3Int.zero);
+                ExecuteHeightMapMesher(voxels, -1, Vector3Int.zero);
             } else {
-                ExecuteSurfaceNetsMesher(voxels, colors);
+                ExecuteSurfaceNetsMesher(voxels);
             }
-
         }
 
-        public void ExecuteSurfaceNetsMesher(RenderTexture voxels, RenderTexture colors) {
+        public void ExecuteSurfaceNetsMesher(RenderTexture voxels) {
             if (atomicCounters == null || !atomicCounters.IsValid())
                 return;
 
@@ -99,8 +100,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             int minDispatch = Mathf.CeilToInt((float)size / 8.0f);
             int id = shader.FindKernel("CSVertex");
-            shader.SetTexture(id, "densities", voxels);
-            shader.SetTexture(id, "colorsIn", colors);
+            shader.SetTexture(id, "voxels", voxels);
             shader.SetBuffer(id, "atomicCounters", atomicCounters);
             shader.SetBuffer(id, "vertices", vertexBuffer);
             shader.SetBuffer(id, "normals", normalsBuffer);
@@ -110,7 +110,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             shader.Dispatch(id, minDispatch, minDispatch, minDispatch);
 
             id = shader.FindKernel("CSQuad");
-            shader.SetTexture(id, "densities", voxels);
+            shader.SetTexture(id, "voxels", voxels);
             shader.SetBuffer(id, "indices", indexBuffer);
             shader.SetTexture(id, "vertexIds", tempVertexTexture);
             shader.SetBuffer(id, "cmdBuffer", commandBuffer);
@@ -119,7 +119,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             shader.Dispatch(id, minDispatch, minDispatch, minDispatch);
         }
 
-        public void ExecuteHeightMapMesher(RenderTexture voxels, RenderTexture colors, int indexed, Vector3Int chunkOffset) {
+        public void ExecuteHeightMapMesher(RenderTexture voxels, int indexed, Vector3Int chunkOffset) {
             if (atomicCounters == null || !atomicCounters.IsValid())
                 return;
 
@@ -137,14 +137,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             Graphics.SetRenderTarget(null);
 
             int id = shader.FindKernel("CSFlatten");
-            shader.SetTexture(id, "densities", voxels);
+            shader.SetTexture(id, "voxels", voxels);
             shader.SetTexture(id, "maxHeight", maxHeightAtomic);
             shader.Dispatch(id, size / 8, size / 8, size / 8);
 
             id = shader.FindKernel("CSVertex");
             shader.SetInt("indexOffset", indexed == -1 ? 0 : indexed);
-            shader.SetTexture(id, "densities", voxels);
-            shader.SetTexture(id, "colorsIn", colors);
+            shader.SetTexture(id, "voxels", voxels);
             shader.SetTexture(id, "maxHeight", maxHeightAtomic);
             shader.SetBuffer(id, "indices", indexBuffer);
             shader.SetBuffer(id, "vertices", vertexBuffer);
@@ -178,7 +177,15 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // FIXME: Why do I need to use this instead of just render mesh primitives indexed inderect???
             // Also why do I need to handle the indexing myself???
+            RenderParams rparams = new RenderParams();
+            rparams.matProps = mat;
+            rparams.material = customRenderingMaterial;
+
+            // works
             Graphics.DrawProceduralIndirect(customRenderingMaterial, bounds, MeshTopology.Triangles, commandBuffer, properties: mat, castShadows: ShadowCastingMode.TwoSided);
+
+            // does not work. unity pls fix....
+            //Graphics.RenderPrimitivesIndexedIndirect(rparams, MeshTopology.Triangles, indexBuffer, commandBuffer);
         }
     }
 }
