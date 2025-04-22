@@ -3,9 +3,16 @@
 
 #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
 #include "UnityIndirect.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 
-RWTexture3D<float> densities;
-RWTexture3D<float3> colorsIn;
+RWTexture3D<uint> voxels;
+float fetch(uint3 id) {
+    float density;
+    uint material;
+    unpackVoxelData(voxels[id], density, material);
+    return density;
+}
+
 RWTexture3D<uint> vertexIds;
 
 bool blocky;
@@ -80,13 +87,13 @@ float invLerp(float from, float to, float value){
 }
 
 float3 normalMaxx(uint3 id) {
-    float base = densities[id];
-    float x = densities[id + uint3(1, 0, 0)];
-    float y = densities[id + uint3(0, 1, 0)];
-    float z = densities[id + uint3(0, 0, 1)];
-    float x2 = densities[id - uint3(1, 0, 0)];
-    float y2 = densities[id - uint3(0, 1, 0)];
-    float z2 = densities[id - uint3(0, 0, 1)];
+    float base = fetch(id);
+    float x = fetch(id + uint3(1, 0, 0));
+    float y = fetch(id + uint3(0, 1, 0));
+    float z = fetch(id + uint3(0, 0, 1));
+    float x2 = fetch(id - uint3(1, 0, 0));
+    float y2 = fetch(id - uint3(0, 1, 0));
+    float z2 = fetch(id - uint3(0, 0, 1));
     return normalize(float3(x2-x, y2-y, z2-z));
 }
 
@@ -99,13 +106,12 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
     int count = 0;
     float3 sum = float3(0, 0, 0);
     float3 normalSum = float3(0, 0, 0);
-    float3 colorSum = float3(0, 0, 0);
 
     for (int i = 0; i < 12; i++) {
         uint3 first = edgePositions0[i];
         uint3 second = edgePositions1[i];
-        float firstDensity = densities[id + first];
-        float secondDensity = densities[id + second];
+        float firstDensity = fetch(id + first);
+        float secondDensity = fetch(id + second);
 
         if (firstDensity < 0.0 ^ secondDensity < 0.0) {
             count++;
@@ -113,13 +119,11 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
             if (blocky) {
                 sum = 0.5;
                 normalSum = normalMaxx(id);
-                colorSum = colorsIn[id];
                 break;
             } else {
                 float unlerped = invLerp(firstDensity, secondDensity, 0.0);
                 sum += lerp(float3(first), float3(second), unlerped);
                 normalSum += normalize(lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped));
-                colorSum += lerp(colorsIn[id + first], colorsIn[id + second], unlerped);
             }
         }
     }
@@ -129,7 +133,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         InterlockedAdd(atomicCounters[0], 1, oldValue); 
         vertices[oldValue] = float3(id) + sum/float(count);
         normals[oldValue] = normalize(-normalSum);
-        colors[oldValue] = colorSum / float(count);
+        colors[oldValue] = 1.0;
         vertexIds[id+1] = oldValue;   
     }
 }
@@ -141,8 +145,8 @@ void CSQuad(uint3 id : SV_DispatchThreadID) {
     }
 
     for (int i = 0; i < 3; i++) {
-        float firstDensity = densities[id];
-        float secondDensity = densities[id + test[i]];
+        float firstDensity = fetch(id);
+        float secondDensity = fetch(id + test[i]);
         bool flip = firstDensity < 0.0;
 
         if (firstDensity < 0.0 ^ secondDensity < 0.0) {

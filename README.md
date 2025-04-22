@@ -10,6 +10,9 @@
   - Works for props, but I don't know if I should extend it to make it work with custom user input
 - Figure out ``CachedVar`` node stuff
 - Implement some sort of ``Diff`` node that create intermediate texture of size ``n+1``, and calculates finite diffs. from it.
-- Figure out how to get Async Compute Queue working
+- Figure out how to get Async Compute Queue working (only seems to work in DX12, didn't test on Vulkan). Async readback works on DX11 as well.
 - Implement smart range checking using texture value summation (cached textures)
 - Go octal mode and add inter chunk dependency unfortunately (will be good though since we can read a LOT more data back from the gpu)
+- Decide where to use ``SoA`` or ``AoS`` design for voxel data.
+  - How much voxel data will we need anyways?
+  - If it's a lot then just go with ``SoA``.

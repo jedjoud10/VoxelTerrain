@@ -309,46 +309,22 @@ MonoBehaviour:
   debugName: 1
   autoCompile: 1
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
-  hash: 659503503
+  hash: -2124068862
   transform1:
-    position: {x: -3.71, y: 1.23, z: -2.16}
+    position: {x: 0, y: 0, z: 0}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 1, y: 1, z: 1}
   scale:
-    x: 0.5
+    x: 0.002
   amplitude:
-    x: 30
+    x: 20
   persistence:
-    x: 1
+    x: 0.2
   lacunarity:
-    x: 1
+    x: 1.8
   detail:
-    x: 1
+    x: 0.5
   mode: 0
-  curve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
   octaves: 3
 --- !u!1 &664809940
 GameObject:
@@ -545,7 +521,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: size
-      value: 32
+      value: 128
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: test
@@ -569,11 +545,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.x
-      value: 0
+      value: -72.5
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.y
-      value: 0
+      value: -50.5
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.z
@@ -590,10 +566,10 @@ PrefabInstance:
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: customRenderingMaterial
       value: 
-      objectReference: {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+      objectReference: {fileID: -876546973899608171, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: useHeightSimplification
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Enabled

@@ -56,7 +56,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Creates dictionary with the default voxel graph textures (density + custom data)
             textures = new Dictionary<string, ExecutorTexture> {
                 { "voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt)) },
-                { "colors", new OutputExecutorTexture("colors", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R8G8B8A8_UNorm)) },
             };
 
             // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??

@@ -39,14 +39,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             AllInputs inputs = new AllInputs() { position = position };
             Execute(inputs, out AllOutputs outputs);
             ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
-            ScopeArgument colorArgument = new ScopeArgument("color", VariableType.StrictType.Float3, outputs.color, true);
             ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
             ScopeArgument materialArgument = new ScopeArgument("material", VariableType.StrictType.Int, outputs.material, true);
 
             ctx.currentScope = 0;
             ctx.scopes[0].name = "Voxel";
             ctx.scopes[0].arguments = new ScopeArgument[] {
-                tempPos, tempId, voxelArgument, colorArgument, materialArgument
+                tempPos, tempId, voxelArgument, materialArgument
             };
             ctx.Add(position, "position");
             outputs.density.Handle(ctx);
@@ -78,7 +77,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 writeCoords = "xyz",
                 outputs = new KernelOutput[] {
                     new KernelOutput { setter = "packVoxelData(voxel, material)", outputTextureName = "voxels" },
-                    new KernelOutput { setter = "color", outputTextureName = "colors" },
                 }
             });
 
