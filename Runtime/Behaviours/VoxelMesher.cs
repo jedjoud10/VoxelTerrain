@@ -120,13 +120,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         if (all && queuedJob.TryDequeue(out PendingMeshJob request)) {
                             pendingJobs.Remove(request);
                             BeginJob(handlers[i], request, neighbours, neighbourMask);
-                            /*
-                            if (all) {
-                            } else if (!skip) {
-                                // if we don't have all the neighbours ready yet, just take the job and put it at the end of the queue again
-                                queuedJob.Enqueue(request);
-                            }
-                            */
                         }
                     }
                 }
@@ -138,8 +131,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             handler.request = request;
             handler.startingFrame = Time.frameCount;
 
-            JobHandle temp = request.chunk.dependency.GetValueOrDefault();
-            var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule(temp);
+            var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
             handler.BeginJob(copy, neighbours, neighbourMask);
         }
 
@@ -147,7 +139,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (handler.chunk != null) {
                 VoxelChunk chunk = handler.chunk;
                 VoxelMesh stats = handler.Complete(chunk.sharedMesh);
-                chunk.dependency = default;
                 chunk.voxelMaterialsLookup = stats.VoxelMaterialsLookup;
                 chunk.triangleOffsetLocalMaterials = stats.TriangleOffsetLocalMaterials;
                 chunk.state = VoxelChunk.ChunkState.Done;

@@ -14,6 +14,12 @@ namespace jedjoud.VoxelTerrain.Generation {
         [SerializeField]
         private int hash;
 
+        [HideInInspector]
+        public int voxelsDispatchIndex;
+
+        [HideInInspector]
+        public int propsDispatchIndex;
+
         // Parses the voxel graph into a tree context with all required nodes and everything!!!
         public void ParsedTranspilation() {
             ctx = new TreeContext(debugName);
@@ -24,6 +30,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 // Prop generation scope
                 new TreeScope(0),
             };
+            voxelsDispatchIndex = 0;
+            propsDispatchIndex = 1;
             ctx.Hash(debugName);
 
             // Create the external inputs that we use inside the function scope

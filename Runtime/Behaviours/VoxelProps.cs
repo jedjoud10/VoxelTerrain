@@ -13,75 +13,78 @@ using System.Linq;
 using System.Net.NetworkInformation;
 
 namespace jedjoud.VoxelTerrain.Props {
-    public class TempTest {
-        public int count;
-        public NativeArray<BlittableProp> data;
-        public bool countSet;
-        public bool dataSet;
-        public Vector3 offset;
-        public float scale;
-        public Vector3Int chunkOffset;
-    }
-
     public class VoxelProps : VoxelBehaviour {
+        public bool spawnProps;
         public GameObject prop;
-        private Queue<(Vector3Int, VoxelChunk)> queuedOctalUnits;
-        private HashSet<Vector3Int> pendingOctalUnits;
-        private Dictionary<int, TempTest> frameIdTempData;
+        private Queue<(Vector3Int, VoxelChunk)> queuedChunks;
+        private HashSet<Vector3Int> pendingChunks;
+        private Dictionary<int, OngoingPropReadback> frameIdTempData;
+
+        // Packs some prop data alongside the chunk it was generated from
+        // TODO: Figure out if we need to stick to this or use the segmentation stuff that we did prior to the revamp
+        private class OngoingPropReadback {
+            // Number of props to spawn
+            public int count;
+
+            // The prop data that was readback from the GPU
+            public NativeArray<BlittableProp> data;
+
+            // We need both of these values to be true, since we do an async readback for the count buffer as well
+            public bool countSet;
+            public bool dataSet;
+
+            // Chunk stuff
+            public VoxelChunk chunk;
+        }
 
         public override void CallerStart() {
-            pendingOctalUnits = new HashSet<Vector3Int>();
-            queuedOctalUnits = new Queue<(Vector3Int, VoxelChunk)>();
-            frameIdTempData = new Dictionary<int, TempTest>();
+            pendingChunks = new HashSet<Vector3Int>();
+            queuedChunks = new Queue<(Vector3Int, VoxelChunk)>();
+            frameIdTempData = new Dictionary<int, OngoingPropReadback>();
         }
-
-        public override void CallerDispose() {
-            AsyncGPUReadback.WaitAllRequests();
-            Handle();
-
-            foreach (var item in frameIdTempData) {
-                if (item.Value.data.IsCreated) {
-                    item.Value.data.Dispose();
-                }
-            }
-        }
-
 
         public void GenerateProps(VoxelChunk chunk) {
-            Vector3Int octalPosition = chunk.chunkPosition;
-            if (pendingOctalUnits.Contains(octalPosition)) return;
-            queuedOctalUnits.Enqueue((octalPosition, chunk));
-            pendingOctalUnits.Add(octalPosition);
+            if (!spawnProps)
+                return;
+
+            Vector3Int position = chunk.chunkPosition;
+            if (pendingChunks.Contains(position)) return;
+            queuedChunks.Enqueue((position, chunk));
+            pendingChunks.Add(position);
         }
 
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {
-            if (queuedOctalUnits.TryDequeue(out var temp)) {
+            if (queuedChunks.TryDequeue(out var temp)) {
                 (Vector3Int position, VoxelChunk chunk) = temp;
-                pendingOctalUnits.Remove(position);
+                pendingChunks.Remove(position);
 
                 Vector3 offset = ((Vector3)position * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor);
                 float scale =  VoxelUtils.VoxelSizeFactor;
-                terrain.executor.ExecuteShader(VoxelUtils.SIZE, 1, offset, Vector3.one * scale, true, true);
+                terrain.executor.ExecuteShader(VoxelUtils.SIZE, terrain.graph.propsDispatchIndex, offset, Vector3.one * scale, true, true);
                 int frame = Time.frameCount;
 
-                frameIdTempData.Add(frame, new TempTest() { chunkOffset = position, offset = offset, scale = scale });
 
+                OngoingPropReadback readback = new OngoingPropReadback() { chunk = chunk };
+                frameIdTempData.Add(frame, readback);
+
+                // Read asynchronously from the props count buffer
                 AsyncGPUReadback.Request(
                     terrain.executor.buffers["props_counter"],
                     delegate (AsyncGPUReadbackRequest asyncRequest) {
-                        frameIdTempData[frame].count = asyncRequest.GetData<int>()[0];
-                        frameIdTempData[frame].countSet = true;
+                        readback.count = asyncRequest.GetData<int>()[0];
+                        readback.countSet = true;
                     }
                 );
 
+                // Read asynchronously from the props data buffer
                 AsyncGPUReadback.Request(
                     terrain.executor.buffers["props"],
                     delegate (AsyncGPUReadbackRequest asyncRequest) {
                         NativeArray<BlittableProp> data = new NativeArray<BlittableProp>(VoxelUtils.VOLUME, Allocator.Persistent);
                         data.CopyFrom(asyncRequest.GetData<BlittableProp>());
-                        frameIdTempData[frame].data = data;
-                        frameIdTempData[frame].dataSet = true;
+                        readback.data = data;
+                        readback.dataSet = true;
                     }
                 );
             }
@@ -92,9 +95,11 @@ namespace jedjoud.VoxelTerrain.Props {
         private void Handle() {
             int[] tempFrames = frameIdTempData.Keys.ToArray();
 
+            // Checks all the ongoing prop readbacks and spawns the props for those that have both the prop data & prop count
             foreach (int frame in tempFrames) {
                 var val = frameIdTempData[frame];
                 if (val.dataSet && val.countSet) {
+                    // Just in case...
                     if (val.count > 10000) {
                         Debug.LogWarning("YOU ARE SPAWNING MORE THAN 10k PROPS IN ONE SINGLE CHUNK!!!");
                         return;
@@ -105,23 +110,6 @@ namespace jedjoud.VoxelTerrain.Props {
                         Prop unpacked = PropUtils.UnpackProp(packed);
 
                         Vector3 position = unpacked.position;
-                        position = (position / val.scale - val.offset);
-                        position += (Vector3)val.chunkOffset * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
-
-                        //position *= VoxelUtils.VoxelSizeFactor;
-                        //position -= Vector3.one * 1.5f * VoxelUtils.VoxelSizeFactor;
-
-                        //position -= math.float3(1);
-                        /*
-                        position *= 1.0f;
-                        position += (Vector3)val.chunkOffset * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
-                        position *= VoxelUtils.VoxelSizeFactor;
-                        position += -Vector3.one * VoxelUtils.VoxelSizeFactor;
-                        */
-
-                        //position *= VoxelUtils.VertexScaling;
-                        //position += (Vector3)val.chunkOffset * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
-
                         GameObject go = Instantiate(prop, transform);
                         go.transform.position = position;
                         go.transform.localScale = Vector3.one * unpacked.scale;
@@ -132,6 +120,17 @@ namespace jedjoud.VoxelTerrain.Props {
 
                     val.data.Dispose();
                     frameIdTempData.Remove(frame);
+                }
+            }
+        }
+
+        public override void CallerDispose() {
+            AsyncGPUReadback.WaitAllRequests();
+            Handle();
+
+            foreach (var item in frameIdTempData) {
+                if (item.Value.data.IsCreated) {
+                    item.Value.data.Dispose();
                 }
             }
         }

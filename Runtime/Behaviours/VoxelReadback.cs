@@ -33,14 +33,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        public override void CallerDispose() {
-            AsyncGPUReadback.WaitAllRequests();
-            foreach (var item in voxelNativeArrays) {
-                item.Dispose();
-            }
-        }
-
-
         // Add the given chunk inside the queue for voxel generation
         public void GenerateVoxels(VoxelChunk chunk) {
             chunk.state = VoxelChunk.ChunkState.VoxelGeneration;
@@ -50,21 +42,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             queuedOctalUnits.Enqueue(octalPosition);
             pendingOctalUnits.Add(octalPosition);
-        }
-
-        [BurstCompile]
-        unsafe struct FillUp : IJobParallelFor {
-            [ReadOnly]
-            [NativeDisableUnsafePtrRestriction]
-            public uint* raw;
-            [WriteOnly]
-            public NativeArray<Voxel> voxels;
-            public void Execute(int index) {
-                voxels[index] = new Voxel {
-                    density = (half)math.f16tof32(raw[index] & 0xFFFF),
-                    material = (byte)((raw[index] >> 16) & 0xFF),
-                };
-            }
         }
 
         // Get the latest chunk in the queue and generate voxel data for it
@@ -85,9 +62,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                     // Size*2 since we are using octal generation!
                     Vector3 worldPosition = 2.0f * (Vector3)position * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
                     Vector3 worldScale = Vector3.one * VoxelUtils.VoxelSizeFactor;
-                    terrain.executor.ExecuteShader(VoxelUtils.SIZE*2, 0, worldPosition, worldScale, true, true);
+                    terrain.executor.ExecuteShader(VoxelUtils.SIZE*2, terrain.graph.voxelsDispatchIndex, worldPosition, worldScale, true, true);
 
-                    // Change chunk states
+                    // Change chunk states, since we are now waiting for voxel readback
                     for (int j = 0; j < 8; j++) {
                         int3 temp2 = (int3)VoxelUtils.IndexToPosMorton(j);
                         Vector3Int offset = new Vector3Int(temp2.x, temp2.y, temp2.z);
@@ -106,7 +83,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                                 // We have to do this to stop unity from complaining about using the data...
                                 // fuck you...
                                 uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(data);
-                                //BulkAsyncRequest bulk = new BulkAsyncRequest() { currentChunkCount = 0, bitArray = freeVoxelNativeArrays, index = cpy };
 
                                 for (int j = 0; j < 8; j++) {
                                     // TODO: do the smart count neg/pos check here when we implement it
@@ -117,18 +93,14 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                                     if (terrain.totalChunks.ContainsKey(position * 2 + offset)) {
                                         var chunk = terrain.totalChunks[position * 2 + offset].GetComponent<VoxelChunk>();
-                                        
-                                        JobHandle handle = new FillUp() {
-                                            // nghh I love unsafe pointers... 🤤👅
-                                            raw = pointer + (VoxelUtils.VOLUME * j),
-                                            voxels = chunk.voxels,
-                                        }.Schedule(VoxelUtils.VOLUME, 8192 * VoxelUtils.SchedulingInnerloopBatchCount);
-                                        handle.Complete();
-                                        chunk.state = VoxelChunk.ChunkState.Temp;
 
-                                        // FIXME: Really unsafe, since we're assuming that meshing takes less time (takes one tick or less) for all the chunks
-                                        // If not, then we could theoretically be doing another async request on a texture that's still in use by chunks that have not copied their data over yet
-                                        chunk.dependency = handle;
+                                        // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
+                                        // We just need to do some memory copies at the right src offsets
+                                        uint* src = pointer + (VoxelUtils.VOLUME * j);
+                                        uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
+                                        UnsafeUtility.MemCpy(dst, src, VoxelUtils.VOLUME * Voxel.size);
+
+                                        chunk.state = VoxelChunk.ChunkState.Temp;
                                         onReadbackSuccessful?.Invoke(chunk);
                                     }
                                 }
@@ -140,18 +112,11 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
             }
         }
-    }
 
-    public class BulkAsyncRequest {
-        public int currentChunkCount;
-        public BitArray bitArray;
-        public int index;
-
-        public void Dispose() {
-            currentChunkCount++;
-
-            if (currentChunkCount == 8) {
-                bitArray[index] = true;
+        public override void CallerDispose() {
+            AsyncGPUReadback.WaitAllRequests();
+            foreach (var item in voxelNativeArrays) {
+                item.Dispose();
             }
         }
     }

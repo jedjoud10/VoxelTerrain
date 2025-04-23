@@ -31,10 +31,6 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public NativeArray<Voxel> voxels;
 
-        // Pending job dependency that we must pass to the mesher
-        [HideInInspector]
-        public JobHandle? dependency;
-
         // Chunk position relative to the map origin
         public Vector3Int chunkPosition;
 

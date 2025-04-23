@@ -30,11 +30,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf)
                 return;
 
-            //ComputeSecondarySeeds();
             SoftRecompile();
             OnPropertiesChanged();
-            /*
-            */
         }
 
         // Called when the voxel graph's properties get modified
@@ -48,7 +45,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 var exec = GetComponent<VoxelExecutor>();
                 exec.ExecuteShader(visualizer.size, 0, visualizer.offset, visualizer.scale, false, true);
                 RenderTexture density = (RenderTexture)exec.textures["voxels"];
-                //RenderTexture colors = (RenderTexture)exec.textures["colors"];
                 visualizer.Meshify(density);
             }
 #endif

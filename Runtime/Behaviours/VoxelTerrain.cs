@@ -192,7 +192,6 @@ namespace jedjoud.VoxelTerrain {
 
             foreach (var (key, value) in totalChunks) {
                 VoxelChunk voxelChunk = value.GetComponent<VoxelChunk>();
-                voxelChunk.dependency?.Complete();
                 voxelChunk.voxels.Dispose();
             }
         }

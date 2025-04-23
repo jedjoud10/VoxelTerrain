@@ -25,17 +25,13 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             VoxelEditResults results = new VoxelEditResults() { counters = counters, finishedChunksCount = 0 };
 
+            // Make a list of all the chunks that could possibly be affected by the edit (using AABB checks)
             int affected = 0;
             List<VoxelChunk> chunks = new List<VoxelChunk>();
             foreach (var (key, chunk) in terrain.totalChunks) {
                 var voxelChunk = chunk.GetComponent<VoxelChunk>();
 
                 if (voxelChunk.GetBounds().Intersects(editBounds)) {
-                    if (voxelChunk.dependency.HasValue) {
-                        voxelChunk.dependency.Value.Complete();
-                    }
-
-                    // unrelated...
                     affected++;
                     chunks.Add(voxelChunk);
                 }
@@ -51,7 +47,6 @@ namespace jedjoud.VoxelTerrain.Edits {
                 VoxelChunk chunk = chunks[i];
 
                 JobHandle handle = edit.Apply(chunk.transform.position, chunk.voxels, counter);
-                chunk.dependency = handle;
                 handles[i] = handle;
             }
 
