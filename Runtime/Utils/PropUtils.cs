@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     public static class PropUtils {
-        public static Prop UnpackProp(BlittableProp prop) {
+        public static GpuProp UnpackProp(BlittableProp prop) {
             static float Single(byte rot) {
                 const float RATIO = 360.0f / 255.0f;
                 return ((float)rot * RATIO);
@@ -18,10 +18,12 @@ namespace jedjoud.VoxelTerrain {
             float scale = prop.scale;
             float3 rotation = new float3(Single(prop.rot_x), Single(prop.rot_y), Single(prop.rot_z));
 
-            return new Prop() {
+            return new GpuProp() {
                 position = position,
                 rotation = rotation,
                 scale = scale,
+                type = 0,
+                variant = prop.variant,
             };
         }
     }

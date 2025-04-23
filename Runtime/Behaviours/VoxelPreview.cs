@@ -5,7 +5,6 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     [ExecuteInEditMode]
     public class VoxelPreview : MonoBehaviour {
-        public bool materialId;
         public ComputeShader surfaceNetsCompute;
         public ComputeShader heightMapCompute;
         private GraphicsBuffer indexBuffer;
@@ -17,7 +16,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         private RenderTexture tempVertexTexture;
         private RenderTexture maxHeightAtomic;
         public Material customRenderingMaterial;
-        private GraphicsBuffer.IndirectDrawIndexedArgs aaa;
+        private GraphicsBuffer.IndirectDrawIndexedArgs defaultArgs;
+        public bool materialId;
         public bool blocky;
         public bool useHeightSimplification;
         public bool flatshaded;
@@ -41,7 +41,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, GraphicsBuffer.IndirectDrawIndexedArgs.size);
             atomicCounters = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 2, sizeof(uint));
 
-            aaa = new GraphicsBuffer.IndirectDrawIndexedArgs {
+            defaultArgs = new GraphicsBuffer.IndirectDrawIndexedArgs {
                 baseVertexIndex = 0,
                 instanceCount = 1,
                 startIndex = 0,
@@ -49,7 +49,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 indexCountPerInstance = 0,
             };
 
-            commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { aaa });
+            commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { defaultArgs });
 
             tempVertexTexture = TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
             maxHeightAtomic = TextureUtils.Create2DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
@@ -91,7 +91,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             int size = voxels.width;
             atomicCounters.SetData(new uint[2] { 0, 0 });
-            commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { aaa });
+            commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { defaultArgs });
 
             var shader = surfaceNetsCompute;
             shader.SetBool("blocky", blocky);
@@ -126,7 +126,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             int size = voxels.width;
 
             if (indexed == -1)
-                commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { aaa });
+                commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { defaultArgs });
 
             var shader = heightMapCompute;
             shader.SetInt("size", size);

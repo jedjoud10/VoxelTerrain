@@ -309,7 +309,7 @@ MonoBehaviour:
   debugName: 1
   autoCompile: 1
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
-  hash: -2111281530
+  hash: -1167929507
   voxelsDispatchIndex: 0
   propsDispatchIndex: 1
   transform1:
@@ -319,21 +319,21 @@ MonoBehaviour:
   scale:
     x: 0.001
   amplitude:
-    x: 37.3
+    x: 12.09
   persistence:
-    x: 0.3
+    x: 0.5
   lacunarity:
     x: 1.9
   detailScale:
     x: 0.01
   detailProbability:
-    x: 0.3
+    x: 0.1
   detailAmplitude:
     x: 75.1
   materialHeight:
-    x: -12.51
+    x: -42.45
   materialHeightNoisy:
-    x: -9.68
+    x: -20
   mode: 0
   octaves: 5
 --- !u!1 &664809940
@@ -665,6 +665,14 @@ PrefabInstance:
       propertyPath: spawnProps
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4459649915349211665, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: props.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4459649915349211665, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: 'props.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 877753c34810a33449994056ab9cd85d, type: 2}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: meshJobsPerTick
       value: 4
@@ -763,7 +771,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: flatshaded
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialId

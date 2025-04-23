@@ -57,7 +57,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public class AllOutputs {
             public Variable<float> density;
-            public Variable<Prop> prop;
+            public Variable<GpuProp> prop;
             public Variable<int> material;
         }
 

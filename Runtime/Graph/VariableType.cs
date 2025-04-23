@@ -37,7 +37,7 @@ namespace jedjoud.VoxelTerrain {
         public string ToStringType() {
             switch (strict) {
                 case StrictType.Prop:
-                    return "Prop";
+                    return "GpuProp";
                 default:
                     return strict.ToString().ToLower();
             }
@@ -73,7 +73,7 @@ namespace jedjoud.VoxelTerrain {
                     output = new(StrictType.Bool3); break;
                 case "bool4":
                     output = new(StrictType.Bool4); break;
-                case "Prop":
+                case "GpuProp":
                     output = new(StrictType.Prop); break;
 
                 default:
@@ -98,8 +98,8 @@ namespace jedjoud.VoxelTerrain {
                     float4 f4 = (float4)temp;
                     return $"float4({f4.x},{f4.y},{f4.z},{f4.w})";
                 case StrictType.Prop:
-                    Prop prop = (Prop)temp;
-                    return $"{{ {ToDefinableString<float3>(prop.position)}, {ToDefinableString<float3>(prop.rotation)}, {prop.scale} }}";
+                    GpuProp prop = (GpuProp)temp;
+                    return $"{{ {ToDefinableString<float3>(prop.position)}, {ToDefinableString<float3>(prop.rotation)}, {prop.scale}, {prop.type}, {prop.variant} }}";
                 default:
                     return value.ToString();
             }

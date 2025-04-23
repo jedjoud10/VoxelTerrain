@@ -15,7 +15,7 @@ using System.Net.NetworkInformation;
 namespace jedjoud.VoxelTerrain.Props {
     public class VoxelProps : VoxelBehaviour {
         public bool spawnProps;
-        public GameObject prop;
+        public List<PropType> props;
         private Queue<(Vector3Int, VoxelChunk)> queuedChunks;
         private HashSet<Vector3Int> pendingChunks;
         private Dictionary<int, OngoingPropReadback> frameIdTempData;
@@ -107,10 +107,13 @@ namespace jedjoud.VoxelTerrain.Props {
 
                     for (int i = 0; i < val.count; i++) {
                         BlittableProp packed = val.data[i];
-                        Prop unpacked = PropUtils.UnpackProp(packed);
+                        GpuProp unpacked = PropUtils.UnpackProp(packed);
+
+                        PropType type = props[unpacked.type];
+                        PropType.Variant variant = type.variants[unpacked.variant];
 
                         Vector3 position = unpacked.position;
-                        GameObject go = Instantiate(prop, transform);
+                        GameObject go = Instantiate(variant.prefab, transform);
                         go.transform.position = position;
                         go.transform.localScale = Vector3.one * unpacked.scale;
                         go.transform.rotation = Quaternion.Euler(unpacked.rotation);

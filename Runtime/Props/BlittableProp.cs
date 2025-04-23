@@ -3,10 +3,10 @@ using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Props {
-
     // TODO: Also implement the prop type system
     // TODO: Also implement the prop variants system
     // TODO: implement dispatch index
+    // Props of the same type are stored in the same GPU buffer, so no need to do any funky stuff with that
     [StructLayout(LayoutKind.Sequential)]
     public struct BlittableProp {
         // Size in bytes of the blittable prop
@@ -22,18 +22,11 @@ namespace jedjoud.VoxelTerrain.Props {
         public byte rot_y;
         public byte rot_z;
 
-        public byte _padding;
+        // Prop variant type
+        public byte variant;
+
         public uint _padding2;
 
         public static BlittableProp None = new BlittableProp();
-    }
-
-    // TODO: Also implement the prop type system
-    // TODO: Also implement the prop variants system
-    // TODO: implement dispatch index
-    public struct Prop {
-        public float3 position;
-        public float3 rotation;
-        public float scale;
     }
 }

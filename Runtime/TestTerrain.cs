@@ -35,43 +35,39 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var xz = projected.Swizzle<float2>("xz");
 
             // Create fractal 2D simplex noise
-            Fractal<float2> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence);
-            //var cached = fractal.Evaluate(xz).Cached(val, "xz");
-            Variable<float> tahini = fractal.Evaluate(xz);
+            Variable<float> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence).Evaluate(xz);
+
+            // Some pyramids...
             Variable<float> extra = Cellular<float2>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(xz.Scaled(detailScale)) * detailAmplitude;
-            Variable<float> amogus = tahini + extra;
-            var density = amogus + y;
-            //tahini = new SdfBox(new float3(30.0)).Evaluate(position);
-            //density = Sdf.Union(y, tahini);
+            
+            // Create a new density parameter
+            var density = extra + fractal + y;
 
-
-
-            var color = (Random.Evaluate<float2, float>(xz, false)).Broadcast<float3>();
-
+            // Some checks for prop generation
             Variable<float> test = position.Swizzle<float>("y");
             Variable<float2> flat = position.Swizzle<float2>("xz");
             Variable<bool> check = density > -0.2f & density < 0.2f;
             Variable<float> val = (new Simplex(0.01f, 1.0f).Evaluate(flat) - 0.2f).ClampZeroOne();
             check &= Random.Evaluate<float3, float>(position, false) > 0.95f;
 
+            // Generate a random rotation for the props
             Variable<float3> rotation = Random.Evaluate<float3, float3>(position, true);
 
+            // Set the output values
             output = new AllOutputs();
             output.density = density;
-            output.prop = GraphUtils.Zero<Prop>().With(
+
+            // For now we support only spawning one prop per voxel dispatch, but this will be changed for a more flexible system
+            output.prop = GraphUtils.Zero<GpuProp>().With(
                 ("position", position),
                 ("rotation", rotation),
-                ("scale", check.Select<float>(0f, 1f))
+                ("scale", check.Select<float>(0f, 1f)),
+                ("variant", Random.Uniform(position.Scaled(0.2584f), 0.5f).Select<int>(0, 1))
             );
-            //output.material = 0;
-            var uhhh = ((y + Noise.Simplex(position, 0.04f, materialHeightNoisy)) > materialHeight).Select<int>(2, 1);
 
+            // Do some funky material picking
+            var uhhh = ((y + Noise.Simplex(position, 0.04f, materialHeightNoisy)) > materialHeight).Select<int>(2, 1);
             output.material = (Noise.Simplex(position, 0.02f, 1.0f) > 0).Select<int>(uhhh, 0);
-            //context.SpawnProp(GpuProp.Empty);
-            //prop = GpuProp.Empty;
-            //prop = prop.With(("xyz", position), ("w", (check & val).Select<float>(0.0f, 1.0f)));
-            //prop = prop.With(("x", (Variable<float>)0.0f));
-            //prop = position.Swizzle<float4>("xyz", (check & val).Select<float>(0.0f, 1.0f));
         }
     }
 }

@@ -1,16 +1,14 @@
-// NOTE: For some fucking reason whenever we read the data on the CPU
-// endianess / byte order is fucked and the lowest byte is actually the highest idk
-// Will need to figure out why this happens later on but for now it works ok
-
 struct BlittableProp {
     uint2 packed_position_and_scale;
     uint2 packed_rotation_dispatch_index_prop_variant_padding;
 };
 
-struct Prop {
+struct GpuProp {
     float3 position;
 	float3 rotation;
     float scale;
+	uint type;
+	uint variant;
 };
 
 uint2 PackPositionAndScale(float3 position, float scale) {
@@ -37,14 +35,14 @@ float UnpackRotation(uint rot) {
 	return (rot / 255.0) * 360.0;
 }
 
-uint2 PackRotationAndVariantAndId(float3 rotation, uint propVariant, uint id) {
+uint2 PackRotationAndVariantAndId(float3 rotation, uint propVariant) {
 	uint x = NormalizeAndPackAngle(rotation.x);
 	uint y = NormalizeAndPackAngle(rotation.y);
 	uint z = NormalizeAndPackAngle(rotation.z);
-	uint rots = x | (y << 8) | (z << 16);
-	uint rest = id | (propVariant << 16);
-
-	return uint2(rots, rest);
+	uint rots = x | (y << 8) | (z << 16) | (propVariant << 24);
+	
+	// TODO: USE THE REMAINING 4 BYTES!!!
+	return uint2(rots, 0);
 }
 
 float3 UnpackRotation(uint2 packed) {
@@ -63,9 +61,9 @@ uint UnpackVariant(uint2 packed) {
 	return packed.y >> 16;
 }
 
-BlittableProp PackProp(Prop input) {
+BlittableProp PackProp(GpuProp input) {
 	BlittableProp packed;
 	packed.packed_position_and_scale = PackPositionAndScale(input.position, input.scale);
-	packed.packed_rotation_dispatch_index_prop_variant_padding = PackRotationAndVariantAndId(input.rotation, 0, 0);
+	packed.packed_rotation_dispatch_index_prop_variant_padding = PackRotationAndVariantAndId(input.rotation, input.variant);
 	return packed;
 }
