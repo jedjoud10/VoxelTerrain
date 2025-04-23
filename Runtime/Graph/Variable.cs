@@ -203,5 +203,17 @@ namespace jedjoud.VoxelTerrain.Generation {
         public static Variable<float> Magnitude(this Variable<float4> self) {
             return new LengthNode<float4>() { a = self };
         }
+
+        public static Variable<float2> Scaled(this Variable<float2> self, Variable<float> other) {
+            return new SimpleBinOpNode<float2, float, float2>() { a = self, b = other, op = "*" };
+        }
+
+        public static Variable<float3> Scaled(this Variable<float3> self, Variable<float> other) {
+            return new SimpleBinOpNode<float3, float, float3>() { a = self, b = other, op = "*" };
+        }
+
+        public static Variable<float4> Scaled(this Variable<float4> self, Variable<float> other) {
+            return new SimpleBinOpNode<float4, float, float4>() { a = self, b = other, op = "*" };
+        }
     }
 }
