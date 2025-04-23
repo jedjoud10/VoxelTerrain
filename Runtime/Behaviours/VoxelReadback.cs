@@ -44,6 +44,18 @@ namespace jedjoud.VoxelTerrain.Generation {
             pendingOctalUnits.Add(octalPosition);
         }
 
+        [BurstCompile(CompileSynchronously = true)]
+        unsafe struct AsyncMemCopy : IJob {
+            [NativeDisableUnsafePtrRestriction]
+            public uint* src;
+            [NativeDisableUnsafePtrRestriction]
+            public uint* dst;
+            public long size;
+            public void Execute() {
+                UnsafeUtility.MemCpy(dst, src, size);
+            }
+        }
+
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {
             for (int i = 0; i < asyncReadbackPerTick; i++) {
@@ -65,6 +77,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     terrain.executor.ExecuteShader(VoxelUtils.SIZE*2, terrain.graph.voxelsDispatchIndex, worldPosition, worldScale, true, true);
 
                     // Change chunk states, since we are now waiting for voxel readback
+                    List<VoxelChunk> chunks = new List<VoxelChunk>();
                     for (int j = 0; j < 8; j++) {
                         int3 temp2 = (int3)VoxelUtils.IndexToPosMorton(j);
                         Vector3Int offset = new Vector3Int(temp2.x, temp2.y, temp2.z);
@@ -72,6 +85,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                         if (terrain.totalChunks.ContainsKey(position * 2 + offset)) {
                             var chunk = terrain.totalChunks[position * 2 + offset].GetComponent<VoxelChunk>();
                             chunk.state = VoxelChunk.ChunkState.VoxelReadback;
+                            chunks.Add(chunk);
                         }
                     }
 
@@ -84,27 +98,36 @@ namespace jedjoud.VoxelTerrain.Generation {
                                 // fuck you...
                                 uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(data);
 
-                                for (int j = 0; j < 8; j++) {
+                                NativeArray<JobHandle> copies = new NativeArray<JobHandle>(chunks.Count, Allocator.Temp);
+
+                                // Start doing the memcpy asynchronously...
+                                for (int j = 0; j < chunks.Count; j++) {
                                     // TODO: do the smart count neg/pos check here when we implement it
                                     // Allows us to avoid generating meshes for specific chunks.
+                                    VoxelChunk chunk = chunks[j];
 
-                                    int3 temp2 = (int3)VoxelUtils.IndexToPosMorton(j);
-                                    Vector3Int offset = new Vector3Int(temp2.x, temp2.y, temp2.z);
-
-                                    if (terrain.totalChunks.ContainsKey(position * 2 + offset)) {
-                                        var chunk = terrain.totalChunks[position * 2 + offset].GetComponent<VoxelChunk>();
-
-                                        // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
-                                        // We just need to do some memory copies at the right src offsets
-                                        uint* src = pointer + (VoxelUtils.VOLUME * j);
-                                        uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
-                                        UnsafeUtility.MemCpy(dst, src, VoxelUtils.VOLUME * Voxel.size);
-
-                                        chunk.state = VoxelChunk.ChunkState.Temp;
-                                        onReadbackSuccessful?.Invoke(chunk);
-                                    }
+                                    // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
+                                    // We just need to do some memory copies at the right src offsets
+                                    uint* src = pointer + (VoxelUtils.VOLUME * j);
+                                    uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
+                                    copies[j] = new AsyncMemCopy {
+                                        src = src,
+                                        dst = dst,
+                                        size = VoxelUtils.VOLUME * Voxel.size,
+                                    }.Schedule();
                                 }
 
+                                // Wait for all the memcpy's to finish
+                                JobHandle.CompleteAll(copies);
+
+                                // Callback
+                                for (int j = 0; j < chunks.Count; j++) {
+                                    VoxelChunk chunk = chunks[j];
+                                    chunk.state = VoxelChunk.ChunkState.Temp;
+                                    onReadbackSuccessful?.Invoke(chunk);
+                                }
+
+                                copies.Dispose();
                                 freeVoxelNativeArrays[cpy] = true;
                             }
                         }

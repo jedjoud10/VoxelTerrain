@@ -10,6 +10,7 @@ RWTexture3D<uint> voxels;
 RWTexture3D<uint> vertexIds;
 
 bool blocky;
+bool materialId;
 int size;
 
 RWStructuredBuffer<float3> vertices;
@@ -100,12 +101,15 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
     int count = 0;
     float3 sum = float3(0, 0, 0);
     float3 normalSum = float3(0, 0, 0);
+    float3 colorSum = float3(0,0,0);
 
     for (int i = 0; i < 12; i++) {
         uint3 first = edgePositions0[i];
         uint3 second = edgePositions1[i];
         float firstDensity = fetch(id + first);
         float secondDensity = fetch(id + second);
+        float3 firstColor = fetchMatId(id + first);
+        float3 secondColor = fetchMatId(id + second);
 
         if (firstDensity < 0.0 ^ secondDensity < 0.0) {
             count++;
@@ -113,11 +117,13 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
             if (blocky) {
                 sum = 0.5;
                 normalSum = normalMaxx(id);
+                colorSum += lerp(firstColor, secondColor, 0.5);
                 break;
             } else {
                 float unlerped = invLerp(firstDensity, secondDensity, 0.0);
                 sum += lerp(float3(first), float3(second), unlerped);
                 normalSum += normalize(lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped));
+                colorSum += lerp(firstColor, secondColor, unlerped);
             }
         }
     }
@@ -127,7 +133,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         InterlockedAdd(atomicCounters[0], 1, oldValue); 
         vertices[oldValue] = float3(id) + sum/float(count);
         normals[oldValue] = normalize(-normalSum);
-        colors[oldValue] = 1.0;
+        colors[oldValue] = materialId ? (colorSum / float(count)) : 1.0;
         vertexIds[id+1] = oldValue;   
     }
 }

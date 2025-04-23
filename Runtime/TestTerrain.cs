@@ -17,6 +17,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> detailScale;
         public Inject<float> detailProbability;
         public Inject<float> detailAmplitude;
+        public Inject<float> materialHeight;
+        public Inject<float> materialHeightNoisy;
         public FractalMode mode;
         [Range(1, 10)]
         public int octaves;
@@ -62,7 +64,9 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
                 ("scale", check.Select<float>(0f, 1f))
             );
             //output.material = 0;
-            output.material = (Noise.Simplex(position, 0.02f, 1.0f) > 0).Select<int>(1, 0);
+            var uhhh = ((y + Noise.Simplex(position, 0.04f, materialHeightNoisy)) > materialHeight).Select<int>(2, 1);
+
+            output.material = (Noise.Simplex(position, 0.02f, 1.0f) > 0).Select<int>(uhhh, 0);
             //context.SpawnProp(GpuProp.Empty);
             //prop = GpuProp.Empty;
             //prop = prop.With(("xyz", position), ("w", (check & val).Select<float>(0.0f, 1.0f)));

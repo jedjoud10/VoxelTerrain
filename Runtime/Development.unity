@@ -309,13 +309,13 @@ MonoBehaviour:
   debugName: 1
   autoCompile: 1
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
-  hash: 1049449756
+  hash: -2111281530
   voxelsDispatchIndex: 0
   propsDispatchIndex: 1
   transform1:
     position: {x: 0, y: 0, z: 0}
     rotation: {x: 0, y: 0, z: 0}
-    scale: {x: 10, y: 10, z: 10}
+    scale: {x: 1, y: 1, z: 1}
   scale:
     x: 0.001
   amplitude:
@@ -330,6 +330,10 @@ MonoBehaviour:
     x: 0.3
   detailAmplitude:
     x: 75.1
+  materialHeight:
+    x: -12.51
+  materialHeightNoisy:
+    x: -9.68
   mode: 0
   octaves: 5
 --- !u!1 &664809940
@@ -619,7 +623,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: ticksPerSecond
-      value: 32
+      value: 64
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: maxTicksPerFrame
@@ -627,11 +631,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: voxelSizeReduction
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materials.Array.size
-      value: 2
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: 'materials.Array.data[0]'
@@ -641,9 +645,17 @@ PrefabInstance:
       propertyPath: 'materials.Array.data[1]'
       value: 
       objectReference: {fileID: 11400000, guid: 56f8c19583636144483d60796fa5eca9, type: 2}
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: 'materials.Array.data[2]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 70763bc693187524f91243c1a8bcd3b4, type: 2}
     - target: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Name
       value: Voxel Terrain
+      objectReference: {fileID: 0}
+    - target: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4459649915349211665, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Enabled
@@ -655,7 +667,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: meshJobsPerTick
-      value: 1
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 5361457892440788241, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_LocalPosition.x
@@ -699,11 +711,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.x
-      value: 10
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.z
-      value: 10
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: size
@@ -735,15 +747,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.x
-      value: 0
+      value: 792.1
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.y
-      value: -154.3
+      value: -118
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.z
-      value: 0
+      value: 76.9
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Enabled
@@ -754,12 +766,16 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: materialId
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: customRenderingMaterial
       value: 
       objectReference: {fileID: -876546973899608171, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: useHeightSimplification
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Enabled

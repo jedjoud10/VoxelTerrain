@@ -26,6 +26,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new Simplex(scale, amplitude).Evaluate(input);
         }
 
+        public static Variable<float> Simplex<T>(Variable<T> input, Variable<float> scale, Variable<float> amplitude) {
+            return new Simplex(scale, amplitude).Evaluate(input);
+        }
+
         public static Variable<float> VoronoiF1<T>(Variable<T> input, float scale, float amplitude) {
             return new Voronoi(scale, amplitude, Voronoi.Type.F1).Evaluate(input);
         }

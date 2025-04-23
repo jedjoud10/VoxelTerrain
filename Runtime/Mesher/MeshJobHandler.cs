@@ -232,23 +232,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 maxMaterials = maxMaterials,
                 maxVertices = maxVertices,
                 maxIndices = maxIndices,
+                counters = countersQuad,
+                materialSegmentOffsets = materialSegmentOffsets,
                 data = data,
             };
             test.Schedule().Complete();
 
             Mesh.ApplyAndDisposeWritableMeshData(array, mesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
-
-            /*
-            mesh.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
-            mesh.SetVertexBufferData(vertices.Reinterpret<Vector3>(), 0, 0, maxVertices, 0, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
-            mesh.SetVertexBufferData(normals.Reinterpret<Vector3>(), 0, 0, maxVertices, 1, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
-            mesh.SetVertexBufferData(uvs.Reinterpret<Vector2>(), 0, 0, maxVertices, 2, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
-
-            // Set mesh indices
-            mesh.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);
-            mesh.SetIndexBufferData(permTriangles, 0, 0, maxIndices);
-            mesh.subMeshCount = maxMaterials;
-            */
 
             // Create a material array for the new materials
             // This will allow us to map submesh index -> material index
@@ -270,16 +260,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 if (countIndices > 0) {
                     lookup2[i] = (lookup[i], segmentOffset);
-                    mesh.SetSubMesh(i, new SubMeshDescriptor {
-                        indexStart = segmentOffset,
-                        indexCount = countIndices,
-                        topology = MeshTopology.Triangles,
-                    }, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
                 } else {
                     // null...
                     lookup2[i] = (byte.MaxValue, segmentOffset);
                 }
-
             }
 
             chunk = null;
@@ -332,19 +316,36 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
         [ReadOnly]
         public NativeSlice<int> permTriangles;
+        [ReadOnly]
+        public Unsafe.NativeMultiCounter counters;
+        [ReadOnly]
+        public NativeArray<int> materialSegmentOffsets;
 
         public void Execute() {
             data.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
 
-            vertices.CopyTo(data.GetVertexData<float3>(0)); // (vertices.Reinterpret<Vector3>(), 0, 0, maxVertices, 0, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
-            normals.CopyTo(data.GetVertexData<float3>(1)); //data.SetVertexBufferData(normals.Reinterpret<Vector3>(), 0, 0, maxVertices, 1, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
-            uvs.CopyTo(data.GetVertexData<float2>(2)); //data.SetVertexBufferData(uvs.Reinterpret<Vector2>(), 0, 0, maxVertices, 2, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+            vertices.CopyTo(data.GetVertexData<float3>(0)); 
+            normals.CopyTo(data.GetVertexData<float3>(1)); 
+            uvs.CopyTo(data.GetVertexData<float2>(2)); 
 
             // Set mesh indices
-            data.SetIndexBufferParams(maxIndices, IndexFormat.UInt32); // mesh.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);
-            permTriangles.CopyTo(data.GetIndexData<int>()); // .SetIndexBufferData(permTriangles, 0, 0, maxIndices);
-            //data.subMeshCount = maxMaterials;
+            data.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);
+            permTriangles.CopyTo(data.GetIndexData<int>());
             data.subMeshCount = maxMaterials;
+
+
+            for (int i = 0; i < maxMaterials; i++) {
+                int countIndices = counters[i] * 6;
+                int segmentOffset = materialSegmentOffsets[i];
+
+                if (countIndices > 0) {
+                    data.SetSubMesh(i, new SubMeshDescriptor {
+                        indexStart = segmentOffset,
+                        indexCount = countIndices,
+                        topology = MeshTopology.Triangles,
+                    }, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+                }
+            }
         }
     }
 }

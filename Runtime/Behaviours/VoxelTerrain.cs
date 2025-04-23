@@ -85,7 +85,7 @@ namespace jedjoud.VoxelTerrain {
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
-            VoxelUtils.SchedulingInnerloopBatchCount = 1024*4;
+            VoxelUtils.SchedulingInnerloopBatchCount = 64;
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
             spawner = GetComponent<VoxelGridSpawner>();

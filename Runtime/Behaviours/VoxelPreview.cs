@@ -5,6 +5,7 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     [ExecuteInEditMode]
     public class VoxelPreview : MonoBehaviour {
+        public bool materialId;
         public ComputeShader surfaceNetsCompute;
         public ComputeShader heightMapCompute;
         private GraphicsBuffer indexBuffer;
@@ -94,6 +95,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             var shader = surfaceNetsCompute;
             shader.SetBool("blocky", blocky);
+            shader.SetBool("materialId", materialId);
             shader.SetInt("size", size);
 
             int minDispatch = Mathf.CeilToInt((float)size / 8.0f);
@@ -128,6 +130,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             var shader = heightMapCompute;
             shader.SetInt("size", size);
+            shader.SetBool("materialId", materialId);
             shader.SetVector("vertexOffset", (Vector3)chunkOffset * size);
 
             Graphics.SetRenderTarget(maxHeightAtomic);

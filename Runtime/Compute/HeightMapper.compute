@@ -9,6 +9,7 @@ RWTexture3D<uint> voxels;
 
 RWTexture2D<uint> maxHeight;
 int indexOffset;
+bool materialId;
 float3 vertexOffset;
 
 int size;
@@ -52,12 +53,15 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
     }
 
     float base = fetch(idTemp);
+    float3 baseCol = fetchMatId(idTemp);
     float offset = fetch(idTemp + uint3(0, 1, 0));
+    float3 offsetCol = fetchMatId(idTemp + uint3(0, 1, 0));
     float factor = invLerp(base, offset, 0.0);
     float floatHeight = factor + idTemp.y;
+    float3 col = lerp(baseCol, offsetCol, factor);
 
     vertices[index] = float3(id.x, floatHeight, id.y) + vertexOffset;
-    colors[index] = 1.0;
+    colors[index] = materialId ? col : 1.0;
     normals[index] = -normalize(lerp(normalMaxx(idTemp), normalMaxx(idTemp + uint3(0, 1, 0)), factor));
 
     if (any(id >= (uint)(size-1))) {
