@@ -39,7 +39,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             var job = new PendingMeshJob {
                 chunk = chunk,
                 collisions = true,
-                maxFrames = 5,
+                maxTicks = 5,
                 callback = completed,
             };
 
@@ -61,21 +61,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             return;
         }
 
-        [BurstCompile(CompileSynchronously = true)]
-        struct CustomCopy : IJob {
-            [ReadOnly]
-            public NativeArray<Voxel> src;
-            [WriteOnly]
-            public NativeArray<Voxel> dst;
-            public void Execute() {
-                dst.CopyFrom(src);
-            }
-        }
-
         public override void CallerTick() {
             foreach (var handler in handlers) {
-                if ((handler.finalJobHandle.IsCompleted || (Time.frameCount - handler.startingFrame) > handler.request.maxFrames) && !handler.Free) {
+                if ((handler.finalJobHandle.IsCompleted || (tick - handler.startingTick) > handler.request.maxTicks) && !handler.Free) {
                     FinishJob(handler);
+                    //Debug.Log($"Job finished in {tick - handler.startingTick} ticks");
                 }
             }
 
@@ -129,10 +119,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private void BeginJob(MeshJobHandler handler, PendingMeshJob request, NativeArray<Voxel>[] neighbours, bool3 neighbourMask) {
             handler.chunk = request.chunk;
             handler.request = request;
-            handler.startingFrame = Time.frameCount;
+            handler.startingTick = tick;
 
-            var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
-            handler.BeginJob(copy, neighbours, neighbourMask);
+            //var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
+            handler.voxels.CopyFrom(request.chunk.voxels);
+            handler.BeginJob(default, neighbours, neighbourMask);
         }
 
         private void FinishJob(MeshJobHandler handler) {

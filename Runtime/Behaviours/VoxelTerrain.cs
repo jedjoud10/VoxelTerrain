@@ -13,6 +13,7 @@ namespace jedjoud.VoxelTerrain {
         public int maxTicksPerFrame = 3;
         private float tickDelta;
         private float accumulator;
+        internal long currentTick;
 
         [Header("General")]
         public GameObject chunkPrefab;
@@ -84,7 +85,7 @@ namespace jedjoud.VoxelTerrain {
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
-            VoxelUtils.SchedulingInnerloopBatchCount = 16;
+            VoxelUtils.SchedulingInnerloopBatchCount = 1024*4;
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
             spawner = GetComponent<VoxelGridSpawner>();
@@ -158,6 +159,8 @@ namespace jedjoud.VoxelTerrain {
                     accumulator = 0;
                     break;
                 }
+
+                currentTick++;
             }
         }
 

@@ -3,6 +3,8 @@ using Unity.Jobs;
 using Unity.Burst;
 using Unity.Mathematics;
 using Unity.Collections.LowLevel.Unsafe;
+using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
@@ -16,20 +18,37 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public bool3 neighbourMask;
 
-        public NativeParallelHashSet<byte>.ParallelWriter materialHashSet;
-        public NativeParallelHashMap<byte, int>.ParallelWriter materialHashMap;
-        public Unsafe.NativeCounter.Concurrent materialCounter;
+        // 8 uints that are used for atomic ors
+        public NativeArray<uint> buckets;
 
-        public void Execute(int index) {
+        // https://github.com/dotnet/runtime/blob/1d1bf92fcf43aa6981804dc53c5174445069c9e4/src/libraries/System.Private.CoreLib/src/System/Threading/Interlocked.cs#L319C13-L320C25
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Or(ref int location1, int value) {
+            int current = location1;
+            while (true) {
+                int newValue = current | value;
+                int oldValue = Interlocked.CompareExchange(ref location1, newValue, current);
+                if (oldValue == current) {
+                    return oldValue;
+                }
+                current = oldValue;
+            }
+        }
+
+        public unsafe void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 
             if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
                 return;
-
+            
             Voxel voxel = VoxelUtils.FetchWithNeighbours(VoxelUtils.PosToIndexMorton(position), ref voxels, ref neighbours);
-            if (materialHashSet.Add(voxel.material)) {
-                materialHashMap.TryAdd(voxel.material, materialCounter.Increment());
-            }
+            byte material = voxel.material;
+
+            int bucketIndex = material / 32;
+            int bitIndex = material % 32;
+            uint* ptr = (uint*)buckets.GetUnsafePtr();
+
+            Or(ref UnsafeUtility.ArrayElementAsRef<int>(ptr, bucketIndex), 1 << bitIndex);
         }
     }
 }

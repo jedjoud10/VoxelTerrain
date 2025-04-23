@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain {
         public static int VoxelSizeReduction { get; set; } = 1;
 
         // Used for parallelism control for the CPU side meshing and editing
-        public static int SchedulingInnerloopBatchCount { get; set; } = 32;
+        public static int SchedulingInnerloopBatchCount { get; set; } = 16;
 
         // Scaling factor when using voxel size reduction
         // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)

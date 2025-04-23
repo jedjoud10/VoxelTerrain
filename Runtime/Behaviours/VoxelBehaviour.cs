@@ -9,6 +9,8 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public VoxelGraph graph => GetComponent<VoxelGraph>();
 
+        public long tick => terrain.currentTick;
+
         public virtual void CallerStart() { }
         public virtual void CallerTick() { }
         public virtual void CallerDispose() { }

@@ -309,11 +309,13 @@ MonoBehaviour:
   debugName: 1
   autoCompile: 1
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
-  hash: -1401703429
+  hash: 1049449756
+  voxelsDispatchIndex: 0
+  propsDispatchIndex: 1
   transform1:
-    position: {x: 0, y: 50, z: 0}
+    position: {x: 0, y: 0, z: 0}
     rotation: {x: 0, y: 0, z: 0}
-    scale: {x: 1, y: 1, z: 1}
+    scale: {x: 10, y: 10, z: 10}
   scale:
     x: 0.001
   amplitude:
@@ -617,7 +619,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: ticksPerSecond
-      value: 128
+      value: 32
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: maxTicksPerFrame
@@ -625,7 +627,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: voxelSizeReduction
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materials.Array.size
@@ -646,6 +648,10 @@ PrefabInstance:
     - target: {fileID: 4459649915349211665, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Enabled
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4459649915349211665, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: spawnProps
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: meshJobsPerTick
@@ -693,11 +699,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.x
-      value: 2
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.z
-      value: 2
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: size
