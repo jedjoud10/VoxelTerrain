@@ -24,8 +24,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public Vector3 scale = Vector3.one;
         public Vector3 offset;
-        public Mesh test;
-        public Material test2;
 
         public void InitializeForSize() {
             if (!isActiveAndEnabled)

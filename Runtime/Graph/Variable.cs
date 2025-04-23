@@ -7,6 +7,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new DefineNode<T> { value = VariableType.ToDefinableString(value), constant = true };
         }
 
+        public static Variable<T> New(T value) {
+            return (Variable<T>)(value);
+        } 
+
         public static Variable<T> Default() {
             return (Variable<T>)default(T);
         }
@@ -202,6 +206,18 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public static Variable<float> Magnitude(this Variable<float4> self) {
             return new LengthNode<float4>() { a = self };
+        }
+
+        public static Variable<float2> Scaled(this Variable<float2> self, Variable<float> other) {
+            return new SimpleBinOpNode<float2, float, float2>() { a = self, b = other, op = "*" };
+        }
+
+        public static Variable<float3> Scaled(this Variable<float3> self, Variable<float> other) {
+            return new SimpleBinOpNode<float3, float, float3>() { a = self, b = other, op = "*" };
+        }
+
+        public static Variable<float4> Scaled(this Variable<float4> self, Variable<float> other) {
+            return new SimpleBinOpNode<float4, float, float4>() { a = self, b = other, op = "*" };
         }
     }
 }

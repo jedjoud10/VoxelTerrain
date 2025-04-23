@@ -47,6 +47,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
+        [ReadOnly]
+        public UnsafePtrList<Voxel> neighbours;
+
         // Used for fast traversal
         [ReadOnly]
         public NativeArray<byte> enabled;
@@ -54,6 +57,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Contains 3D data of the indices of the vertices
         [WriteOnly]
         public NativeArray<int> indices;
+
+        [ReadOnly]
+        public bool3 neighbourMask;
 
         // Vertices that we generated
         [WriteOnly]
@@ -80,11 +86,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
             indices[index] = int.MaxValue;
 
-            // Idk bruh
-            if (math.any(position > math.uint3(size - 2)))
+            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
                 return;
 
             float3 vertex = float3.zero;
@@ -101,32 +106,29 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint code = VoxelUtils.EdgeMasks[enabledCorners];
             int count = math.countbits(code);
 
-            // Use linear interpolation when smoothing
-            if (!empty) {
-                // Create the smoothed vertex
-                // TODO: Test out QEF or other methods for smoothing here
-                for (int edge = 0; edge < 12; edge++) {
-                    // Continue if the edge isn't inside
-                    if (((code >> edge) & 1) == 0) continue;
+            // Create the smoothed vertex
+            // TODO: Test out QEF or other methods for smoothing here
+            for (int edge = 0; edge < 12; edge++) {
+                // Continue if the edge isn't inside
+                if (((code >> edge) & 1) == 0) continue;
 
-                    uint3 startOffset = edgePositions0[edge];
-                    uint3 endOffset = edgePositions1[edge];
+                uint3 startOffset = edgePositions0[edge];
+                uint3 endOffset = edgePositions1[edge];
 
-                    int startIndex = VoxelUtils.PosToIndex(startOffset + position);
-                    int endIndex = VoxelUtils.PosToIndex(endOffset + position);
+                int startIndex = VoxelUtils.PosToIndexMorton(startOffset + position);
+                int endIndex = VoxelUtils.PosToIndexMorton(endOffset + position);
 
-                    float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, size);
-                    float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, size);
+                float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
+                float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
 
-                    // Get the Voxels of the edge
-                    Voxel startVoxel = voxels[startIndex];
-                    Voxel endVoxel = voxels[endIndex];
+                // Get the Voxels of the edge
+                Voxel startVoxel = VoxelUtils.FetchWithNeighbours(startIndex, ref voxels, ref neighbours);
+                Voxel endVoxel = VoxelUtils.FetchWithNeighbours(endIndex, ref voxels, ref neighbours);
 
-                    // Create a vertex on the line of the edge
-                    float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
-                    vertex += math.lerp(startOffset, endOffset, value) - math.float3(0.5);
-                    normal += math.lerp(startNormal, endNormal, value);
-                }
+                // Create a vertex on the line of the edge
+                float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
+                vertex += math.lerp(startOffset, endOffset, value) - math.float3(0.5);
+                normal += math.lerp(startNormal, endNormal, value);
             }
 
             // Must be offset by vec3(1, 1, 1)
@@ -145,11 +147,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // TODO: please fix this ambient occlusion
             float ambientOcclusion = 1.0f;
-
-            if (float.IsNaN(ambientOcclusion)) {
-                ambientOcclusion = 1;
-            }
-
             uvs[vertexIndex] = new float2(math.clamp(ambientOcclusion, 0, 1), 0.0f);
         }
     }

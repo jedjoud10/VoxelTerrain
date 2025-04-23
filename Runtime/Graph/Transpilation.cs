@@ -36,7 +36,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Execute the voxel graph to get all required output variables 
             // We will contextualize the variables in their separate passes ({ density + color + material }, { props }, etc)
-            AllInputs inputs = new AllInputs() { position = position };
+            AllInputs inputs = new AllInputs() { position = position, id = id };
             Execute(inputs, out AllOutputs outputs);
             ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
             ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
@@ -49,7 +49,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
             ctx.Add(position, "position");
             outputs.density.Handle(ctx);
-            outputs.color.Handle(ctx);
             outputs.material.Handle(ctx);
 
             

@@ -19,7 +19,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public class Random {
-        public static Variable<O> Evaluate<I, O>(Variable<I> input, bool signed = false) {
+        public static Variable<O> Evaluate<I, O>(Variable<I> input, bool signed) {
             return (new RandomNode<I, O> {
                 input = input,
                 signed = signed

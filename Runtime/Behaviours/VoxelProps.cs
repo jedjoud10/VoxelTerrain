@@ -56,14 +56,13 @@ namespace jedjoud.VoxelTerrain.Props {
 
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {
-            return;
             if (queuedOctalUnits.TryDequeue(out var temp)) {
                 (Vector3Int position, VoxelChunk chunk) = temp;
                 pendingOctalUnits.Remove(position);
 
-                Vector3 offset = ((Vector3)position * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor) / (VoxelUtils.VertexScaling);
+                Vector3 offset = ((Vector3)position * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor);
                 float scale =  VoxelUtils.VoxelSizeFactor;
-                terrain.executor.ExecuteShader(VoxelUtils.Size, 1, offset, Vector3.one * scale, true, true);
+                terrain.executor.ExecuteShader(VoxelUtils.SIZE, 1, offset, Vector3.one * scale, true, true);
                 int frame = Time.frameCount;
 
                 frameIdTempData.Add(frame, new TempTest() { chunkOffset = position, offset = offset, scale = scale });
@@ -79,7 +78,7 @@ namespace jedjoud.VoxelTerrain.Props {
                 AsyncGPUReadback.Request(
                     terrain.executor.buffers["props"],
                     delegate (AsyncGPUReadbackRequest asyncRequest) {
-                        NativeArray<BlittableProp> data = new NativeArray<BlittableProp>(VoxelUtils.Volume, Allocator.Persistent);
+                        NativeArray<BlittableProp> data = new NativeArray<BlittableProp>(VoxelUtils.VOLUME, Allocator.Persistent);
                         data.CopyFrom(asyncRequest.GetData<BlittableProp>());
                         frameIdTempData[frame].data = data;
                         frameIdTempData[frame].dataSet = true;
@@ -97,7 +96,8 @@ namespace jedjoud.VoxelTerrain.Props {
                 var val = frameIdTempData[frame];
                 if (val.dataSet && val.countSet) {
                     if (val.count > 10000) {
-                        throw new Exception("YOU ARE SPAWNING MORE THAN 10k PROPS IN ONE SINGLE CHUNK!!!");
+                        Debug.LogWarning("YOU ARE SPAWNING MORE THAN 10k PROPS IN ONE SINGLE CHUNK!!!");
+                        return;
                     }
 
                     for (int i = 0; i < val.count; i++) {
@@ -106,15 +106,18 @@ namespace jedjoud.VoxelTerrain.Props {
 
                         Vector3 position = unpacked.position;
                         position = (position / val.scale - val.offset);
+                        position += (Vector3)val.chunkOffset * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
 
                         //position *= VoxelUtils.VoxelSizeFactor;
                         //position -= Vector3.one * 1.5f * VoxelUtils.VoxelSizeFactor;
 
                         //position -= math.float3(1);
-                        position *= VoxelUtils.VertexScaling;
-                        position += (Vector3)val.chunkOffset * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
+                        /*
+                        position *= 1.0f;
+                        position += (Vector3)val.chunkOffset * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
                         position *= VoxelUtils.VoxelSizeFactor;
                         position += -Vector3.one * VoxelUtils.VoxelSizeFactor;
+                        */
 
                         //position *= VoxelUtils.VertexScaling;
                         //position += (Vector3)val.chunkOffset * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;

@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 
@@ -16,6 +17,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<Voxel> voxels;
 
         [ReadOnly]
+        public UnsafePtrList<Voxel> neighbours;
+
+        [ReadOnly]
+        public bool3 neighbourMask;
+
+        [ReadOnly]
         static readonly uint4x3[] offsets = {
             new uint4x3(
                 new uint4(0, 1, 0, 1),
@@ -30,28 +37,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
             )
         };
 
-        // Static settings
-        [ReadOnly] public int size;
-
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 
-            if (math.any(position > math.uint3(size - 2)))
+            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
                 return;
-
 
             int4 indices = math.int4(Morton.EncodeMorton32(offsets[0].c0 + position.x, offsets[0].c1 + position.y, offsets[0].c2 + position.z));
             float4 test = math.float4(0.0F);
 
             for (int i = 0; i < 4; i++) {
-                test[i] = voxels[indices[i]].density;
+                test[i] = VoxelUtils.FetchWithNeighbours(indices[i], ref voxels, ref neighbours).density;
             }
 
             int4 indices2 = math.int4(Morton.EncodeMorton32(offsets[1].c0 + position.x, offsets[1].c1 + position.y, offsets[1].c2 + position.z));
             float4 test2 = math.float4(0.0F);
 
             for (int i = 0; i < 4; i++) {
-                test2[i] = voxels[indices2[i]].density;
+                test2[i] = VoxelUtils.FetchWithNeighbours(indices2[i], ref voxels, ref neighbours).density;
             }
 
             bool4 check1 = test < math.float4(0.0);

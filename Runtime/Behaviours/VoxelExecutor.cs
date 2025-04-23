@@ -61,7 +61,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??
             // I dispose of them just like the render textures idk why it's complaining
             buffers = new Dictionary<string, ExecutorBuffer> {
-                { "props", new ExecutorBuffer("props", new List<string>() { "CSProps" }, new ComputeBuffer(VoxelUtils.Volume, BlittableProp.size, ComputeBufferType.Structured)) },
+                { "props", new ExecutorBuffer("props", new List<string>() { "CSProps" }, new ComputeBuffer(VoxelUtils.VOLUME, BlittableProp.size, ComputeBufferType.Structured)) },
                 { "props_counter", new ExecutorBufferCounter("props_counter", new List<string>() { "CSProps" }, 1) }
             };
 

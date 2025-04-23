@@ -14,7 +14,9 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> amplitude;
         public Inject<float> persistence;
         public Inject<float> lacunarity;
-        public Inject<float> detail;
+        public Inject<float> detailScale;
+        public Inject<float> detailProbability;
+        public Inject<float> detailAmplitude;
         public FractalMode mode;
         [Range(1, 10)]
         public int octaves;
@@ -34,7 +36,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Fractal<float2> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence);
             //var cached = fractal.Evaluate(xz).Cached(val, "xz");
             Variable<float> tahini = fractal.Evaluate(xz);
-            Variable<float> extra = Noise.VoronoiF2(position * new float3(1, 3, 1), 0.04f, 4.0f) * detail;
+            Variable<float> extra = Cellular<float2>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(xz.Scaled(detailScale)) * detailAmplitude;
             Variable<float> amogus = tahini + extra;
             var density = amogus + y;
             //tahini = new SdfBox(new float3(30.0)).Evaluate(position);
@@ -42,26 +44,25 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
 
 
-            var color = (Random.Evaluate<float2, float>(xz)).Broadcast<float3>();
+            var color = (Random.Evaluate<float2, float>(xz, false)).Broadcast<float3>();
 
             Variable<float> test = position.Swizzle<float>("y");
             Variable<float2> flat = position.Swizzle<float2>("xz");
             Variable<bool> check = density > -0.2f & density < 0.2f;
             Variable<float> val = (new Simplex(0.01f, 1.0f).Evaluate(flat) - 0.2f).ClampZeroOne();
-            check &= Random.Evaluate<float3, float>(position) > 0.99f;
+            check &= Random.Evaluate<float3, float>(position, false) > 0.95f;
 
             Variable<float3> rotation = Random.Evaluate<float3, float3>(position, true);
 
             output = new AllOutputs();
             output.density = density;
-            output.color = new float3(1.0);
-            output.prop = (GraphUtils.Zero<Prop>()).With(
+            output.prop = GraphUtils.Zero<Prop>().With(
                 ("position", position),
                 ("rotation", rotation),
-                ("scale", check.Select<float>(0.0f, val * 3))
+                ("scale", check.Select<float>(0f, 1f))
             );
-            output.material = 0;
-            //output.material = (Noise.Simplex(position, 0.2f, 1.0f) > 0).Select<int>(1, 0);
+            //output.material = 0;
+            output.material = (Noise.Simplex(position, 0.02f, 1.0f) > 0).Select<int>(1, 0);
             //context.SpawnProp(GpuProp.Empty);
             //prop = GpuProp.Empty;
             //prop = prop.With(("xyz", position), ("w", (check & val).Select<float>(0.0f, 1.0f)));

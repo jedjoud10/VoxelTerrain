@@ -8,16 +8,21 @@ using static jedjoud.VoxelTerrain.VoxelTerrain;
 
 namespace jedjoud.VoxelTerrain {
     public class VoxelTerrain : MonoBehaviour {
+        [Header("Tick System")]
         public int ticksPerSecond = 128;
         public int maxTicksPerFrame = 3;
         private float tickDelta;
         private float accumulator;
 
+        [Header("General")]
         public GameObject chunkPrefab;
-        public bool drawGizmos;
+        public List<VoxelMaterial> materials;
 
         [Range(0, 4)]
         public int voxelSizeReduction;
+
+        [Header("Debug")]
+        public bool drawGizmos;
 
         [HideInInspector]
         public Dictionary<Vector3Int, GameObject> totalChunks;
@@ -69,6 +74,10 @@ namespace jedjoud.VoxelTerrain {
         private bool complete;
 
         public void Start() {
+            if (materials.Count == 0) {
+                throw new System.Exception("Need at least 1 voxel material to be set");
+            }
+
             complete = false;
             //Instance = this;
             totalChunks = new Dictionary<Vector3Int, GameObject>();
@@ -102,6 +111,17 @@ namespace jedjoud.VoxelTerrain {
             };
 
             onComplete += () => {
+                Debug.Log("Terrain generation finished!");
+                /*
+                edits.ApplyVoxelEdit(new jedjoud.VoxelTerrain.Edits.SphereVoxelEdit {
+                    strength = 100,
+                    center = new Unity.Mathematics.float3(10, 10, 10),
+                    material = 0,
+                    paintOnly = false,
+                    radius = 10f,
+                    writeMaterial = true,
+                }, false);
+                */
             };
 
             mesher.CallerStart();
@@ -130,8 +150,8 @@ namespace jedjoud.VoxelTerrain {
                 collisions.CallerTick();
 
                 if (complete && pendingChunks == 0) {
-                    onComplete?.Invoke();
                     complete = false;
+                    onComplete?.Invoke();
                 }
 
                 if (i >= maxTicksPerFrame) {
@@ -189,10 +209,10 @@ namespace jedjoud.VoxelTerrain {
             chunk.sharedMesh = mesh;
 
             GameObject chunkGameObject = chunk.gameObject;
-            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
+            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
             chunkGameObject.transform.localScale = scale * Vector3.one;
             chunk.chunkPosition = chunkPosition;
-            chunk.voxels = new NativeArray<Voxel>(VoxelUtils.Volume, Allocator.Persistent);
+            chunk.voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent);
             totalChunks.Add(chunkPosition, chunkGameObject);
             return chunk;
         }
@@ -202,10 +222,14 @@ namespace jedjoud.VoxelTerrain {
                 foreach (var (key, go) in totalChunks) {
                     VoxelChunk chunk = go.GetComponent<VoxelChunk>();
                     
+                    Bounds bounds = chunk.GetBounds();
                     if (chunk.sharedMesh != null && chunk.sharedMesh.vertexCount > 0) {
-                        //Bounds bounds = chunk.GetBounds();
-                        Bounds bounds = chunk.GetComponent<MeshRenderer>().bounds;
-                        
+                        //Bounds bounds = chunk.GetComponent<MeshRenderer>().bounds;
+
+                        Gizmos.color = Color.white;
+                        Gizmos.DrawWireCube(bounds.center, bounds.size);
+                    } else if (chunk.HasVoxelData()) {
+                        Gizmos.color = Color.red;
                         Gizmos.DrawWireCube(bounds.center, bounds.size);
                     }
                 }

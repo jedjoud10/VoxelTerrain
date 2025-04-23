@@ -62,7 +62,7 @@ float output = 100.0;
                 ctx.Indent--;
 
                 string outputSecond = $@"
-    if ({ctx[shouldSpawnVar]} < 0.0) {{
+    if ({ctx[shouldSpawnVar]} > 0.0) {{
         {typeString} checkingPos = cell + randomOffset;
 ";
                 ctx.AddLine(outputSecond);
@@ -124,6 +124,9 @@ float output = 100.0;
         public delegate Variable<float> ShouldSpawn(Variable<T> point);
 
         public Distance distance;
+
+        // Value should be between -1 and 1
+        // Actually spawns the "entity" if greater than 0
         public ShouldSpawn shouldSpawn;
 
 
@@ -136,6 +139,14 @@ float output = 100.0;
             this.shouldSpawn = shouldSpawn;
             this.offset = 0.0f;
             this.factor = 1.0f;
+        }
+
+        public static Cellular<T> Simple(Sdf.DistanceMetric metric, Variable<float> probability) {
+            return new Cellular<T>((Variable<T> a, Variable<T> b) => {
+                return Sdf.Distance(a, b, metric);
+            }, shouldSpawn: (Variable<T> a) => {
+                return probability * 2.0f - Random.Evaluate<T, float>(a, false);
+            });
         }
 
         public Variable<float> Tile(Variable<T> position) {

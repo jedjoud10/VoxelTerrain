@@ -4,7 +4,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // The generated voxel mesh that we can render to the player
     public struct VoxelMesh {
         // Lookup for converting sub-mesh index to voxel material index
-        public int[] VoxelMaterialsLookup { get; internal set; }
+        public byte[] VoxelMaterialsLookup { get; internal set; }
+
+        // Lookup for converting triangle indices to material type (given submesh)
+        public (byte, int)[] TriangleOffsetLocalMaterials { get; internal set; }
 
         // Should we compute collisions for this voxel mesh?
         public bool ComputeCollisions { get; internal set; }

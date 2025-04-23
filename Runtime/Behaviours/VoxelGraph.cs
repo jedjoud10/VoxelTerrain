@@ -56,11 +56,11 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public class AllInputs {
             public Variable<float3> position;
+            public Variable<int3> id;
         }
 
         public class AllOutputs {
             public Variable<float> density;
-            public Variable<float3> color;
             public Variable<Prop> prop;
             public Variable<int> material;
         }

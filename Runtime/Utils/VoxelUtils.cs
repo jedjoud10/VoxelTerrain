@@ -1,31 +1,33 @@
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
-        // Scaling value applied to the vertices
-        public static float VertexScaling => (float)Size / ((float)Size - 3.0F);
-
         // Voxel scaling size
         public static int VoxelSizeReduction { get; set; } = 1;
 
         // Used for parallelism control for the CPU side meshing and editing
-        public static int SchedulingInnerloopBatchCount { get; set; } = 16;
+        public static int SchedulingInnerloopBatchCount { get; set; } = 32;
 
         // Scaling factor when using voxel size reduction
         // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)
         public static float VoxelSizeFactor => 1F / Mathf.Pow(2F, VoxelSizeReduction);
 
         // Current chunk resolution
-        public static int Size = 64;
+        public const int SIZE = 64;
 
         // Total number of voxels in a chunk
-        public static int Volume => Size * Size * Size;
+        public const int VOLUME = SIZE * SIZE * SIZE;
+
+        // One more voxel just in case... :3
+        public const int VOLUME_OFFSET = (SIZE+1) * (SIZE + 1) * (SIZE + 1);
 
         // Max possible number of materials supported by the terrain mesh
         public const int MAX_MATERIAL_COUNT = 256;
@@ -85,66 +87,81 @@ namespace jedjoud.VoxelTerrain {
             return (uint3)math.select(r, r + size, r < 0);
         }
 
-        // Custom modulo operator to discard negative numbers
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float3 Mod(float3 val, float size) {
-            float3 r = val % size;
-            return math.select(r, r + size, r < 0);
-        }
-
         // Convert an index to a 3D position (morton coding)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint3 IndexToPos(int index) {
+        public static uint3 IndexToPosMorton(int index) {
             return Morton.DecodeMorton32((uint)index);
         }
 
         // Convert a 3D position into an index (morton coding)
-        [return: AssumeRange(0u, 262144)]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int PosToIndex(uint3 position) {
+        public static int PosToIndexMorton(uint3 position) {
             return (int)Morton.EncodeMorton32(position);
         }
 
-        // Sampled the voxel grid using trilinear filtering
+        // Convert an index to a 3D position
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static half SampleGridInterpolated(float3 position, ref NativeArray<Voxel> voxels, int size) {
-            float3 frac = math.frac(position);
-            uint3 voxPos = (uint3)math.floor(position);
-            voxPos = math.min(voxPos, math.uint3(size - 2));
-            voxPos = math.max(voxPos, math.uint3(0));
+        public static uint3 IndexToPos(int index, uint size) {
+            uint index2 = (uint)index;
 
-            float d000 = voxels[PosToIndex(voxPos)].density;
-            float d100 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 0))].density;
-            float d010 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 0))].density;
-            float d110 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
+            // N(ABC) -> N(A) x N(BC)
+            uint y = index2 / (size * size);   // x in N(A)
+            uint w = index2 % (size * size);  // w in N(BC)
 
-            float d001 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
-            float d101 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 1))].density;
-            float d011 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 1))].density;
-            float d111 = voxels[PosToIndex(voxPos + math.uint3(1, 1, 1))].density;
+            // N(BC) -> N(B) x N(C)
+            uint z = w / size;        // y in N(B)
+            uint x = w % size;        // z in N(C)
+            return new uint3(x, y, z);
+        }
 
-            float mixed0 = math.lerp(d000, d100, frac.x);
-            float mixed1 = math.lerp(d010, d110, frac.x);
-            float mixed2 = math.lerp(d001, d101, frac.x);
-            float mixed3 = math.lerp(d011, d111, frac.x);
+        // Convert a 3D position into an index
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int PosToIndex(uint3 position, uint size) {
+            return (int)math.round((position.y * size * size + (position.z * size) + position.x));
+        }
 
-            float mixed4 = math.lerp(mixed0, mixed2, frac.z);
-            float mixed5 = math.lerp(mixed1, mixed3, frac.z);
+        // Fetch the Voxels but with neighbour data fallback
+        public static Voxel FetchWithNeighbours(int index, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
+            int mortonChunkIndex = index / VOLUME;
 
-            float mixed6 = math.lerp(mixed4, mixed5, frac.y);
+            // Local fetch (same thing as index < Volume)
+            if (mortonChunkIndex == 0)
+                return voxels[index];
 
-            return (half)mixed6;
+            // This is where shit gets... shit...
+            unsafe {
+                // Neighbours doesn't contain the local chunk...
+                Voxel* ptr = neighbours[mortonChunkIndex-1];
+                Voxel* offset = ptr + (index - VOLUME * mortonChunkIndex);
+                return *offset;
+            }
+        }
+
+        // Checks if the given position is valid with the given neighbours
+        // Only really needed for the chunks that are spawned at the very edge of the map, in the positive x,y,z axii
+        // We need to tell them to disable fetching from their neighbours, as they have none in that direction.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckNeighbours(uint3 position, bool3 neighbourBitmask) {
+            bool3 greater = position >= SIZE-2;
+            return math.all((greater & neighbourBitmask) == greater);
+            //return !math.any(greater);
+            /*
+            if (math.all(neighbourBitmask) && !math.all(greater)) {
+                return false;
+            } else {
+                return true;
+            }
+            */
+
         }
 
         // Calculate the normals at a specific position
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float3 SampleGridNormal(uint3 position, ref NativeArray<Voxel> voxels, int size) {
-            position = math.min(position, math.uint3(size - 2));
-
-            float baseVal = voxels[PosToIndex(position)].density;
-            float xVal = voxels[PosToIndex(position + math.uint3(1, 0, 0))].density;
-            float yVal = voxels[PosToIndex(position + math.uint3(0, 1, 0))].density;
-            float zVal = voxels[PosToIndex(position + math.uint3(0, 0, 1))].density;
+        public static float3 SampleGridNormal(uint3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
+            float baseVal = FetchWithNeighbours(PosToIndexMorton(position), ref voxels, ref neighbours).density;
+            float xVal = FetchWithNeighbours(PosToIndexMorton(position + math.uint3(1, 0, 0)), ref voxels, ref neighbours).density;
+            float yVal = FetchWithNeighbours(PosToIndexMorton(position + math.uint3(0, 1, 0)), ref voxels, ref neighbours).density;
+            float zVal = FetchWithNeighbours(PosToIndexMorton(position + math.uint3(0, 0, 1)), ref voxels, ref neighbours).density;
 
             return new float3(baseVal - xVal, baseVal - yVal, baseVal - zVal);
         }

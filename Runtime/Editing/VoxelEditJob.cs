@@ -9,7 +9,6 @@ namespace jedjoud.VoxelTerrain.Edits {
     struct VoxelEditJob<T> : IJobParallelFor
     where T : struct, IVoxelEdit {
         [ReadOnly] public float3 offset;
-        [ReadOnly] public float vertexScale;
         [ReadOnly] public float voxelScale;
 
         public T edit;
@@ -18,15 +17,9 @@ namespace jedjoud.VoxelTerrain.Edits {
         public Unsafe.NativeMultiCounter.Concurrent counters;
 
         public void Execute(int index) {
-            uint3 id = VoxelUtils.IndexToPos(index);
+            uint3 id = VoxelUtils.IndexToPosMorton(index);
             float3 position = (math.float3(id));
-
-            // Needed for voxel size reduction
             position *= voxelScale;
-            position -= 1.5f * voxelScale;
-
-            //position -= math.float3(1);
-            position *= vertexScale;
             position += offset;
 
             // Read, modify, write

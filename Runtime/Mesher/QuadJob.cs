@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 
@@ -24,37 +25,40 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         static readonly uint3[] quadForwardDirection = new uint3[3]
         {
-        new uint3(1, 0, 0),
-        new uint3(0, 1, 0),
-        new uint3(0, 0, 1),
+            new uint3(1, 0, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 0, 1),
         };
 
         // Quad vertices offsets based on direction
         [ReadOnly]
         static readonly uint3[] quadPerpendicularOffsets = new uint3[12]
         {
-        new uint3(0, 0, 0),
-        new uint3(0, 1, 0),
-        new uint3(0, 1, 1),
-        new uint3(0, 0, 1),
+            new uint3(0, 0, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 1, 1),
+            new uint3(0, 0, 1),
 
-        new uint3(0, 0, 0),
-        new uint3(0, 0, 1),
-        new uint3(1, 0, 1),
-        new uint3(1, 0, 0),
+            new uint3(0, 0, 0),
+            new uint3(0, 0, 1),
+            new uint3(1, 0, 1),
+            new uint3(1, 0, 0),
 
-        new uint3(0, 0, 0),
-        new uint3(1, 0, 0),
-        new uint3(1, 1, 0),
-        new uint3(0, 1, 0)
+            new uint3(0, 0, 0),
+            new uint3(1, 0, 0),
+            new uint3(1, 1, 0),
+            new uint3(0, 1, 0)
         };
 
         // Bit shift used to check for edges
         [ReadOnly]
         static readonly int[] shifts = new int[3]
         {
-        0, 3, 8
+            0, 3, 8
         };
+
+        [ReadOnly]
+        public UnsafePtrList<Voxel> neighbours;
 
         // Used for fast traversal
         [ReadOnly]
@@ -70,22 +74,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // HashMap that converts the material index to submesh index
         [ReadOnly]
-        public NativeParallelHashMap<ushort, int>.ReadOnly materialHashMap;
+        public NativeParallelHashMap<byte, int>.ReadOnly materialHashMap;
 
-        // Static settings
-        [ReadOnly] public int size;
-        [ReadOnly] public bool3 skirtsBase;
-        [ReadOnly] public bool3 skirtsEnd;
+        [ReadOnly]
+        public bool3 neighbourMask;
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint3 basePosition, int index, bool skirts, bool skirtsForceDir) {
             uint3 forward = quadForwardDirection[index];
 
-            int baseIndex = VoxelUtils.PosToIndex(basePosition);
-            int endIndex = VoxelUtils.PosToIndex(basePosition + forward);
+            int baseIndex = VoxelUtils.PosToIndexMorton(basePosition);
+            int endIndex = VoxelUtils.PosToIndexMorton(basePosition + forward);
 
-            Voxel endVoxel = voxels[endIndex];
-            Voxel startVoxel = voxels[baseIndex];
+            Voxel startVoxel = VoxelUtils.FetchWithNeighbours(baseIndex, ref voxels, ref neighbours);
+            Voxel endVoxel = VoxelUtils.FetchWithNeighbours(endIndex, ref voxels, ref neighbours);
 
             bool flip = (endVoxel.density >= 0.0);
 
@@ -93,14 +95,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (skirts)
                 flip = skirtsForceDir;
 
-            ushort material = flip ? startVoxel.material : endVoxel.material;
+            byte material = flip ? startVoxel.material : endVoxel.material;
             uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
-            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4]);
-            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1]);
-            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2]);
-            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3]);
+            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4], VoxelUtils.SIZE + 1);
+            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1], VoxelUtils.SIZE + 1);
+            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2], VoxelUtils.SIZE + 1);
+            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3], VoxelUtils.SIZE + 1);
 
             // Fetch the actual indices of the vertices
             int vertex0 = vertexIndices[index0];
@@ -131,30 +133,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
+
+            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
+                return;
 
             // Allows us to save two voxel fetches (very important)
             ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];
 
-            // Used for skirts
-            bool3 base_ = (position == math.uint3(1)) & skirtsBase;
-            bool3 end_ = (position == math.uint3(size - 2)) & skirtsEnd;
-            bool3 skirt = base_ | end_;
+            if (math.any(position < math.uint3(1))) {
+                return;
+            }
 
 
-            bool3 valPos = (position < math.uint3(size - 1)) & (position > math.uint3(1));
             for (int i = 0; i < 3; i++) {
-                // Handle creating the quad normally
-                if (((enabledEdges >> shifts[i]) & 1) == 1 && math.all(valPos)) {
+                if (((enabledEdges >> shifts[i]) & 1) == 1) {
                     CheckEdge(position, i, false, false);
-                }
-
-                // Mane idfk what I'm doing any more
-                bool limiter = math.all(valPos | math.bool3(i == 0, i == 1, i == 2));
-
-                // Handle creating the skirt 
-                if (skirt[i] && limiter) {
-                    CheckEdge(position, i, true, end_[i]);
                 }
             }
         }

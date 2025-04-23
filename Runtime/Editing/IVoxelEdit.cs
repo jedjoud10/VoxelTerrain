@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Jobs;
@@ -26,10 +27,9 @@ namespace jedjoud.VoxelTerrain.Edits {
                 edit = edit,
                 voxels = voxels,
                 voxelScale = VoxelUtils.VoxelSizeFactor,
-                vertexScale = VoxelUtils.VertexScaling,
                 counters = counters,
             };
-            return job.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
+            return job.Schedule(VoxelUtils.VOLUME, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
         }
     }
 }
