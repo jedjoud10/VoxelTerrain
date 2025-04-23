@@ -154,7 +154,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
         }
 
-        public static Variable<float> Curve(this Variable<float> mixer, UnityEngine.AnimationCurve curve, Variable<float> inputMin, Variable<float> inputMax, int size = 128) {
+        public static Variable<float> Curve(this Variable<float> mixer, UnityEngine.AnimationCurve curve, Variable<float> inputMin, Variable<float> inputMax, int size = 128, bool invert = false) {
             if (curve == null) {
                 throw new NullReferenceException("Unity AnimationCurve is not set");
             }
@@ -169,6 +169,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 size = size,
                 inputMin = inputMin,
                 inputMax = inputMax,
+                invert = invert,
             };
         }
 

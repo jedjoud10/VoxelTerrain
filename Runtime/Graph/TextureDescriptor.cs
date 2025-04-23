@@ -8,6 +8,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public TextureWrapMode wrap;
         public List<string> readKernels;
         public string name;
+        public int requestingNodeHash;
 
         public abstract ExecutorTexture Create(int size);
     }
@@ -30,7 +31,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 rt = TextureUtils.Create2DRenderTexture(textureSize, GraphUtils.ToGfxFormat(type), filter, wrap, mips);
             }
 
-            return new TemporaryExecutorTexture(name, readKernels, rt, writeKernel, mips);
+            return new TemporaryExecutorTexture(name, readKernels, rt, writeKernel, mips, requestingNodeHash);
         }
     }
 
@@ -42,7 +43,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             texture.wrapMode = wrap;
             texture.filterMode = filter;
 
-            return new ExecutorTexture(name, readKernels, texture);
+            return new ExecutorTexture(name, readKernels, texture, requestingNodeHash);
         }
     }
 
@@ -54,7 +55,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             texture.wrapMode = wrap;
             texture.filterMode = filter;
 
-            return new ExecutorTexture(name, readKernels, texture);
+            return new ExecutorTexture(name, readKernels, texture, requestingNodeHash);
         }
     }
 
@@ -62,7 +63,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Texture texture;
 
         public override ExecutorTexture Create(int volumeSize) {
-            return new ExecutorTexture(name, readKernels, texture);
+            return new ExecutorTexture(name, readKernels, texture, requestingNodeHash);
         }
     }
 }

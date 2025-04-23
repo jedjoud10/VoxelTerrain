@@ -19,6 +19,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> detailAmplitude;
         public Inject<float> materialHeight;
         public Inject<float> materialHeightNoisy;
+        public AnimationCurve curve;
         public FractalMode mode;
         [Range(1, 10)]
         public int octaves;
@@ -41,7 +42,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<float> extra = Cellular<float2>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(xz.Scaled(detailScale)) * detailAmplitude;
             
             // Create a new density parameter
-            var density = extra + fractal + y;
+            var density = (extra + fractal).Curve(curve, -200f, 200f, invert: true) + y;
 
             // Some checks for prop generation
             Variable<float> test = position.Swizzle<float>("y");

@@ -309,7 +309,7 @@ MonoBehaviour:
   debugName: 1
   autoCompile: 1
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
-  hash: -1167929507
+  hash: 945015109
   voxelsDispatchIndex: 0
   propsDispatchIndex: 1
   transform1:
@@ -317,13 +317,13 @@ MonoBehaviour:
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 1, y: 1, z: 1}
   scale:
-    x: 0.001
+    x: 0.004
   amplitude:
-    x: 12.09
+    x: 20
   persistence:
-    x: 0.5
+    x: 0.4
   lacunarity:
-    x: 1.9
+    x: 1.6
   detailScale:
     x: 0.01
   detailProbability:
@@ -331,10 +331,43 @@ MonoBehaviour:
   detailAmplitude:
     x: 75.1
   materialHeight:
-    x: -42.45
+    x: -54.5
   materialHeightNoisy:
-    x: -20
-  mode: 0
+    x: 9
+  curve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0.079443894
+      outSlope: 0.079443894
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.356441
+    - serializedVersion: 3
+      time: 0.6871417
+      value: 0.6675739
+      inSlope: 1.0426826
+      outSlope: -0.26297945
+      tangentMode: 1
+      weightedMode: 0
+      inWeight: 0.14861365
+      outWeight: 0.35069597
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 1.0625452
+      outSlope: 1.0625452
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  mode: 2
   octaves: 5
 --- !u!1 &664809940
 GameObject:
@@ -619,7 +652,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: drawGizmos
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: ticksPerSecond
@@ -759,7 +792,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.y
-      value: -118
+      value: -202.8
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.z
@@ -771,7 +804,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: flatshaded
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialId
@@ -786,8 +819,36 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: seed
+      value: 8912
+      objectReference: {fileID: 0}
+    - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Enabled
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: moduloSeed.x
+      value: 523
+      objectReference: {fileID: 0}
+    - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: moduloSeed.y
+      value: 693
+      objectReference: {fileID: 0}
+    - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: moduloSeed.z
+      value: 472
+      objectReference: {fileID: 0}
+    - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: permutationSeed.x
+      value: 110
+      objectReference: {fileID: 0}
+    - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: permutationSeed.y
+      value: 528
+      objectReference: {fileID: 0}
+    - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: permutationSeed.z
+      value: -703
       objectReference: {fileID: 0}
     - target: {fileID: 8197692837568637671, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: asyncReadbackPerTick

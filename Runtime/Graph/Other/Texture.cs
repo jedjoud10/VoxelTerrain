@@ -59,6 +59,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 readKernels = new List<string>() { $"CS{context.scopes[context.currentScope].name}" },
                 name = tempTextureName,
                 texture = sampler.texture,
+                requestingNodeHash = this.GetHashCode(),
             });
         }
     }

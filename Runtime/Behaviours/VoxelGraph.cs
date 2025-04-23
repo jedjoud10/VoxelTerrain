@@ -44,8 +44,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (visualizer != null && visualizer.isActiveAndEnabled) {
                 var exec = GetComponent<VoxelExecutor>();
                 exec.ExecuteShader(visualizer.size, 0, visualizer.offset, visualizer.scale, false, true);
-                RenderTexture density = (RenderTexture)exec.textures["voxels"];
-                visualizer.Meshify(density);
+                RenderTexture voxels = (RenderTexture)exec.textures["voxels"];
+                visualizer.Meshify(voxels);
             }
 #endif
         }

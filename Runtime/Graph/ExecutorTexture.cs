@@ -7,11 +7,13 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string name;
         public List<string> readKernels;
         public Texture texture;
+        public int requestingNodeHash;
 
-        public ExecutorTexture(string name, List<string> readKernels, Texture texture) {
+        public ExecutorTexture(string name, List<string> readKernels, Texture texture, int requestingNodeHash) {
             this.name = name;
             this.readKernels = readKernels;
             this.texture = texture;
+            this.requestingNodeHash = requestingNodeHash;
         }
 
         public static implicit operator Texture(ExecutorTexture self) {
@@ -43,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         private int writingKernel;
         public bool mips;
 
-        public TemporaryExecutorTexture(string name, List<string> readKernels, Texture texture, string writeKernel, bool mips) : base(name, readKernels, texture) {
+        public TemporaryExecutorTexture(string name, List<string> readKernels, Texture texture, string writeKernel, bool mips, int requestingNodeHash) : base(name, readKernels, texture, requestingNodeHash) {
             this.writingKernel = -1;
             this.writeKernel = writeKernel;
             this.mips = mips;
@@ -67,7 +69,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
 
     public class OutputExecutorTexture : ExecutorTexture {
-        public OutputExecutorTexture(string name, List<string> readKernels, Texture texture) : base(name, readKernels, texture) {
+        public OutputExecutorTexture(string name, List<string> readKernels, Texture texture, int requestingNodeHash) : base(name, readKernels, texture, requestingNodeHash) {
         }
 
         public override void BindToComputeShader(CommandBuffer commands, ComputeShader shader) {

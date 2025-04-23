@@ -20,6 +20,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public List<TreeScope> scopes;
         public int currentScope = 0;
         public int scopeDepth = 0;
+        public HashSet<string> dedupe;
 
         public ScopeArgument position;
         public ScopeArgument id;
@@ -49,6 +50,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.currentScope = 0;
             this.scopeDepth = 0;
             this.counter = 0;
+            this.dedupe = new HashSet<string>();
             this.computeKernels = new List<string>();
             this.dispatches = new List<KernelDispatch>();
             this.textures = new Dictionary<string, TextureDescriptor>();

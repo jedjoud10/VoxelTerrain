@@ -109,6 +109,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     }
                 }
 
+                // what the fuck?
                 char[] chars = swizzle.ToCharArray();
                 char first = chars[0]; // x
                 char second = chars[1]; // z
