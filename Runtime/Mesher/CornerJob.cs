@@ -19,9 +19,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public UnsafePtrList<Voxel> neighbours;
 
-        public NativeParallelHashSet<ushort>.ParallelWriter materialHashSet;
-        public NativeParallelHashMap<ushort, int>.ParallelWriter materialHashMap;
-        public Unsafe.NativeCounter.Concurrent materialCounter;
+        [ReadOnly]
+        public bool3 neighbourMask;
 
         [ReadOnly]
         static readonly uint4x3[] offsets = {
@@ -39,7 +38,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         };
 
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.Size + 1);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
+
+            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
+                return;
 
             int4 indices = math.int4(Morton.EncodeMorton32(offsets[0].c0 + position.x, offsets[0].c1 + position.y, offsets[0].c2 + position.z));
             float4 test = math.float4(0.0F);
@@ -61,14 +63,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int value = math.bitmask(check1) | (math.bitmask(check2) << 4);
 
             enabled[index] = (byte)value;
-
-            // We moved the material shenanigan stuff here instead...
-            Voxel voxel = VoxelUtils.FetchWithNeighbours(VoxelUtils.PosToIndexMorton(position), ref voxels, ref neighbours);
-            if (value != 0 && value != 255 && voxel.density < 0.0) {
-                if (materialHashSet.Add(voxel.material)) {
-                    materialHashMap.TryAdd(voxel.material, materialCounter.Increment());
-                }
-            }
         }
     }
 }

@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Black
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: f6221e2e98735194b835a5a3452cf428, type: 2}
-  dynamicFriction: 0.3
-  staticFriction: 0.3
-  bounce: 0
+  dynamicFriction: 0
+  staticFriction: 0
+  bounce: 1

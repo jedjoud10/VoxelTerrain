@@ -26,6 +26,7 @@ namespace jedjoud.VoxelTerrain.Edits {
             VoxelEditResults results = new VoxelEditResults() { counters = counters, finishedChunksCount = 0 };
 
             int affected = 0;
+            List<VoxelChunk> chunks = new List<VoxelChunk>();
             foreach (var (key, chunk) in terrain.totalChunks) {
                 var voxelChunk = chunk.GetComponent<VoxelChunk>();
 
@@ -36,22 +37,34 @@ namespace jedjoud.VoxelTerrain.Edits {
 
                     // unrelated...
                     affected++;
+                    chunks.Add(voxelChunk);
                 }
             }
 
-            foreach (var (key, chunk) in terrain.totalChunks) {
-                var voxelChunk = chunk.GetComponent<VoxelChunk>();
+            results.affectedChunks = affected;
+            NativeArray<JobHandle> handles = new NativeArray<JobHandle>(affected, Allocator.Temp);
 
-                if (voxelChunk.GetBounds().Intersects(editBounds)) {
-                    var counter = new Unsafe.NativeMultiCounter(VoxelUtils.MAX_MATERIAL_COUNT, Allocator.Persistent);
-                    counters.Add(counter);
+            // Start the edit jobs all at once, and they will execute in parallel to each other...
+            for (int i = 0; i < chunks.Count; i++) {
+                var counter = new Unsafe.NativeMultiCounter(VoxelUtils.MAX_MATERIAL_COUNT, Allocator.Persistent);
+                counters.Add(counter);
+                VoxelChunk chunk = chunks[i];
 
-                    voxelChunk.dependency = edit.Apply(voxelChunk.transform.position, voxelChunk.voxels, counter);
+                JobHandle handle = edit.Apply(chunk.transform.position, chunk.voxels, counter);
+                chunk.dependency = handle;
+                handles[i] = handle;
+            }
 
-                    terrain.mesher.GenerateMesh(voxelChunk, immediate, (VoxelChunk chunk) => {
-                        results.IncrementAndCheck(affected, callback);
-                    });
-                }
+            // Since we have inter-chunk dependency we must wait until ALL the edit jobs are done
+            // This could be improved but works fine for now
+            JobHandle.CompleteAll(handles);
+            handles.Dispose();
+
+            // Start generating the meshes after that
+            foreach (var chunk in chunks) {
+                terrain.mesher.GenerateMesh(chunk, immediate, (VoxelChunk chunk) => {
+                    results.IncrementAndCheck(callback);
+                });
             }
         }
 
@@ -68,6 +81,7 @@ namespace jedjoud.VoxelTerrain.Edits {
     public class VoxelEditResults {
         internal List<Unsafe.NativeMultiCounter> counters;
         internal int finishedChunksCount;
+        internal int affectedChunks;
 
         public int GetCount(int materialIndex) {
             int count = 0;
@@ -77,9 +91,9 @@ namespace jedjoud.VoxelTerrain.Edits {
             return count;
         }
 
-        internal void IncrementAndCheck(int affected, Action<VoxelEditResults> callback) {
+        internal void IncrementAndCheck(Action<VoxelEditResults> callback) {
             finishedChunksCount++;
-            if (finishedChunksCount == affected) {
+            if (finishedChunksCount == affectedChunks) {
                 callback?.Invoke(this);
                 Dispose();
             }

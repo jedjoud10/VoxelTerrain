@@ -45,7 +45,7 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public Mesh sharedMesh;
         [HideInInspector]
-        public int[] voxelMaterialsLookup;
+        public byte[] voxelMaterialsLookup;
         [HideInInspector]
         public (byte, int)[] triangleOffsetLocalMaterials;
 
@@ -59,35 +59,41 @@ namespace jedjoud.VoxelTerrain {
         public Bounds GetBounds() {
             return new Bounds {
                 min = transform.position,
-                max = transform.position + Vector3.one * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor,
+                max = transform.position + Vector3.one * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor,
             };
         }
 
         // Convert a specific sub-mesh index (from physics collision for example) to voxel material index
-        public bool TryGetVoxelMaterialFromSubmesh(int submeshIndex, out int voxelMaterialIndex) {
+        public bool TryLookupMaterialSubmeshIndex(int submeshIndex, out byte material) {
             if (voxelMaterialsLookup != null && submeshIndex < voxelMaterialsLookup.Length) {
-                voxelMaterialIndex = voxelMaterialsLookup[submeshIndex];
+                material = voxelMaterialsLookup[submeshIndex];
                 return true;
             }
 
-            voxelMaterialIndex = -1;
+            material = byte.MaxValue;
             return false;
         }
 
         // Check the global material type of a hit triangle index
-        public byte GetTriangleIndexMaterialType(int triangleIndex) {
+        public bool TryLookupMaterialTriangleIndex(int triangleIndex, out byte material) {
             if (triangleOffsetLocalMaterials == null) {
-                return byte.MaxValue;
+                Debug.LogWarning("Material lookup array is not set...");
+                material = byte.MaxValue;
+                return false;
             }
 
+            // Goes through each submesh and checks if the triangle index is valid for each one
+            // When we find one with a range that encapsulates the triangle index, then we return the material for that submesh (given the index again)
             for (int i = triangleOffsetLocalMaterials.Length - 1; i >= 0; i--) {
-                (byte localMaterial, int offset) = triangleOffsetLocalMaterials[i];
-                if (triangleIndex > offset) {
-                    return (byte)voxelMaterialsLookup[i];
+                (byte mat, int offset) = triangleOffsetLocalMaterials[i];
+                if (triangleIndex >= offset) {
+                    material = mat;
+                    return true;
                 }
             }
 
-            return byte.MaxValue;
+            material = byte.MaxValue;
+            return false;
         }
     }
 }

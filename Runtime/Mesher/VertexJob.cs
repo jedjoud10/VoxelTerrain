@@ -58,6 +58,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [WriteOnly]
         public NativeArray<int> indices;
 
+        [ReadOnly]
+        public bool3 neighbourMask;
+
         // Vertices that we generated
         [WriteOnly]
         [NativeDisableParallelForRestriction]
@@ -83,17 +86,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.Size + 1);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
             indices[index] = int.MaxValue;
 
-            // Idk bruh
-            // TODO: Do the neighbor voxel fetching shenanigans here...
-            
-            /*
-            if (math.any(position >= math.uint3(size-1)))
+            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
                 return;
-            */
-            
 
             float3 vertex = float3.zero;
             float3 normal = float3.zero;

@@ -4,6 +4,7 @@ namespace jedjoud.VoxelTerrain {
     public class VoxelGridSpawner : VoxelBehaviour {
         public delegate void OnChunkSpawned(VoxelChunk chunk);
         public event OnChunkSpawned onChunkSpawned;
+        // TODO: since we are using octal generation, this MUST be even
         public Vector3Int mapChunkSize;
         public override void CallerStart() {
             for (int x = -mapChunkSize.x; x < mapChunkSize.x; x++) {
@@ -20,7 +21,7 @@ namespace jedjoud.VoxelTerrain {
 
         private void OnDrawGizmosSelected() {
             if (terrain.drawGizmos) 
-                Gizmos.DrawWireCube(transform.position, (Vector3)(mapChunkSize * VoxelUtils.Size * 2) * VoxelUtils.VoxelSizeFactor);
+                Gizmos.DrawWireCube(transform.position, (Vector3)(mapChunkSize * VoxelUtils.SIZE * 2) * VoxelUtils.VoxelSizeFactor);
         }
     }
 }

@@ -24,14 +24,12 @@ namespace jedjoud.VoxelTerrain.Generation {
         public event OnReadbackSuccessful onReadbackSuccessful;
 
         public override void CallerStart() {
-            //Debug.Log($"Async Compute: {SystemInfo.supportsAsyncCompute}, Async Readback: {SystemInfo.supportsAsyncGPUReadback}");
             freeVoxelNativeArrays = new BitArray(asyncReadbackPerTick, true);
             pendingOctalUnits = new HashSet<Vector3Int>();
             queuedOctalUnits = new Queue<Vector3Int>();
             voxelNativeArrays = new List<NativeArray<uint>>(asyncReadbackPerTick);
             for (int i = 0; i < asyncReadbackPerTick; i++) {
-                //voxelNativeArrays.Add(new NativeArray<uint>(VoxelUtils.Volume, Allocator.Persistent));
-                voxelNativeArrays.Add(new NativeArray<uint>(VoxelUtils.Volume*8, Allocator.Persistent));
+                voxelNativeArrays.Add(new NativeArray<uint>(VoxelUtils.VOLUME*8, Allocator.Persistent));
             }
         }
 
@@ -47,30 +45,12 @@ namespace jedjoud.VoxelTerrain.Generation {
         public void GenerateVoxels(VoxelChunk chunk) {
             chunk.state = VoxelChunk.ChunkState.VoxelGeneration;
             Vector3Int octalPosition = chunk.chunkPosition / 2;
-            //Vector3Int octalPosition = chunk.chunkPosition;
 
             if (pendingOctalUnits.Contains(octalPosition)) return;
 
             queuedOctalUnits.Enqueue(octalPosition);
             pendingOctalUnits.Add(octalPosition);
         }
-
-        /*
-        [BurstCompile]
-        unsafe struct FillUp : IJobParallelFor {
-            [ReadOnly]
-            [NativeDisableUnsafePtrRestriction]
-            public half* densities;
-            [WriteOnly]
-            public NativeArray<Voxel> voxels;
-            public void Execute(int index) {
-                voxels[index] = new Voxel {
-                    density = densities[index],
-                    material = 0,
-                };
-            }
-        }
-        */
 
         [BurstCompile]
         unsafe struct FillUp : IJobParallelFor {
@@ -82,8 +62,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             public void Execute(int index) {
                 voxels[index] = new Voxel {
                     density = (half)math.f16tof32(raw[index] & 0xFFFF),
-                    //density = UnsafeUtility.As()
-                    //density = (half)raw[index],
                     material = (byte)((raw[index] >> 16) & 0xFF),
                 };
             }
@@ -105,9 +83,9 @@ namespace jedjoud.VoxelTerrain.Generation {
 
 
                     // Size*2 since we are using octal generation!
-                    Vector3 worldPosition = (Vector3)position * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
+                    Vector3 worldPosition = (Vector3)position * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
                     Vector3 worldScale = (Vector3.one / 2) * VoxelUtils.VoxelSizeFactor;
-                    terrain.executor.ExecuteShader(VoxelUtils.Size*2, 0, worldPosition, worldScale, true, true);
+                    terrain.executor.ExecuteShader(VoxelUtils.SIZE*2, 0, worldPosition, worldScale, true, true);
 
                     // Change chunk states
                     for (int j = 0; j < 8; j++) {
@@ -142,9 +120,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                                         
                                         JobHandle handle = new FillUp() {
                                             // nghh I love unsafe pointers... 🤤👅
-                                            raw = pointer + (VoxelUtils.Volume * j),
+                                            raw = pointer + (VoxelUtils.VOLUME * j),
                                             voxels = chunk.voxels,
-                                        }.Schedule(VoxelUtils.Volume, 8192 * VoxelUtils.SchedulingInnerloopBatchCount);
+                                        }.Schedule(VoxelUtils.VOLUME, 8192 * VoxelUtils.SchedulingInnerloopBatchCount);
                                         handle.Complete();
                                         chunk.state = VoxelChunk.ChunkState.Temp;
 

@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Unity.Burst.CompilerServices;
@@ -13,20 +14,20 @@ namespace jedjoud.VoxelTerrain {
         public static int VoxelSizeReduction { get; set; } = 1;
 
         // Used for parallelism control for the CPU side meshing and editing
-        public static int SchedulingInnerloopBatchCount { get; set; } = 16;
+        public static int SchedulingInnerloopBatchCount { get; set; } = 32;
 
         // Scaling factor when using voxel size reduction
         // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)
         public static float VoxelSizeFactor => 1F / Mathf.Pow(2F, VoxelSizeReduction);
 
         // Current chunk resolution
-        public const int Size = 64;
+        public const int SIZE = 64;
 
         // Total number of voxels in a chunk
-        public const int Volume = Size * Size * Size;
+        public const int VOLUME = SIZE * SIZE * SIZE;
 
         // One more voxel just in case... :3
-        public const int VolumeOffset = (Size+1) * (Size + 1) * (Size + 1);
+        public const int VOLUME_OFFSET = (SIZE+1) * (SIZE + 1) * (SIZE + 1);
 
         // Max possible number of materials supported by the terrain mesh
         public const int MAX_MATERIAL_COUNT = 256;
@@ -121,7 +122,7 @@ namespace jedjoud.VoxelTerrain {
 
         // Fetch the Voxels but with neighbour data fallback
         public static Voxel FetchWithNeighbours(int index, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
-            int mortonChunkIndex = index / Volume;
+            int mortonChunkIndex = index / VOLUME;
 
             // Local fetch (same thing as index < Volume)
             if (mortonChunkIndex == 0)
@@ -131,9 +132,27 @@ namespace jedjoud.VoxelTerrain {
             unsafe {
                 // Neighbours doesn't contain the local chunk...
                 Voxel* ptr = neighbours[mortonChunkIndex-1];
-                Voxel* offset = ptr + (index - Volume * mortonChunkIndex);
+                Voxel* offset = ptr + (index - VOLUME * mortonChunkIndex);
                 return *offset;
             }
+        }
+
+        // Checks if the given position is valid with the given neighbours
+        // Only really needed for the chunks that are spawned at the very edge of the map, in the positive x,y,z axii
+        // We need to tell them to disable fetching from their neighbours, as they have none in that direction.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckNeighbours(uint3 position, bool3 neighbourBitmask) {
+            bool3 greater = position >= SIZE-2;
+            return math.all((greater & neighbourBitmask) == greater);
+            //return !math.any(greater);
+            /*
+            if (math.all(neighbourBitmask) && !math.all(greater)) {
+                return false;
+            } else {
+                return true;
+            }
+            */
+
         }
 
         // Calculate the normals at a specific position

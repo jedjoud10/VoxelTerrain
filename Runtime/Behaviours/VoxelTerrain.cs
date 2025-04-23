@@ -111,6 +111,15 @@ namespace jedjoud.VoxelTerrain {
             };
 
             onComplete += () => {
+                Debug.Log("Terrain generation finished!");
+                edits.ApplyVoxelEdit(new jedjoud.VoxelTerrain.Edits.SphereVoxelEdit {
+                    strength = 100,
+                    center = new Unity.Mathematics.float3(10, 10, 10),
+                    material = 0,
+                    paintOnly = false,
+                    radius = 10f,
+                    writeMaterial = true,
+                }, false);
             };
 
             mesher.CallerStart();
@@ -139,8 +148,8 @@ namespace jedjoud.VoxelTerrain {
                 collisions.CallerTick();
 
                 if (complete && pendingChunks == 0) {
-                    onComplete?.Invoke();
                     complete = false;
+                    onComplete?.Invoke();
                 }
 
                 if (i >= maxTicksPerFrame) {
@@ -198,10 +207,10 @@ namespace jedjoud.VoxelTerrain {
             chunk.sharedMesh = mesh;
 
             GameObject chunkGameObject = chunk.gameObject;
-            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.Size * VoxelUtils.VoxelSizeFactor;
+            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
             chunkGameObject.transform.localScale = scale * Vector3.one;
             chunk.chunkPosition = chunkPosition;
-            chunk.voxels = new NativeArray<Voxel>(VoxelUtils.Volume, Allocator.Persistent);
+            chunk.voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent);
             totalChunks.Add(chunkPosition, chunkGameObject);
             return chunk;
         }

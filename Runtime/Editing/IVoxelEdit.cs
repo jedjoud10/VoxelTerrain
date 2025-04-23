@@ -22,16 +22,14 @@ namespace jedjoud.VoxelTerrain.Edits {
 
         // Apply any generic voxel edit onto oncoming data
         public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters) where T : struct, IVoxelEdit {
-            throw new NotImplementedException();
             VoxelEditJob<T> job = new VoxelEditJob<T> {
                 offset = offset,
                 edit = edit,
                 voxels = voxels,
                 voxelScale = VoxelUtils.VoxelSizeFactor,
-                vertexScale = 1.0f,
                 counters = counters,
             };
-            return job.Schedule(VoxelUtils.Volume, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
+            return job.Schedule(VoxelUtils.VOLUME, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
         }
     }
 }
