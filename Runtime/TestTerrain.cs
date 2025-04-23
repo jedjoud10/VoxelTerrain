@@ -50,17 +50,16 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<float2> flat = position.Swizzle<float2>("xz");
             Variable<bool> check = density > -0.2f & density < 0.2f;
             Variable<float> val = (new Simplex(0.01f, 1.0f).Evaluate(flat) - 0.2f).ClampZeroOne();
-            check &= Random.Evaluate<float3, float>(position, false) > 0.99f;
+            check &= Random.Evaluate<float3, float>(position, false) > 0.95f;
 
             Variable<float3> rotation = Random.Evaluate<float3, float3>(position, true);
 
             output = new AllOutputs();
             output.density = density;
-            output.color = new float3(1.0);
-            output.prop = (GraphUtils.Zero<Prop>()).With(
+            output.prop = GraphUtils.Zero<Prop>().With(
                 ("position", position),
                 ("rotation", rotation),
-                ("scale", check.Select<float>(0.0f, val * 3))
+                ("scale", check.Select<float>(0f, 1f))
             );
             //output.material = 0;
             output.material = (Noise.Simplex(position, 0.02f, 1.0f) > 0).Select<int>(1, 0);

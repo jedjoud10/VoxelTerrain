@@ -112,6 +112,7 @@ namespace jedjoud.VoxelTerrain {
 
             onComplete += () => {
                 Debug.Log("Terrain generation finished!");
+                /*
                 edits.ApplyVoxelEdit(new jedjoud.VoxelTerrain.Edits.SphereVoxelEdit {
                     strength = 100,
                     center = new Unity.Mathematics.float3(10, 10, 10),
@@ -120,6 +121,7 @@ namespace jedjoud.VoxelTerrain {
                     radius = 10f,
                     writeMaterial = true,
                 }, false);
+                */
             };
 
             mesher.CallerStart();
