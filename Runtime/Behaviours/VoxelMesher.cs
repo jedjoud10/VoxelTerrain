@@ -4,10 +4,8 @@ using Unity.Jobs;
 using UnityEngine;
 using System.Linq;
 using Unity.Collections;
-using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine.Profiling;
-using Unity.Collections.LowLevel.Unsafe;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
@@ -111,11 +109,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             }
                         }
 
-                        if (all && queuedJob.TryDequeue(out PendingMeshJob request)) {
-                            pendingJobs.Remove(request);
-                            Profiler.BeginSample("Begin Mesh Jobs");
-                            BeginJob(handlers[i], request, neighbours, neighbourMask);
-                            Profiler.EndSample();
+                        // Only begin meshing if we have the correct neighbours
+                        if (all) {
+                            if (queuedJob.TryDequeue(out PendingMeshJob request)) {
+                                pendingJobs.Remove(request);
+                                Profiler.BeginSample("Begin Mesh Jobs");
+                                BeginJob(handlers[i], request, neighbours, neighbourMask);
+                                Profiler.EndSample();
+                            }
+                        } else {
+                            // We can be smart and move this chunk back to the end of the queue
+                            // This allows the next free mesh job handler to peek at the next element, not this one again
+                            if (queuedJob.TryDequeue(out PendingMeshJob request)) {
+                                queuedJob.Enqueue(request);
+                            }
                         }
                     }
                 }

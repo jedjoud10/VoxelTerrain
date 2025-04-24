@@ -1,6 +1,4 @@
-using System.Runtime.InteropServices;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Props {
     // TODO: Also implement the prop type system

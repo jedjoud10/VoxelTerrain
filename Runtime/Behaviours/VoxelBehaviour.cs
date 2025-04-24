@@ -1,4 +1,3 @@
-using jedjoud.VoxelTerrain.Generation;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
@@ -6,8 +5,10 @@ namespace jedjoud.VoxelTerrain {
     public class VoxelBehaviour : MonoBehaviour {
         [HideInInspector]
         public VoxelTerrain terrain => GetComponent<VoxelTerrain>();
+        [HideInInspector]
         public long tick => terrain.currentTick;
-
+        [HideInInspector]
+        public bool disposed => terrain.disposed;
         public virtual void CallerStart() { }
         public virtual void CallerTick() { }
         public virtual void CallerDispose() { }

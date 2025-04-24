@@ -1,7 +1,6 @@
 using jedjoud.VoxelTerrain.Props;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 
 namespace jedjoud.VoxelTerrain.Generation.Demo {

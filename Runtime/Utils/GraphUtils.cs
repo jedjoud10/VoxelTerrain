@@ -6,9 +6,8 @@ using UnityEngine.Experimental.Rendering;
 // Common utils and shorthand forms
 namespace jedjoud.VoxelTerrain {
     using jedjoud.VoxelTerrain.Generation;
-    using jedjoud.VoxelTerrain.Props;
     using System;
-    using System.Runtime.InteropServices.WindowsRuntime;
+    using UnityEngine.Rendering;
 
     public static class GraphUtils {
         // Convert a strict type to a graphics format to be used for texture format
@@ -72,33 +71,33 @@ namespace jedjoud.VoxelTerrain {
         }
 
 
-        public static void SetComputeShaderObj(ComputeShader shader, string id, object val, VariableType type) {
+        public static void SetComputeShaderObj(CommandBuffer cmds, ComputeShader shader, string id, object val, VariableType type) {
             switch (type.strict) {
                 case VariableType.StrictType.Float:
-                    shader.SetFloat(id, (float)val);
+                    cmds.SetComputeFloatParam(shader, id, (float)val);
                     break;
                 case VariableType.StrictType.Float2:
                     float2 temp = (float2)val;
-                    shader.SetVector(id, new float4(temp, 0.0f));
+                    cmds.SetComputeVectorParam(shader, id, new float4(temp, 0.0f));
                     break;
                 case VariableType.StrictType.Float3:
                     float3 temp2 = (float3)val;
-                    shader.SetVector(id, new float4(temp2, 0.0f));
+                    cmds.SetComputeVectorParam(shader, id, new float4(temp2, 0.0f));
                     break;
                 case VariableType.StrictType.Float4:
                     float4 temp3 = (float4)val;
-                    shader.SetVector(id, temp3);
+                    cmds.SetComputeVectorParam(shader, id, temp3);
                     break;
                 case VariableType.StrictType.Int:
-                    shader.SetInt(id, (int)val);
+                    cmds.SetComputeIntParam(shader, id, (int)val);
                     break;
                 case VariableType.StrictType.Int2:
                     uint2 temp4 = (uint2)val;
-                    shader.SetInts(id, (int)temp4.x, (int)temp4.y);
+                    cmds.SetComputeIntParams(shader, id, (int)temp4.x, (int)temp4.y);
                     break;
                 case VariableType.StrictType.Int3:
                     uint3 temp5 = (uint3)val;
-                    shader.SetInts(id, (int)temp5.x, (int)temp5.y, (int)temp5.z);
+                    cmds.SetComputeIntParams(shader, id, (int)temp5.x, (int)temp5.y, (int)temp5.z);
                     break;
             }
         }

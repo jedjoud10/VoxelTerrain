@@ -1,7 +1,4 @@
-using jedjoud.VoxelTerrain.Meshing;
-using System;
 using Unity.Collections;
-using Unity.Jobs;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {

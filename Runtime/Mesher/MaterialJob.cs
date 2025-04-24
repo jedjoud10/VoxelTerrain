@@ -35,6 +35,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
+        // TODO: make this faster. I still feel like 5ms is too slow for this shit
         public unsafe void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 

@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using PlasticPipe.PlasticProtocol.Messages;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -25,7 +23,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 context.properties.Add($"Texture2D {textureName}_read;");
                 context.properties.Add($"SamplerState sampler{textureName}_read;");
 
-                context.Inject((compute, textures) => {
+                context.Inject((cmds, compute, textures) => {
                     Texture2D tex = (Texture2D)textures[textureName].texture;
 
                     Color32[] colors = new Color32[size];

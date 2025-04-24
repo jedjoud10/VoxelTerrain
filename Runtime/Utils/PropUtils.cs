@@ -1,10 +1,5 @@
 using jedjoud.VoxelTerrain.Props;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using Unity.Burst.CompilerServices;
-using Unity.Collections;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     public static class PropUtils {

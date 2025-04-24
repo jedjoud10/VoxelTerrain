@@ -2,20 +2,20 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
-using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 
 namespace jedjoud.VoxelTerrain {
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile(CompileSynchronously = true, Debug = true)]
     public struct AsyncMemCpy : IJob {
+        [ReadOnly]
         public NativeArray<Voxel> src;
+        [WriteOnly]
         public NativeArray<Voxel> dst;
         public void Execute() {
             dst.CopyFrom(src);
         }
     }
 
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile(CompileSynchronously = true, Debug = true)]
     public unsafe struct UnsafeAsyncMemCpy : IJob {
         [NativeDisableUnsafePtrRestriction]
         public uint* src;

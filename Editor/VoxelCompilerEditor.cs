@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     TreeScope scope = scopes[i];
 
                     EditorGUI.indentLevel++;
-                    EditorGUILayout.LabelField($"Name: {scope.name} (i={i})", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField($"Name: {scope.name}", EditorStyles.boldLabel);
                     EditorGUI.indentLevel++;
                     EditorGUILayout.LabelField($"Name: {scope.name}");
                     EditorGUILayout.LabelField($"Depth: {scope.depth}");
@@ -48,7 +48,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                     EditorGUILayout.LabelField($"Name: {dispatch.name} (i={i})", EditorStyles.boldLabel);
                     EditorGUI.indentLevel++;
                     EditorGUILayout.LabelField($"Scope Name: {dispatch.scopeName}");
-                    EditorGUILayout.LabelField($"Scope Index: {dispatch.scopeIndex}");
                     EditorGUILayout.LabelField($"Morton Encoding: {dispatch.mortonate}");
                     EditorGUILayout.LabelField($"Thread Group Dimensions: {dispatch.numThreads}");
                     EditorGUI.indentLevel--;

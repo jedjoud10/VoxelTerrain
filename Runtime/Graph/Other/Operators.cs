@@ -1,6 +1,4 @@
-using NUnit.Framework;
 using System;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class DefineNode<T> : Variable<T> {

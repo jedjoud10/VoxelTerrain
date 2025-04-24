@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System;
-using System.Runtime.InteropServices;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Props {

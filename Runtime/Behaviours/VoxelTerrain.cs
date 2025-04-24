@@ -1,11 +1,8 @@
 using System.Collections.Generic;
 using Unity.Collections;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Profiling;
-using UnityEngine.Rendering;
-using UnityEngine.UIElements;
-using static jedjoud.VoxelTerrain.VoxelTerrain;
+using static jedjoud.VoxelTerrain.VoxelChunk;
 
 namespace jedjoud.VoxelTerrain {
     public class VoxelTerrain : MonoBehaviour {
@@ -15,6 +12,7 @@ namespace jedjoud.VoxelTerrain {
         private float tickDelta;
         private float accumulator;
         internal long currentTick;
+        internal bool disposed;
 
         [Header("General")]
         public GameObject chunkPrefab;
@@ -84,11 +82,12 @@ namespace jedjoud.VoxelTerrain {
             }
 
             complete = false;
-            //Instance = this;
+            disposed = false;
             totalChunks = new Dictionary<Vector3Int, GameObject>();
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
+            VoxelUtils.VoxelSizeReduction = voxelSizeReduction;
             VoxelUtils.SchedulingInnerloopBatchCount = 1024;
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
@@ -213,6 +212,7 @@ namespace jedjoud.VoxelTerrain {
         */
 
         private void OnDisable() {
+            disposed = true;
             mesher.CallerDispose();
             graph.CallerDispose();
             executor.CallerDispose();
@@ -252,15 +252,31 @@ namespace jedjoud.VoxelTerrain {
                     VoxelChunk chunk = go.GetComponent<VoxelChunk>();
                     
                     Bounds bounds = chunk.GetBounds();
-                    if (chunk.sharedMesh != null && chunk.sharedMesh.vertexCount > 0) {
-                        //Bounds bounds = chunk.GetComponent<MeshRenderer>().bounds;
+                    Color color = Color.white;
 
-                        Gizmos.color = Color.white;
-                        Gizmos.DrawWireCube(bounds.center, bounds.size);
-                    } else if (chunk.HasVoxelData()) {
-                        Gizmos.color = Color.red;
-                        Gizmos.DrawWireCube(bounds.center, bounds.size);
+                    switch (chunk.state) {
+                        case ChunkState.Idle:
+                            color = Color.white;
+                            break;
+                        case ChunkState.VoxelGeneration:
+                            color = Color.red;
+                            break;
+                        case ChunkState.VoxelReadback:
+                            color = Color.yellow;
+                            break;
+                        case ChunkState.Temp:
+                            color = Color.blue;
+                            break;
+                        case ChunkState.Meshing:
+                            color = Color.cyan;
+                            break;
+                        case ChunkState.Done:
+                            color = Color.green;
+                            break;
                     }
+
+                    Gizmos.color = color;
+                    Gizmos.DrawWireCube(bounds.center, bounds.size);
                 }
             }
         }

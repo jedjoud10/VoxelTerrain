@@ -114,7 +114,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debugName: 1
   autoCompile: 1
-  hash: -1088962424
+  hash: 1215184227
   voxelsDispatchIndex: 0
   propsDispatchIndex: 1
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
@@ -240,6 +240,8 @@ MonoBehaviour:
     x: -54.5
   materialHeightNoisy:
     x: 9
+  offset:
+    x: 0
   curve:
     serializedVersion: 2
     m_Curve:

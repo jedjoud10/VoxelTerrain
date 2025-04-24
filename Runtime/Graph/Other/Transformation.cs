@@ -26,10 +26,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             string matrixName = ctx.GenId("matrix");
             ctx.properties.Add($"float4x4 {matrixName};");
 
-            ctx.Inject((compute, textures) => {
+            ctx.Inject((cmds, compute, textures) => {
                 float4x4 matrix = math.AffineTransform(position, Quaternion.Euler(rotation), scale);
 
-                compute.SetMatrix(matrixName, matrix);
+                cmds.SetComputeMatrixParam(compute, matrixName, matrix);
             });
 
             return ctx.AssignTempVariable<float3>("projected", $"mul({matrixName}, float4({ctx[input]}, 1.0)).xyz");

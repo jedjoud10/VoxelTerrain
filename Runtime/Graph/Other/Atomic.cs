@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using Unity.Mathematics;
-using UnityEngine;
-
 namespace jedjoud.VoxelTerrain.Generation {
     public class AtomicOrderingNode : UntypedVariable {
         public override void HandleInternal(TreeContext context) {

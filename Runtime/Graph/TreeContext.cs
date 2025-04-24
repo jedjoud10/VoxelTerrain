@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class TreeContext {
@@ -59,15 +59,15 @@ namespace jedjoud.VoxelTerrain.Generation {
         public void Inject<T>(InjectedNode<T> node, string name, Func<object> func) {
             if (!Contains(node)) {
                 string newName = GenId(name);
-                injector.injected.Add((compute, textures) => {
-                    GraphUtils.SetComputeShaderObj(compute, newName, func(), VariableType.TypeOf<T>());
+                injector.injected.Add((cmds, compute, textures) => {
+                    GraphUtils.SetComputeShaderObj(cmds, compute, newName, func(), VariableType.TypeOf<T>());
                 });
                 properties.Add(VariableType.TypeOf<T>().ToStringType() + " " + newName + ";");
                 Add(node, newName);
             }
         }
 
-        public void Inject(Action<ComputeShader, Dictionary<string, ExecutorTexture>> func) {
+        public void Inject(Action<CommandBuffer, ComputeShader, Dictionary<string, ExecutorTexture>> func) {
             injector.injected.Add(func);
         }
 

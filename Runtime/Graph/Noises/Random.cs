@@ -1,5 +1,3 @@
-using PlasticGui.Configuration.CloudEdition.Welcome;
-
 namespace jedjoud.VoxelTerrain.Generation {
     public class RandomNode<I, O> : Variable<O> {
         public Variable<I> input;
@@ -15,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (signed) {
                 code = $"(2.0 * ({code} - 0.5))";
             }
-            
+
             ctx.DefineAndBindNode<O>(this, "rng", code);
         }
     }

@@ -1,16 +1,8 @@
 using System.Collections.Generic;
-using System.Collections;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Unity.Mathematics;
-using Unity.Jobs;
-using Unity.Burst;
-using Unity.Collections.LowLevel.Unsafe;
-using System;
-using static jedjoud.VoxelTerrain.Generation.VoxelReadback;
 using System.Linq;
-using System.Net.NetworkInformation;
 
 namespace jedjoud.VoxelTerrain.Props {
     public class VoxelProps : VoxelBehaviour {

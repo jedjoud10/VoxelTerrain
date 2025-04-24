@@ -301,6 +301,7 @@ GameObject:
   - component: {fileID: 664809943}
   - component: {fileID: 664809942}
   - component: {fileID: 664809941}
+  - component: {fileID: 664809945}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -331,7 +332,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
@@ -393,7 +394,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 90
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -426,6 +427,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &664809945
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 664809940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977684272d405db4785adb9262cef354, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  acceleration: 500
+  accSprintMultiplier: 20
+  lookSensitivity: 1
+  dampingCoefficient: 20
+  focusOnEnable: 1
 --- !u!1 &786634533
 GameObject:
   m_ObjectHideFlags: 0
@@ -571,28 +589,36 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: drawGizmos
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: ticksPerSecond
       value: 64
+      objectReference: {fileID: 0}
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: voxelSizeReduction
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Name
       value: Voxel Terrain
       objectReference: {fileID: 0}
-    - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
-      propertyPath: hash
-      value: 2055497501
+    - target: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
-      propertyPath: shader
-      value: 
-      objectReference: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
+      propertyPath: hash
+      value: 924058630
+      objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: debugName
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: autoCompile
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: octaves
@@ -632,7 +658,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailProbability.x
-      value: 0.01
+      value: 0.16
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialHeightNoisy.x
@@ -640,7 +666,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.x
-      value: -41.6
+      value: -52.5
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.y
@@ -652,7 +678,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: meshJobsPerTick
-      value: 2
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5361457892440788241, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_LocalPosition.x
@@ -696,11 +722,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.x
-      value: 4
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: mapChunkSize.y
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.z
-      value: 4
+      value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: blocky

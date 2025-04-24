@@ -1,10 +1,4 @@
 using Unity.Mathematics;
-using UnityEngine;
-using UnityEngine.Rendering;
-using System.Collections.Generic;
-using System.Collections;
-
-using Unity.Collections;
 using jedjoud.VoxelTerrain.Props;
 
 
@@ -12,7 +6,6 @@ using jedjoud.VoxelTerrain.Props;
 
 
 #if UNITY_EDITOR
-using UnityEditor;
 #endif
 
 namespace jedjoud.VoxelTerrain.Generation {

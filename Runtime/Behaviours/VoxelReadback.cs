@@ -1,15 +1,11 @@
 using System.Collections.Generic;
-using System.Collections;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Unity.Mathematics;
 using Unity.Jobs;
-using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
 using System;
-using System.Reflection;
-using jedjoud.VoxelTerrain.Props;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoxelReadback : VoxelBehaviour {
@@ -129,6 +125,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                         terrain.executor.textures["voxels"], 0,
                         delegate (AsyncGPUReadbackRequest asyncRequest) {
                             unsafe {
+                                if (disposed) {
+                                    return;
+                                }
+
                                 // We have to do this to stop unity from complaining about using the data...
                                 // fuck you...
                                 uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(readback.data);
@@ -141,6 +141,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                                     // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
                                     // We just need to do some memory copies at the right src offsets
                                     uint* src = pointer + (VoxelUtils.VOLUME * j);
+
                                     uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
                                     readback.copies[j] = new UnsafeAsyncMemCpy {
                                         src = src,

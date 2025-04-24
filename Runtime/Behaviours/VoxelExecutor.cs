@@ -1,7 +1,6 @@
 using jedjoud.VoxelTerrain.Props;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -86,21 +85,22 @@ namespace jedjoud.VoxelTerrain.Generation {
                 CreateIntermediateTextures(newSize);
             }
 
-            ComputeShader shader = compiler.shader;
-            shader.SetInt("size", newSize);
-            shader.SetInts("permuationSeed", new int[] { permutationSeed.x, permutationSeed.y, permutationSeed.z });
-            shader.SetInts("moduloSeed", new int[] { moduloSeed.x, moduloSeed.y, moduloSeed.z });
-            shader.SetVector("offset", offset);
-            shader.SetVector("scale", scale);
-            shader.SetBool("morton", morton);
-
-            if (updateInjected) {
-                compiler.ctx.injector.UpdateInjected(shader, textures);
-            }
-
             CommandBuffer commands = new CommandBuffer();
             commands.name = "Execute Terrain Generator Dispatches";
             commands.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
+            ComputeShader shader = compiler.shader;
+            
+            commands.SetComputeIntParam(shader, "size", newSize);
+            commands.SetComputeIntParams(shader, "permuationSeed", new int[] { permutationSeed.x, permutationSeed.y, permutationSeed.z });
+            commands.SetComputeIntParams(shader, "moduloSeed", new int[] { moduloSeed.x, moduloSeed.y, moduloSeed.z });
+            commands.SetComputeVectorParam(shader, "offset", offset);
+            commands.SetComputeVectorParam(shader, "scale", scale);
+            commands.SetComputeIntParam(shader, "morton", morton ? 1 : 0);
+
+            if (updateInjected) {
+                compiler.ctx.injector.UpdateInjected(commands, shader, textures);
+            }
+
 
             foreach (var (name, texture) in textures) {
                 texture.PreDispatch(commands, shader);
@@ -139,8 +139,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                 item.PostDispatchKernel(commands, shader, id);
             }
 
-            // TODO: figure out how 2 do this pls???
-            Graphics.ExecuteCommandBufferAsync(commands, UnityEngine.Rendering.ComputeQueueType.Background);
+            // This works! Only in the builds, but async compute queue is being utilized!!!
+            Graphics.ExecuteCommandBuffer(commands);
+            //Graphics.ExecuteCommandBufferAsync(commands, UnityEngine.Rendering.ComputeQueueType.Default);
         }
 
         private void ComputeSecondarySeeds() {

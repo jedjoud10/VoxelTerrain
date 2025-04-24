@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
-using static TreeEditor.TextureAtlas;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class CurveNode : Variable<float> {
@@ -31,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 context.properties.Add($"Texture2D {textureName}_read;");
                 context.properties.Add($"SamplerState sampler{textureName}_read;");
 
-                context.Inject((compute, textures) => {
+                context.Inject((cmds, compute, textures) => {
                     Texture2D tex = (Texture2D)textures[textureName].texture;
 
                     float[] points = new float[size];
