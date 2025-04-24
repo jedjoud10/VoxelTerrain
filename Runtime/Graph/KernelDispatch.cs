@@ -3,6 +3,7 @@ using System;
 using System.Xml.Schema;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Windows;
 
 namespace jedjoud.VoxelTerrain.Generation {
     // TODO: fixme. pls fixme... please... just impl some parent-child classes.. plpplsplsplspsllpslp
@@ -41,6 +42,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
 
                 if (item.buffer) {
+                    // TODO: what the fuck?????
                     kernelOutputSetter += $@"
     if ({item.setter}.scale > 0.0) {{
         int index = 0;
@@ -54,13 +56,16 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
             }
 
+            if (name == "CSVoxel") {
+                kernelOutputSetter += $"    CountVoxelDensitySign(id, voxel);\n";
+            }
+
             return $@"
 #pragma kernel CS{scopeName}
 [numthreads({numThreads.x}, {numThreads.y}, {numThreads.z})]
 // Name: {name}, Scope name: {scopeName}, Scope index: {scopeIndex}, Outputs: {outputs.Length}, Arguments: {scope.arguments.Length}
 void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
     uint3 remapped = uint3({remappedCoords});
-    //float3 position = (float3(remapped * {frac}) + offset) * scale
     float3 position = ConvertIntoWorldPosition(float3(remapped) * {frac});
 {scope.InitArgVars()}
 {scope.CallWithArgs()}

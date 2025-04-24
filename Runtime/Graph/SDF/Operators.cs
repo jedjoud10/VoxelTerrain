@@ -38,6 +38,14 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
         }
 
+        public static implicit operator Variable<float>(OpRawSdfBuilder value) {
+            return new OpSdfOp {
+                op = value.op,
+                smooth = value.smooth,
+                variables = value.variables
+            };
+        }
+
         public OpRawSdfBuilder Smoothenation(Variable<float> smooth) {
             this.smooth = smooth;
             return this;

@@ -5,31 +5,26 @@ using Unity.Burst;
 namespace jedjoud.VoxelTerrain.Meshing {
     // Sum job that will add the offset of each material onto the last one to have a sequential native array
     [BurstCompile(CompileSynchronously = true)]
-    public struct SumJob : IJobParallelFor {
-        // Offsets for each material type 
+    public struct SumJob : IJob {
         [WriteOnly]
         public NativeArray<int> materialSegmentOffsets;
 
-        // Multiple counters for each material type
         [ReadOnly]
         public Unsafe.NativeMultiCounter countersQuad;
 
-        // Global material counter
         [ReadOnly]
         public Unsafe.NativeCounter materialCounter;
 
-        public void Execute(int index) {
-            if (index > materialCounter.Count)
-                return;
+        public void Execute() {
+            for (int index = 0; index < materialCounter.Count; index++) {
+                int sum = 0;
 
+                for (int i = 0; i < index; i++) {
+                    sum += countersQuad[i];
+                }
 
-            int sum = 0;
-
-            for (int i = 0; i < index; i++) {
-                sum += countersQuad[i];
+                materialSegmentOffsets[index] = sum * 6;
             }
-
-            materialSegmentOffsets[index] = sum * 6;
         }
     }
 }

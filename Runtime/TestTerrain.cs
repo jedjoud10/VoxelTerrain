@@ -19,6 +19,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> detailAmplitude;
         public Inject<float> materialHeight;
         public Inject<float> materialHeightNoisy;
+        public Inject<float> offset;
         public AnimationCurve curve;
         public FractalMode mode;
         [Range(1, 10)]
@@ -39,10 +40,11 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<float> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence).Evaluate(xz);
 
             // Some pyramids...
-            Variable<float> extra = Cellular<float2>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(xz.Scaled(detailScale)) * detailAmplitude;
-            
+            //Variable<float> extra = Cellular<float2>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(xz.Scaled(detailScale)) * detailAmplitude
+            Variable<float> extra = Cellular<float3>.Shape(new SdfSphere(1.0f), detailProbability).Tile(projected.Scaled(detailScale)) * detailAmplitude;
+
             // Create a new density parameter
-            var density = (extra + fractal).Curve(curve, -200f, 200f, invert: true) + y;
+            var density = ((Variable<float>)Sdf.Union(extra, fractal) + offset).Curve(curve, -200f, 200f, invert: true) + y;
 
             // Some checks for prop generation
             Variable<float> test = position.Swizzle<float>("y");
@@ -67,7 +69,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             );
 
             // Do some funky material picking
-            var uhhh = ((y + Noise.Simplex(position, 0.04f, materialHeightNoisy)) > materialHeight).Select<int>(2, 1);
+            var uhhh = ((y + Noise.VoronoiF2(position, 0.04f, 1.0f) * materialHeightNoisy) > materialHeight).Select<int>(2, 1);
             output.material = (Noise.Simplex(position, 0.02f, 1.0f) > 0).Select<int>(uhhh, 0);
         }
     }

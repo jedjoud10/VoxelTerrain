@@ -86,10 +86,7 @@ float3 normalMaxx(uint3 id) {
     float x = fetch(id + uint3(1, 0, 0));
     float y = fetch(id + uint3(0, 1, 0));
     float z = fetch(id + uint3(0, 0, 1));
-    float x2 = fetch(id - uint3(1, 0, 0));
-    float y2 = fetch(id - uint3(0, 1, 0));
-    float z2 = fetch(id - uint3(0, 0, 1));
-    return normalize(float3(x2-x, y2-y, z2-z));
+    return normalize(float3(base-x, base-y, base-z));
 }
 
 [numthreads(8, 8, 8)]
@@ -121,8 +118,9 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
                 break;
             } else {
                 float unlerped = invLerp(firstDensity, secondDensity, 0.0);
+                unlerped = 0.5;
                 sum += lerp(float3(first), float3(second), unlerped);
-                normalSum += normalize(lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped));
+                normalSum += lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped);
                 colorSum += lerp(firstColor, secondColor, unlerped);
             }
         }
@@ -132,7 +130,8 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         uint oldValue = 0;
         InterlockedAdd(atomicCounters[0], 1, oldValue); 
         vertices[oldValue] = float3(id) + sum/float(count);
-        normals[oldValue] = normalize(-normalSum);
+        //normals[oldValue] = 1.0;
+        normals[oldValue] = length(normalSum) < 0.1 ? 1.0 : normalize(-normalSum);
         colors[oldValue] = materialId ? (colorSum / float(count)) : 1.0;
         vertexIds[id+1] = oldValue;   
     }

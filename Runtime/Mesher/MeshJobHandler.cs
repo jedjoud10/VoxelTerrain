@@ -14,10 +14,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Copy of the voxel data that we will use for meshing
         public NativeArray<Voxel> voxels;
 
-        // Copy of the neighbouring voxel data in the positive x,y,z directions
-        // All stored in one native array that is indexed in the jobs manually
-        public NativeArray<Voxel> neighbouringVoxels;
-
         // Native buffers for mesh data
         public NativeArray<float3> vertices;
         public NativeArray<float3> normals;
@@ -45,6 +41,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<uint> buckets;
 
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
+
+        public const int INNER_LOOP_BATCH_COUNT = 128;
 
         internal MeshJobHandler() {
             // Native buffers for mesh data
@@ -169,25 +167,25 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Material job and indexer job
-            JobHandle materialJobHandle = materialJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * 8 * VoxelUtils.SchedulingInnerloopBatchCount, dependency);
+            JobHandle materialJobHandle = materialJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * 8 * INNER_LOOP_BATCH_COUNT, dependency);
             JobHandle materialIndexerJobHandle = materialIndexerJob.Schedule(materialJobHandle);
 
             // Start the corner job and material job
-            JobHandle cornerJobHandle = cornerJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * VoxelUtils.SchedulingInnerloopBatchCount, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * INNER_LOOP_BATCH_COUNT, dependency);
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
-            JobHandle vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * VoxelUtils.SchedulingInnerloopBatchCount, vertexDep);
+            JobHandle vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
 
             // Start the quad job
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
-            JobHandle quadJobHandle = quadJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * VoxelUtils.SchedulingInnerloopBatchCount, merged);
+            JobHandle quadJobHandle = quadJob.Schedule(VoxelUtils.VOLUME_OFFSET, 2048 * INNER_LOOP_BATCH_COUNT, merged);
 
             // Start the sum job 
-            JobHandle sumJobHandle = sumJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 256, quadJobHandle);
+            JobHandle sumJobHandle = sumJob.Schedule(quadJobHandle);
 
             // Start the copy job
-            JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 1, sumJobHandle);
+            JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, sumJobHandle);
 
             finalJobHandle = copyJobHandle;
             return finalJobHandle;
@@ -219,6 +217,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Set mesh shared vertices
             mesh.Clear();
 
+            
+
             // TODO: batch this
             Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(1);
             Mesh.MeshData data = array[0];
@@ -236,6 +236,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 materialSegmentOffsets = materialSegmentOffsets,
                 data = data,
             };
+
+            // TODO: asyncify this
             test.Schedule().Complete();
 
             Mesh.ApplyAndDisposeWritableMeshData(array, mesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);

@@ -6,6 +6,8 @@ using System.Linq;
 using Unity.Collections;
 using Unity.Burst;
 using Unity.Mathematics;
+using UnityEngine.Profiling;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
@@ -64,7 +66,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public override void CallerTick() {
             foreach (var handler in handlers) {
                 if ((handler.finalJobHandle.IsCompleted || (tick - handler.startingTick) > handler.request.maxTicks) && !handler.Free) {
+                    Profiler.BeginSample("Finish Mesh Jobs");
                     FinishJob(handler);
+                    Profiler.EndSample();
                     //Debug.Log($"Job finished in {tick - handler.startingTick} ticks");
                 }
             }
@@ -109,7 +113,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                         if (all && queuedJob.TryDequeue(out PendingMeshJob request)) {
                             pendingJobs.Remove(request);
+                            Profiler.BeginSample("Begin Mesh Jobs");
                             BeginJob(handlers[i], request, neighbours, neighbourMask);
+                            Profiler.EndSample();
                         }
                     }
                 }
@@ -121,9 +127,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             handler.request = request;
             handler.startingTick = tick;
 
-            //var copy = new CustomCopy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
-            handler.voxels.CopyFrom(request.chunk.voxels);
-            handler.BeginJob(default, neighbours, neighbourMask);
+            var copy = new AsyncMemCpy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
+            handler.BeginJob(copy, neighbours, neighbourMask);
         }
 
         private void FinishJob(MeshJobHandler handler) {

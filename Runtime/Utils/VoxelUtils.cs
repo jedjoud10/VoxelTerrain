@@ -120,6 +120,15 @@ namespace jedjoud.VoxelTerrain {
             return (int)math.round((position.y * size * size + (position.z * size) + position.x));
         }
 
+        // Checks if the given position is valid with the given neighbours
+        // Only really needed for the chunks that are spawned at the very edge of the map, in the positive x,y,z axii
+        // We need to tell them to disable fetching from their neighbours, as they have none in that direction.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckNeighbours(uint3 position, bool3 neighbourBitmask) {
+            bool3 greater = position >= SIZE - 2;
+            return math.all((greater & neighbourBitmask) == greater);
+        }
+
         // Fetch the Voxels but with neighbour data fallback
         public static Voxel FetchWithNeighbours(int index, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
             int mortonChunkIndex = index / VOLUME;
@@ -135,24 +144,6 @@ namespace jedjoud.VoxelTerrain {
                 Voxel* offset = ptr + (index - VOLUME * mortonChunkIndex);
                 return *offset;
             }
-        }
-
-        // Checks if the given position is valid with the given neighbours
-        // Only really needed for the chunks that are spawned at the very edge of the map, in the positive x,y,z axii
-        // We need to tell them to disable fetching from their neighbours, as they have none in that direction.
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckNeighbours(uint3 position, bool3 neighbourBitmask) {
-            bool3 greater = position >= SIZE-2;
-            return math.all((greater & neighbourBitmask) == greater);
-            //return !math.any(greater);
-            /*
-            if (math.all(neighbourBitmask) && !math.all(greater)) {
-                return false;
-            } else {
-                return true;
-            }
-            */
-
         }
 
         // Calculate the normals at a specific position

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class CellularNode<T> : Variable<float> {
@@ -162,6 +163,14 @@ float output = 100.0;
             this.shouldSpawn = shouldSpawn;
             this.offset = 0.0f;
             this.factor = 1.0f;
+        }
+
+        public static Cellular<T> Shape(SdfShape shape, Variable<float> probability) {
+            return new Cellular<T>((Variable<T> a, Variable<T> b) => {
+                return shape.Evaluate(a.Cast<float3>() - b.Cast<float3>());
+            }, shouldSpawn: (Variable<T> a) => {
+                return probability * 2.0f - Random.Evaluate<T, float>(a, false);
+            });
         }
 
         public static Cellular<T> Simple(Sdf.DistanceMetric metric, Variable<float> probability) {

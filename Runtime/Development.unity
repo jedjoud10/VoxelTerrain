@@ -570,33 +570,53 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: ticksPerSecond
+      value: 64
+      objectReference: {fileID: 0}
     - target: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Name
       value: Voxel Terrain
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: hash
-      value: 107144792
+      value: 2055497501
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: shader
+      value: 
+      objectReference: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
+    - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: debugName
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: autoCompile
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: octaves
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: offset.x
+      value: 30.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: amplitude.x
-      value: 20
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: detailScale.x
+      value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialHeight.x
-      value: -54.63
+      value: -40
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailAmplitude.x
-      value: 50
+      value: -6.1
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.scale.x
@@ -612,23 +632,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailProbability.x
-      value: 0.1
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialHeightNoisy.x
-      value: 9
+      value: 40
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.x
-      value: 0
+      value: -41.6
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.y
-      value: -141.2
+      value: -81.7
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: meshJobsPerTick
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5361457892440788241, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_LocalPosition.x
@@ -672,11 +696,39 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.x
-      value: 10
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.z
-      value: 10
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: blocky
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: scale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: scale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: scale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: offset.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: materialId
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: useHeightSimplification
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: seed
@@ -705,6 +757,10 @@ PrefabInstance:
     - target: {fileID: 8066351110700312546, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: permutationSeed.z
       value: -878
+      objectReference: {fileID: 0}
+    - target: {fileID: 8197692837568637671, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: asyncReadbackPerTick
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

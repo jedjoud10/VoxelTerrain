@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using static jedjoud.VoxelTerrain.VoxelTerrain;
@@ -88,7 +89,7 @@ namespace jedjoud.VoxelTerrain {
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
-            VoxelUtils.SchedulingInnerloopBatchCount = 64;
+            VoxelUtils.SchedulingInnerloopBatchCount = 1024;
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
             spawner = GetComponent<VoxelGridSpawner>();
@@ -106,7 +107,14 @@ namespace jedjoud.VoxelTerrain {
                 pendingChunks++;
             };
 
-            readback.onReadbackSuccessful += (VoxelChunk chunk) => mesher.GenerateMesh(chunk, false);
+            readback.onReadbackSuccessful += (VoxelChunk chunk, bool empty) => {
+                if (empty) {
+                    pendingChunks--;
+                    complete = true;
+                } else {
+                    mesher.GenerateMesh(chunk, false);
+                }
+            };
 
             mesher.onVoxelMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => collisions.GenerateCollisions(chunk, mesh);
 
@@ -148,12 +156,27 @@ namespace jedjoud.VoxelTerrain {
                 accumulator -= tickDelta;
                 i++;
 
+                Profiler.BeginSample("Readback");
                 readback.CallerTick();
-                props.CallerTick();
-                edits.CallerTick();
-                mesher.CallerTick();
-                collisions.CallerTick();
+                Profiler.EndSample();
 
+                Profiler.BeginSample("Props");
+                props.CallerTick();
+                Profiler.EndSample();
+
+                Profiler.BeginSample("Edits");
+                edits.CallerTick();
+                Profiler.EndSample();
+
+                Profiler.BeginSample("Mesher");
+                mesher.CallerTick();
+                Profiler.EndSample();
+
+                Profiler.BeginSample("Collisions");
+                collisions.CallerTick();
+                Profiler.EndSample();
+
+                Debug.Log(pendingChunks);
                 if (complete && pendingChunks == 0) {
                     complete = false;
                     onComplete?.Invoke();

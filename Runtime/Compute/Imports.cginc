@@ -1,6 +1,5 @@
+// Size is actually 128, since it's double of 64!!! (octal stuff)
 int size;
-// Upgrade NOTE: excluded shader from DX11, OpenGL ES 2.0 because it uses unsized arrays
-#pragma exclude_renderers d3d11 gles
 int morton;
 
 int3 permuationSeed;
@@ -19,6 +18,8 @@ float3 offset;
 RWTexture3D<uint> voxels_write;
 RWStructuredBuffer<BlittableProp> props;
 RWStructuredBuffer<int> props_counter;
+RWStructuredBuffer<int> pos_neg_counter;
+
 
 float3 ConvertIntoWorldPosition(float3 tahini) {
     //return  (tahini + offset) * scale;
@@ -58,4 +59,14 @@ uint3 indexToPos(uint index)
     uint z = w / size;// y in N(B)
     uint x = w % size;        // z in N(C)
     return uint3(x, y, z);
+}
+
+// Used to avoid meshing certain chunks on the CPU since we use octal generation
+void CountVoxelDensitySign(uint3 id, float density) {
+    uint index = encodeMorton32(id / 64);
+    if (density > 0.0) {
+        InterlockedAdd(pos_neg_counter[index], 1);
+    } else {
+        InterlockedAdd(pos_neg_counter[index], -1);
+    }
 }
