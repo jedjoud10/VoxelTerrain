@@ -19,35 +19,9 @@ namespace jedjoud.VoxelTerrain.Generation {
 
     // A voxel graph is the base class to inherit from to be able to write custom voxel stuff
     public abstract partial class VoxelGraph : VoxelBehaviour {
-        [Header("Compilation")]
-        public bool debugName = true;
-        public bool autoCompile = true;
-
-        // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
-        // Also executing the shader at the specified size as well
         private void OnValidate() {
-
-            if (!gameObject.activeSelf)
-                return;
-
-            SoftRecompile();
-            OnPropertiesChanged();
-        }
-
-        // Called when the voxel graph's properties get modified
-        public void OnPropertiesChanged() {
-            if (!gameObject.activeSelf)
-                return;
-
-#if UNITY_EDITOR
-            var visualizer = GetComponent<VoxelPreview>();
-            if (visualizer != null && visualizer.isActiveAndEnabled) {
-                var exec = GetComponent<VoxelExecutor>();
-                exec.ExecuteShader(visualizer.size, 0, visualizer.offset, visualizer.scale, false, true);
-                RenderTexture voxels = (RenderTexture)exec.textures["voxels"];
-                visualizer.Meshify(voxels);
-            }
-#endif
+            GetComponent<VoxelCompiler>().SoftRecompile();
+            GetComponent<VoxelCompiler>().OnPropertiesChanged();
         }
 
         public class AllInputs {

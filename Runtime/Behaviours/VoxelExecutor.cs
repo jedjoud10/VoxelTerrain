@@ -20,6 +20,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         [NonSerialized]
         public Dictionary<string, ExecutorBuffer> buffers;
 
+        private VoxelCompiler compiler => GetComponent<VoxelCompiler>();
+
         // Cache the size so that we don't need to re-initialize the texture and buffers
         private int setSize;
 
@@ -66,7 +68,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 { "props_counter", new ExecutorBufferCounter("props_counter", new List<string>() { "CSProps" }, 1) }
             };
 
-            foreach (var (name, descriptor) in graph.ctx.textures) {
+            foreach (var (name, descriptor) in compiler.ctx.textures) {
                 textures.Add(name, descriptor.Create(size));
             }
 
@@ -75,8 +77,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
 
         public void ExecuteShader(int newSize, int dispatchIndex, Vector3 offset, Vector3 scale, bool morton, bool updateInjected) {
-            if (graph.ctx == null) {
-                graph.ParsedTranspilation();
+            if (compiler.ctx == null) {
+                compiler.ParsedTranspilation();
             }
 
             if (newSize != setSize || textures == null) {
@@ -84,7 +86,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 CreateIntermediateTextures(newSize);
             }
 
-            ComputeShader shader = graph.shader;
+            ComputeShader shader = compiler.shader;
             shader.SetInt("size", newSize);
             shader.SetInts("permuationSeed", new int[] { permutationSeed.x, permutationSeed.y, permutationSeed.z });
             shader.SetInts("moduloSeed", new int[] { moduloSeed.x, moduloSeed.y, moduloSeed.z });
@@ -93,7 +95,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             shader.SetBool("morton", morton);
 
             if (updateInjected) {
-                graph.ctx.injector.UpdateInjected(shader, textures);
+                compiler.ctx.injector.UpdateInjected(shader, textures);
             }
 
             CommandBuffer commands = new CommandBuffer();
@@ -118,7 +120,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Execute the kernels sequentially
             // TODO: Add back said kernels since we removed the whole cached node kek
-            KernelDispatch kernel =  graph.ctx.dispatches[dispatchIndex];
+            KernelDispatch kernel =  compiler.ctx.dispatches[dispatchIndex];
             int id = shader.FindKernel(kernel.name);
             int tempSize = newSize / (1 << kernel.sizeReductionPower);
             tempSize = Mathf.Max(tempSize, 1);
@@ -154,7 +156,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public void RandomizeSeed() {
             seed = UnityEngine.Random.Range(-9999, 9999);
             ComputeSecondarySeeds();
-            graph.OnPropertiesChanged();
+            compiler.OnPropertiesChanged();
         }
     }
 }

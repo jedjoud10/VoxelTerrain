@@ -60,7 +60,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         private void OnValidate() {
-            GetComponent<VoxelGraph>()?.OnPropertiesChanged();
+            GetComponent<VoxelCompiler>()?.OnPropertiesChanged();
         }
 
 

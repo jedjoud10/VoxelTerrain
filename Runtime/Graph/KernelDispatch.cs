@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
+    // TODO: fixme. pls fixme... please... just impl some parent-child classes.. plpplsplsplspsllpslp
     public class KernelOutput {
         public string setter;
         public string outputTextureName;
@@ -61,8 +62,8 @@ void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
     uint3 remapped = uint3({remappedCoords});
     //float3 position = (float3(remapped * {frac}) + offset) * scale
     float3 position = ConvertIntoWorldPosition(float3(remapped) * {frac});
-{scope.InitializeVariables()}
-{scope.GenerateScopedArguments()}
+{scope.InitArgVars()}
+{scope.CallWithArgs()}
 {kernelOutputSetter}
 }}";
         }

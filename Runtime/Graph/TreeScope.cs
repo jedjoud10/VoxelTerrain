@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 
@@ -22,6 +23,9 @@ namespace jedjoud.VoxelTerrain.Generation {
         public List<string> lines;
         public Dictionary<UntypedVariable, string> namesToNodes;
         public int depth;
+
+        // TODO: this should NOT be stored here. "arguments" is also a wrong name for this, as this stores parameter data as well (incoming variable names from outside the scope)
+        // what TreeScope should store is just proper "arguments" (name and type, nothin related to actual nodes). Everything else (parameters) should be given from the outside
         public ScopeArgument[] arguments;
         public string name;
         public int indent;
@@ -38,12 +42,22 @@ namespace jedjoud.VoxelTerrain.Generation {
             lines.Add(new string('\t', indent) + line);
         }
 
-        public string InitializeVariables() {
+        // Initialize the variables that we will use as arguments
+        public string InitArgVars((int, ScopeArgument)[] overwriteArgs = null) {
+            ScopeArgument[] args = new ScopeArgument[arguments.Length];
+            Array.Copy(arguments, args, arguments.Length);
+
+            if (overwriteArgs != null) {
+                foreach ((int index, ScopeArgument newArgument) in overwriteArgs) {
+                    args[index] = newArgument;
+                }
+            }
+
             string kernelOutputTemp = "";
 
-            for (int i = 0; i < arguments.Length; i++) {
-                var item = arguments[i];
-                var newLine = i == arguments.Length - 1 ? "" : "\n";
+            for (int i = 0; i < args.Length; i++) {
+                var item = args[i];
+                var newLine = i == args.Length - 1 ? "" : "\n";
                 if (item.output) {
                     kernelOutputTemp += $"    {item.type.ToStringType()} {item.name};{newLine}";
                 }
@@ -52,11 +66,21 @@ namespace jedjoud.VoxelTerrain.Generation {
             return kernelOutputTemp;
         }
 
-        public string GenerateScopedArguments() {
+        // Calls the functions with the arguments that we setup
+        public string CallWithArgs((int, ScopeArgument)[] overwriteArgs = null) {
+            ScopeArgument[] args = new ScopeArgument[arguments.Length];
+            Array.Copy(arguments, args, arguments.Length);
+
+            if (overwriteArgs != null) {
+                foreach ((int index, ScopeArgument newArgument) in overwriteArgs) {
+                    args[index] = newArgument;
+                }
+            }
+
             string output = "";
-            for (int i = 0; i < arguments.Length; i++) {
-                var item = arguments[i];
-                var comma = i == arguments.Length - 1 ? "" : ",";
+            for (int i = 0; i < args.Length; i++) {
+                var item = args[i];
+                var comma = i == args.Length - 1 ? "" : ",";
                 output += $"{item.name}{comma}";
             }
 

@@ -1,13 +1,25 @@
-using jedjoud.VoxelTerrain.Props;
-using System;
+using Unity.Mathematics;
+using UnityEngine;
+using static jedjoud.VoxelTerrain.Generation.VoxelGraph;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Mathematics;
+
+using System;
+using System.IO;
+
+
+
+#if UNITY_EDITOR
 using UnityEditor;
-using UnityEngine;
+#endif
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public partial class VoxelGraph : VoxelBehaviour {
+
+    public class VoxelCompiler : VoxelBehaviour {
+        [Header("Compilation")]
+        public bool debugName = true;
+        public bool autoCompile = true;
+
         [HideInInspector]
         public TreeContext ctx;
 
@@ -20,8 +32,117 @@ namespace jedjoud.VoxelTerrain.Generation {
         [HideInInspector]
         public int propsDispatchIndex;
 
+        public ComputeShader shader;
+
+        // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
+        // (that's what soft-recompilation is)
+        private void OnValidate() {
+            if (!gameObject.activeSelf)
+                return;
+
+            SoftRecompile();
+            OnPropertiesChanged();
+        }
+
+        // Called when the voxel graph's properties get modified
+        public void OnPropertiesChanged() {
+            if (!gameObject.activeSelf)
+                return;
+
+#if UNITY_EDITOR
+            var visualizer = GetComponent<VoxelPreview>();
+            if (visualizer != null && visualizer.isActiveAndEnabled) {
+                var exec = GetComponent<VoxelExecutor>();
+                exec.ExecuteShader(visualizer.size, 0, visualizer.offset, visualizer.scale, false, true);
+                RenderTexture voxels = (RenderTexture)exec.textures["voxels"];
+                visualizer.Meshify(voxels);
+            }
+#endif
+        }
+
+        // Checks if we need to recompile the shader by checking the hash changes.
+        // If the context hash changed, then we will recompile the shader
+        public void SoftRecompile() {
+            if (!gameObject.activeSelf)
+                return;
+
+            ParsedTranspilation();
+            if (hash != ctx.hashinator.hash) {
+                hash = ctx.hashinator.hash;
+
+                GetComponent<VoxelExecutor>().DisposeResources();
+
+                if (autoCompile) {
+                    Compile(false);
+                }
+            }
+        }
+
+
+        // Writes the transpiled shader code to a file and recompiles it automatically (through AssetDatabase)
+        public void Compile(bool force) {
+#if UNITY_EDITOR
+            GetComponent<VoxelExecutor>().DisposeResources();
+
+            if (force) {
+                ctx = null;
+            }
+
+            string source = Transpile();
+
+            if (!AssetDatabase.IsValidFolder("Assets/Voxel Terrain/Compute/")) {
+                // TODO: Use package cache instead? would it work???
+                AssetDatabase.CreateFolder("Assets", "Voxel Terrain");
+                AssetDatabase.CreateFolder("Assets/Voxel Terrain", "Compute");
+            }
+
+            string filePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute";
+            using (StreamWriter sw = File.CreateText(filePath)) {
+                sw.Write(source);
+            }
+
+            AssetDatabase.ImportAsset(filePath);
+            shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(filePath);
+
+            if (shader == null)
+                return;
+
+            EditorUtility.SetDirty(shader);
+            AssetDatabase.SaveAssetIfDirty(shader);
+            AssetDatabase.SaveAssets();
+            if (!gameObject.activeSelf)
+                return;
+
+            var visualizer = GetComponent<VoxelPreview>();
+            visualizer?.InitializeForSize();
+#else
+            throw new System.Exception("Cannot transpile code at runtime");
+#endif
+        }
+
+#if UNITY_EDITOR
+        // Recompiles the graph every time we reload the domain
+        [InitializeOnLoadMethod]
+        static void RecompileOnDomainReload() {
+
+            /*
+            VoxelGenerator[] graph = Object.FindObjectsByType<VoxelGenerator>(FindObjectsSortMode.None);
+            foreach (var item in graph) {
+                //item.Compile();
+            }
+            */
+        }
+#endif
+
         // Parses the voxel graph into a tree context with all required nodes and everything!!!
         public void ParsedTranspilation() {
+            VoxelGraph graph = GetComponent<VoxelGraph>();
+
+            if (graph == null) {
+                Debug.LogError("Can't transpile the graph since we don't have one to begin with! Add a VoxelGraph component...");
+                return;
+            }
+
             ctx = new TreeContext(debugName);
             ctx.scopes = new List<TreeScope>() {
                 // Voxel density scope
@@ -45,7 +166,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Execute the voxel graph to get all required output variables 
             // We will contextualize the variables in their separate passes ({ density + color + material }, { props }, etc)
             AllInputs inputs = new AllInputs() { position = position, id = id };
-            Execute(inputs, out AllOutputs outputs);
+            graph.Execute(inputs, out AllOutputs outputs);
             ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
             ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
             ScopeArgument materialArgument = new ScopeArgument("material", VariableType.StrictType.Int, outputs.material, true);
@@ -59,7 +180,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             outputs.density.Handle(ctx);
             outputs.material.Handle(ctx);
 
-            
+
             ctx.currentScope = 1;
             ctx.Add(position, "position");
             ctx.scopes[1].name = "Props";
@@ -113,12 +234,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         private string Transpile() {
             if (ctx == null) {
                 ParsedTranspilation();
-            } else {
             }
 
             List<string> lines = new List<string>();
             lines.AddRange(ctx.Properties);
-            
+
             // Include all includes kek. Look in the file for more.
             lines.Add("#include \"Packages/com.jedjoud.voxelterrain/Runtime/Compute/Imports.cginc\"");
             var temp = ctx.dispatches.AsEnumerable().Select(x => x.ConvertToKernelString(ctx)).ToList();

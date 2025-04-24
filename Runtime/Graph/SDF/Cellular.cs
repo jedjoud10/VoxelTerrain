@@ -11,13 +11,34 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Variable<float> offset;
         public Variable<float> factor;
 
+        private int dedupeScopeIndex = -1;
+        private string dedupeOutputName = "";
+
         public override void HandleInternal(TreeContext context) {
             inner.Handle(context);
             bool tiling = tilingModSize > 0;
             context.Hash(tilingModSize);
 
+            ScopeArgument input = new ScopeArgument(context[inner], VariableType.TypeOf<T>(), inner, false);
+            if (dedupeOutputName != "" && dedupeScopeIndex != -1 && context.dedupe.Contains(dedupeOutputName)) {
+                TreeScope alreadyDefinedScope = context.scopes[dedupeScopeIndex];
+
+                // We need to overwrite the input since this is a different scope (probably)
+                // Ok fuck it yk what?
+                // TODO: Implement a general scope/function system so we don't have to rewrite these shenanigans for every node that uses a custom scope
+                //alreadyDefinedScope.namesToNodes.TryAdd(input.node, context[input.node]);
+
+                var overwrite = new (int, ScopeArgument)[] { (0, input) };
+                context.scopes[context.currentScope].lines.Add(alreadyDefinedScope.InitArgVars(overwrite));
+                //alreadyDefinedScope.arguments[0] = input;
+                context.scopes[context.currentScope].lines.Add(alreadyDefinedScope.CallWithArgs(overwrite));
+                context.DefineAndBindNode<float>(this, "cellular_tiler", dedupeOutputName);
+                return;
+            }
+
             string scopeName = context.GenId($"PeriodicityScope");
             string outputName = $"{scopeName}_sdf_output";
+            dedupeOutputName = outputName;
 
             int dimensions = VariableType.Dimensionality<T>();
 
@@ -43,6 +64,7 @@ for(int x = -{maxLoopSize}; x <= {maxLoopSize}; x++) {{
                 string tiler = tiling ? $"{typeString} tiled = fmod(cell, {tilingModSize});" : $"{typeString} tiled = cell;";
 
                 string outputFirst = $@"
+{ctx[inner]} += moduloSeed;
 {typeString} posCell = floor({ctx[inner]});
 {typeString} posFrac = frac({ctx[inner]});
 
@@ -83,7 +105,6 @@ float output = 100.0;
                 ctx.DefineAndBindNode<float>(self, "__", $"min(output, 1.0) * {ctx[factor]} + {ctx[offset]}");
             });
 
-            ScopeArgument input = new ScopeArgument(context[inner], VariableType.TypeOf<T>(), inner, false);
             ScopeArgument output = new ScopeArgument(outputName, VariableType.TypeOf<float>(), tahini, true);
 
             int index = context.scopes.Count;
@@ -111,9 +132,12 @@ float output = 100.0;
             context.scopeDepth--;
             context.currentScope = oldScopeIndex;
 
-            context.scopes[context.currentScope].lines.Add(scopium.InitializeVariables());
-            context.scopes[context.currentScope].lines.Add(scopium.GenerateScopedArguments());
+            context.scopes[context.currentScope].lines.Add(scopium.InitArgVars());
+            context.scopes[context.currentScope].lines.Add(scopium.CallWithArgs());
+            
+            dedupeScopeIndex = index;
             context.DefineAndBindNode<float>(this, "cellular_tiler", outputName);
+            context.dedupe.Add(dedupeOutputName);
         }
     }
 
@@ -125,7 +149,6 @@ float output = 100.0;
 
         public Distance distance;
 
-        // Value should be between -1 and 1
         // Actually spawns the "entity" if greater than 0
         public ShouldSpawn shouldSpawn;
 

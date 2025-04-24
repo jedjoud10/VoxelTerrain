@@ -20,7 +20,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             base.OnInspectorGUI();
             var script = (VoxelExecutor)target;
 
-            // TODO: figure out why pressing this button doesn't trigger the preview to update immediately
             if (GUILayout.Button("Randomize Seed")) {
                 script.RandomizeSeed();
             }

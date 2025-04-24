@@ -55,6 +55,9 @@ namespace jedjoud.VoxelTerrain {
         public Generation.VoxelGraph graph;
 
         [HideInInspector]
+        public Generation.VoxelCompiler compiler;
+
+        [HideInInspector]
         public Generation.VoxelExecutor executor;
 
         [HideInInspector]
@@ -91,6 +94,7 @@ namespace jedjoud.VoxelTerrain {
             spawner = GetComponent<VoxelGridSpawner>();
             mesher = GetComponent<Meshing.VoxelMesher>();
             graph = GetComponent<Generation.VoxelGraph>();
+            compiler = GetComponent<Generation.VoxelCompiler>();
             executor = GetComponent<Generation.VoxelExecutor>();
             readback = GetComponent<Generation.VoxelReadback>();
             edits = GetComponent<Edits.VoxelEdits>();

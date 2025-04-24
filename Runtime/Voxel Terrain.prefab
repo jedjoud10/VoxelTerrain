@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 261666173128335063}
   - component: {fileID: 3418539688097572871}
   - component: {fileID: 8066351110700312546}
+  - component: {fileID: 2659349426322332056}
   - component: {fileID: 8197692837568637671}
   - component: {fileID: 4459649915349211665}
   - component: {fileID: 5435573634283810322}
@@ -66,6 +67,7 @@ MonoBehaviour:
   spawner: {fileID: 0}
   mesher: {fileID: 0}
   graph: {fileID: 0}
+  compiler: {fileID: 0}
   executor: {fileID: 0}
   readback: {fileID: 0}
   props: {fileID: 0}
@@ -98,6 +100,24 @@ MonoBehaviour:
   seed: 8912
   permutationSeed: {x: 110, y: 528, z: -703}
   moduloSeed: {x: 523, y: 693, z: 472}
+--- !u!114 &2659349426322332056
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1679815499248925888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugName: 1
+  autoCompile: 1
+  hash: -1088962424
+  voxelsDispatchIndex: 0
+  propsDispatchIndex: 1
+  shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
 --- !u!114 &8197692837568637671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -185,7 +205,7 @@ MonoBehaviour:
   flatshaded: 0
   size: 128
   scale: {x: 3, y: 3, z: 3}
-  offset: {x: 792.1, y: -103.8, z: 76.9}
+  offset: {x: 7169, y: -103.8, z: 76.9}
 --- !u!114 &3475662089056963851
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -198,15 +218,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1964f9915237e104bbf6a80ee84a37c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugName: 1
-  autoCompile: 1
-  shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
-  hash: -494675900
-  voxelsDispatchIndex: 0
-  propsDispatchIndex: 1
   transform1:
     position: {x: 0, y: -100, z: 0}
-    rotation: {x: 0, y: -70.09, z: 0}
+    rotation: {x: 0, y: 0, z: 0}
     scale: {x: 1, y: 1, z: 1}
   scale:
     x: 0.004

@@ -6,9 +6,6 @@ namespace jedjoud.VoxelTerrain {
     public class VoxelBehaviour : MonoBehaviour {
         [HideInInspector]
         public VoxelTerrain terrain => GetComponent<VoxelTerrain>();
-        [HideInInspector]
-        public VoxelGraph graph => GetComponent<VoxelGraph>();
-
         public long tick => terrain.currentTick;
 
         public virtual void CallerStart() { }
