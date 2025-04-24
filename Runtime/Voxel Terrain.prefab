@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 2489052534160842304}
   - component: {fileID: 5281816153287127206}
   - component: {fileID: 7318964257985538370}
+  - component: {fileID: 3475662089056963851}
   m_Layer: 0
   m_Name: Voxel Terrain
   m_TagString: Untagged
@@ -52,12 +53,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c5e6b6604d0aba4aace8d256007cf0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ticksPerSecond: 128
-  maxTicksPerFrame: 3
-  chunkPrefab: {fileID: 6177338312385691531, guid: 4d388002189c96345901f85821f1a600,
-    type: 3}
-  drawGizmos: 0
+  ticksPerSecond: 64
+  maxTicksPerFrame: 1
+  chunkPrefab: {fileID: 6177338312385691531, guid: 4d388002189c96345901f85821f1a600, type: 3}
+  materials:
+  - {fileID: 11400000, guid: 9a18df698f73187488acf9eb9da60248, type: 2}
+  - {fileID: 11400000, guid: 56f8c19583636144483d60796fa5eca9, type: 2}
+  - {fileID: 11400000, guid: 70763bc693187524f91243c1a8bcd3b4, type: 2}
   voxelSizeReduction: 0
+  drawGizmos: 0
   collisions: {fileID: 0}
   spawner: {fileID: 0}
   mesher: {fileID: 0}
@@ -91,9 +95,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 574bbe1e4b4f7d54c800acb1d6d8d7d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: 671
-  permutationSeed: {x: -453, y: 402, z: 577}
-  moduloSeed: {x: 556, y: -695, z: 888}
+  seed: 8912
+  permutationSeed: {x: 110, y: 528, z: -703}
+  moduloSeed: {x: 523, y: 693, z: 472}
 --- !u!114 &8197692837568637671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -119,7 +123,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d800c3402111294a8fdf82c0957b603, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  prop: {fileID: 2094315427237674077, guid: 299877e1a2ebe174aabed1b12f06a690, type: 3}
+  spawnProps: 0
+  props:
+  - {fileID: 11400000, guid: 877753c34810a33449994056ab9cd85d, type: 2}
 --- !u!114 &5435573634283810322
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -157,9 +163,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 998d14371a252d844953b5096474c997, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  meshJobsPerTick: 1
-  voxelMaterials:
-  - {fileID: 2100000, guid: 4bbc706fa70a1944bae8b0ae28245548, type: 2}
+  meshJobsPerTick: 4
 --- !u!114 &7318964257985538370
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -174,11 +178,86 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   surfaceNetsCompute: {fileID: 7200000, guid: 414c71a72bcba394d921913198296aac, type: 3}
   heightMapCompute: {fileID: 7200000, guid: de7c990be885cc84292f8dc0e8dd3f48, type: 3}
-  customRenderingMaterial: {fileID: 2100000, guid: ab77a143e630ac94daa1218f76ccb619,
-    type: 2}
+  customRenderingMaterial: {fileID: -876546973899608171, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
+  materialId: 1
   blocky: 0
   useHeightSimplification: 0
   flatshaded: 0
   size: 128
-  scale: {x: 1, y: 1, z: 1}
-  offset: {x: 0, y: 0, z: 0}
+  scale: {x: 3, y: 3, z: 3}
+  offset: {x: 792.1, y: -103.8, z: 76.9}
+--- !u!114 &3475662089056963851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1679815499248925888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1964f9915237e104bbf6a80ee84a37c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugName: 1
+  autoCompile: 1
+  shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
+  hash: -494675900
+  voxelsDispatchIndex: 0
+  propsDispatchIndex: 1
+  transform1:
+    position: {x: 0, y: -100, z: 0}
+    rotation: {x: 0, y: -70.09, z: 0}
+    scale: {x: 1, y: 1, z: 1}
+  scale:
+    x: 0.004
+  amplitude:
+    x: 20
+  persistence:
+    x: 0.4
+  lacunarity:
+    x: 1.6
+  detailScale:
+    x: 0.01
+  detailProbability:
+    x: 0.1
+  detailAmplitude:
+    x: 75.1
+  materialHeight:
+    x: -54.5
+  materialHeightNoisy:
+    x: 9
+  curve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0.079443894
+      outSlope: 0.079443894
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.356441
+    - serializedVersion: 3
+      time: 0.6871417
+      value: 0.6675739
+      inSlope: 1.0426826
+      outSlope: -0.26297945
+      tangentMode: 1
+      weightedMode: 0
+      inWeight: 0.14861365
+      outWeight: 0.35069597
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 1.0625452
+      outSlope: 1.0625452
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  mode: 2
+  octaves: 5
