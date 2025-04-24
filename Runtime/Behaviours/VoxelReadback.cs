@@ -24,34 +24,23 @@ namespace jedjoud.VoxelTerrain.Generation {
         public event OnReadbackSuccessful onReadbackSuccessful;
 
         // Currently ongoing async readback request
-        // Contains both the pos-neg counts and the raw octal voxel data
         private class OngoingVoxelReadback {
-            public bool countsSet;
             public bool free;
-            public bool dataSet;
             public JobHandle? pendingCopies;
-            public NativeArray<int> counts;
             public NativeArray<uint> data;
             public List<VoxelChunk> chunks;
             public NativeArray<JobHandle> copies;
-            public int[] mortonLookup;
 
             public OngoingVoxelReadback() {
                 data = new NativeArray<uint>(VoxelUtils.VOLUME * 8, Allocator.Persistent);
                 chunks = new List<VoxelChunk>();
-                mortonLookup = new int[8];
-                counts = new NativeArray<int>(8, Allocator.Persistent);
                 copies = new NativeArray<JobHandle>(8, Allocator.Persistent);
-                dataSet = false;
-                countsSet = false;
                 free = true;
                 pendingCopies = null;
             }
 
             public void Reset() {
                 chunks.Clear();
-                dataSet = false;
-                countsSet = false;
                 free = true;
                 pendingCopies = null;
                 copies.AsSpan().Fill(default);
@@ -59,7 +48,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             public void Dispose() {
                 data.Dispose();
-                counts.Dispose();
                 copies.Dispose();
             }
         }
@@ -89,52 +77,19 @@ namespace jedjoud.VoxelTerrain.Generation {
             for (int i = 0; i < asyncReadbackPerTick; i++) {
                 OngoingVoxelReadback readback = readbacks[i];
 
-                if (readback.countsSet && readback.dataSet) {
-                    if (readback.pendingCopies == null) {
-                        unsafe {
-                            // We have to do this to stop unity from complaining about using the data...
-                            // fuck you...
-                            uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(readback.data);
+                if (readback.pendingCopies.HasValue && readback.pendingCopies.Value.IsCompleted) {
+                    readback.pendingCopies.Value.Complete();
 
-                            // Start doing the memcpy asynchronously...
-                            for (int j = 0; j < readback.chunks.Count; j++) {
-                                // Allows us to avoid generating meshes for specific chunks.
-                                VoxelChunk chunk = readback.chunks[j];
-
-                                // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
-                                // We just need to do some memory copies at the right src offsets
-                                uint* src = pointer + (VoxelUtils.VOLUME * j);
-                                uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
-                                readback.copies[j] = new UnsafeAsyncMemCpy {
-                                    src = src,
-                                    dst = dst,
-                                }.Schedule();
-                            }
-
-                            readback.pendingCopies = JobHandle.CombineDependencies(readback.copies.Slice(0, readback.chunks.Count));
-                        }
-                    } else if (readback.pendingCopies.Value.IsCompleted) {
-                        readback.pendingCopies.Value.Complete();
-
-                        // Do the smart count neg/pos check to avoid generating meshes for chunks that we know are empty
-                        for (int j = 0; j < readback.chunks.Count; j++) {
-                            int mortonIndex = readback.mortonLookup[j];
-                            VoxelChunk chunk = readback.chunks[j];
-
-                            // This counts the number of positive voxels - negative voxels.
-                            // So the value for empty chunks is either -VOLUME or VOLUME
-                            if (readback.counts[mortonIndex] == VoxelUtils.VOLUME || readback.counts[mortonIndex] == -VoxelUtils.VOLUME) {
-                                chunk.state = VoxelChunk.ChunkState.Done;
-                                onReadbackSuccessful?.Invoke(chunk, true);
-                            } else {
-                                chunk.state = VoxelChunk.ChunkState.Temp;
-                                onReadbackSuccessful?.Invoke(chunk, false);
-                            }
-                        }
-
-                        readback.Reset();
+                    // Since we're now using inter-chunk dependencies (for meshing), we can't use the pos/neg optimization, since now we need
+                    // to check the neighbours values on the CPU, which goes against the idea of doing the check atomically on the GPU in the first place
+                    // No pos-neg optimization for you little bro...
+                    for (int j = 0; j < readback.chunks.Count; j++) {
+                        VoxelChunk chunk = readback.chunks[j];
+                        chunk.state = VoxelChunk.ChunkState.Temp;
+                        onReadbackSuccessful?.Invoke(chunk, false);
                     }
-                    
+
+                    readback.Reset();
                 }
 
                 if (!readback.free) {
@@ -154,7 +109,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                     // Change chunk states, since we are now waiting for voxel readback
                     readback.chunks.Clear();
-                    readback.mortonLookup.AsSpan().Fill(0);
                     for (int j = 0; j < 8; j++) {
                         int3 temp2 = (int3)VoxelUtils.IndexToPosMorton(j);
                         Vector3Int offset = new Vector3Int(temp2.x, temp2.y, temp2.z);
@@ -162,26 +116,40 @@ namespace jedjoud.VoxelTerrain.Generation {
                         if (terrain.totalChunks.ContainsKey(position * 2 + offset)) {
                             var chunk = terrain.totalChunks[position * 2 + offset].GetComponent<VoxelChunk>();
                             chunk.state = VoxelChunk.ChunkState.VoxelReadback;
-                            readback.mortonLookup[readback.chunks.Count] = j;
                             readback.chunks.Add(chunk);
                         }
                     }
 
+                    // Request GPU data into the native array we allocated at the start
+                    // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
+                    // This avoids waiting on the memory copies and can spread them out on many threads
                     NativeArray<uint> voxelData = readback.data;
                     AsyncGPUReadback.RequestIntoNativeArray(
                         ref voxelData,
                         terrain.executor.textures["voxels"], 0,
                         delegate (AsyncGPUReadbackRequest asyncRequest) {
-                            readback.dataSet = true;
-                        }
-                    );
+                            unsafe {
+                                // We have to do this to stop unity from complaining about using the data...
+                                // fuck you...
+                                uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(readback.data);
 
-                    NativeArray<int> countData = readback.counts;
-                    AsyncGPUReadback.RequestIntoNativeArray(
-                        ref countData,
-                        terrain.executor.buffers["pos_neg_counter"],
-                        delegate (AsyncGPUReadbackRequest asyncRequest) {
-                            readback.countsSet = true;
+                                // Start doing the memcpy asynchronously...
+                                for (int j = 0; j < readback.chunks.Count; j++) {
+                                    // Allows us to avoid generating meshes for specific chunks.
+                                    VoxelChunk chunk = readback.chunks[j];
+
+                                    // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
+                                    // We just need to do some memory copies at the right src offsets
+                                    uint* src = pointer + (VoxelUtils.VOLUME * j);
+                                    uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
+                                    readback.copies[j] = new UnsafeAsyncMemCpy {
+                                        src = src,
+                                        dst = dst,
+                                    }.Schedule();
+                                }
+
+                                readback.pendingCopies = JobHandle.CombineDependencies(readback.copies.Slice(0, readback.chunks.Count));
+                            }
                         }
                     );
                 }

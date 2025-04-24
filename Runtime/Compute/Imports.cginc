@@ -60,13 +60,3 @@ uint3 indexToPos(uint index)
     uint x = w % size;        // z in N(C)
     return uint3(x, y, z);
 }
-
-// Used to avoid meshing certain chunks on the CPU since we use octal generation
-void CountVoxelDensitySign(uint3 id, float density) {
-    uint index = encodeMorton32(id / 64);
-    if (density > 0.0) {
-        InterlockedAdd(pos_neg_counter[index], 1);
-    } else {
-        InterlockedAdd(pos_neg_counter[index], -1);
-    }
-}

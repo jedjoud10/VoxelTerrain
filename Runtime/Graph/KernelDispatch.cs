@@ -56,10 +56,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
             }
 
-            if (name == "CSVoxel") {
-                kernelOutputSetter += $"    CountVoxelDensitySign(id, voxel);\n";
-            }
-
             return $@"
 #pragma kernel CS{scopeName}
 [numthreads({numThreads.x}, {numThreads.y}, {numThreads.z})]
