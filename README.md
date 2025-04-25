@@ -17,7 +17,10 @@
 - Go octal mode and add inter chunk dependency unfortunately (will be good though since we can read a LOT more data back from the gpu)
 - Decide where to use ``SoA`` or ``AoS`` design for voxel data.
   - How much voxel data will we need anyways?
-  - If it's a lot then just go with ``SoA``.
+  - If it's a lot then just go with ``SoA``
+- Do some async chunk culling!!
+  - There's this for caves: https://tomcc.github.io/2014/08/31/visibility-1.html
+  - For surface chunks, ig do some funky stuff with bounds?  
 
 # Current Screenies
 
