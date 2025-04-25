@@ -7,16 +7,6 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
-        // Voxel scaling size
-        public static int VoxelSizeReduction { get; set; } = 1;
-
-        // Used for parallelism control for the CPU side meshing and editing
-        public static int SchedulingInnerloopBatchCount { get; set; } = 16;
-
-        // Scaling factor when using voxel size reduction
-        // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)
-        public static float VoxelSizeFactor => 1F / Mathf.Pow(2F, VoxelSizeReduction);
-
         // Current chunk resolution
         public const int SIZE = 64;
 
@@ -24,7 +14,7 @@ namespace jedjoud.VoxelTerrain {
         public const int VOLUME = SIZE * SIZE * SIZE;
 
         // One more voxel just in case... :3
-        public const int VOLUME_OFFSET = (SIZE+1) * (SIZE + 1) * (SIZE + 1);
+        public const int VOLUME_BIG = (SIZE+1) * (SIZE + 1) * (SIZE + 1);
 
         // Max possible number of materials supported by the terrain mesh
         public const int MAX_MATERIAL_COUNT = 256;

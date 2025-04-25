@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace jedjoud.VoxelTerrain.Meshing {
     // The generated voxel mesh that we can render to the player
     public struct VoxelMesh {
@@ -15,5 +17,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Total number of triangles used by this mesh
         public int TriangleCount { get; internal set; }
+
+        // AABB that we generated using the vertices
+        public Bounds Bounds { get; internal set; }
     }
 }

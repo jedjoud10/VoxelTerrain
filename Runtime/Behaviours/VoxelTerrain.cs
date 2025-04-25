@@ -20,6 +20,7 @@ namespace jedjoud.VoxelTerrain {
 
         [Range(0, 4)]
         public int voxelSizeReduction;
+        internal float voxelSizeFactor;
 
         [Header("Debug")]
         public bool drawGizmos;
@@ -87,8 +88,7 @@ namespace jedjoud.VoxelTerrain {
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
-            VoxelUtils.VoxelSizeReduction = voxelSizeReduction;
-            VoxelUtils.SchedulingInnerloopBatchCount = 1024;
+            voxelSizeFactor = 1F / Mathf.Pow(2F, voxelSizeReduction);
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
             spawner = GetComponent<VoxelGridSpawner>();
@@ -175,7 +175,6 @@ namespace jedjoud.VoxelTerrain {
                 collisions.CallerTick();
                 Profiler.EndSample();
 
-                Debug.Log(pendingChunks);
                 if (complete && pendingChunks == 0) {
                     complete = false;
                     onComplete?.Invoke();
@@ -188,10 +187,6 @@ namespace jedjoud.VoxelTerrain {
 
                 currentTick++;
             }
-        }
-
-        public void OnValidate() {
-            VoxelUtils.VoxelSizeReduction = voxelSizeReduction;
         }
 
         /*
@@ -238,7 +233,7 @@ namespace jedjoud.VoxelTerrain {
             chunk.sharedMesh = mesh;
 
             GameObject chunkGameObject = chunk.gameObject;
-            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
+            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.SIZE * voxelSizeFactor;
             chunkGameObject.transform.localScale = scale * Vector3.one;
             chunk.chunkPosition = chunkPosition;
             chunk.voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent);

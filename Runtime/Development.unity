@@ -594,7 +594,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: ticksPerSecond
-      value: 64
+      value: 128
+      objectReference: {fileID: 0}
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: maxTicksPerFrame
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: voxelSizeReduction
@@ -626,7 +630,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.x
-      value: 30.5
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: amplitude.x
@@ -634,15 +638,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailScale.x
-      value: 0.2
+      value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialHeight.x
-      value: -40
+      value: -35.4
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailAmplitude.x
-      value: -6.1
+      value: 20.92
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.scale.x
@@ -658,11 +662,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailProbability.x
-      value: 0.16
+      value: 0.03
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialHeightNoisy.x
-      value: 40
+      value: 31.9
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.x
@@ -670,7 +674,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.y
-      value: -81.7
+      value: -50
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.z
@@ -678,7 +682,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: meshJobsPerTick
-      value: 8
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5361457892440788241, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_LocalPosition.x
@@ -722,7 +726,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.x
-      value: 12
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.y
@@ -730,7 +734,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.z
-      value: 12
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: blocky
@@ -749,8 +753,16 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: offset.x
+      value: -54.64
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.y
-      value: 0
+      value: -24.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: offset.z
+      value: -103.48
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialId

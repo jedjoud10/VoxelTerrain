@@ -154,11 +154,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
-                // TODO: make bounds fit more tightly using atomic ops. on vertices during vertex job
-                renderer.bounds = new Bounds {
-                    min = chunk.transform.position,
-                    max = chunk.transform.position + VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor * Vector3.one,
+                chunk.bounds = new Bounds {
+                    min = chunk.transform.position + stats.Bounds.min,
+                    max = chunk.transform.position + stats.Bounds.max,
                 };
+                renderer.bounds = chunk.bounds;
             }
         }
 

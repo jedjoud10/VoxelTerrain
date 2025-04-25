@@ -40,7 +40,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             // Some pyramids...
             //Variable<float> extra = Cellular<float2>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(xz.Scaled(detailScale)) * detailAmplitude
-            Variable<float> extra = Cellular<float3>.Shape(new SdfSphere(1.0f), detailProbability).Tile(projected.Scaled(detailScale)) * detailAmplitude;
+            Variable<float> extra = Cellular<float3>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(projected.Scaled(detailScale)) * detailAmplitude;
 
             // Create a new density parameter
             var density = ((Variable<float>)Sdf.Union(extra, fractal) + offset).Curve(curve, -200f, 200f, invert: true) + y;
@@ -68,8 +68,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             );
 
             // Do some funky material picking
-            var uhhh = ((y + Noise.VoronoiF2(position, 0.04f, 1.0f) * materialHeightNoisy) > materialHeight).Select<int>(2, 1);
-            output.material = (Noise.Simplex(position, 0.02f, 1.0f) > 0).Select<int>(uhhh, 0);
+            var uhhh = (Noise.Simplex(xz, 0.02f, 1.0f) > 0).Select<int>(1, 0);
+            output.material = ((y + Noise.VoronoiF2(xz, 0.04f, 1.0f) * materialHeightNoisy) > materialHeight).Select<int>(2, uhhh);
         }
     }
 }

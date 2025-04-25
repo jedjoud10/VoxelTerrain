@@ -99,8 +99,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
 
                     // Size*2 since we are using octal generation!
-                    Vector3 worldPosition = 2.0f * (Vector3)position * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor;
-                    Vector3 worldScale = Vector3.one * VoxelUtils.VoxelSizeFactor;
+                    Vector3 worldPosition = 2.0f * (Vector3)position * VoxelUtils.SIZE * terrain.voxelSizeFactor;
+                    Vector3 worldScale = Vector3.one * terrain.voxelSizeFactor;
                     terrain.executor.ExecuteShader(VoxelUtils.SIZE*2, terrain.compiler.voxelsDispatchIndex, worldPosition, worldScale, true, true);
 
                     // Change chunk states, since we are now waiting for voxel readback

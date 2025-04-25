@@ -19,16 +19,15 @@ namespace jedjoud.VoxelTerrain.Edits {
         // MUST CALL THE "ApplyGeneric" function because we can't hide away generics
         public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters);
 
-        // Apply any generic voxel edit onto oncoming data
         public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters) where T : struct, IVoxelEdit {
             VoxelEditJob<T> job = new VoxelEditJob<T> {
                 offset = offset,
                 edit = edit,
                 voxels = voxels,
-                voxelScale = VoxelUtils.VoxelSizeFactor,
+                voxelScale = VoxelTerrain.Instance.voxelSizeFactor,
                 counters = counters,
             };
-            return job.Schedule(VoxelUtils.VOLUME, 2048 * VoxelUtils.SchedulingInnerloopBatchCount);
+            return job.Schedule(VoxelUtils.VOLUME, VoxelUtils.VOLUME / 4);
         }
     }
 }

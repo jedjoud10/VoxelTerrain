@@ -1,3 +1,4 @@
+using System.Threading;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -77,10 +78,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Vertex Counter
         public Unsafe.NativeCounter.Concurrent counter;
-
-        // Static settings
-        [ReadOnly] public int size;
-        [ReadOnly] public float vertexScale;
         [ReadOnly] public float voxelScale;
 
         // Excuted for each cell within the grid
@@ -138,7 +135,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float3 offset = (vertex / (float)count);
 
             float3 outputVertex = (offset - 1.0F) + position;
-            vertices[vertexIndex] = outputVertex * vertexScale * voxelScale;
+            vertices[vertexIndex] = outputVertex * voxelScale;
+
 
             // Calculate per vertex normals and apply it
             normal = -math.normalizesafe(normal, new float3(0, 1, 0));

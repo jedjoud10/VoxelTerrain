@@ -41,6 +41,8 @@ namespace jedjoud.VoxelTerrain {
         public byte[] voxelMaterialsLookup;
         [HideInInspector]
         public (byte, int)[] triangleOffsetLocalMaterials;
+        [HideInInspector]
+        public Bounds bounds;
 
         // Check if the chunk has valid voxel data 
         public bool HasVoxelData() {
@@ -50,10 +52,7 @@ namespace jedjoud.VoxelTerrain {
 
         // Get the AABB world bounds of this chunk
         public Bounds GetBounds() {
-            return new Bounds {
-                min = transform.position,
-                max = transform.position + Vector3.one * VoxelUtils.SIZE * VoxelUtils.VoxelSizeFactor,
-            };
+            return bounds;
         }
 
         // Convert a specific sub-mesh index (from physics collision for example) to voxel material index
