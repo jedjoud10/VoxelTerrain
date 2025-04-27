@@ -13,17 +13,14 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> amplitude;
         public Inject<float> persistence;
         public Inject<float> lacunarity;
-        public Inject<float> detailScale;
-        public Inject<float> detailProbability;
-        public Inject<float> detailAmplitude;
-        public Inject<float> materialHeight;
+        public Inject<float> cellularScale;
+        public Inject<float> cellularOffset;
+        public Inject<float> cellularAmplitude;
         public Inject<float> materialHeightNoisy;
-        public Inject<float> offset;
-        public AnimationCurve curve;
-        public FractalMode mode;
+        public Inject<float> materialHeight;
+
         [Range(1, 10)]
         public int octaves;
-
 
         public override void Execute(AllInputs input, out AllOutputs output) {
             // Project the position using the main transformation
@@ -36,14 +33,15 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var xz = projected.Swizzle<float2>("xz");
 
             // Create fractal 2D simplex noise
-            Variable<float> fractal = new Fractal<float2>(new Simplex(scale, amplitude), mode, octaves, lacunarity, persistence).Evaluate(xz);
+            Variable<float> fractal = new Fractal<float2>(new Simplex(scale, amplitude), FractalMode.Sum, octaves, lacunarity, persistence).Evaluate(xz);
+            Variable<float> cellular = Cellular<float2>.Simple(Sdf.DistanceMetric.Euclidean, 1).Tile(xz.Scaled(cellularScale));
 
-            // Some pyramids...
-            //Variable<float> extra = Cellular<float2>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(xz.Scaled(detailScale)) * detailAmplitude
-            Variable<float> extra = Cellular<float3>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability).Tile(projected.Scaled(detailScale)) * detailAmplitude;
+            // Add a floor for the cellular nodes
+            var floored = Sdf.Union(cellular * cellularAmplitude + cellularOffset, y + 10, smooth: 1f);
 
             // Create a new density parameter
-            var density = ((Variable<float>)Sdf.Union(extra, fractal) + offset).Curve(curve, -200f, 200f, invert: true) + y;
+            var density = Sdf.Subtraction(fractal + y, floored, smooth: 1f);
+            //var density = cellular;
 
             // Some checks for prop generation
             Variable<float> test = position.Swizzle<float>("y");
@@ -54,7 +52,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             // Generate a random rotation for the props
             Variable<float3> rotation = Random.Evaluate<float3, float3>(position, true);
-
+            
             // Set the output values
             output = new AllOutputs();
             output.density = density;
@@ -69,6 +67,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             // Do some funky material picking
             var uhhh = (Noise.Simplex(xz, 0.02f, 1.0f) > 0).Select<int>(1, 0);
+            //output.material = 0;
             output.material = ((y + Noise.VoronoiF2(xz, 0.04f, 1.0f) * materialHeightNoisy) > materialHeight).Select<int>(2, uhhh);
         }
     }

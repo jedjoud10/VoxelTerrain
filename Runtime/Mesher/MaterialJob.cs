@@ -13,10 +13,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<Voxel> voxels;
 
         [ReadOnly]
-        public UnsafePtrList<Voxel> neighbours;
+        public UnsafePtrList<Voxel> positiveNeighbourPtr;
 
         [ReadOnly]
-        public bool3 neighbourMask;
+        public bool3 positiveNeighbourMask;
 
         // 8 uints that are used for atomic ors
         public NativeArray<uint> buckets;
@@ -39,10 +39,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public unsafe void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 
-            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
+            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
                 return;
             
-            Voxel voxel = VoxelUtils.FetchWithNeighbours(VoxelUtils.PosToIndexMorton(position), ref voxels, ref neighbours);
+            Voxel voxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(VoxelUtils.PosToIndexMorton(position), ref voxels, ref positiveNeighbourPtr);
             byte material = voxel.material;
 
             int bucketIndex = material / 32;

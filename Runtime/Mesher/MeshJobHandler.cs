@@ -19,7 +19,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float2> uvs;
         public NativeArray<int> tempTriangles;
         public NativeArray<int> permTriangles;
-        public UnsafePtrList<Voxel> neighbourPtrs;
+
+        public UnsafePtrList<Voxel> allNeighbourPtrs;
+        public UnsafePtrList<Voxel> positiveNeighbourPtrs;
 
         // Native buffer for mesh generation data
         public NativeArray<int> indices;
@@ -39,12 +41,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public long startingTick;
         public NativeArray<uint> buckets;
         public NativeArray<float3> bounds;
+        public VoxelMesher mesher;
 
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
         public const int INNER_LOOP_BATCH_COUNT = 128;
 
-        internal MeshJobHandler() {
+        internal MeshJobHandler(VoxelMesher mesher) {
+            this.mesher = mesher;
+
             // Native buffers for mesh data
             int materialCount = VoxelUtils.MAX_MATERIAL_COUNT;
             voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -72,15 +77,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
             VertexAttributeDescriptor uvDesc = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2, 2);
             vertexAttributeDescriptors = new NativeArray<VertexAttributeDescriptor>(new VertexAttributeDescriptor[] { positionDesc, normalDesc, uvDesc }, Allocator.Persistent);
 
-            neighbourPtrs = new UnsafePtrList<Voxel>(7, Allocator.Persistent);
+            // We can't discard 0,0,0 since we start at -1,-1,-1, which kinda makes remapping hard. Wtv
+            allNeighbourPtrs = new UnsafePtrList<Voxel>(27, Allocator.Persistent);
+
+            // We CAN discard 0,0,0 (index=0) since we start there! so the first index now is the neighbour in the x direction
+            // DOES NOT INCLUDE SELF!!!
+            positiveNeighbourPtrs = new UnsafePtrList<Voxel>(7, Allocator.Persistent);
+
             buckets = new NativeArray<uint>(8, Allocator.Persistent);
             bounds = new NativeArray<float3>(2, Allocator.Persistent);
         }
         public bool Free { get; private set; } = true;
 
         // Begin the vertex + quad job that will generate the mesh
-        internal JobHandle BeginJob(JobHandle dependency, NativeArray<Voxel>[] neighbours, bool3 neighbourMask) {
-            float voxelSizeFactor = VoxelTerrain.Instance.voxelSizeFactor;
+        internal JobHandle BeginJob(JobHandle dependency, NativeArray<Voxel>[] allNeighbours, NativeArray<Voxel>[] positiveNeighbours, bool3 negativeNeighbourMask, bool3 positiveNeighbourMask) {
+            float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
             countersQuad.Reset();
             counter.Count = 0;
             materialCounter.Count = 0;
@@ -91,12 +102,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Free = false;
 
             unsafe {
-                neighbourPtrs.Clear();
-                foreach (NativeArray<Voxel> v in neighbours) {
+                allNeighbourPtrs.Clear();
+                foreach (NativeArray<Voxel> v in allNeighbours) {
                     if (v.IsCreated) {
-                        neighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
+                        allNeighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
                     } else {
-                        neighbourPtrs.Add(System.IntPtr.Zero);
+                        allNeighbourPtrs.Add(System.IntPtr.Zero);
+                    }
+                }
+
+                positiveNeighbourPtrs.Clear();
+                foreach (NativeArray<Voxel> v in positiveNeighbours) {
+                    if (v.IsCreated) {
+                        positiveNeighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
+                    } else {
+                        positiveNeighbourPtrs.Add(System.IntPtr.Zero);
                     }
                 }
             }
@@ -105,16 +125,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             CornerJob cornerJob = new CornerJob {
                 voxels = voxels,
                 enabled = enabled,
-                neighbours = neighbourPtrs,
-                neighbourMask = neighbourMask,
+                positiveNeighbourPtr = positiveNeighbourPtrs,
+                positiveNeighbourMask = positiveNeighbourMask,
             };
 
             // Welcome back material job!
             MaterialJob materialJob = new MaterialJob {
                 voxels = voxels,
-                neighbours = neighbourPtrs,
+                positiveNeighbourPtr = positiveNeighbourPtrs,
                 buckets = buckets,
-                neighbourMask = neighbourMask,
+                positiveNeighbourMask = positiveNeighbourMask,
             };
 
             // Hello little material indexer
@@ -125,7 +145,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Generate the vertices of the mesh
-            // Executed only onces, and shared by multiple submeshes
+            // Executed only once, and shared by multiple submeshes
             VertexJob vertexJob = new VertexJob {
                 enabled = enabled,
                 voxels = voxels,
@@ -134,9 +154,26 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 normals = normals,
                 uvs = uvs,
                 counter = counter,
-                neighbours = neighbourPtrs,
+                positiveNeighbourPtr = positiveNeighbourPtrs,
                 voxelScale = voxelSizeFactor,
-                neighbourMask = neighbourMask,
+                positiveNeighbourMask = positiveNeighbourMask,
+            };
+
+            // Calculate vertex ambient occlusion 
+            AmbientOcclusionJob aoJob = new AmbientOcclusionJob {
+                allNeighbourPtr = allNeighbourPtrs,
+                counter = counter,
+                normals = normals,
+                uvs = uvs,
+                vertices = vertices,
+                voxels = voxels,
+                negativeNeighbourMask = negativeNeighbourMask,
+                positiveNeighbourMask = positiveNeighbourMask,
+                globalOffset = mesher.aoGlobalOffset,
+                globalSpread = mesher.aoGlobalSpread,
+                minDotNormal = mesher.aoMinDotNormal,
+                strength = mesher.aoStrength,
+                voxelScale = voxelSizeFactor,
             };
 
             // Calculate the AABB for the chunk using another job
@@ -152,11 +189,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 voxels = voxels,
                 vertexIndices = indices,
                 counters = countersQuad,
-                neighbours = neighbourPtrs,
+                positiveNeighbourPtr = positiveNeighbourPtrs,
                 triangles = tempTriangles,
                 materialHashMap = materialHashMap.AsReadOnly(),
                 materialCounter = materialCounter,
-                neighbourMask = neighbourMask,
+                positiveNeighbourMask = positiveNeighbourMask,
             };
 
             // Create sum job to calculate offsets for each material type 
@@ -186,6 +223,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
             JobHandle vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
+            JobHandle aoJobHandle = aoJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
 
             // Start the quad job
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
@@ -197,7 +235,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Start the copy job
             JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, sumJobHandle);
 
-            finalJobHandle = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle);
+            finalJobHandle = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, aoJobHandle);
             return finalJobHandle;
         }
 
@@ -310,7 +348,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             vertexAttributeDescriptors.Dispose();
             enabled.Dispose();
             voxelCounters.Dispose();
-            neighbourPtrs.Dispose();
+            positiveNeighbourPtrs.Dispose();
+            allNeighbourPtrs.Dispose();
             buckets.Dispose();
             bounds.Dispose();
         }

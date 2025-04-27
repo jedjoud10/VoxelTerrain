@@ -17,7 +17,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
     public class VoxelCompiler : VoxelBehaviour {
         [Header("Compilation")]
-        public bool debugName = true;
         public bool autoCompile = true;
 
         [HideInInspector]
@@ -89,6 +88,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             string source = Transpile();
+            //Debug.Log(source);
 
             if (!AssetDatabase.IsValidFolder("Assets/Voxel Terrain/Compute/")) {
                 // TODO: Use package cache instead? would it work???
@@ -97,27 +97,36 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             string filePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute";
+            string metaFilePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute.meta";
+
+            if (File.Exists(filePath)) {
+                AssetDatabase.DeleteAsset(filePath);
+            }
+
             using (StreamWriter sw = File.CreateText(filePath)) {
                 sw.Write(source);
             }
 
-            AssetDatabase.ImportAsset(filePath);
+            AssetDatabase.ImportAsset(filePath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
             shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(filePath);
 
-            if (shader == null)
+            if (shader == null) {
+                Debug.LogWarning("wut?");
                 return;
+            }
 
-            EditorUtility.SetDirty(shader);
-            AssetDatabase.SaveAssetIfDirty(shader);
-            AssetDatabase.SaveAssets();
             if (!gameObject.activeSelf)
                 return;
 
             var visualizer = GetComponent<VoxelPreview>();
             visualizer?.InitializeForSize();
 #else
-            throw new System.Exception("Cannot transpile code at runtime");
+            throw new System.Exception("Cannot compile code at runtime");
 #endif
+
+            return;
         }
 
 #if UNITY_EDITOR
@@ -143,7 +152,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
             }
 
-            ctx = new TreeContext(debugName);
+            // TODO: for SOME FUCKING reason this causes problems
+            // unity doesn't seem to be saving the debugNames field or doing some fucky fucky shit with it. pls fix
+            ctx = new TreeContext(false);
             ctx.scopes = new List<TreeScope>() {
                 // Voxel density scope
                 new TreeScope(0),
@@ -153,7 +164,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
             voxelsDispatchIndex = 0;
             propsDispatchIndex = 1;
-            ctx.Hash(debugName);
 
             // Create the external inputs that we use inside the function scope
             Variable<float3> position = new NoOp<float3>();

@@ -13,6 +13,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
 
+        public float aoGlobalOffset = 1f;
+        public float aoMinDotNormal = 0.0f;
+        public float aoGlobalSpread = 0.5f;
+        public float aoStrength = 1.0f;
+
         // List of persistently allocated mesh data
         internal List<MeshJobHandler> handlers;
 
@@ -29,8 +34,25 @@ namespace jedjoud.VoxelTerrain.Meshing {
             pendingJobs = new HashSet<PendingMeshJob>();
 
             for (int i = 0; i < meshJobsPerTick; i++) {
-                handlers.Add(new MeshJobHandler());
+                handlers.Add(new MeshJobHandler(this));
             }
+
+            /*
+            // Used to calculate the lookup table for morton -> non-morton neighbour lookup
+            for (int i = 0; i < 27; i++) {
+                uint3 morton = VoxelUtils.IndexToPosMorton(i);
+                uint3 normal = VoxelUtils.IndexToPos(i, 3);
+                int mapped = VoxelUtils.PosToIndex(morton, 3);
+
+                if ()
+                Debug.Log($"i={i}, morton={morton}, normal={normal}, mapped={mapped}");
+            }
+            */
+
+            /*
+            int3 amogus = new int3(VoxelUtils.SIZE + 4) / VoxelUtils.SIZE;
+            Debug.Log(amogus);
+            */
         }
 
         // Begin generating the mesh data using the given chunk and voxel container
@@ -63,7 +85,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public override void CallerTick() {
             foreach (var handler in handlers) {
-                if ((handler.finalJobHandle.IsCompleted || (tick - handler.startingTick) > handler.request.maxTicks) && !handler.Free) {
+                //  || (tick - handler.startingTick) > handler.request.maxTicks)
+                if (handler.finalJobHandle.IsCompleted && !handler.Free) {
                     Profiler.BeginSample("Finish Mesh Jobs");
                     FinishJob(handler);
                     Profiler.EndSample();
@@ -77,34 +100,66 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     if (queuedJob.TryPeek(out PendingMeshJob job)) {
                         Vector3Int pos = job.chunk.chunkPosition;
 
-                        bool all = true;
-                        NativeArray<Voxel>[] neighbours = new NativeArray<Voxel>[7];
-                        
-                        // Assume we can acess all the neighbours in the positive x,y,z directions
-                        // In case we can't, we just set the according bools to false
-                        bool3 neighbourMask = true;
-                        for (int j = 0; j < 7; j++) {
-                            // Since we use morton encoding here, inside the Job we can do this step but in the other direction to fetch the chunk ID based on the index
-                            // This only works because we are using morton encoding for voxel data indexing.
-                            uint3 _offset = VoxelUtils.IndexToPosMorton(j + 1);
-                            Vector3Int offset = new Vector3Int((int)_offset.x, (int)_offset.y, (int)_offset.z);
+                        // Solely used for AO! We don't use these in the normal scenarios
+                        NativeArray<Voxel>[] allNeighbours = new NativeArray<Voxel>[27];
 
-                            neighbours[j] = new NativeArray<Voxel>();
-                            if (terrain.totalChunks.TryGetValue(pos + offset, out var chunk)) {
+                        // Used for meshing, since we only care about the neighbours in the positive directions
+                        NativeArray<Voxel>[] positiveNeighbours = new NativeArray<Voxel>[7];
+
+
+                        // Create a bitset that tells us what neighbouring chunks that we can use for meshing
+                        // In some cases (when the source chunk is at the edge of the map) we don't have access to all the neighbouring chunks
+                        // This bitset lets the job system know that when we try to fetch voxel values outside of the map
+                        bool3 negativeMask = true;
+                        bool3 positiveMask = true;
+
+                        // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
+                        bool all = true;
+                        for (int j = 0; j < 27; j++) {
+                            uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+
+                            // Since we need this to be between -1 and 1
+                            int3 offset = (int3)_offset - 1;
+
+                            // Skip self since that's the source chunk that we alr have data for in the jobs
+                            if (math.all(offset == int3.zero)) {
+                                continue;
+                            }
+
+                            allNeighbours[j] = new NativeArray<Voxel>();
+                            if (terrain.totalChunks.TryGetValue(pos + new Vector3Int(offset.x, offset.y, offset.z), out var chunk)) {
                                 VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
                                 all &= neighbour.HasVoxelData();
-                                neighbours[j] = neighbour.voxels;
+                                allNeighbours[j] = neighbour.voxels;
+
+                                // Encode the positive neighbours in the specific array that will use some morton shit to speed up lookup
+                                if (math.all(offset >= int3.zero)) {
+                                    int encodedIndex = VoxelUtils.PosToIndexMorton((uint3)offset);
+                                    positiveNeighbours[encodedIndex-1] = neighbour.voxels;
+                                }
                             } else {
-                                if (math.all(_offset == math.uint3(1, 0, 0))) {
-                                    neighbourMask.x = false;
+                                if (math.all(offset == math.int3(1, 0, 0))) {
+                                    positiveMask.x = false;
                                 }
 
-                                if (math.all(_offset == math.uint3(0, 1, 0))) {
-                                    neighbourMask.y = false;
+                                if (math.all(offset == math.int3(0, 1, 0))) {
+                                    positiveMask.y = false;
                                 }
 
-                                if (math.all(_offset == math.uint3(0, 0, 1))) {
-                                    neighbourMask.z = false;
+                                if (math.all(offset == math.int3(0, 0, 1))) {
+                                    positiveMask.z = false;
+                                }
+
+                                if (math.all(offset == math.int3(-1, 0, 0))) {
+                                    negativeMask.x = false;
+                                }
+
+                                if (math.all(offset == math.int3(0, -1, 0))) {
+                                    negativeMask.y = false;
+                                }
+
+                                if (math.all(offset == math.int3(0, 0, -1))) {
+                                    negativeMask.z = false;
                                 }
                             }
                         }
@@ -114,7 +169,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             if (queuedJob.TryDequeue(out PendingMeshJob request)) {
                                 pendingJobs.Remove(request);
                                 Profiler.BeginSample("Begin Mesh Jobs");
-                                BeginJob(handlers[i], request, neighbours, neighbourMask);
+                                BeginJob(handlers[i], request, allNeighbours, positiveNeighbours, negativeMask, positiveMask);
                                 Profiler.EndSample();
                             }
                         } else {
@@ -129,13 +184,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-        private void BeginJob(MeshJobHandler handler, PendingMeshJob request, NativeArray<Voxel>[] neighbours, bool3 neighbourMask) {
+        private void BeginJob(MeshJobHandler handler, PendingMeshJob request, NativeArray<Voxel>[] allNeighbours, NativeArray<Voxel>[] positiveNeighbours, bool3 negativeMask, bool3 positiveMask) {
             handler.chunk = request.chunk;
             handler.request = request;
             handler.startingTick = tick;
 
             var copy = new AsyncMemCpy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
-            handler.BeginJob(copy, neighbours, neighbourMask);
+            handler.BeginJob(copy, allNeighbours, positiveNeighbours, negativeMask, positiveMask);
         }
 
         private void FinishJob(MeshJobHandler handler) {

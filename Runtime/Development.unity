@@ -602,8 +602,20 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: voxelSizeReduction
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: 'materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 56f8c19583636144483d60796fa5eca9, type: 2}
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: 'materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 70763bc693187524f91243c1a8bcd3b4, type: 2}
+    - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: 'materials.Array.data[2]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 2bfefb5dc2ec0554582ccd900ab84b90, type: 2}
     - target: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Name
       value: Voxel Terrain
@@ -614,15 +626,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: hash
-      value: 924058630
+      value: 1046844853
       objectReference: {fileID: 0}
+    - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: shader
+      value: 
+      objectReference: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: debugName
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: autoCompile
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: octaves
@@ -630,23 +646,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: offset.x
-      value: 15
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: amplitude.x
-      value: 50
+      value: 31.9
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailScale.x
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: detailOffset.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: cellularScale.x
       value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: cellularOffset.x
+      value: 0.27
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialHeight.x
-      value: -35.4
+      value: -10
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailAmplitude.x
-      value: 20.92
+      value: -10
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.scale.x
@@ -661,12 +689,16 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: cellularAmplitude.x
+      value: -0.39
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: detailProbability.x
-      value: 0.03
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: materialHeightNoisy.x
-      value: 31.9
+      value: 37
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.x
@@ -674,15 +706,31 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.y
-      value: -50
+      value: -14.1
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: transform1.position.z
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: aoStrength
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: aoGlobalOffset
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: aoGlobalSpread
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: aoMinDotNormal
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: meshJobsPerTick
-      value: 2
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5361457892440788241, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_LocalPosition.x
@@ -726,7 +774,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.x
-      value: 10
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.y
@@ -734,7 +782,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: mapChunkSize.z
-      value: 10
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 7318964257985538370, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: blocky

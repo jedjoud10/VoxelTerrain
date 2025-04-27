@@ -1,6 +1,5 @@
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 
@@ -9,8 +8,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct BoundsJob: IJob {
         [ReadOnly]
         public NativeArray<float3> vertices;
+        [ReadOnly]
         public Unsafe.NativeCounter counter;
-
         public NativeArray<float3> bounds;
 
         public void Execute() {

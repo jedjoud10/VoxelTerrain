@@ -5,7 +5,6 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    // Corner job that will store the locations of completely empty / filled cells in the mesh to speed up meshing
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low, OptimizeFor = OptimizeFor.Performance)]
     public struct CornerJob : IJobParallelFor {
         // List of enabled corners like in MC
@@ -17,10 +16,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<Voxel> voxels;
 
         [ReadOnly]
-        public UnsafePtrList<Voxel> neighbours;
+        public UnsafePtrList<Voxel> positiveNeighbourPtr;
 
         [ReadOnly]
-        public bool3 neighbourMask;
+        public bool3 positiveNeighbourMask;
 
         [ReadOnly]
         static readonly uint4x3[] offsets = {
@@ -40,21 +39,32 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 
-            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
+            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
                 return;
+
+            /*
+            BitField32 value = new BitField32(0);
+            for (int i = 0; i < 8; i++) {
+                uint3 pos = VoxelUtils.IndexToPosMorton(i) + position;
+                bool set = VoxelUtils.FetchNeighboursOnlyPositive(VoxelUtils.PosToIndexMorton(pos), ref voxels, ref neighbours).density < 0.0;
+                value.SetBits(i, set);
+            }
+            enabled[index] = (byte)(value.Value);
+            */
+            
 
             int4 indices = math.int4(Morton.EncodeMorton32(offsets[0].c0 + position.x, offsets[0].c1 + position.y, offsets[0].c2 + position.z));
             float4 test = math.float4(0.0F);
 
             for (int i = 0; i < 4; i++) {
-                test[i] = VoxelUtils.FetchWithNeighbours(indices[i], ref voxels, ref neighbours).density;
+                test[i] = VoxelUtils.FetchVoxelWithPositiveNeighbours(indices[i], ref voxels, ref positiveNeighbourPtr).density;
             }
 
             int4 indices2 = math.int4(Morton.EncodeMorton32(offsets[1].c0 + position.x, offsets[1].c1 + position.y, offsets[1].c2 + position.z));
             float4 test2 = math.float4(0.0F);
 
             for (int i = 0; i < 4; i++) {
-                test2[i] = VoxelUtils.FetchWithNeighbours(indices2[i], ref voxels, ref neighbours).density;
+                test2[i] = VoxelUtils.FetchVoxelWithPositiveNeighbours(indices2[i], ref voxels, ref positiveNeighbourPtr).density;
             }
 
             bool4 check1 = test < math.float4(0.0);

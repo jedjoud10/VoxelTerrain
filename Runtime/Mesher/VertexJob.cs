@@ -1,4 +1,3 @@
-using System.Threading;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -48,7 +47,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<Voxel> voxels;
 
         [ReadOnly]
-        public UnsafePtrList<Voxel> neighbours;
+        public UnsafePtrList<Voxel> positiveNeighbourPtr;
 
         // Used for fast traversal
         [ReadOnly]
@@ -59,7 +58,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<int> indices;
 
         [ReadOnly]
-        public bool3 neighbourMask;
+        public bool3 positiveNeighbourMask;
 
         // Vertices that we generated
         [WriteOnly]
@@ -85,7 +84,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
             indices[index] = int.MaxValue;
 
-            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
+            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
                 return;
 
             float3 vertex = float3.zero;
@@ -114,12 +113,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int startIndex = VoxelUtils.PosToIndexMorton(startOffset + position);
                 int endIndex = VoxelUtils.PosToIndexMorton(endOffset + position);
 
-                float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
-                float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
+                float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref positiveNeighbourPtr);
+                float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref positiveNeighbourPtr);
 
                 // Get the Voxels of the edge
-                Voxel startVoxel = VoxelUtils.FetchWithNeighbours(startIndex, ref voxels, ref neighbours);
-                Voxel endVoxel = VoxelUtils.FetchWithNeighbours(endIndex, ref voxels, ref neighbours);
+                Voxel startVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(startIndex, ref voxels, ref positiveNeighbourPtr);
+                Voxel endVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(endIndex, ref voxels, ref positiveNeighbourPtr);
 
                 // Create a vertex on the line of the edge
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
@@ -133,18 +132,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Output vertex in object space
             float3 offset = (vertex / (float)count);
-
             float3 outputVertex = (offset - 1.0F) + position;
             vertices[vertexIndex] = outputVertex * voxelScale;
-
 
             // Calculate per vertex normals and apply it
             normal = -math.normalizesafe(normal, new float3(0, 1, 0));
             normals[vertexIndex] = normal;
-
-            // TODO: please fix this ambient occlusion
-            float ambientOcclusion = 1.0f;
-            uvs[vertexIndex] = new float2(math.clamp(ambientOcclusion, 0, 1), 0.0f);
+            uvs[vertexIndex] = new float2(0.0f, 0.0f);
         }
     }
 }
