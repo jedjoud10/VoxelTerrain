@@ -2,16 +2,16 @@
 namespace jedjoud.VoxelTerrain.Generation {
     using static Sdf;
     public static class Sdf {
-        public static OpRawSdfBuilder Union(params Variable<float>[] vars) {
-            return new OpRawSdfBuilder { variables = vars, op = "Union" };
+        public static Variable<float> Union(Variable<float> first, Variable<float> second, Variable<float> smooth = null) {
+            return new OpSdfOp { first = first, second = second, smooth = smooth, op = "Union", negate = false };
         }
 
-        public static OpRawSdfBuilder Intersection(params Variable<float>[] vars) {
-            return new OpRawSdfBuilder { variables = vars, op = "Intersection" };
+        public static Variable<float> Intersection(Variable<float> first, Variable<float> second, Variable<float> smooth = null) {
+            return new OpSdfOp { first = first, second = second, smooth = smooth, op = "Intersection", negate = false };
         }
 
-        public static OpRawSdfBuilder Subtraction(params Variable<float>[] vars) {
-            return new OpRawSdfBuilder { variables = vars, op = "Subtraction" };
+        public static Variable<float> Subtraction(Variable<float> first, Variable<float> second, Variable<float> smooth = null) {
+            return new OpSdfOp { first = first, second = second, smooth = smooth, op = "Subtraction", negate = true};
         }
 
         public static Variable<float> Distance<T>(Variable<T> a, Variable<T> b, DistanceMetric mode = DistanceMetric.Euclidean) {
@@ -22,33 +22,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             Euclidean,
             Manhattan,
             Chebyshev,
-        }
-    }
-
-    public class OpRawSdfBuilder {
-        public Variable<float>[] variables;
-        public string op;
-        private Variable<float> smooth = null;
-
-        public static implicit operator OpSdfOp(OpRawSdfBuilder value) {
-            return new OpSdfOp {
-                op = value.op,
-                smooth = value.smooth,
-                variables = value.variables
-            };
-        }
-
-        public static implicit operator Variable<float>(OpRawSdfBuilder value) {
-            return new OpSdfOp {
-                op = value.op,
-                smooth = value.smooth,
-                variables = value.variables
-            };
-        }
-
-        public OpRawSdfBuilder Smoothenation(Variable<float> smooth) {
-            this.smooth = smooth;
-            return this;
         }
     }
 
@@ -94,33 +67,23 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public class OpSdfOp : Variable<float> {
-        public Variable<float>[] variables;
+        public Variable<float> first;
+        public Variable<float> second;
         public Variable<float> smooth = null;
         public string op;
+        public bool negate;
 
         public override void HandleInternal(TreeContext ctx) {
-            foreach (var v in variables) {
-                v.Handle(ctx);
-            }
+            first.Handle(ctx);
+            second.Handle(ctx);
+            smooth?.Handle(ctx);
 
+            string negatePrefix = negate ? "-" : "";
             if (smooth != null) {
                 smooth.Handle(ctx);
-
-                Variable<float> temp = variables[0];
-                for (var i = 1; i < variables.Length; i++) {
-                    temp.Handle(ctx);
-                    temp = ctx.AssignTempVariable<float>("sdf_smooth_temp", $"opSmooth{op}({ctx[temp]}, {ctx[variables[i]]}, {ctx[smooth]})");
-                }
-
-                ctx.DefineAndBindNode<float>(this, $"sdf_smooth_{op.ToLower()}", $"{ctx[temp]}");
+                ctx.DefineAndBindNode<float>(this, $"sdf_smooth_{op.ToLower()}", $"opSmooth{op}({negatePrefix}{ctx[first]}, {ctx[second]}, {ctx[smooth]})");
             } else {
-                Variable<float> temp = variables[0];
-                for (var i = 1; i < variables.Length; i++) {
-                    temp.Handle(ctx);
-                    temp = ctx.AssignTempVariable<float>("sdf_temp", $"op{op}({ctx[temp]}, {ctx[variables[i]]})");
-                }
-
-                ctx.DefineAndBindNode<float>(this, $"sdf_{op.ToLower()}", $"{ctx[temp]}");
+                ctx.DefineAndBindNode<float>(this, $"sdf_{op.ToLower()}", $"op{op}({negatePrefix}{ctx[first]}, {ctx[second]})");
             }
         }
     }

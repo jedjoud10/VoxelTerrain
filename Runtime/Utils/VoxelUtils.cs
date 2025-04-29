@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
@@ -30,6 +29,17 @@ namespace jedjoud.VoxelTerrain {
             new int3(1, 1, 0),
             new int3(1, 1, 1),
         };
+
+        // First 8 index elements of a 3D morton encoded index
+        // 0,0,0 => 0
+        // 1,0,0 => 1
+        // 0,1,0 => 2
+        // 1,1,0 => 3
+        // 0,0,1 => 4
+        // 1,0,1 => 5
+        // 0,1,1 => 6
+        // 1,1,1 => 7
+
 
         // Stolen from https://gist.github.com/dwilliamson/c041e3454a713e58baf6e4f8e5fffecd
         public static readonly ushort[] EdgeMasks = new ushort[] {
@@ -67,12 +77,10 @@ namespace jedjoud.VoxelTerrain {
             0xb06, 0xa0f, 0x905, 0x80c, 0x30a, 0x203, 0x109, 0x0,
         };
 
-        // Custom modulo operator to discard negative numbers
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint3 Mod(int3 val, int size) {
-            int3 r = val % size;
-            return (uint3)math.select(r, r + size, r < 0);
-        }
+        // Morton -> Non-morton Look up Table for neighbour voxel fetching
+        public static readonly int[] MortonNeighbourLookup = new int[] {
+            0, 1, 9, 10, 3, 4, 12, 13
+        };
 
         // Convert an index to a 3D position (morton coding)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -107,17 +115,18 @@ namespace jedjoud.VoxelTerrain {
             return (int)math.round((position.y * size * size + (position.z * size) + position.x));
         }
 
-        // Checks if the given position is valid with the given neighbours
-        // Only really needed for the chunks that are spawned at the very edge of the map, in the positive x,y,z axii
-        // We need to tell them to disable fetching from their neighbours, as they have none in that direction.
+        // Checks if the given (positive only) position is valid with the given neighbours
+        // This only checks if the position is valid for the neighbours in the positive directions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckNeighbours(uint3 position, bool3 neighbourBitmask) {
+        public static bool CheckPositionPositiveNeighbours(uint3 position, bool3 mask) {
             bool3 greater = position >= SIZE - 2;
-            return math.all((greater & neighbourBitmask) == greater);
+            return math.all((greater & mask) == greater);
         }
 
         // Fetch the Voxels but with neighbour data fallback
-        public static Voxel FetchWithNeighbours(int index, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
+        // Index MUST be mortonated with the source chunk being 0,0,0
+        // WE MUST BE USING THE "POSITIVE NEIGHBOURS" ARRAY!!!!
+        public static Voxel FetchVoxelWithPositiveNeighbours(int index, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> positiveNeighbourPtrs) {
             int mortonChunkIndex = index / VOLUME;
 
             // Local fetch (same thing as index < Volume)
@@ -127,21 +136,88 @@ namespace jedjoud.VoxelTerrain {
             // This is where shit gets... shit...
             unsafe {
                 // Neighbours doesn't contain the local chunk...
-                Voxel* ptr = neighbours[mortonChunkIndex-1];
+                Voxel* ptr = positiveNeighbourPtrs[mortonChunkIndex - 1];
                 Voxel* offset = ptr + (index - VOLUME * mortonChunkIndex);
                 return *offset;
+            }
+        }
+
+        // Checks if the given GLOBAL position (could be negative) is valid with the given neighbours
+        // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckPositionAllNeighbours(int3 position, bool3 negativeMask, bool3 positiveMask) {
+            bool3 greater = position >= SIZE - 2;
+            bool positive = math.all((greater & positiveMask) == greater);
+            bool3 lesser = position < 0;
+            bool negative = math.all((lesser & negativeMask) == lesser);
+            return positive && negative;
+        }
+
+        // Custom modulo operator to discard negative numbers
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint3 Mod(int3 val, int size) {
+            int3 r = val % size;
+            return (uint3)math.select(r, r + size, r < 0);
+        }
+
+        // Fetch the Voxels with neighbour data fallback, but consider ALL 26 neighbours, not just the ones in the positive axii
+        // Solely used for AO, since that needs to fetch data from all the neighbours
+        // WE MUST BE USING THE "ALL NEIGHBOURS" ARRAY!!!!
+        public static Voxel FetchVoxelWithAllNeighbours(int3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> allNeighbours) {
+            // remap -1,1 to 0,2
+            position += new int3(SIZE);
+            int3 chunkPosition = position / SIZE;
+            int chunkIndex = PosToIndex((uint3)chunkPosition, 3);
+            int voxelIndex = PosToIndexMorton((uint3)Mod(position, SIZE));
+
+            unsafe {
+                Voxel* ptr = allNeighbours[chunkIndex];
+                
+                if (chunkIndex == 13) {
+                    ptr = (Voxel*)voxels.GetUnsafeReadOnlyPtr<Voxel>();
+                }
+                
+                return *(ptr + voxelIndex);
             }
         }
 
         // Calculate the normals at a specific position
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float3 SampleGridNormal(uint3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
-            float baseVal = FetchWithNeighbours(PosToIndexMorton(position), ref voxels, ref neighbours).density;
-            float xVal = FetchWithNeighbours(PosToIndexMorton(position + math.uint3(1, 0, 0)), ref voxels, ref neighbours).density;
-            float yVal = FetchWithNeighbours(PosToIndexMorton(position + math.uint3(0, 1, 0)), ref voxels, ref neighbours).density;
-            float zVal = FetchWithNeighbours(PosToIndexMorton(position + math.uint3(0, 0, 1)), ref voxels, ref neighbours).density;
+            float baseVal = FetchVoxelWithPositiveNeighbours(PosToIndexMorton(position), ref voxels, ref neighbours).density;
+            float xVal = FetchVoxelWithPositiveNeighbours(PosToIndexMorton(position + math.uint3(1, 0, 0)), ref voxels, ref neighbours).density;
+            float yVal = FetchVoxelWithPositiveNeighbours(PosToIndexMorton(position + math.uint3(0, 1, 0)), ref voxels, ref neighbours).density;
+            float zVal = FetchVoxelWithPositiveNeighbours(PosToIndexMorton(position + math.uint3(0, 0, 1)), ref voxels, ref neighbours).density;
 
             return new float3(baseVal - xVal, baseVal - yVal, baseVal - zVal);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static half SampleDensityInterpolated(float3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> allNeighbours) {
+            float3 frac = math.frac(position);
+            int3 voxPos = (int3)math.floor(position);
+
+            float d000 = FetchVoxelWithAllNeighbours(voxPos, ref voxels, ref allNeighbours).density;
+            float d100 = FetchVoxelWithAllNeighbours(voxPos + math.int3(1, 0, 0), ref voxels, ref allNeighbours).density;
+            float d010 = FetchVoxelWithAllNeighbours(voxPos + math.int3(0, 1, 0), ref voxels, ref allNeighbours).density;
+            float d110 = FetchVoxelWithAllNeighbours(voxPos + math.int3(0, 0, 1), ref voxels, ref allNeighbours).density;
+
+            float d001 = FetchVoxelWithAllNeighbours(voxPos + math.int3(0, 0, 1), ref voxels, ref allNeighbours).density;
+            float d101 = FetchVoxelWithAllNeighbours(voxPos + math.int3(1, 0, 1), ref voxels, ref allNeighbours).density;
+            float d011 = FetchVoxelWithAllNeighbours(voxPos + math.int3(0, 1, 1), ref voxels, ref allNeighbours).density;
+            float d111 = FetchVoxelWithAllNeighbours(voxPos + math.int3(1, 1, 1), ref voxels, ref allNeighbours).density;
+
+            float mixed0 = math.lerp(d000, d100, frac.x);
+            float mixed1 = math.lerp(d010, d110, frac.x);
+            float mixed2 = math.lerp(d001, d101, frac.x);
+            float mixed3 = math.lerp(d011, d111, frac.x);
+
+            float mixed4 = math.lerp(mixed0, mixed2, frac.z);
+            float mixed5 = math.lerp(mixed1, mixed3, frac.z);
+
+            float mixed6 = math.lerp(mixed4, mixed5, frac.y);
+
+            return (half)mixed6;
         }
     }
 }

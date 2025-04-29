@@ -1,4 +1,4 @@
-# TODO
+# TODO / Ideas
 - Figure out how to handle per voxel color (nointerpolation in shader trick)
 - Re-implement AO calculations (but based on a larger scale / blurred voxel repr.)
 - Re-implement props with hopefully better implementation
@@ -21,7 +21,11 @@
 - Do some async chunk culling!!
   - There's this for caves: https://tomcc.github.io/2014/08/31/visibility-1.html
   - For surface chunks, ig do some funky stuff with bounds?  
-
+- Do some material variant stuff with multiple optional UV channels on a PER CHUNK basis
+  - In total we could have up 15 material variants per chunk (since 4 uv with 4 floats/half each, minus the single AO channel)
+  - We can do the same dedupe/lookup system as normal material values.
+  - Maybe rename "materials" to shaders and "material variants" to materials? would make more sense...
+- Do some sort of Minecraft-style spreading lighting calculations
 # Current Screenies
 
 Runtime terrain gen with some simple props
@@ -36,3 +40,10 @@ also supports height-map simplification (which is what I think I will use to rep
 
 the C# graph that was used for the terrain. This gets converted to HLSL and then executed on the GPU.
 ![image](https://github.com/user-attachments/assets/7180872a-1e4f-4311-9d18-f4895e9aa1a6)
+
+screenie with some triplanar texturing (thanks to PolyHaven)
+![image](https://github.com/user-attachments/assets/5232947a-bc81-4e0e-91bf-36166efdcc71)
+
+
+# Credits
+- PolyHaven for their awesome PBR 4k textures. I used these in the "Default" folder for default testing materials

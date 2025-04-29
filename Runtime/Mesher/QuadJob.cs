@@ -58,7 +58,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         };
 
         [ReadOnly]
-        public UnsafePtrList<Voxel> neighbours;
+        public UnsafePtrList<Voxel> positiveNeighbourPtr;
 
         // Used for fast traversal
         [ReadOnly]
@@ -77,7 +77,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeParallelHashMap<byte, int>.ReadOnly materialHashMap;
 
         [ReadOnly]
-        public bool3 neighbourMask;
+        public bool3 positiveNeighbourMask;
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint3 basePosition, int index, bool skirts, bool skirtsForceDir) {
@@ -86,8 +86,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int baseIndex = VoxelUtils.PosToIndexMorton(basePosition);
             int endIndex = VoxelUtils.PosToIndexMorton(basePosition + forward);
 
-            Voxel startVoxel = VoxelUtils.FetchWithNeighbours(baseIndex, ref voxels, ref neighbours);
-            Voxel endVoxel = VoxelUtils.FetchWithNeighbours(endIndex, ref voxels, ref neighbours);
+            Voxel startVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(baseIndex, ref voxels, ref positiveNeighbourPtr);
+            Voxel endVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(endIndex, ref voxels, ref positiveNeighbourPtr);
 
             bool flip = (endVoxel.density >= 0.0);
 
@@ -135,16 +135,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 
-            if (!VoxelUtils.CheckNeighbours(position, neighbourMask))
+            if (math.any(position < math.uint3(1)))
+                return;
+
+            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
                 return;
 
             // Allows us to save two voxel fetches (very important)
             ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];
-
-            if (math.any(position < math.uint3(1))) {
-                return;
-            }
-
 
             for (int i = 0; i < 3; i++) {
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {

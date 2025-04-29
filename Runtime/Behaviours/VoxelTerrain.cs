@@ -189,24 +189,18 @@ namespace jedjoud.VoxelTerrain {
             }
         }
 
-        /*
         public void OnApplicationQuit() {
-            mesher.CallerDispose();
-            graph.CallerDispose();
-            executor.CallerDispose();
-            readback.CallerDispose();
-            edits.CallerDispose();
-            props.CallerDispose();
-
-            foreach (var (key, value) in totalChunks) {
-                VoxelChunk voxelChunk = value.GetComponent<VoxelChunk>();
-                voxelChunk.dependency?.Complete();
-                voxelChunk.voxels.Dispose();
-            }
+            Dispose();
         }
-        */
 
         private void OnDisable() {
+            Dispose();
+        }
+
+        private void Dispose() {
+            if (disposed)
+                return;
+
             disposed = true;
             mesher.CallerDispose();
             graph.CallerDispose();

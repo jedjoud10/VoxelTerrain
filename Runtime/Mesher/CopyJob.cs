@@ -39,11 +39,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int material = index;
             int readOffset = segmentOffset * material;
             int offset = materialSegmentOffsets[material];
+            int count = counters[material] * 6;
+            NativeSlice<int> slice = permTriangles.Slice(offset, count);
+            slice.CopyFrom(tempTriangles.Slice(readOffset, count));
 
+            /*
             for (int i = 0; i < counters[material] * 6; i++) {
                 int val = tempTriangles[i + readOffset];
                 permTriangles[offset + i] = val;
             }
+            */
         }
     }
 }
