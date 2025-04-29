@@ -40,3 +40,6 @@ also supports height-map simplification (which is what I think I will use to rep
 
 the C# graph that was used for the terrain. This gets converted to HLSL and then executed on the GPU.
 ![image](https://github.com/user-attachments/assets/7180872a-1e4f-4311-9d18-f4895e9aa1a6)
+
+# Credits
+- PolyHaven for their awesome PBR 4k textures. I used these in the "Default" folder for default testing materials
