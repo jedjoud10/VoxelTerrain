@@ -99,9 +99,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             string filePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute";
             string metaFilePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute.meta";
 
+            /*
             if (File.Exists(filePath)) {
                 AssetDatabase.DeleteAsset(filePath);
             }
+            */
 
             using (StreamWriter sw = File.CreateText(filePath)) {
                 sw.Write(source);

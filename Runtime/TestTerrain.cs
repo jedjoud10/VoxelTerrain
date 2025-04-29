@@ -18,6 +18,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> cellularAmplitude;
         public Inject<float> materialHeightNoisy;
         public Inject<float> materialHeight;
+        public Inject<float2> smoothing;
 
         [Range(1, 10)]
         public int octaves;
@@ -34,13 +35,14 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             // Create fractal 2D simplex noise
             Variable<float> fractal = new Fractal<float2>(new Simplex(scale, amplitude), FractalMode.Sum, octaves, lacunarity, persistence).Evaluate(xz);
-            Variable<float> cellular = Cellular<float2>.Simple(Sdf.DistanceMetric.Euclidean, 1).Tile(xz.Scaled(cellularScale));
+            Variable<float> cellular = Cellular<float3>.Simple(Sdf.DistanceMetric.Euclidean, 1).Tile(projected.Scaled(cellularScale));
 
             // Add a floor for the cellular nodes
-            var floored = Sdf.Union(cellular * cellularAmplitude + cellularOffset, y + 10, smooth: 1f);
+            Variable<float2> smooth = ((Variable<float2>)smoothing);
+            var floored = Sdf.Union(cellular * cellularAmplitude + cellularOffset, y + 10, smooth: smooth.Swizzle<float>("x"));
 
             // Create a new density parameter
-            var density = Sdf.Subtraction(fractal + y, floored, smooth: 1f);
+            var density = Sdf.Subtraction(fractal + y, floored, smooth: smooth.Swizzle<float>("y"));
             //var density = cellular;
 
             // Some checks for prop generation

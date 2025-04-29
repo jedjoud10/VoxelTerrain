@@ -1,4 +1,4 @@
-# TODO
+# TODO / Ideas
 - Figure out how to handle per voxel color (nointerpolation in shader trick)
 - Re-implement AO calculations (but based on a larger scale / blurred voxel repr.)
 - Re-implement props with hopefully better implementation
@@ -21,7 +21,11 @@
 - Do some async chunk culling!!
   - There's this for caves: https://tomcc.github.io/2014/08/31/visibility-1.html
   - For surface chunks, ig do some funky stuff with bounds?  
-
+- Do some material variant stuff with multiple optional UV channels on a PER CHUNK basis
+  - In total we could have up 15 material variants per chunk (since 4 uv with 4 floats/half each, minus the single AO channel)
+  - We can do the same dedupe/lookup system as normal material values.
+  - Maybe rename "materials" to shaders and "material variants" to materials? would make more sense...
+- Do some sort of Minecraft-style spreading lighting calculations
 # Current Screenies
 
 Runtime terrain gen with some simple props
