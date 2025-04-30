@@ -6,6 +6,7 @@ using System.Linq;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine.Profiling;
+using jedjoud.VoxelTerrain.Octree;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
@@ -108,8 +109,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // Create a bitset that tells us what neighbouring chunks that we can use for meshing
                         // In some cases (when the source chunk is at the edge of the map) we don't have access to all the neighbouring chunks
                         // This bitset lets the job system know that when we try to fetch voxel values outside of the map
-                        bool3 negativeMask = false;
-                        bool3 positiveMask = false;
+                        bool3 negativeMask = true;
+                        bool3 positiveMask = true;
+
+                        // Get the neighbour indices from the octree
+                        int neighbourIndicesStart = job.chunk.node.neighbourDataStartIndex;
+                        NativeSlice<int> slice = terrain.octree.neighbourData.AsArray().Slice(neighbourIndicesStart, 27);
+                        int depth = job.chunk.node.depth;
 
                         // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
                         bool all = true;
@@ -124,9 +130,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                 continue;
                             }
 
-                            /*
                             allNeighbours[j] = new NativeArray<Voxel>();
-                            if (terrain.totalChunks.TryGetValue(pos + new Vector3Int(offset.x, offset.y, offset.z), out var chunk)) {
+                            
+                            int index = slice[j];
+                            if (index == -1) {
+                                CallThisSomethingPls(ref negativeMask, ref positiveMask, offset);
+                                continue;
+                            }
+
+                            OctreeNode neighbourNode = terrain.octree.nodesList[index];
+                            if (terrain.chunks.TryGetValue(neighbourNode, out var chunk) && neighbourNode.depth == depth) {
                                 VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
                                 all &= neighbour.HasVoxelData();
                                 allNeighbours[j] = neighbour.voxels;
@@ -137,31 +150,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                     positiveNeighbours[encodedIndex-1] = neighbour.voxels;
                                 }
                             } else {
-                                if (math.all(offset == math.int3(1, 0, 0))) {
-                                    positiveMask.x = false;
-                                }
-
-                                if (math.all(offset == math.int3(0, 1, 0))) {
-                                    positiveMask.y = false;
-                                }
-
-                                if (math.all(offset == math.int3(0, 0, 1))) {
-                                    positiveMask.z = false;
-                                }
-
-                                if (math.all(offset == math.int3(-1, 0, 0))) {
-                                    negativeMask.x = false;
-                                }
-
-                                if (math.all(offset == math.int3(0, -1, 0))) {
-                                    negativeMask.y = false;
-                                }
-
-                                if (math.all(offset == math.int3(0, 0, -1))) {
-                                    negativeMask.z = false;
-                                }
+                                CallThisSomethingPls(ref negativeMask, ref positiveMask, offset);
                             }
-                            */
                         }
 
                         // Only begin meshing if we have the correct neighbours
@@ -180,6 +170,58 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             }
                         }
                     }
+                }
+            }
+
+            static void CallThisSomethingPls(ref bool3 negativeMask, ref bool3 positiveMask, int3 offset) {
+                /*
+                if (math.all(offset == math.int3(1, 0, 0))) {
+                    positiveMask.x = false;
+                }
+
+                if (math.all(offset == math.int3(0, 1, 0))) {
+                    positiveMask.y = false;
+                }
+
+                if (math.all(offset == math.int3(0, 0, 1))) {
+                    positiveMask.z = false;
+                }
+
+                if (math.all(offset == math.int3(-1, 0, 0))) {
+                    negativeMask.x = false;
+                }
+
+                if (math.all(offset == math.int3(0, -1, 0))) {
+                    negativeMask.y = false;
+                }
+
+                if (math.all(offset == math.int3(0, 0, -1))) {
+                    negativeMask.z = false;
+                }
+                */
+
+                if (offset.x == 1) {
+                    positiveMask.x = false;
+                }
+
+                if (offset.y == 1) {
+                    positiveMask.y = false;
+                }
+
+                if (offset.z == 1) {
+                    positiveMask.z = false;
+                }
+
+                if (offset.x == -1) {
+                    negativeMask.x = false;
+                }
+
+                if (offset.y == -1) {
+                    negativeMask.y = false;
+                }
+
+                if (offset.z == -1) {
+                    negativeMask.z = false;
                 }
             }
         }
@@ -209,9 +251,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 renderer.enabled = true;
                 renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
+                float scalingFactor = chunk.node.size / (VoxelUtils.SIZE * terrain.voxelSizeFactor);
                 chunk.bounds = new Bounds {
-                    min = chunk.transform.position + stats.Bounds.min,
-                    max = chunk.transform.position + stats.Bounds.max,
+                    min = chunk.transform.position + stats.Bounds.min * scalingFactor,
+                    max = chunk.transform.position + stats.Bounds.max * scalingFactor,
                 };
                 renderer.bounds = chunk.bounds;
             }

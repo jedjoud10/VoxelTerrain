@@ -7,13 +7,15 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Octree {
     public class VoxelOctree : VoxelBehaviour {
+        public bool drawGizmos;
         [Min(1)]
         public int maxDepth = 8;
         public OctreeLoader target;
 
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
-        private NativeList<OctreeNode> nodesList;
+        public NativeList<OctreeNode> nodesList;
+        public NativeList<int> neighbourData;
 
 
         // only used from inside the job. for some reason, jobs can't dipose of native queues inside of them
@@ -30,6 +32,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         public override void CallerStart() {
             nodesList = new NativeList<OctreeNode>(Allocator.Persistent);
+            neighbourData = new NativeList<int>(Allocator.Persistent);
             oldNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             newNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
 
@@ -42,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         private void Compute() {
             nodesList.Clear();
             newNodesSet.Clear();
-            
+            neighbourData.Clear();
             addedNodes.Clear();
             removedNodes.Clear();
 
@@ -56,6 +59,12 @@ namespace jedjoud.VoxelTerrain.Octree {
                 maxDepth = maxDepth,
                 nodes = nodesList,
                 target = target.Data,
+            };
+
+            NeighbourJob neighbourJob = new NeighbourJob {
+                nodes = nodesList,
+                neighbours = neighbourData,
+                pending = pending,
             };
 
             ToHashSetJob toHashSetJob = new ToHashSetJob {
@@ -81,13 +90,14 @@ namespace jedjoud.VoxelTerrain.Octree {
             };
 
             JobHandle subdivideJobHandle = job.Schedule();
-            JobHandle setJobHandle = toHashSetJob.Schedule(subdivideJobHandle);
+            JobHandle neighbourJobHandle = neighbourJob.Schedule(subdivideJobHandle);
+            JobHandle setJobHandle = toHashSetJob.Schedule(neighbourJobHandle);
             JobHandle addedJobHandle = addedDiffJob.Schedule(setJobHandle);
             JobHandle removedJobHandle = removedDiffJob.Schedule(setJobHandle);
 
             JobHandle temp = JobHandle.CombineDependencies(addedJobHandle, removedJobHandle);
             JobHandle swapJobHandle = swapJob.Schedule(temp);
-            handle = JobHandle.CombineDependencies(addedJobHandle, removedJobHandle, swapJobHandle);
+            handle = JobHandle.CombineDependencies(swapJobHandle, neighbourJobHandle);
             handle.Complete();
         }
 
@@ -111,10 +121,11 @@ namespace jedjoud.VoxelTerrain.Octree {
             removedNodes.Dispose();
             pending.Dispose();
             nodesList.Dispose();
+            neighbourData.Dispose();
         }
 
         private void OnDrawGizmos() {
-            if (terrain != null && nodesList.IsCreated) {
+            if (terrain != null && nodesList.IsCreated && drawGizmos) {
                 NativeList<OctreeNode> nodes = nodesList;
 
                 Gizmos.color = new Color(1f, 1f, 1f, 0.3f);
@@ -122,6 +133,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                     Gizmos.DrawWireCube(node.Center, node.size * Vector3.one);
                 }
             }
+
         }
     }
 }

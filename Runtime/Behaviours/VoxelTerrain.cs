@@ -131,6 +131,7 @@ namespace jedjoud.VoxelTerrain {
                     chunk.voxelMaterialsLookup = null;
                     chunk.triangleOffsetLocalMaterials = null;
                     chunk.state = ChunkState.Idle;
+                    chunks.Add(item, chunk);
 
                     // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
                     // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
@@ -243,12 +244,13 @@ namespace jedjoud.VoxelTerrain {
             props.CallerDispose();
             octree.CallerDispose();
 
-            /*
-            foreach (var (key, value) in totalChunks) {
-                VoxelChunk voxelChunk = value.GetComponent<VoxelChunk>();
-                voxelChunk.voxels.Dispose();
+            foreach (var (node, chunk) in chunks) {
+                chunk.voxels.Dispose();
             }
-            */
+
+            foreach (var voxels in unusedPooledContainers) {
+                voxels.Dispose();
+            }
         }
 
         private GameObject FetchChunk() {
@@ -297,12 +299,20 @@ namespace jedjoud.VoxelTerrain {
         }
 
         private void OnDrawGizmosSelected() {
-            /*
-            if (totalChunks != null && drawGizmos) {
-                foreach (var (key, go) in totalChunks) {
+            if (chunks != null && drawGizmos) {
+                foreach (var (key, go) in chunks) {
                     VoxelChunk chunk = go.GetComponent<VoxelChunk>();
                     
                     Bounds bounds = chunk.GetBounds();
+
+                    if (bounds == default) {
+                        bounds = new Bounds() {
+                            center = chunk.node.Center,
+                            extents = Vector3.one * 10.0f,
+                        };
+                    }
+
+
                     Color color = Color.white;
 
                     switch (chunk.state) {
@@ -330,7 +340,6 @@ namespace jedjoud.VoxelTerrain {
                     Gizmos.DrawWireCube(bounds.center, bounds.size);
                 }
             }
-            */
         }
     }
 }
