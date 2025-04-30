@@ -302,6 +302,7 @@ GameObject:
   - component: {fileID: 664809942}
   - component: {fileID: 664809941}
   - component: {fileID: 664809945}
+  - component: {fileID: 664809946}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -444,6 +445,18 @@ MonoBehaviour:
   lookSensitivity: 1
   dampingCoefficient: 20
   focusOnEnable: 1
+--- !u!114 &664809946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 664809940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9509cffd9441d454a9cc0ef4df41ef02, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &786634533
 GameObject:
   m_ObjectHideFlags: 0
@@ -580,6 +593,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1278184368 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+  m_PrefabInstance: {fileID: 1607214703}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1278184381
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1278184368}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b5b2ce753b73be49b81e6c9cf8283de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxDepth: 5
+  target: {fileID: 664809946}
 --- !u!1001 &1607214703
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -594,11 +626,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: ticksPerSecond
-      value: 128
+      value: 32
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: maxTicksPerFrame
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 261666173128335063, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: voxelSizeReduction
@@ -626,7 +658,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: hash
-      value: 1632016807
+      value: 694054282
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: shader
@@ -864,10 +896,14 @@ PrefabInstance:
       propertyPath: asyncReadbackPerTick
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5435573634283810322, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1679815499248925888, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      insertIndex: 7
+      addedObject: {fileID: 1278184381}
   m_SourcePrefab: {fileID: 100100000, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Collections.LowLevel.Unsafe;
 using System;
+using jedjoud.VoxelTerrain.Octree;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoxelReadback : VoxelBehaviour {
@@ -13,11 +14,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int asyncReadbackPerTick = 1;
 
         private OngoingVoxelReadback[] readbacks;
-        private Queue<Vector3Int> queuedOctalUnits;
-        private HashSet<Vector3Int> pendingOctalUnits;
+        private Queue<(OctreeNode, VoxelChunk[])> queuedOctalUnits;
+        private Dictionary<OctreeNode, VoxelChunk[]> pendingOctalUnits;
 
-        public delegate void OnReadbackSuccessful(VoxelChunk chunk, bool empty);
-        public event OnReadbackSuccessful onReadbackSuccessful;
+        public delegate void OnReadback(VoxelChunk chunk);
+        public event OnReadback onReadback;
 
         // Currently ongoing async readback request
         private class OngoingVoxelReadback {
@@ -49,8 +50,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public override void CallerStart() {
-            pendingOctalUnits = new HashSet<Vector3Int>();
-            queuedOctalUnits = new Queue<Vector3Int>();
+            pendingOctalUnits = new Dictionary<OctreeNode, VoxelChunk[]>();
+            queuedOctalUnits = new Queue<(OctreeNode, VoxelChunk[])>();
             readbacks = new OngoingVoxelReadback[asyncReadbackPerTick];
             for (int i = 0; i < asyncReadbackPerTick; i++) {
                 readbacks[i] = new OngoingVoxelReadback();
@@ -58,14 +59,19 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         // Add the given chunk inside the queue for voxel generation
-        public void GenerateVoxels(VoxelChunk chunk) {
+        public void GenerateVoxels(VoxelChunk chunk, ref NativeList<OctreeNode> all) {
+            OctreeNode parent = all[chunk.node.parentIndex];
             chunk.state = VoxelChunk.ChunkState.VoxelGeneration;
-            Vector3Int octalPosition = chunk.chunkPosition / 2;
+            int index = chunk.node.index - parent.childBaseIndex;
+            if (pendingOctalUnits.TryGetValue(parent, out VoxelChunk[] chunks)) {
+                chunks[index] = chunk;
+                return;
+            }
 
-            if (pendingOctalUnits.Contains(octalPosition)) return;
-
-            queuedOctalUnits.Enqueue(octalPosition);
-            pendingOctalUnits.Add(octalPosition);
+            VoxelChunk[] arr = new VoxelChunk[8];
+            arr[index] = chunk;
+            queuedOctalUnits.Enqueue((parent, arr));
+            pendingOctalUnits.Add(parent, arr);
         }
 
         // Get the latest chunk in the queue and generate voxel data for it
@@ -78,11 +84,11 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                     // Since we're now using inter-chunk dependencies (for meshing), we can't use the pos/neg optimization, since now we need
                     // to check the neighbours values on the CPU, which goes against the idea of doing the check atomically on the GPU in the first place
-                    // No pos-neg optimization for you little bro...
+                    // No pos-neg optimization for you little bro... (unless you figure out a way to do the count with n+1 thingymajig,idk how tho
                     for (int j = 0; j < readback.chunks.Count; j++) {
                         VoxelChunk chunk = readback.chunks[j];
                         chunk.state = VoxelChunk.ChunkState.Temp;
-                        onReadbackSuccessful?.Invoke(chunk, false);
+                        onReadback?.Invoke(chunk);
                     }
 
                     readback.Reset();
@@ -93,27 +99,21 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
 
                 if (queuedOctalUnits.TryDequeue(out var temp)) {
-                    Vector3Int position = temp;
-                    pendingOctalUnits.Remove(position);
+                    (OctreeNode node, VoxelChunk[] chunks) = temp;
+                    pendingOctalUnits.Remove(node);
                     readback.free = false;
 
-
                     // Size*2 since we are using octal generation!
-                    Vector3 worldPosition = 2.0f * (Vector3)position * VoxelUtils.SIZE * terrain.voxelSizeFactor;
-                    Vector3 worldScale = Vector3.one * terrain.voxelSizeFactor;
+                    Vector3 worldPosition = 2.0f * node.position;
+                    Vector3 worldScale = Vector3.one * node.size / (VoxelUtils.SIZE);
                     terrain.executor.ExecuteShader(VoxelUtils.SIZE*2, terrain.compiler.voxelsDispatchIndex, worldPosition, worldScale, true, true);
 
                     // Change chunk states, since we are now waiting for voxel readback
                     readback.chunks.Clear();
                     for (int j = 0; j < 8; j++) {
-                        int3 temp2 = (int3)VoxelUtils.IndexToPosMorton(j);
-                        Vector3Int offset = new Vector3Int(temp2.x, temp2.y, temp2.z);
-
-                        if (terrain.totalChunks.ContainsKey(position * 2 + offset)) {
-                            var chunk = terrain.totalChunks[position * 2 + offset].GetComponent<VoxelChunk>();
-                            chunk.state = VoxelChunk.ChunkState.VoxelReadback;
-                            readback.chunks.Add(chunk);
-                        }
+                        VoxelChunk voxelChunk = chunks[j];
+                        voxelChunk.state = VoxelChunk.ChunkState.VoxelReadback;
+                        readback.chunks.Add(voxelChunk);
                     }
 
                     // Request GPU data into the native array we allocated at the start
@@ -135,7 +135,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                                 // Start doing the memcpy asynchronously...
                                 for (int j = 0; j < readback.chunks.Count; j++) {
-                                    // Allows us to avoid generating meshes for specific chunks.
                                     VoxelChunk chunk = readback.chunks[j];
 
                                     // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
@@ -148,7 +147,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                                         dst = dst,
                                     }.Schedule();
                                 }
-
+                                
                                 readback.pendingCopies = JobHandle.CombineDependencies(readback.copies.Slice(0, readback.chunks.Count));
                             }
                         }

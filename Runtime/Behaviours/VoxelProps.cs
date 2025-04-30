@@ -35,6 +35,7 @@ namespace jedjoud.VoxelTerrain.Props {
             frameIdTempData = new Dictionary<int, OngoingPropReadback>();
         }
 
+        /*
         public void GenerateProps(VoxelChunk chunk) {
             if (!spawnProps)
                 return;
@@ -44,6 +45,7 @@ namespace jedjoud.VoxelTerrain.Props {
             queuedChunks.Enqueue((position, chunk));
             pendingChunks.Add(position);
         }
+        */
 
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {

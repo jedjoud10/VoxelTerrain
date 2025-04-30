@@ -22,8 +22,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal List<MeshJobHandler> handlers;
 
         // Called when a chunk finishes generating its voxel data
-        public delegate void OnVoxelMeshingComplete(VoxelChunk chunk, VoxelMesh mesh);
-        public event OnVoxelMeshingComplete onVoxelMeshingComplete;
+        public delegate void OnMeshingComplete(VoxelChunk chunk, VoxelMesh mesh);
+        public event OnMeshingComplete onMeshingComplete;
         internal Queue<PendingMeshJob> queuedJob;
         internal HashSet<PendingMeshJob> pendingJobs;
 
@@ -98,8 +98,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (handlers[i].Free) {
                     // Check if the chunk has valid neighbours
                     if (queuedJob.TryPeek(out PendingMeshJob job)) {
-                        Vector3Int pos = job.chunk.chunkPosition;
-
                         // Solely used for AO! We don't use these in the normal scenarios
                         NativeArray<Voxel>[] allNeighbours = new NativeArray<Voxel>[27];
 
@@ -110,8 +108,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // Create a bitset that tells us what neighbouring chunks that we can use for meshing
                         // In some cases (when the source chunk is at the edge of the map) we don't have access to all the neighbouring chunks
                         // This bitset lets the job system know that when we try to fetch voxel values outside of the map
-                        bool3 negativeMask = true;
-                        bool3 positiveMask = true;
+                        bool3 negativeMask = false;
+                        bool3 positiveMask = false;
 
                         // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
                         bool all = true;
@@ -126,6 +124,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                 continue;
                             }
 
+                            /*
                             allNeighbours[j] = new NativeArray<Voxel>();
                             if (terrain.totalChunks.TryGetValue(pos + new Vector3Int(offset.x, offset.y, offset.z), out var chunk)) {
                                 VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
@@ -162,6 +161,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                     negativeMask.z = false;
                                 }
                             }
+                            */
                         }
 
                         // Only begin meshing if we have the correct neighbours
@@ -201,12 +201,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 chunk.triangleOffsetLocalMaterials = stats.TriangleOffsetLocalMaterials;
                 chunk.state = VoxelChunk.ChunkState.Done;
 
-                onVoxelMeshingComplete?.Invoke(chunk, stats);
+                onMeshingComplete?.Invoke(chunk, stats);
                 handler.request.callback?.Invoke(handler.chunk);
 
                 chunk.GetComponent<MeshFilter>().sharedMesh = chunk.sharedMesh;
                 var renderer = chunk.GetComponent<MeshRenderer>();
-
+                renderer.enabled = true;
                 renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
                 chunk.bounds = new Bounds {

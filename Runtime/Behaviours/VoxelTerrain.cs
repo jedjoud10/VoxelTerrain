@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -25,8 +26,8 @@ namespace jedjoud.VoxelTerrain {
         [Header("Debug")]
         public bool drawGizmos;
 
-        [HideInInspector]
-        public Dictionary<Vector3Int, GameObject> totalChunks;
+        public Dictionary<OctreeNode, VoxelChunk> chunks;
+
         public static VoxelTerrain Instance {
             get {
                 VoxelTerrain[] terrains = Object.FindObjectsByType<VoxelTerrain>(FindObjectsSortMode.None);
@@ -46,13 +47,13 @@ namespace jedjoud.VoxelTerrain {
         public Meshing.VoxelCollisions collisions;
 
         [HideInInspector]
-        public VoxelGridSpawner spawner;
-
-        [HideInInspector]
         public Meshing.VoxelMesher mesher;
 
         [HideInInspector]
         public Generation.VoxelGraph graph;
+
+        [HideInInspector]
+        public Octree.VoxelOctree octree;
 
         [HideInInspector]
         public Generation.VoxelCompiler compiler;
@@ -74,8 +75,11 @@ namespace jedjoud.VoxelTerrain {
 
         public delegate void OnCompleted();
         public event OnCompleted onComplete;
+
         private int pendingChunks;
         private bool complete;
+        private List<GameObject> unusedPooledChunks;
+        private List<NativeArray<Voxel>> unusedPooledContainers;
 
         public void Start() {
             if (materials.Count == 0) {
@@ -84,14 +88,16 @@ namespace jedjoud.VoxelTerrain {
 
             complete = false;
             disposed = false;
-            totalChunks = new Dictionary<Vector3Int, GameObject>();
+            chunks = new Dictionary<OctreeNode, VoxelChunk>();
+            unusedPooledChunks = new List<GameObject>();
+            unusedPooledContainers = new List<NativeArray<Voxel>>();
+
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
             voxelSizeFactor = 1F / Mathf.Pow(2F, voxelSizeReduction);
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
-            spawner = GetComponent<VoxelGridSpawner>();
             mesher = GetComponent<Meshing.VoxelMesher>();
             graph = GetComponent<Generation.VoxelGraph>();
             compiler = GetComponent<Generation.VoxelCompiler>();
@@ -99,23 +105,55 @@ namespace jedjoud.VoxelTerrain {
             readback = GetComponent<Generation.VoxelReadback>();
             edits = GetComponent<Edits.VoxelEdits>();
             props = GetComponent<Props.VoxelProps>();
+            octree = GetComponent<Octree.VoxelOctree>();
 
+            octree.onOctreeChanged += (ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all) => {
+                foreach (var item in removed) {
+                    if (chunks.ContainsKey(item)) {
+                        PoolChunk(chunks[item].gameObject);
+                    }
+                }
+
+
+                foreach (var item in added) {
+                    if (item.childBaseIndex != -1)
+                        continue;
+                    GameObject obj = FetchChunk();
+                    VoxelChunk chunk = obj.GetComponent<VoxelChunk>();
+
+                    float size = item.size / (voxelSizeFactor * VoxelUtils.SIZE);
+                    obj.GetComponent<MeshRenderer>().enabled = false;
+                    obj.transform.position = item.position;
+                    obj.transform.localScale = new Vector3(size, size, size);
+
+                    // RESETS ALL THE OLD CACHED PROPERTIES OF THE CHUNK
+                    chunk.node = item;
+                    chunk.voxelMaterialsLookup = null;
+                    chunk.triangleOffsetLocalMaterials = null;
+                    chunk.state = ChunkState.Idle;
+
+                    // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
+                    // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
+                    chunk.voxels = FetchVoxelsContainer();
+
+                    // Begin the voxel pipeline by generating the voxels for this chunk
+                    readback.GenerateVoxels(chunk, ref all);
+                }
+            };
+
+            readback.onReadback += (VoxelChunk chunk) => {
+                mesher.GenerateMesh(chunk, false);
+            };
+            /*
             spawner.onChunkSpawned += (VoxelChunk chunk) => {
                 readback.GenerateVoxels(chunk);
                 props.GenerateProps(chunk);
                 pendingChunks++;
             };
 
-            readback.onReadbackSuccessful += (VoxelChunk chunk, bool empty) => {
-                if (empty) {
-                    pendingChunks--;
-                    complete = true;
-                } else {
-                    mesher.GenerateMesh(chunk, false);
-                }
-            };
 
-            mesher.onVoxelMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => collisions.GenerateCollisions(chunk, mesh);
+
+            mesher.onMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => collisions.GenerateCollisions(chunk, mesh);
 
             collisions.onCollisionBakingComplete += (VoxelChunk chunk) => {
                 pendingChunks--;
@@ -124,17 +162,8 @@ namespace jedjoud.VoxelTerrain {
 
             onComplete += () => {
                 Debug.Log("Terrain generation finished!");
-                /*
-                edits.ApplyVoxelEdit(new jedjoud.VoxelTerrain.Edits.SphereVoxelEdit {
-                    strength = 100,
-                    center = new Unity.Mathematics.float3(10, 10, 10),
-                    material = 0,
-                    paintOnly = false,
-                    radius = 10f,
-                    writeMaterial = true,
-                }, false);
-                */
             };
+            */
 
             mesher.CallerStart();
             collisions.CallerStart();
@@ -143,7 +172,7 @@ namespace jedjoud.VoxelTerrain {
             props.CallerStart();
             edits.CallerStart();
             readback.CallerStart();
-            spawner.CallerStart();
+            octree.CallerStart();
         }
 
         public void Update() {
@@ -154,6 +183,10 @@ namespace jedjoud.VoxelTerrain {
             while (accumulator >= tickDelta) {
                 accumulator -= tickDelta;
                 i++;
+
+                Profiler.BeginSample("Octree");
+                octree.CallerTick();
+                Profiler.EndSample();
 
                 Profiler.BeginSample("Readback");
                 readback.CallerTick();
@@ -208,34 +241,63 @@ namespace jedjoud.VoxelTerrain {
             readback.CallerDispose();
             edits.CallerDispose();
             props.CallerDispose();
+            octree.CallerDispose();
 
+            /*
             foreach (var (key, value) in totalChunks) {
                 VoxelChunk voxelChunk = value.GetComponent<VoxelChunk>();
                 voxelChunk.voxels.Dispose();
             }
+            */
         }
 
-        // Instantiates a new chunk and returns it
-        public VoxelChunk FetchChunk(Vector3Int chunkPosition, float scale) {
-            VoxelChunk chunk;
+        private GameObject FetchChunk() {
+            GameObject chunk;
 
-            GameObject obj = Instantiate(chunkPrefab, transform);
-            obj.name = $"Voxel Chunk";
+            if (unusedPooledChunks.Count == 0) {
+                chunk = Instantiate(chunkPrefab, transform);
+                chunk.name = $"Voxel Chunk";
+                Mesh mesh = new Mesh();
+                VoxelChunk component = chunk.GetComponent<VoxelChunk>();
+                component.sharedMesh = mesh;
+            } else {
+                chunk = unusedPooledChunks[unusedPooledChunks.Count - 1];
+                unusedPooledChunks.RemoveAt(unusedPooledChunks.Count - 1);
+                chunk.GetComponent<MeshCollider>().sharedMesh = null;
+                chunk.GetComponent<MeshFilter>().sharedMesh = null;
+            }
 
-            Mesh mesh = new Mesh();
-            chunk = obj.GetComponent<VoxelChunk>();
-            chunk.sharedMesh = mesh;
-
-            GameObject chunkGameObject = chunk.gameObject;
-            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.SIZE * voxelSizeFactor;
-            chunkGameObject.transform.localScale = scale * Vector3.one;
-            chunk.chunkPosition = chunkPosition;
-            chunk.voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent);
-            totalChunks.Add(chunkPosition, chunkGameObject);
+            chunk.SetActive(true);
             return chunk;
         }
 
+        private void PoolChunk(GameObject chunk) {
+            chunk.SetActive(false);
+            unusedPooledChunks.Add(chunk);
+
+            VoxelChunk component = chunk.GetComponent<VoxelChunk>();
+            if (component.voxels.IsCreated) {
+                unusedPooledContainers.Add(component.voxels);
+            }
+
+            component.voxels = default;
+        }
+
+        private NativeArray<Voxel> FetchVoxelsContainer() {
+            NativeArray<Voxel> array;
+
+            if (unusedPooledContainers.Count == 0) {
+                array = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            } else {
+                array = unusedPooledContainers[unusedPooledContainers.Count - 1];
+                unusedPooledContainers.RemoveAt(unusedPooledContainers.Count - 1);
+            }
+
+            return array;
+        }
+
         private void OnDrawGizmosSelected() {
+            /*
             if (totalChunks != null && drawGizmos) {
                 foreach (var (key, go) in totalChunks) {
                     VoxelChunk chunk = go.GetComponent<VoxelChunk>();
@@ -268,6 +330,7 @@ namespace jedjoud.VoxelTerrain {
                     Gizmos.DrawWireCube(bounds.center, bounds.size);
                 }
             }
+            */
         }
     }
 }

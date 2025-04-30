@@ -1,3 +1,4 @@
+using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
 using UnityEngine;
 
@@ -28,13 +29,9 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public NativeArray<Voxel> voxels;
 
-        // Chunk position relative to the map origin
-        public Vector3Int chunkPosition;
-
-        // Current state of the chunk
+        public OctreeNode node;
         public ChunkState state;
 
-        // Shared generated mesh
         [HideInInspector]
         public Mesh sharedMesh;
         [HideInInspector]

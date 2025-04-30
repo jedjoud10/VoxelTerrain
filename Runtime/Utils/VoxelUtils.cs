@@ -19,14 +19,14 @@ namespace jedjoud.VoxelTerrain {
         public const int MAX_MATERIAL_COUNT = 256;
 
         // Offsets used for octree generation
-        public static readonly int3[] OctreeChildOffset = {
+        public static readonly int3[] OCTREE_CHILD_OFFSETS = {
             new int3(0, 0, 0),
-            new int3(0, 0, 1),
             new int3(1, 0, 0),
-            new int3(1, 0, 1),
             new int3(0, 1, 0),
-            new int3(0, 1, 1),
             new int3(1, 1, 0),
+            new int3(0, 0, 1),
+            new int3(1, 0, 1),
+            new int3(0, 1, 1),
             new int3(1, 1, 1),
         };
 
