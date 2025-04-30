@@ -40,6 +40,17 @@ namespace jedjoud.VoxelTerrain.Octree {
             removedNodes = new NativeList<OctreeNode>(Allocator.Persistent);
             pending = new NativeQueue<OctreeNode>(Allocator.Persistent);
             handle = default;
+
+            if (target == null) {
+                Debug.LogWarning("OctreeLoader not set...");
+                return;
+            }
+
+            Compute();
+
+            if (addedNodes.Length > 0 || removedNodes.Length > 0) {
+                onOctreeChanged?.Invoke(ref addedNodes, ref removedNodes, ref nodesList);
+            }
         }
 
         private void Compute() {
@@ -102,16 +113,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         }
 
         public override void CallerTick() {
-            if (target == null) {
-                Debug.LogWarning("OctreeLoader not set...");
-                return;
-            }
 
-            Compute();
-
-            if (addedNodes.Length > 0 || removedNodes.Length > 0) {
-                onOctreeChanged?.Invoke(ref addedNodes, ref removedNodes, ref nodesList);
-            }
         }
 
         public override void CallerDispose() {

@@ -21,6 +21,7 @@
 - Do some async chunk culling!!
   - There's this for caves: https://tomcc.github.io/2014/08/31/visibility-1.html
   - For surface chunks, ig do some funky stuff with bounds?  
+  - You can also do software rasterization with Burst and do some DDA / octree shenanigans
 - Do some material variant stuff with multiple optional UV channels on a PER CHUNK basis
   - In total we could have up 15 material variants per chunk (since 4 uv with 4 floats/half each, minus the single AO channel)
   - We can do the same dedupe/lookup system as normal material values.

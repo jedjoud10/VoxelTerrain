@@ -1,9 +1,9 @@
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
-    // Script added to all game objects that represent a chunk
     public partial class VoxelChunk : MonoBehaviour {
         public enum ChunkState {
             // Just spawned in
@@ -40,13 +40,24 @@ namespace jedjoud.VoxelTerrain {
         public (byte, int)[] triangleOffsetLocalMaterials;
         [HideInInspector]
         public Bounds bounds;
+        public BitField32 neighbourMask;
 
         // Check if the chunk has valid voxel data 
         public bool HasVoxelData() {
             return voxels.IsCreated && state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp;
         }
 
+        public void OnDrawGizmosSelected() {
+            for (int j = 0; j < 27; j++) {
+                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                int3 offset = (int3)_offset - 1;
 
+                if (neighbourMask.IsSet(j)) {
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+            }
+        }
+            
         // Get the AABB world bounds of this chunk
         public Bounds GetBounds() {
             return bounds;

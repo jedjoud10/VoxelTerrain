@@ -99,18 +99,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (handlers[i].Free) {
                     // Check if the chunk has valid neighbours
                     if (queuedJob.TryPeek(out PendingMeshJob job)) {
-                        // Solely used for AO! We don't use these in the normal scenarios
-                        NativeArray<Voxel>[] allNeighbours = new NativeArray<Voxel>[27];
+                        // All of the chunk neighbours in the 3 axii
+                        // This contains one more chunk ptr that is always set to null (the one at index 13)
+                        // since that one represent the source chunk (this)
+                        NativeArray<Voxel>[] neighbours = new NativeArray<Voxel>[27];
 
-                        // Used for meshing, since we only care about the neighbours in the positive directions
-                        NativeArray<Voxel>[] positiveNeighbours = new NativeArray<Voxel>[7];
-
-
-                        // Create a bitset that tells us what neighbouring chunks that we can use for meshing
-                        // In some cases (when the source chunk is at the edge of the map) we don't have access to all the neighbouring chunks
-                        // This bitset lets the job system know that when we try to fetch voxel values outside of the map
-                        bool3 negativeMask = true;
-                        bool3 positiveMask = true;
+                        // Bitset that tells us what of the 26 chunks we have voxel data access to
+                        // In some cases (when the source chunk is at the edge of the map or when our neighbours are of different LOD) we don't have access to all the neighbouring chunks
+                        // This bitset lets the job system know to skip over fetching those voxels and don't do same-level chunk mesh skirting
+                        BitField32 mask = new BitField32(uint.MaxValue);
 
                         // Get the neighbour indices from the octree
                         int neighbourIndicesStart = job.chunk.node.neighbourDataStartIndex;
@@ -127,14 +124,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                             // Skip self since that's the source chunk that we alr have data for in the jobs
                             if (math.all(offset == int3.zero)) {
+                                mask.SetBits(j, true);
                                 continue;
                             }
 
-                            allNeighbours[j] = new NativeArray<Voxel>();
+                            neighbours[j] = new NativeArray<Voxel>();
                             
                             int index = slice[j];
                             if (index == -1) {
-                                CallThisSomethingPls(ref negativeMask, ref positiveMask, offset);
+                                mask.SetBits(j, false);
                                 continue;
                             }
 
@@ -142,24 +140,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             if (terrain.chunks.TryGetValue(neighbourNode, out var chunk) && neighbourNode.depth == depth) {
                                 VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
                                 all &= neighbour.HasVoxelData();
-                                allNeighbours[j] = neighbour.voxels;
-
-                                // Encode the positive neighbours in the specific array that will use some morton shit to speed up lookup
-                                if (math.all(offset >= int3.zero)) {
-                                    int encodedIndex = VoxelUtils.PosToIndexMorton((uint3)offset);
-                                    positiveNeighbours[encodedIndex-1] = neighbour.voxels;
-                                }
+                                neighbours[j] = neighbour.voxels;
                             } else {
-                                CallThisSomethingPls(ref negativeMask, ref positiveMask, offset);
+                                mask.SetBits(j, false);
                             }
                         }
+
+                        job.chunk.neighbourMask = mask;
 
                         // Only begin meshing if we have the correct neighbours
                         if (all) {
                             if (queuedJob.TryDequeue(out PendingMeshJob request)) {
                                 pendingJobs.Remove(request);
                                 Profiler.BeginSample("Begin Mesh Jobs");
-                                BeginJob(handlers[i], request, allNeighbours, positiveNeighbours, negativeMask, positiveMask);
+                                BeginJob(handlers[i], request, neighbours, mask);
                                 Profiler.EndSample();
                             }
                         } else {
@@ -172,67 +166,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     }
                 }
             }
-
-            static void CallThisSomethingPls(ref bool3 negativeMask, ref bool3 positiveMask, int3 offset) {
-                /*
-                if (math.all(offset == math.int3(1, 0, 0))) {
-                    positiveMask.x = false;
-                }
-
-                if (math.all(offset == math.int3(0, 1, 0))) {
-                    positiveMask.y = false;
-                }
-
-                if (math.all(offset == math.int3(0, 0, 1))) {
-                    positiveMask.z = false;
-                }
-
-                if (math.all(offset == math.int3(-1, 0, 0))) {
-                    negativeMask.x = false;
-                }
-
-                if (math.all(offset == math.int3(0, -1, 0))) {
-                    negativeMask.y = false;
-                }
-
-                if (math.all(offset == math.int3(0, 0, -1))) {
-                    negativeMask.z = false;
-                }
-                */
-
-                if (offset.x == 1) {
-                    positiveMask.x = false;
-                }
-
-                if (offset.y == 1) {
-                    positiveMask.y = false;
-                }
-
-                if (offset.z == 1) {
-                    positiveMask.z = false;
-                }
-
-                if (offset.x == -1) {
-                    negativeMask.x = false;
-                }
-
-                if (offset.y == -1) {
-                    negativeMask.y = false;
-                }
-
-                if (offset.z == -1) {
-                    negativeMask.z = false;
-                }
-            }
         }
 
-        private void BeginJob(MeshJobHandler handler, PendingMeshJob request, NativeArray<Voxel>[] allNeighbours, NativeArray<Voxel>[] positiveNeighbours, bool3 negativeMask, bool3 positiveMask) {
+        private void BeginJob(MeshJobHandler handler, PendingMeshJob request, NativeArray<Voxel>[] neighbours, BitField32 mask) {
             handler.chunk = request.chunk;
             handler.request = request;
             handler.startingTick = tick;
 
             var copy = new AsyncMemCpy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
-            handler.BeginJob(copy, allNeighbours, positiveNeighbours, negativeMask, positiveMask);
+            handler.BeginJob(copy, neighbours, mask);
         }
 
         private void FinishJob(MeshJobHandler handler) {

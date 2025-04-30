@@ -16,10 +16,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<Voxel> voxels;
 
         [ReadOnly]
-        public UnsafePtrList<Voxel> positiveNeighbourPtr;
+        public UnsafePtrList<Voxel> neighbours;
 
         [ReadOnly]
-        public bool3 positiveNeighbourMask;
+        public BitField32 neighbourMask;
 
         [ReadOnly]
         static readonly uint4x3[] offsets = {
@@ -39,7 +39,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 
-            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
+            if (!VoxelUtils.CheckCubicVoxelPosition((int3)position, neighbourMask))
                 return;
 
             /*
@@ -57,14 +57,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float4 test = math.float4(0.0F);
 
             for (int i = 0; i < 4; i++) {
-                test[i] = VoxelUtils.FetchVoxelWithPositiveNeighbours(indices[i], ref voxels, ref positiveNeighbourPtr).density;
+                test[i] = VoxelUtils.FetchVoxelNeighbours(indices[i], ref voxels, ref neighbours).density;
             }
 
             int4 indices2 = math.int4(Morton.EncodeMorton32(offsets[1].c0 + position.x, offsets[1].c1 + position.y, offsets[1].c2 + position.z));
             float4 test2 = math.float4(0.0F);
 
             for (int i = 0; i < 4; i++) {
-                test2[i] = VoxelUtils.FetchVoxelWithPositiveNeighbours(indices2[i], ref voxels, ref positiveNeighbourPtr).density;
+                test2[i] = VoxelUtils.FetchVoxelNeighbours(indices2[i], ref voxels, ref neighbours).density;
             }
 
             bool4 check1 = test < math.float4(0.0);

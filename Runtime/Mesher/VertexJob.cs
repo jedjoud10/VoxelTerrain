@@ -46,9 +46,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
-        [ReadOnly]
-        public UnsafePtrList<Voxel> positiveNeighbourPtr;
-
         // Used for fast traversal
         [ReadOnly]
         public NativeArray<byte> enabled;
@@ -56,9 +53,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Contains 3D data of the indices of the vertices
         [WriteOnly]
         public NativeArray<int> indices;
-
-        [ReadOnly]
-        public bool3 positiveNeighbourMask;
 
         // Vertices that we generated
         [WriteOnly]
@@ -79,12 +73,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Unsafe.NativeCounter.Concurrent counter;
         [ReadOnly] public float voxelScale;
 
+        [ReadOnly]
+        public UnsafePtrList<Voxel> neighbours;
+
+        [ReadOnly]
+        public BitField32 neighbourMask;
+
         // Excuted for each cell within the grid
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
             indices[index] = int.MaxValue;
 
-            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
+            if (!VoxelUtils.CheckCubicVoxelPositionForNormals((int3)position, neighbourMask))
                 return;
 
             float3 vertex = float3.zero;
@@ -113,12 +113,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int startIndex = VoxelUtils.PosToIndexMorton(startOffset + position);
                 int endIndex = VoxelUtils.PosToIndexMorton(endOffset + position);
 
-                float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref positiveNeighbourPtr);
-                float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref positiveNeighbourPtr);
+                float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
+                float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
 
                 // Get the Voxels of the edge
-                Voxel startVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(startIndex, ref voxels, ref positiveNeighbourPtr);
-                Voxel endVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(endIndex, ref voxels, ref positiveNeighbourPtr);
+                Voxel startVoxel = VoxelUtils.FetchVoxelNeighbours(startIndex, ref voxels, ref neighbours);
+                Voxel endVoxel = VoxelUtils.FetchVoxelNeighbours(endIndex, ref voxels, ref neighbours);
 
                 // Create a vertex on the line of the edge
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);

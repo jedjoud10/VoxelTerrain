@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 2659349426322332056}
   - component: {fileID: 8197692837568637671}
   - component: {fileID: 4459649915349211665}
-  - component: {fileID: 5435573634283810322}
+  - component: {fileID: 968421930435571029}
   - component: {fileID: 2489052534160842304}
   - component: {fileID: 5281816153287127206}
   - component: {fileID: 7318964257985538370}
@@ -54,19 +54,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c5e6b6604d0aba4aace8d256007cf0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ticksPerSecond: 64
+  ticksPerSecond: 32
   maxTicksPerFrame: 1
   chunkPrefab: {fileID: 6177338312385691531, guid: 4d388002189c96345901f85821f1a600, type: 3}
   materials:
-  - {fileID: 11400000, guid: 9a18df698f73187488acf9eb9da60248, type: 2}
-  - {fileID: 11400000, guid: 56f8c19583636144483d60796fa5eca9, type: 2}
   - {fileID: 11400000, guid: 70763bc693187524f91243c1a8bcd3b4, type: 2}
-  voxelSizeReduction: 0
-  drawGizmos: 0
+  - {fileID: 11400000, guid: 9a18df698f73187488acf9eb9da60248, type: 2}
+  - {fileID: 11400000, guid: 2bfefb5dc2ec0554582ccd900ab84b90, type: 2}
+  voxelSizeReduction: 2
+  drawGizmos: 1
   collisions: {fileID: 0}
-  spawner: {fileID: 0}
   mesher: {fileID: 0}
   graph: {fileID: 0}
+  octree: {fileID: 0}
   compiler: {fileID: 0}
   executor: {fileID: 0}
   readback: {fileID: 0}
@@ -97,9 +97,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 574bbe1e4b4f7d54c800acb1d6d8d7d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: 8912
-  permutationSeed: {x: 110, y: 528, z: -703}
-  moduloSeed: {x: 523, y: 693, z: 472}
+  seed: 2082
+  permutationSeed: {x: -169, y: 429, z: -878}
+  moduloSeed: {x: 0, y: 0, z: 0}
 --- !u!114 &2659349426322332056
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112,9 +112,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugName: 1
-  autoCompile: 1
-  hash: 1215184227
+  autoCompile: 0
+  hash: 392348271
   voxelsDispatchIndex: 0
   propsDispatchIndex: 1
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
@@ -146,7 +145,7 @@ MonoBehaviour:
   spawnProps: 0
   props:
   - {fileID: 11400000, guid: 877753c34810a33449994056ab9cd85d, type: 2}
---- !u!114 &5435573634283810322
+--- !u!114 &968421930435571029
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -155,10 +154,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1679815499248925888}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 901e500f95df29d48bd82e980dc5039f, type: 3}
+  m_Script: {fileID: 11500000, guid: 8b5b2ce753b73be49b81e6c9cf8283de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mapChunkSize: {x: 2, y: 2, z: 2}
+  drawGizmos: 0
+  maxDepth: 4
+  target: {fileID: 0}
 --- !u!114 &2489052534160842304
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -184,6 +185,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   meshJobsPerTick: 4
+  aoGlobalOffset: 1.5
+  aoMinDotNormal: 0.2
+  aoGlobalSpread: 1
+  aoStrength: 1
 --- !u!114 &7318964257985538370
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -204,8 +209,8 @@ MonoBehaviour:
   useHeightSimplification: 0
   flatshaded: 0
   size: 128
-  scale: {x: 3, y: 3, z: 3}
-  offset: {x: 7169, y: -103.8, z: 76.9}
+  scale: {x: 2, y: 2, z: 2}
+  offset: {x: -54.64, y: -24.45, z: -103.48}
 --- !u!114 &3475662089056963851
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -219,61 +224,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transform1:
-    position: {x: 0, y: -100, z: 0}
+    position: {x: -52.5, y: -14.1, z: 0}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 1, y: 1, z: 1}
   scale:
     x: 0.004
   amplitude:
-    x: 20
+    x: 31.9
   persistence:
     x: 0.4
   lacunarity:
     x: 1.6
-  detailScale:
-    x: 0.01
-  detailProbability:
-    x: 0.1
-  detailAmplitude:
-    x: 75.1
-  materialHeight:
-    x: -54.5
+  cellularScale:
+    x: 0.05
+  cellularOffset:
+    x: 1.85
+  cellularAmplitude:
+    x: -4.3
   materialHeightNoisy:
-    x: 9
-  offset:
-    x: 0
-  curve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0.079443894
-      outSlope: 0.079443894
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0.356441
-    - serializedVersion: 3
-      time: 0.6871417
-      value: 0.6675739
-      inSlope: 1.0426826
-      outSlope: -0.26297945
-      tangentMode: 1
-      weightedMode: 0
-      inWeight: 0.14861365
-      outWeight: 0.35069597
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 1.0625452
-      outSlope: 1.0625452
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  mode: 2
-  octaves: 5
+    x: 37
+  materialHeight:
+    x: -10
+  smoothing:
+    x:
+      x: 10
+      y: 12
+  octaves: 4

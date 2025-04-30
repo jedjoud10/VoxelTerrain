@@ -9,8 +9,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct AmbientOcclusionJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
-        [ReadOnly]
-        public UnsafePtrList<Voxel> allNeighbourPtr;
         [WriteOnly]
         public NativeArray<float2> uvs;
         [ReadOnly]
@@ -20,9 +18,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public Unsafe.NativeCounter counter;
         [ReadOnly]
-        public bool3 positiveNeighbourMask;
+        public UnsafePtrList<Voxel> neighbours;
         [ReadOnly]
-        public bool3 negativeNeighbourMask;
+        public BitField32 neighbourMask;
 
         public float globalOffset;
         public float minDotNormal;
@@ -68,11 +66,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         float3 position = vertex + offset + globalOffset;
                         int3 floored = (int3)math.floor(position);
 
-                        bool valid = VoxelUtils.CheckPositionAllNeighbours(floored, negativeNeighbourMask, positiveNeighbourMask);
-                        bool valid2 = VoxelUtils.CheckPositionAllNeighbours(floored + 1, negativeNeighbourMask, positiveNeighbourMask);
-
-                        if (valid && valid2) {
-                            half density = VoxelUtils.SampleDensityInterpolated(position, ref voxels, ref allNeighbourPtr);
+                        if (VoxelUtils.CheckCubicVoxelPosition(floored, neighbourMask)) {
+                            half density = VoxelUtils.SampleDensityInterpolated(position, ref voxels, ref neighbours);
                             if (density < 0.0) {
                                 sum++;
                             }
