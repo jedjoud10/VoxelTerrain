@@ -57,7 +57,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             
             // Set the output values
             output = new AllOutputs();
-            output.density = density;
+            //output.density = density;
+            output.density = y;
 
             // For now we support only spawning one prop per voxel dispatch, but this will be changed for a more flexible system
             output.prop = GraphUtils.Zero<GpuProp>().With(

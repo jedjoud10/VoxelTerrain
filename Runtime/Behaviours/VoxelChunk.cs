@@ -56,6 +56,8 @@ namespace jedjoud.VoxelTerrain {
                     Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
                 }
             }
+
+            Gizmos.DrawCube(node.Center, Vector3.one * node.size);
         }
             
         // Get the AABB world bounds of this chunk

@@ -84,7 +84,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
             indices[index] = int.MaxValue;
 
-            if (!VoxelUtils.CheckCubicVoxelPositionForNormals((int3)position, neighbourMask))
+            if (!VoxelUtils.CheckCubicVoxelPosition((int3)position, neighbourMask))
                 return;
 
             float3 vertex = float3.zero;
@@ -113,8 +113,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int startIndex = VoxelUtils.PosToIndexMorton(startOffset + position);
                 int endIndex = VoxelUtils.PosToIndexMorton(endOffset + position);
 
-                float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
-                float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
+                //float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
+                //float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
 
                 // Get the Voxels of the edge
                 Voxel startVoxel = VoxelUtils.FetchVoxelNeighbours(startIndex, ref voxels, ref neighbours);
@@ -123,7 +123,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // Create a vertex on the line of the edge
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
                 vertex += math.lerp(startOffset, endOffset, value) - math.float3(0.5);
-                normal += math.lerp(startNormal, endNormal, value);
+                normal += -math.up();
+                //normal += math.lerp(startNormal, endNormal, value);
             }
 
             // Must be offset by vec3(1, 1, 1)
@@ -132,7 +133,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Output vertex in object space
             float3 offset = (vertex / (float)count);
-            float3 outputVertex = (offset - 1.0F) + position;
+            float3 outputVertex = (offset) + position;
             vertices[vertexIndex] = outputVertex * voxelScale;
 
             // Calculate per vertex normals and apply it
