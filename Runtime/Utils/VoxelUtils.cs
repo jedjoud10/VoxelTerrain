@@ -138,7 +138,7 @@ namespace jedjoud.VoxelTerrain {
 
         // Convert a 2D position into an index (morton coding)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int PosToIndex2D(uint2 position) {
+        public static int PosToIndexMorton2D(uint2 position) {
             return (int)Morton.EncodeMorton2D_32(position);
         }
 

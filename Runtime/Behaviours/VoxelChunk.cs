@@ -1,3 +1,4 @@
+using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -45,6 +46,8 @@ namespace jedjoud.VoxelTerrain {
         public BitField32 stitchingMask;
         public float3 other;
         public uint2 relativeOffsetToLod1;
+        public VoxelStitch stitch;
+        public bool debugValues;
 
         // ONLY STORED ON THE LOD1 CHUNK.
         public NativeArray<Voxel> blurredPositiveXFacingExtraVoxelsFlat;
@@ -61,27 +64,31 @@ namespace jedjoud.VoxelTerrain {
 
             float s = node.size / VoxelUtils.SIZE;
 
-            Gizmos.color = Color.red;
-            if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
-                for (int i = 0; i < blurredPositiveXFacingExtraVoxelsFlat.Length; i++) {
-                    float2 _pos = (float2)VoxelUtils.IndexToPosMorton2D(i);
-                    float3 pos1 = new float3(VoxelUtils.SIZE, _pos);
-                    float d1 = blurredPositiveXFacingExtraVoxelsFlat[i].density;
+            if (debugValues) {
+                Gizmos.color = Color.red;
+                if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
+                    for (int i = 0; i < blurredPositiveXFacingExtraVoxelsFlat.Length; i++) {
+                        float2 _pos = (float2)VoxelUtils.IndexToPosMorton2D(i);
+                        float3 pos1 = new float3(VoxelUtils.SIZE, _pos);
+                        float d1 = blurredPositiveXFacingExtraVoxelsFlat[i].density;
 
-                    if (d1 > -4 && d1 < 4) {
-                        Gizmos.DrawSphere(pos1 * s + node.position, 0.05f);
+                        if (d1 > -4 && d1 < 4) {
+                            Gizmos.DrawSphere(pos1 * s + node.position, 0.05f);
+                        }
+                    }
+                }
+
+                Gizmos.color = Color.white;
+                for (int i = 0; i < voxels.Length; i++) {
+                    float d = voxels[i].density;
+                    if (d > -3 && d < 3) {
+                        float3 p = (float3)VoxelUtils.IndexToPosMorton(i);
+                        Gizmos.DrawSphere(p * s + node.position, 0.05f);
                     }
                 }
             }
 
-            Gizmos.color = Color.white;
-            for (int i = 0; i < voxels.Length; i++) {
-                float d = voxels[i].density;
-                if (d > -3 && d < 3) {
-                    float3 p = (float3)VoxelUtils.IndexToPosMorton(i);
-                    Gizmos.DrawSphere(p * s + node.position, 0.05f);
-                }
-            }
+
             /*
 
             */

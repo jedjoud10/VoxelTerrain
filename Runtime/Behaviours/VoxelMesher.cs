@@ -11,6 +11,8 @@ using jedjoud.VoxelTerrain.Octree;
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
     public class VoxelMesher : VoxelBehaviour {
+        public GameObject stichingPrefab;
+
         internal struct MeshingRequest {
             public VoxelChunk chunk;
             public bool collisions;
@@ -211,12 +213,52 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // we only care about going to the NEGATIVE directions... (-x, -y, -z)
                 VoxelChunk lod0 = result.chunk;
 
-
                 // from src, we fetch testFacetVoxelData1 and write to dst's testFacetVoxelData2 (1/4)
                 OctreeNode test = result.stitchingNeighbours[12];
                 VoxelChunk lod1 = terrain.chunks[test];
-                lod0.other = test.Center;                
-                stitcher.DoThingyMajig(result, lod0, lod1);
+                lod0.other = test.Center;
+
+                if (!lod1.blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
+                    lod1.blurredPositiveXFacingExtraVoxelsFlat = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent);
+
+                    // spawn in a new stitching mesh for LOD1
+                    GameObject stitchGo = Instantiate(stichingPrefab, lod1.transform);
+                    stitchGo.transform.localPosition = Vector3.zero;
+                    stitchGo.transform.localScale = Vector3.one;
+                    lod1.stitch = stitchGo.GetComponent<VoxelStitch>();
+                    lod1.stitch.lod0Neighbours = new VoxelChunk[4];
+                    lod1.stitch.lod1 = lod1;
+                }
+
+                // calculate offset
+                int quadrantVolume = VoxelUtils.SIZE * VoxelUtils.SIZE / 4;
+                float3 srcPos = lod0.node.position;
+                float3 dstPos = lod1.node.position;
+                uint2 offset = (uint2)((srcPos - dstPos).yz / VoxelUtils.SIZE);
+
+                // store this chunk for later stitching
+                lod0.relativeOffsetToLod1 = offset;
+                lod1.stitch.lod0Neighbours[VoxelUtils.PosToIndexMorton2D(offset)] = lod0;
+
+                // fetch the voxels from the source chunk and blur them
+                int mortonOffset = VoxelUtils.PosToIndexMorton2D(offset) * quadrantVolume;
+                //Debug.Log(mortonOffset);
+
+                FaceVoxelsBlurJob copy = new FaceVoxelsBlurJob() {
+                    voxels = lod0.voxels,
+                    dstFace = lod1.blurredPositiveXFacingExtraVoxelsFlat,
+                    mortonOffset = mortonOffset,
+                };
+
+                // since we will be blurring each 2x2x2 region (from LOD0) into a single voxel (into LOD1) we will at max be writing to a single "quadrant" of the face
+                copy.Schedule(quadrantVolume, 1024).Complete();
+                lod1.stitch.neighbourChunkBlurredSections++;
+
+                // we can do stitching if LOD1 has fully blurred out data
+                if (lod1.stitch.neighbourChunkBlurredSections == 4) {
+                    stitcher.DoThingyMajig(result, lod1, lod1.stitch);
+                }
+
             }
         }
 

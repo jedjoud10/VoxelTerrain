@@ -135,11 +135,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
 
-            if (math.any(position < math.uint3(1)))
+            if (math.any(position < 1))
                 return;
 
+            if (math.any(position > 62))
+                return;
+
+            /*
             if (!VoxelUtils.CheckCubicVoxelPosition((int3)position, neighbourMask))
                 return;
+            */
 
             // Allows us to save two voxel fetches (very important)
             ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];

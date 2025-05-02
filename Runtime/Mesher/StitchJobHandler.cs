@@ -31,17 +31,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
     */
 
     internal class StitchJobHandler {
-        // Voxel data of the LOD1 chunk face (low-res)
-        public NativeArray<Voxel> lod1Voxels;
-
-        // Voxel data of the LOD0 chunk face (high-res)
-        // We will do some downsampling / blurring on this shit... ts pmo
-        public NativeArray<Voxel> lod0Voxels;
-
         public NativeArray<float3> vertices;
         public NativeArray<float3> normals;
         public NativeArray<int> triangles;
-        public NativeArray<int> indices;
+
+        // LOD1 indices
+        public NativeArray<int> lod1Indices;
+
+        // LOD0 indices (we have 4 neighbours so 4)
+        public NativeArray<int>[] lod0Indices;
 
         // TODO: add multi-material support later
         public Unsafe.NativeCounter quads;
@@ -52,14 +50,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal StitchJobHandler(VoxelMesher mesher) {
             this.mesher = mesher;
 
-            // In worst case scenarios
-            int maxVerts = (VoxelUtils.SIZE + 1) * (VoxelUtils.SIZE + 1) * 2;
+            // We generate at most 64x64x2 LOD1 vertices (one slice for dupe, one slice for the downsampled ones)
+            // We generate at most 128x128 LOD0 vertices (one slice for dupe)
+            int maxVerts = VoxelUtils.SIZE * VoxelUtils.SIZE * 2 + VoxelUtils.SIZE * VoxelUtils.SIZE * 4;
+
             int maxTris = maxVerts * 3; // kinda dumb but wtv
 
             // Native buffers for mesh data
             vertices = new NativeArray<float3>(maxVerts, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             triangles = new NativeArray<int>(maxTris, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            indices = new NativeArray<int>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            lod1Indices = new NativeArray<int>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            lod0Indices = new NativeArray<int>[4];
+
+            for (int i = 0; i < 4; i++) {
+                lod0Indices[i] = new NativeArray<int>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            }
+
             quads = new Unsafe.NativeCounter(Allocator.Persistent);
             counter = new Unsafe.NativeCounter(Allocator.Persistent);
 
@@ -68,38 +74,39 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // Raw dogging it...
-        internal void DoThingyMajig(VoxelMesher.StitchingRequest req, VoxelChunk lod0, VoxelChunk lod1) {
-            // calculate offset
-            int quadrantVolume = VoxelUtils.SIZE * VoxelUtils.SIZE / 4;
-            int quadrantSize = VoxelUtils.SIZE / 2;
-            float3 srcPos = lod0.node.position;
-            float3 dstPos = lod1.node.position;
-            uint2 offset = (uint2)((srcPos - dstPos).yz / VoxelUtils.SIZE);
-            lod0.relativeOffsetToLod1 = offset;
+        internal void DoThingyMajig(VoxelMesher.StitchingRequest req, VoxelChunk lod1, VoxelStitch stitch) {
+            counter.Count = 0;
+            quads.Count = 0;
 
-            /*
-            if (!math.all(offset == new uint2(0,1))) {
-                return;
-            }
-            */
-
-            // fetch the voxels from the source chunk and blur them
-            int mortonOffset = (int)Morton.EncodeMorton2D_32(offset) * quadrantVolume;
-            //Debug.Log(mortonOffset);
-
-
-            if (!lod1.blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
-                lod1.blurredPositiveXFacingExtraVoxelsFlat = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent);
-            }
-            
-            FaceVoxelsBlurJob copy = new FaceVoxelsBlurJob() {
-                voxels = lod0.voxels,
-                dstFace = lod1.blurredPositiveXFacingExtraVoxelsFlat,
-                mortonOffset = mortonOffset,
+            // mesh extra vertices in the positive X direction in LOD1
+            // we also need to re-generate the old vertices since this is in a new mesh, so it's actually gonna be a 2x64x64 job
+            CreatePaddingVerticesLod1Job createDuplicateVertsAndPaddingVertsLod1Job = new CreatePaddingVerticesLod1Job() {
+                voxels = lod1.voxels,
+                counter = counter,
+                indices = lod1Indices,
+                paddingBlurredFaceVoxels = lod1.blurredPositiveXFacingExtraVoxelsFlat,
+                vertices = vertices
             };
 
-            // since we will be blurring each 2x2x2 region (from LOD0) into a single voxel (into LOD1) we will at max be writing to a single "quadrant" of the face
-            copy.Schedule(quadrantVolume, 1024).Complete();
+            // we could just read them back from some cached state (at least for the vertices at slice=0) , but that would introduce chunk mesh dependency (we'd need to wait for the chunk to finish meshing first)
+            createDuplicateVertsAndPaddingVertsLod1Job.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE * 2, 1024).Complete();
+
+            // duplicate the vertices from the LOD0 chunks
+            // we could just read them back from some cached state, but that would introduce chunk mesh dependency (we'd need to wait for the chunk to finish meshing first)
+            for (int i = 0; i < 4; i++) {
+                DuplicateLod0VerticesJob createDuplicateVertsLod0 = new DuplicateLod0VerticesJob() {
+                    voxels = stitch.lod0Neighbours[i].voxels,
+                    vertices = vertices,
+                    counter = counter,
+                    indices = lod0Indices[i],
+                    relativeOffsetToLod1 = VoxelUtils.IndexToPosMorton2D(i),
+                };
+
+                createDuplicateVertsLod0.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE, 1024).Complete();
+            }
+
+
+            stitch.vertices = vertices.Reinterpret<Vector3>().Slice(0, counter.Count).ToArray();
 
             // do some sort of meshing sheise that will use the new blurred data and the old data from lod1 but going INTO the negative direction (face direction)
 
@@ -245,7 +252,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Dispose of the underlying memory allocations
         internal void Dispose() {
-            indices.Dispose();
+            lod1Indices.Dispose();
+
+            foreach (var item in lod0Indices) {
+                item.Dispose();
+            }
+            
             vertices.Dispose();
             normals.Dispose();
             counter.Dispose();
