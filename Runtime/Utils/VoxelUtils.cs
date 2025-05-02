@@ -123,11 +123,23 @@ namespace jedjoud.VoxelTerrain {
             return new uint3(x, y, z);
         }
 
+        // Convert an index to a 2D position (morton coding)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint2 IndexToPosMorton2D(int index) {
+            return Morton.DecodeMorton2D_32((uint)index);
+        }
+
         // Convert a 3D position into an index
         // Order of increments: X, Z, Y
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int PosToIndex(uint3 position, uint size) {
             return (int)math.round((position.y * size * size + (position.z * size) + position.x));
+        }
+
+        // Convert a 2D position into an index (morton coding)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int PosToIndex2D(uint2 position) {
+            return (int)Morton.EncodeMorton2D_32(position);
         }
 
         // Fetches a neighbour's voxel given the given index (mortonated)

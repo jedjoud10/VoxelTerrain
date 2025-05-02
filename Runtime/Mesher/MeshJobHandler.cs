@@ -36,8 +36,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<int> materialSegmentOffsets;
         public Unsafe.NativeCounter materialCounter;
         public JobHandle finalJobHandle;
-        public VoxelChunk chunk;
-        public PendingMeshJob request;
+        public VoxelMesher.MeshingRequest request;
         public long startingTick;
         public NativeArray<uint> buckets;
         public NativeArray<float3> bounds;
@@ -231,7 +230,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Complete the jobs and return a mesh
         internal VoxelMesh Complete(Mesh mesh) {
-            if (voxels == null || chunk == null) {
+            if (voxels == null || request.chunk == null) {
                 return default;
             }
 
@@ -306,7 +305,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            chunk = null;
             return new VoxelMesh {
                 VoxelMaterialsLookup = lookup,
                 TriangleOffsetLocalMaterials = lookup2,

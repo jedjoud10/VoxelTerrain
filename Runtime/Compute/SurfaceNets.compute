@@ -118,7 +118,6 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
                 break;
             } else {
                 float unlerped = invLerp(firstDensity, secondDensity, 0.0);
-                unlerped = 0.5;
                 sum += lerp(float3(first), float3(second), unlerped);
                 normalSum += lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped);
                 colorSum += lerp(firstColor, secondColor, unlerped);

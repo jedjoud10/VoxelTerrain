@@ -45,6 +45,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         // really stupid neighbour lookup system
         // but I can't be bothered with writing one that handles diagnoals and multi-res neighbour
         // sorgy...
+        // TODO: unshittify
         private int DoABitOfALookupIykwim(float3 point) {
             pending.Clear();
             pending.Enqueue(nodes[0]);

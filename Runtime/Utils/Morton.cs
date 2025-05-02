@@ -14,7 +14,7 @@ using Unity.Mathematics;
 /// 
 
 namespace jedjoud.VoxelTerrain {
-    public static class Morton {
+    public static partial class Morton {
         /// <summary>
         /// The maximum value that a coordinate can be when encoding to a 32 bit morton code.
         /// </summary>

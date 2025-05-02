@@ -134,7 +134,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Output vertex in object space
             float3 offset = (vertex / (float)count);
             float3 outputVertex = (offset) + position;
-            vertices[vertexIndex] = outputVertex * voxelScale;
+
+            // Whatever you FUCKING DO do NOT change the 0.5f offset
+            // It is required to place the vertex INSIDE the cube of 8 voxel data points.
+            // Just work with it lil bro
+            vertices[vertexIndex] = outputVertex * voxelScale + 0.5f;
 
             // Calculate per vertex normals and apply it
             normal = -math.normalizesafe(normal, new float3(0, 1, 0));

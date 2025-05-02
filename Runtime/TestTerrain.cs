@@ -19,6 +19,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> materialHeightNoisy;
         public Inject<float> materialHeight;
         public Inject<float2> smoothing;
+        public Inject<float> testHeight;
 
         [Range(1, 10)]
         public int octaves;
@@ -58,7 +59,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             // Set the output values
             output = new AllOutputs();
             //output.density = density;
-            output.density = y;
+            //output.density = new SdfSphere(5f, null).Evaluate(input.position);
+            output.density = y + (new Simplex(0.002f, testHeight).Evaluate(flat));
 
             // For now we support only spawning one prop per voxel dispatch, but this will be changed for a more flexible system
             output.prop = GraphUtils.Zero<GpuProp>().With(
@@ -70,8 +72,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             // Do some funky material picking
             var uhhh = (Noise.Simplex(xz, 0.02f, 1.0f) > 0).Select<int>(1, 0);
-            //output.material = 0;
-            output.material = ((y + Noise.VoronoiF2(xz, 0.04f, 1.0f) * materialHeightNoisy) > materialHeight).Select<int>(2, uhhh);
+            output.material = 0;
+            //output.material = ((y + Noise.VoronoiF2(xz, 0.04f, 1.0f) * materialHeightNoisy) > materialHeight).Select<int>(2, uhhh);
         }
     }
 }

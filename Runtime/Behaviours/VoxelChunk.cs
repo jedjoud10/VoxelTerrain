@@ -1,6 +1,7 @@
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
 using Unity.Mathematics;
+using UnityEditor;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
@@ -41,6 +42,13 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public Bounds bounds;
         public BitField32 neighbourMask;
+        public BitField32 stitchingMask;
+        public float3 other;
+        public uint2 relativeOffsetToLod1;
+
+        // ONLY STORED ON THE LOD1 CHUNK.
+        public NativeArray<Voxel> blurredPositiveXFacingExtraVoxelsFlat;
+
 
         // Check if the chunk has valid voxel data 
         public bool HasVoxelData() {
@@ -48,6 +56,38 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public void OnDrawGizmosSelected() {
+            if (Selection.activeGameObject != gameObject)
+                return;
+
+            float s = node.size / VoxelUtils.SIZE;
+
+            Gizmos.color = Color.red;
+            if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
+                for (int i = 0; i < blurredPositiveXFacingExtraVoxelsFlat.Length; i++) {
+                    float2 _pos = (float2)VoxelUtils.IndexToPosMorton2D(i);
+                    float3 pos1 = new float3(VoxelUtils.SIZE, _pos);
+                    float d1 = blurredPositiveXFacingExtraVoxelsFlat[i].density;
+
+                    if (d1 > -4 && d1 < 4) {
+                        Gizmos.DrawSphere(pos1 * s + node.position, 0.05f);
+                    }
+                }
+            }
+
+            Gizmos.color = Color.white;
+            for (int i = 0; i < voxels.Length; i++) {
+                float d = voxels[i].density;
+                if (d > -3 && d < 3) {
+                    float3 p = (float3)VoxelUtils.IndexToPosMorton(i);
+                    Gizmos.DrawSphere(p * s + node.position, 0.05f);
+                }
+            }
+            /*
+
+            */
+
+            /*
+            Gizmos.color = Color.white;
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
                 int3 offset = (int3)_offset - 1;
@@ -57,7 +97,29 @@ namespace jedjoud.VoxelTerrain {
                 }
             }
 
-            Gizmos.DrawCube(node.Center, Vector3.one * node.size);
+            Gizmos.color = Color.yellow;
+            for (int j = 0; j < 27; j++) {
+                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                int3 offset = (int3)_offset - 1;
+
+                if (stitchingMask.IsSet(j)) {
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+            }
+            */
+
+            Gizmos.color = Color.yellow;
+            for (int j = 0; j < 27; j++) {
+                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                int3 offset = (int3)_offset - 1;
+
+                if (stitchingMask.IsSet(j)) {
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+            }
+
+            Gizmos.color = Color.white;
+            Gizmos.DrawWireCube(node.Center, Vector3.one * node.size);
         }
             
         // Get the AABB world bounds of this chunk
@@ -96,6 +158,14 @@ namespace jedjoud.VoxelTerrain {
 
             material = byte.MaxValue;
             return false;
+        }
+
+        public void Dispose() {
+            voxels.Dispose();
+
+            if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
+                blurredPositiveXFacingExtraVoxelsFlat.Dispose();
+            }
         }
     }
 }

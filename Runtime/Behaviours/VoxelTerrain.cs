@@ -245,7 +245,7 @@ namespace jedjoud.VoxelTerrain {
             octree.CallerDispose();
 
             foreach (var (node, chunk) in chunks) {
-                chunk.voxels.Dispose();
+                chunk.Dispose();
             }
 
             foreach (var voxels in unusedPooledContainers) {
