@@ -104,6 +104,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
+            if (count == 0)
+                return;
+
+            if (count >= 1 && VoxelUtils.BLOCKY) {
+                count = 1;
+                vertex = 0f;
+            }
+
             // Must be offset by
             int vertexIndex = counter.Increment();
             indices[_index] = vertexIndex;

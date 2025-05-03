@@ -741,9 +741,33 @@ PrefabInstance:
       propertyPath: m_Name
       value: Voxel Terrain
       objectReference: {fileID: 0}
+    - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: hash
+      value: 103973054
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: octaves
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: check2.x
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: testHeight.x
-      value: 0
+      value: 88.12
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: transform1.scale.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: transform1.scale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: transform1.scale.z
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: stichingPrefab

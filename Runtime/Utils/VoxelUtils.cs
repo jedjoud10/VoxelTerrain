@@ -94,6 +94,7 @@ namespace jedjoud.VoxelTerrain {
         public static readonly int[] MortonNeighbourLookup = new int[] {
             0, 1, 9, 10, 3, 4, 12, 13
         };
+        public const bool BLOCKY = false;
 
         // Convert an index to a 3D position (morton coding)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

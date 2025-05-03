@@ -59,11 +59,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Native buffers for mesh data
             vertices = new NativeArray<float3>(maxVerts, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             triangles = new NativeArray<int>(maxTris, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            lod1Indices = new NativeArray<int>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            lod1Indices = new NativeArray<int>(VoxelUtils.SIZE * VoxelUtils.SIZE * 2, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             lod0Indices = new NativeArray<int>[4];
 
             for (int i = 0; i < 4; i++) {
-                lod0Indices[i] = new NativeArray<int>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                lod0Indices[i] = new NativeArray<int>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             }
 
             quads = new Unsafe.NativeCounter(Allocator.Persistent);
@@ -91,6 +91,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we could just read them back from some cached state (at least for the vertices at slice=0) , but that would introduce chunk mesh dependency (we'd need to wait for the chunk to finish meshing first)
             createDuplicateVertsAndPaddingVertsLod1Job.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE * 2, 1024).Complete();
 
+            // create the quads from the duped vertices and extra ones in LOD1
+            Lod1QuadJob lod1QuadJob = new Lod1QuadJob {
+                counter = quads,
+                indices = lod1Indices,
+                triangles = triangles,
+                voxels = lod1.voxels,
+                paddingBlurredFaceVoxels = lod1.blurredPositiveXFacingExtraVoxelsFlat,
+            };
+            lod1QuadJob.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE, 1024).Complete();
+
             // duplicate the vertices from the LOD0 chunks
             // we could just read them back from some cached state, but that would introduce chunk mesh dependency (we'd need to wait for the chunk to finish meshing first)
             for (int i = 0; i < 4; i++) {
@@ -105,8 +115,28 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 createDuplicateVertsLod0.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE, 1024).Complete();
             }
 
+            // actual stitching jobs that will be executed at a higher resolution
+            for (int i = 0; i < 4; i++) {
+                StitchQuadJob stitchJob = new StitchQuadJob() {
+                    counter = quads,
+                    lod0indices = lod0Indices[i],
+                    lod1indices = lod1Indices,
+                    triangles = triangles,
+                    voxels = stitch.lod0Neighbours[i].voxels,
+                    relativeOffsetToLod1 = VoxelUtils.IndexToPosMorton2D(i),
+                };
 
+                stitchJob.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE, 1024).Complete();
+            }
+
+            MeshFilter filter = stitch.GetComponent<MeshFilter>();
+            Mesh mesh = new Mesh();
             stitch.vertices = vertices.Reinterpret<Vector3>().Slice(0, counter.Count).ToArray();
+            stitch.triangles = triangles.Slice(0, quads.Count * 6).ToArray();
+            mesh.vertices = stitch.vertices;
+            mesh.triangles = stitch.triangles;
+            filter.mesh = mesh;
+
 
             // do some sort of meshing sheise that will use the new blurred data and the old data from lod1 but going INTO the negative direction (face direction)
 

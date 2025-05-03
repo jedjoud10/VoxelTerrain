@@ -132,7 +132,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         //normals[oldValue] = 1.0;
         normals[oldValue] = length(normalSum) < 0.1 ? 1.0 : normalize(-normalSum);
         colors[oldValue] = materialId ? (colorSum / float(count)) : 1.0;
-        vertexIds[id+1] = oldValue;   
+        vertexIds[id] = oldValue;   
     }
 }
 
@@ -152,7 +152,7 @@ void CSQuad(uint3 id : SV_DispatchThreadID) {
 
             bool valid = true;
             for (int j = 0; j < 4; j++) {
-                check[j] = vertexIds[id + test[i] + offsets[j + i * 4]];
+                check[j] = vertexIds[id + test[i] + offsets[j + i * 4] - 1];
             
                 if (check[j] <= 0) {
                     valid = false;

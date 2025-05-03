@@ -32,6 +32,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         public Voxel CalcBlur(uint3 position) {
+            // It seems that not blurring the data gives a smoother transition between the cells
+            return voxels[VoxelUtils.PosToIndexMorton(position)];
+
+            /*
             float negativeSum = 0;
             float positiveSum = 0;
             int negative = 0;
@@ -57,6 +61,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 density = (half)density,
                 material = 0,
             };
+            */
         }
     }
 }

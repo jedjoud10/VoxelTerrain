@@ -65,7 +65,7 @@ MeshRenderer:
   m_RenderingLayerMask: 257
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: -876546973899608171, guid: c55f1fe128d981e43860c7fe825c9f90, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -100,5 +100,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   vertices: []
+  triangles: 
+  lod1: {fileID: 0}
   lod0Neighbours: []
   neighbourChunkBlurredSections: 0

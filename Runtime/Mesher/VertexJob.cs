@@ -127,6 +127,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 //normal += math.lerp(startNormal, endNormal, value);
             }
 
+            if (count >= 1 && VoxelUtils.BLOCKY) {
+                count = 1;
+                vertex = 0f;
+                normal = -math.up();
+            }
+
             // Must be offset by vec3(1, 1, 1)
             int vertexIndex = counter.Increment();
             indices[index] = vertexIndex;

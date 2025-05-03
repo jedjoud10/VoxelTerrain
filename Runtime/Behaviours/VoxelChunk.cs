@@ -73,6 +73,7 @@ namespace jedjoud.VoxelTerrain {
                         float d1 = blurredPositiveXFacingExtraVoxelsFlat[i].density;
 
                         if (d1 > -4 && d1 < 4) {
+                            Gizmos.color = d1 > 0f ? Color.white : Color.black;
                             Gizmos.DrawSphere(pos1 * s + node.position, 0.05f);
                         }
                     }
@@ -81,8 +82,9 @@ namespace jedjoud.VoxelTerrain {
                 Gizmos.color = Color.white;
                 for (int i = 0; i < voxels.Length; i++) {
                     float d = voxels[i].density;
-                    if (d > -3 && d < 3) {
-                        float3 p = (float3)VoxelUtils.IndexToPosMorton(i);
+                    float3 p = (float3)VoxelUtils.IndexToPosMorton(i);
+                    if (d > -4 && d < 4 && (p.x == 0 || p.x == 1 || p.x == 63)) {
+                        Gizmos.color = d > 0f ? Color.red : Color.green;
                         Gizmos.DrawSphere(p * s + node.position, 0.05f);
                     }
                 }
