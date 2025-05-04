@@ -22,6 +22,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Stitch boundary (plane) (stored 3 times for each of the x,y,z axii)
         public abstract class Plane : IHasVoxelData {
             public abstract bool HasVoxelData();
+            public static Plane CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow) {
+                if (hiToLow) {
+                    return new HiToLoPlane() { lod1Neighbour = neighbour };
+                } else {
+                    return new UniformPlane() { neighbour = neighbour };
+                }
+            }
         }
 
         // this=LOD0, neighbour=LOD1
@@ -41,7 +48,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public VoxelChunk[] lod0Neighbours;
 
             public override bool HasVoxelData() {
-                return lod0Neighbours.All(x => x.HasVoxelData());
+                return lod0Neighbours.All(x => x != null && x.HasVoxelData());
             }
         }
 
@@ -57,6 +64,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Stitch edge (line) (stored 3 times for each of the x,y,z axii)
         public abstract class Edge : IHasVoxelData {
             public abstract bool HasVoxelData();
+            public static Edge CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow) {
+                if (hiToLow) {
+                    return new HiToLoEdge() { lod1Neighbour = neighbour };
+                } else {
+                    return new UniformEdge() { neighbour = neighbour };
+                }
+            }
         }
 
         // this=LOD0, diagonal neighbour=LOD1
@@ -76,7 +90,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public VoxelChunk[] lod0Neighbours;
 
             public override bool HasVoxelData() {
-                return lod0Neighbours.All(x => x.HasVoxelData());
+                return lod0Neighbours.All(x => x != null && x.HasVoxelData());
             }
         }
 
@@ -92,6 +106,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Stitch corner (point) stored one since we only have one corner
         public abstract class Corner : IHasVoxelData {
             public abstract bool HasVoxelData();
+            public static Corner CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow) {
+                if (hiToLow) {
+                    return new HiToLoCorner() { lod1Neighbour = neighbour };
+                } else {
+                    return new UniformCorner() { neighbour = neighbour };
+                }
+            }
         }
 
         // this=LOD0, corner neighbour=LOD1
@@ -135,7 +156,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check if we can adapt neighbouring voxels to our padding voxels array
         // This requires us to have access to all the neighbouring chunks in the positive axii in 3D ABD also that they have valid voxel data
-        public bool CanAdaptVoxels() {
+        public bool CanSampleExtraVoxels() {
             bool valid = planes.All(x => x != null) && edges.All(x => x != null) && corner != null;
 
             if (!valid)

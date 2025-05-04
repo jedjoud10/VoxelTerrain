@@ -64,6 +64,7 @@ namespace jedjoud.VoxelTerrain {
 
             float s = node.size / VoxelUtils.SIZE;
 
+            /*
             if (debugValues) {
                 Gizmos.color = Color.red;
                 if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
@@ -89,13 +90,13 @@ namespace jedjoud.VoxelTerrain {
                     }
                 }
             }
+            */
 
 
             /*
 
             */
 
-            /*
             Gizmos.color = Color.white;
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
@@ -106,6 +107,7 @@ namespace jedjoud.VoxelTerrain {
                 }
             }
 
+            /*
             Gizmos.color = Color.yellow;
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);

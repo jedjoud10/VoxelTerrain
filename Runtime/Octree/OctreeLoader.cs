@@ -16,12 +16,6 @@ namespace jedjoud.VoxelTerrain.Octree {
             public float radius;
         }
 
-        private Target _data;
-        public Target Data {
-            get {
-                _data.center = transform.position;
-                return _data;    
-            }
-        }
+        public Target data;
     }
 }

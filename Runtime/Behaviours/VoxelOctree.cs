@@ -65,11 +65,14 @@ namespace jedjoud.VoxelTerrain.Octree {
             pending.Clear();
             pending.Enqueue(root);
 
+            // always update
+            target.data.center = target.transform.position;
+
             SubdivideJob job = new SubdivideJob {
                 pending = pending,
                 maxDepth = maxDepth,
                 nodes = nodesList,
-                target = target.Data,
+                target = target.data,
             };
 
             NeighbourJob neighbourJob = new NeighbourJob {
