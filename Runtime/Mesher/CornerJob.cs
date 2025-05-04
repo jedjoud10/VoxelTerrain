@@ -37,7 +37,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         };
 
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
+            uint3 position = VoxelUtils.IndexToPosMorton(index);
 
             if (!VoxelUtils.CheckCubicVoxelPosition((int3)position, neighbourMask))
                 return;

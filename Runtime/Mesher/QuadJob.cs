@@ -99,10 +99,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
-            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4], VoxelUtils.SIZE + 1);
-            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1], VoxelUtils.SIZE + 1);
-            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2], VoxelUtils.SIZE + 1);
-            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3], VoxelUtils.SIZE + 1);
+            int index0 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4]);
+            int index1 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4 + 1]);
+            int index2 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4 + 2]);
+            int index3 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4 + 3]);
 
             // Fetch the actual indices of the vertices
             int vertex0 = vertexIndices[index0];
@@ -133,7 +133,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
+            uint3 position = VoxelUtils.IndexToPosMorton(index);
 
             if (math.any(position < 1))
                 return;

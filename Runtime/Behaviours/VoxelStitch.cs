@@ -7,6 +7,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine.Profiling;
 using jedjoud.VoxelTerrain.Octree;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // We only do stitching in the positive x,y,z directions
@@ -174,17 +175,33 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // STORING UPSAMPLED / DONWSAMPLED DATA:
         // We basically need to store 65^3 voxels to be able to create that "padding" vertex on the boundary
-        // You could make some sort of 2D face voxels, but that will discard edge and corner piece in 3D
-        // I have opted to make a compacted voxel array that only stores the voxel values at (x==65 || y==65 || z==65)
-        // Then we use a lookup table to convert from 3D flattened index into index for that data
+        // I first store the values for the 3 faces but only the region of 64x64 voxels sequentially
+        // Then I store the edges separately, x,y,z
+        // Then I store the corner piece by itself, last value
         // Down/up-sampling is done SEPARATELY FROM STITCHING
         public NativeArray<Voxel> extraVoxels;
+
+        // These are the boundary voxels from the source chunk. Compacted the same way as extraVoxels but with size=64
+        public NativeArray<Voxel> boundaryVoxels;
+
         private bool adaptedVoxels;
 
+        // Copied indices from the source chunk mesh
+        // Packed so we only store the indices on the boundary (x=63 | y=63 | z=63)
+        public NativeArray<int> boundaryIndices;
+
+        // Also copied from the source mesh, but this time to match up with the boundary values since these are packed
+        public NativeArray<float3> boundaryVertices;
+
         public void Init() {
-            // Principle of inclusion/exclusion but with 3 sets and minus the main set (64x64x64)
-            int count = (65*65) * 3 - 3 * 65 + 1;
-            extraVoxels = new NativeArray<Voxel>(count, Allocator.Persistent);
+            int boundary = StitchUtils.CalculateBoundaryLength(64);
+            int paddedBoundary = StitchUtils.CalculateBoundaryLength(65);
+
+
+            extraVoxels = new NativeArray<Voxel>(paddedBoundary, Allocator.Persistent);
+            boundaryIndices = new NativeArray<int>(boundary, Allocator.Persistent);
+            boundaryVertices = new NativeArray<float3>(boundary, Allocator.Persistent);
+            boundaryVoxels = new NativeArray<Voxel>(boundary, Allocator.Persistent);
             adaptedVoxels = false;
 
             // Set the boundary helpers to null since we haven't set them up yet
@@ -193,8 +210,34 @@ namespace jedjoud.VoxelTerrain.Meshing {
             corner = null;
         }
 
+        struct GenericPlane {
+            // Uniform neighbour data
+            NativeArray<Voxel> uniform;
+
+            // LOD1 neighbour data, not sliced, whole
+            NativeArray<Voxel> lod1;
+
+            // LOD0 neighbours (4 of them) data, morton 2D
+            UnsafePtrList<Voxel> lod0MortonedNeighbours;
+        }
+
+        struct GenericEdge {
+
+        }
+
+        struct GenericCorner {
+
+        }
+
+        public void SamplePaddingVoxels() {
+
+        }
+
         public void Dispose() {
             extraVoxels.Dispose();
+            boundaryIndices.Dispose();
+            boundaryVertices.Dispose();
+            boundaryVoxels.Dispose();
         }
     }
 }

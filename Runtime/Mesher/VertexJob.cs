@@ -81,7 +81,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
+            uint3 position = VoxelUtils.IndexToPosMorton(index);
             indices[index] = int.MaxValue;
 
             if (!VoxelUtils.CheckCubicVoxelPosition((int3)position, neighbourMask))

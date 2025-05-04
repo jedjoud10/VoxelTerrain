@@ -7,6 +7,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine.Profiling;
 using jedjoud.VoxelTerrain.Octree;
+using System.IO;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
@@ -203,6 +204,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = pendingPaddingVoxelSamplingRequests.Count - 1; i >= 0; i--) {
                 VoxelStitch stitch = pendingPaddingVoxelSamplingRequests[i];
             
+                // When we can, create the extra padding voxels using downsampled or upsampled data from the neighbours
                 if (stitch.CanSampleExtraVoxels()) {
                     Debug.Log("thingimante");
                     pendingPaddingVoxelSamplingRequests.RemoveAt(i);
@@ -359,7 +361,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         }
 
                         // Map the 3D position's to the edge 1D flattened index
-                        int index = StitchUtils.FlattenToEdge(relativeOffset, dir);
+                        int index = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
                         VoxelStitch.LoToHiEdge edge = lod1.stitch.edges[dir] as VoxelStitch.LoToHiEdge;
                         edge.lod0Neighbours[index] = lod0;
                     } else {

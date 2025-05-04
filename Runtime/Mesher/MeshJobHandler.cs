@@ -52,16 +52,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Native buffers for mesh data
             int materialCount = VoxelUtils.MAX_MATERIAL_COUNT;
             voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            vertices = new NativeArray<float3>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            normals = new NativeArray<float3>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            uvs = new NativeArray<float2>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            tempTriangles = new NativeArray<int>(VoxelUtils.VOLUME_BIG * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            permTriangles = new NativeArray<int>(VoxelUtils.VOLUME_BIG * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            vertices = new NativeArray<float3>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            normals = new NativeArray<float3>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            uvs = new NativeArray<float2>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            tempTriangles = new NativeArray<int>(VoxelUtils.VOLUME * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            permTriangles = new NativeArray<int>(VoxelUtils.VOLUME * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             voxelCounters = new Unsafe.NativeMultiCounter(materialCount, Allocator.Persistent);
 
             // Native buffer for mesh generation data
-            indices = new NativeArray<int>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            enabled = new NativeArray<byte>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            indices = new NativeArray<int>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            enabled = new NativeArray<byte>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             countersQuad = new Unsafe.NativeMultiCounter(materialCount, Allocator.Persistent);
             counter = new Unsafe.NativeCounter(Allocator.Persistent);
 
@@ -200,21 +200,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Material job and indexer job
-            JobHandle materialJobHandle = materialJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * 8 * INNER_LOOP_BATCH_COUNT, dependency);
+            JobHandle materialJobHandle = materialJob.Schedule(VoxelUtils.VOLUME, 2048 * 8 * INNER_LOOP_BATCH_COUNT, dependency);
             JobHandle materialIndexerJobHandle = materialIndexerJob.Schedule(materialJobHandle);
 
             // Start the corner job and material job
-            JobHandle cornerJobHandle = cornerJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, dependency);
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
-            JobHandle vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
+            JobHandle vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-            JobHandle aoJobHandle = aoJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
+            JobHandle aoJobHandle = aoJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
 
             // Start the quad job
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
-            JobHandle quadJobHandle = quadJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, merged);
+            JobHandle quadJobHandle = quadJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, merged);
 
             // Start the sum job 
             JobHandle sumJobHandle = sumJob.Schedule(quadJobHandle);
