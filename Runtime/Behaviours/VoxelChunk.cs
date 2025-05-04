@@ -175,6 +175,8 @@ namespace jedjoud.VoxelTerrain {
             if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
                 blurredPositiveXFacingExtraVoxelsFlat.Dispose();
             }
+
+            stitch?.Dispose();
         }
     }
 }

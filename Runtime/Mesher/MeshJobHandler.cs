@@ -89,7 +89,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool Free { get; private set; } = true;
 
         // Begin the vertex + quad job that will generate the mesh
-        internal JobHandle BeginJob(JobHandle dependency, NativeArray<Voxel>[] neighboursArray, BitField32 mask) {
+        internal JobHandle BeginJob(JobHandle dependency) {
             float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
             countersQuad.Reset();
             counter.Count = 0;
@@ -100,14 +100,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bounds[1] = new float3(0.0);
             Free = false;
 
+            BitField32 mask = new BitField32(uint.MinValue);
+            mask.SetBits(13, true);
             unsafe {
                 neighbourPtrs.Clear();
-                foreach (NativeArray<Voxel> v in neighboursArray) {
-                    if (v.IsCreated) {
-                        neighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
-                    } else {
-                        neighbourPtrs.Add(System.IntPtr.Zero);
-                    }
+                for (int i = 0; i < 27; i++) {
+                    neighbourPtrs.Add(System.IntPtr.Zero);
                 }
             }
 

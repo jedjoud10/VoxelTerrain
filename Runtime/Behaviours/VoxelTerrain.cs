@@ -248,6 +248,10 @@ namespace jedjoud.VoxelTerrain {
                 chunk.Dispose();
             }
 
+            foreach (var go in unusedPooledChunks) {
+                go.GetComponent<VoxelChunk>().Dispose();
+            }
+
             foreach (var voxels in unusedPooledContainers) {
                 voxels.Dispose();
             }

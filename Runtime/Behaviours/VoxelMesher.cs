@@ -20,11 +20,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public Action<VoxelChunk> callback;
         }
 
-        // Stitching request where "chunk" is the higher res chunk (LOD0)
-        internal struct StitchingRequest {
+        internal struct StitchRequest {
             public VoxelChunk chunk;
-            public OctreeNode[] stitchingNeighbours;
-            public BitField32 stitchMask;
         }
 
         [Range(1, 8)]
@@ -43,7 +40,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public event OnMeshingComplete onMeshingComplete;
         internal Queue<MeshingRequest> queuedMeshingRequests;
         internal HashSet<MeshingRequest> meshingRequests;
-        internal Queue<StitchingRequest> queuedStitchingRequests;
+        internal List<VoxelChunk> pendingNeighbourDataChunks;
         private StitchJobHandler stitcher;
 
         // Initialize the voxel mesher
@@ -51,7 +48,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             handlers = new List<MeshJobHandler>(meshJobsPerTick);
             queuedMeshingRequests = new Queue<MeshingRequest>();
             meshingRequests = new HashSet<MeshingRequest>();
-            queuedStitchingRequests = new Queue<StitchingRequest>();
+            pendingNeighbourDataChunks = new List<VoxelChunk>();
             stitcher = new StitchJobHandler(this);
 
             for (int i = 0; i < meshJobsPerTick; i++) {
@@ -110,172 +107,198 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 if (handlers[i].Free) {
-                    // Check if the chunk has valid neighbours
-                    if (queuedMeshingRequests.TryPeek(out MeshingRequest job)) {
-                        // All of the chunk neighbours in the 3 axii
-                        // This contains one more chunk ptr that is always set to null (the one at index 13)
-                        // since that one represent the source chunk (this)
-                        NativeArray<Voxel>[] neighbours = new NativeArray<Voxel>[27];
+                    if (queuedMeshingRequests.TryDequeue(out MeshingRequest job)) {
+                        meshingRequests.Remove(job);
 
-                        // Bitset that tells us what of the 26 chunks we have voxel data access to
-                        // In some cases (when the source chunk is at the edge of the map or when our neighbours are of different LOD) we don't have access to all the neighbouring chunks
-                        // This bitset lets the job system know to skip over fetching those voxels and don't do same-level chunk mesh skirting
-                        BitField32 neighbourMask = new BitField32(0);
+                        // Create a mesh for this chunk (no stitching involved)
+                        Profiler.BeginSample("Begin Mesh Job");
+                        BeginJob(handlers[i], job);
+                        Profiler.EndSample();
 
-                        // Keep another bitfield that tells us what neighbours we can do octree stitching to (when they're done with their meshing obvi)
-                        BitField32 stitchingMask = new BitField32(0);
-                        OctreeNode[] stitchingOctreeNodes = new OctreeNode[27];
+                        // Always create a stitching mesh no matter what
+                        VoxelChunk chunk = job.chunk;
+                        GameObject stitchGo = Instantiate(stichingPrefab, chunk.transform);
+                        stitchGo.transform.localPosition = Vector3.zero;
+                        stitchGo.transform.localScale = Vector3.one;
+                        chunk.stitch = stitchGo.GetComponent<VoxelStitch>();
+                        chunk.stitch.Init();
 
-                        // Get the neighbour indices from the octree
-                        int neighbourIndicesStart = job.chunk.node.neighbourDataStartIndex;
-                        NativeSlice<int> slice = terrain.octree.neighbourData.AsArray().Slice(neighbourIndicesStart, 27);
-                        int depth = job.chunk.node.depth;
-
-                        // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
-                        bool all = true;
-                        for (int j = 0; j < 27; j++) {
-                            neighbours[j] = new NativeArray<Voxel>();
-                            stitchingOctreeNodes[j] = OctreeNode.Invalid;
-
-                            uint3 _offset = VoxelUtils.IndexToPos(j, 3);
-                            int3 offset = (int3)_offset - 1;
-
-                            // Skip self since that's the source chunk that we alr have data for in the jobs
-                            if (math.all(offset == int3.zero)) {
-                                neighbourMask.SetBits(j, true);
-                                continue;
-                            }
-                            
-                            int index = slice[j];
-                            if (index == -1)
-                                continue;
-                            
-                            OctreeNode neighbourNode = terrain.octree.nodesList[index];
-
-                            if (terrain.chunks.TryGetValue(neighbourNode, out var chunk)) {
-                                VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
-                                all &= neighbour.HasVoxelData();
-
-                                if (neighbourNode.depth == depth) {
-                                    // If the neighbour is of the same depth, just do normal meshing with neighbour data
-                                    neighbours[j] = neighbour.voxels;
-                                    neighbourMask.SetBits(j, true);
-                                } else if ((neighbourNode.depth+1) == depth) {
-                                    // If the neighbour is one level higher (neighbour is lower res) then we can use it for octree stitching
-                                    stitchingMask.SetBits(j, true);
-                                    stitchingOctreeNodes[j] = neighbourNode;
-                                }
-                            }
-                        }
-
-                        // Slight trolling...
-                        job.chunk.neighbourMask = neighbourMask;
-                        job.chunk.stitchingMask = stitchingMask;
-
-                        // Only begin meshing if we have the correct neighbours
-                        if (all) {
-                            if (queuedMeshingRequests.TryDequeue(out MeshingRequest request)) {
-                                meshingRequests.Remove(request);
-                                Profiler.BeginSample("Begin Mesh Jobs");
-
-                                // TODO: don't forget to set this back :333
-                                neighbourMask.Clear();
-                                neighbourMask.SetBits(13, true);
-                                BeginJob(handlers[i], request, neighbours, neighbourMask);
-                                Profiler.EndSample();
-                            }
-                        } else {
-                            // We can be smart and move this chunk back to the end of the queue
-                            // This allows the next free mesh job handler to peek at the next element, not this one again
-                            if (queuedMeshingRequests.TryDequeue(out MeshingRequest request)) {
-                                queuedMeshingRequests.Enqueue(request);
-                            }
-                        }
-
-                        // Put the mesh for octree stitching if needed
-                        if (all && stitchingMask.CountBits() > 0) {
-                            QueueStitching(job.chunk, stitchingOctreeNodes, stitchingMask);
-                        }
+                        // This chunk will now have to wait until it has all its neighbour chunks acessors
+                        pendingNeighbourDataChunks.Add(chunk);
                     }
                 }
             }
-        
-            // Technically we should first peek and make sure that the chunk and its stitching neighbours have a valid mesh (since we need the vertex index shit)
-            if (queuedStitchingRequests.TryDequeue(out var result)) {
-                // For testing only:
-                // src data is coming from LOD0. 
-                // dst data is onto LOD1; face that is facing the positive x axis (padding)
 
-                if (!result.stitchMask.IsSet(12)) {
-                    return;
+            // Go through each of the chunk and fetch their neighbouring chunks
+            // If we are dealing with an LOD1 neighbour, update *it*s face/edge/corner data instead, since it can't do that on its own
+            for (int i = 0; i < pendingNeighbourDataChunks.Count; i++) {
+                VoxelChunk src = pendingNeighbourDataChunks[i];
+                VoxelStitch stitch = src.stitch;
+
+                // All of the chunk neighbours of the same LOD in the 3 axii
+                // This contains one more chunk ptr that is always set to null (the one at index 13)
+                // since that one represent the source chunk (this)
+                VoxelChunk[] sameLodNeighbours = new VoxelChunk[27];
+                BitField32 sameNeighbourMask = new BitField32(0);
+
+                // All of the chunk neighbours of a higher LOD in the 3 axii
+                // This contains one more chunk ptr that is always set to null (the one at index 13)
+                // since that one represent the source chunk (this)
+                VoxelChunk[] diffLodNeighbours = new VoxelChunk[27];
+                BitField32 diffNeighbourMask = new BitField32(0);
+
+                // Get the neighbour indices from the octree
+                int neighbourIndicesStart = src.node.neighbourDataStartIndex;
+                NativeSlice<int> slice = terrain.octree.neighbourData.AsArray().Slice(neighbourIndicesStart, 27);
+                int depth = src.node.depth;
+
+                // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
+                for (int j = 0; j < 27; j++) {
+                    sameLodNeighbours[j] = null;
+                    diffLodNeighbours[j] = null;
+                        
+                    uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                    int3 offset = (int3)_offset - 1;
+
+                    // Skip self since that's the source chunk
+                    if (math.all(offset == int3.zero)) {
+                        continue;
+                    }
+
+                    // If no valid octree neighbour, skip
+                    int index = slice[j];
+                    if (index == -1)
+                        continue;
+
+                    OctreeNode neighbourNode = terrain.octree.nodesList[index];
+                    if (terrain.chunks.TryGetValue(neighbourNode, out var chunk)) {
+                        VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
+
+                        if (neighbourNode.depth == depth) {
+                            // If the neighbour is of the same depth, just do normal meshing with neighbour data
+                            sameLodNeighbours[j] = neighbour;
+                            sameNeighbourMask.SetBits(j, true);
+                        } else if ((neighbourNode.depth + 1) == depth) {
+                            // If the neighbour is one level higher (neighbour is lower res) then we can use it for octree stitching
+                            diffLodNeighbours[j] = neighbour;
+                            diffNeighbourMask.SetBits(j, true);
+                        }
+                    }
                 }
-                
-                // we only care about going to the NEGATIVE directions... (-x, -y, -z)
-                VoxelChunk lod0 = result.chunk;
 
-                // from src, we fetch testFacetVoxelData1 and write to dst's testFacetVoxelData2 (1/4)
-                OctreeNode test = result.stitchingNeighbours[12];
-                VoxelChunk lod1 = terrain.chunks[test];
-                lod0.other = test.Center;
 
-                if (!lod1.blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
-                    lod1.blurredPositiveXFacingExtraVoxelsFlat = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent);
-
-                    // spawn in a new stitching mesh for LOD1
-                    GameObject stitchGo = Instantiate(stichingPrefab, lod1.transform);
-                    stitchGo.transform.localPosition = Vector3.zero;
-                    stitchGo.transform.localScale = Vector3.one;
-                    lod1.stitch = stitchGo.GetComponent<VoxelStitch>();
-                    lod1.stitch.lod0Neighbours = new VoxelChunk[4];
-                    lod1.stitch.lod1 = lod1;
+                // check if we have any neighbours of the same resolution
+                // we only need to look in the pos axii for this one
+                // start at 1 to skip src chunk
+                for (int j = 1; j < 8; j++) {
+                    
                 }
 
-                // calculate offset
-                int quadrantVolume = VoxelUtils.SIZE * VoxelUtils.SIZE / 4;
-                float3 srcPos = lod0.node.position;
-                float3 dstPos = lod1.node.position;
-                uint2 offset = (uint2)((srcPos - dstPos).yz / VoxelUtils.SIZE);
+                // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1)
+                // we need to look both in the positive axii and negative axii for this one
+                // if so, update *their* stitching face/edge/corner stuff manually
+            }
 
-                // store this chunk for later stitching
-                lod0.relativeOffsetToLod1 = offset;
-                lod1.stitch.lod0Neighbours[VoxelUtils.PosToIndexMorton2D(offset)] = lod0;
 
-                // fetch the voxels from the source chunk and blur them
-                int mortonOffset = VoxelUtils.PosToIndexMorton2D(offset) * quadrantVolume;
-                //Debug.Log(mortonOffset);
 
-                FaceVoxelsBlurJob copy = new FaceVoxelsBlurJob() {
-                    voxels = lod0.voxels,
-                    dstFace = lod1.blurredPositiveXFacingExtraVoxelsFlat,
-                    mortonOffset = mortonOffset,
-                };
+            // If we have LOD1 neighbours in the negative directions, they also need to create their own stitching mesh
+            // 4, 10, 12
 
-                // since we will be blurring each 2x2x2 region (from LOD0) into a single voxel (into LOD1) we will at max be writing to a single "quadrant" of the face
-                copy.Schedule(quadrantVolume, 1024).Complete();
-                lod1.stitch.neighbourChunkBlurredSections++;
-
-                // we can do stitching if LOD1 has fully blurred out data
-                if (lod1.stitch.neighbourChunkBlurredSections == 4) {
-                    stitcher.DoThingyMajig(result, lod1, lod1.stitch);
-                }
+            /*
+            // Negative X
+            if (req.stitchMask.IsSet(4)) {
 
             }
+
+            // Negative 
+            if (req.stitchMask.IsSet(4)) {
+
+            }
+
+            // Negative Z
+            if (req.stitchMask.IsSet(4)) {
+
+            }
+            */
+
+            /*
+            // For testing only:
+            // src data is coming from LOD0. 
+            // dst data is onto LOD1; face that is facing the positive x axis (padding)
+            if (!result.stitchMask.IsSet(14)) {
+                return;
+            }
+
+            // we only care about going to the NEGATIVE directions... (-x, -y, -z)
+            VoxelChunk lod0 = result.chunk;
+
+            OctreeNode test = result.stitchingNeighbours[14];
+            VoxelChunk lod1 = terrain.chunks[test];
+            lod0.other = test.Center;
+            lod0.blurredPositiveXFacingExtraVoxelsFlat = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent);
+
+            // Create a new gameobject specific for holding the stitching mesh data
+            if (lod1.stitch == null) {
+                lod1.blurredPositiveXFacingExtraVoxelsFlat = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent);
+
+
+            }
+
+            // calculate offset
+            int quadrantVolume = VoxelUtils.SIZE * VoxelUtils.SIZE / 4;
+            float3 srcPos = lod0.node.position;
+            float3 dstPos = lod1.node.position;
+            uint2 offset = (uint2)((srcPos - dstPos).yz / lod0.node.size);
+
+            // store this chunk for later stitching
+            int localIndex = VoxelUtils.PosToIndexMorton2D(offset);
+            lod0.relativeOffsetToLod1 = offset;
+            lod1.stitch.lod0NeighboursNegativeX[localIndex] = lod0;
+            //lod1.stitch.lod0NeighboursPositiveX[] = lod0;
+
+            // fetch the voxels from the source chunk and blur them
+            int mortonOffset = VoxelUtils.PosToIndexMorton2D(offset) * quadrantVolume;
+            //Debug.Log(mortonOffset);
+            */
+
+            /*
+            FaceVoxelsDownsampleJob downsample = new FaceVoxelsDownsampleJob() {
+                lod0Voxels = lod0.voxels,
+                dstFace = lod1.blurredPositiveXFacingExtraVoxelsFlat,
+                mortonOffset = mortonOffset,
+            };
+            */
+
+            /*
+            FaceVoxelsUpsampleJob upsample = new FaceVoxelsUpsampleJob() {
+                dstFace = lod0.blurredPositiveXFacingExtraVoxelsFlat,
+                lod1Voxels = lod1.voxels,
+                relativeLod1Offset = offset,
+            };
+
+            upsample.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE, 1024).Complete();
+            */
+
+            // since we will be blurring each 2x2x2 region (from LOD0) into a single voxel (into LOD1) we will at max be writing to a single "quadrant" of the face
+            //copy.Schedule(quadrantVolume, 1024).Complete();
+            //lod1.stitch.neighbourChunkBlurredSections++;
+
+
+            /*
+            // we can do stitching if LOD1 has fully blurred out data
+            if (lod1.stitch.neighbourChunkBlurredSections == 4) {
+                stitcher.DoThingyMajig(result, lod1, lod1.stitch);
+            }
+            */
+
         }
 
-        private void BeginJob(MeshJobHandler handler, MeshingRequest request, NativeArray<Voxel>[] neighbours, BitField32 mask) {
+        private void BeginJob(MeshJobHandler handler, MeshingRequest request) {
             handler.request = request;
             handler.startingTick = tick;
 
             var copy = new AsyncMemCpy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
-            handler.BeginJob(copy, neighbours, mask);
-        }
-
-        private void QueueStitching(VoxelChunk chunk, OctreeNode[] stitchingNeighbours, BitField32 stitchMask) {
-            queuedStitchingRequests.Enqueue(new StitchingRequest {
-                chunk = chunk,
-                stitchingNeighbours = stitchingNeighbours,
-                stitchMask = stitchMask
-            });
+            handler.BeginJob(copy);
         }
 
         private void FinishJob(MeshJobHandler handler) {

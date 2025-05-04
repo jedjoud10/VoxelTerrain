@@ -6,10 +6,10 @@ using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low, OptimizeFor = OptimizeFor.Performance)]
-    public struct FaceVoxelsBlurJob : IJobParallelFor {
+    public struct FaceVoxelsDownsampleJob : IJobParallelFor {
         // Source voxels from LOD0.
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public NativeArray<Voxel> lod0Voxels;
 
         // morton encoded. we do the slicing manually
         [NativeDisableParallelForRestriction]
@@ -27,13 +27,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             //srcPos.x -= 1;
 
             // now we can sample it
-            Voxel v = CalcBlur(srcPos);
+            Voxel v = Downsample(srcPos);
             dstFace[mortonOffset + index] = v;
         }
 
-        public Voxel CalcBlur(uint3 position) {
+        public Voxel Downsample(uint3 position) {
             // It seems that not blurring the data gives a smoother transition between the cells
-            return voxels[VoxelUtils.PosToIndexMorton(position)];
+            return lod0Voxels[VoxelUtils.PosToIndexMorton(position)];
 
             /*
             float negativeSum = 0;

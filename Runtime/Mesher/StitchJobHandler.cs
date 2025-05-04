@@ -74,7 +74,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // Raw dogging it...
-        internal void DoThingyMajig(VoxelMesher.StitchingRequest req, VoxelChunk lod1, VoxelStitch stitch) {
+        internal void DoThingyMajig(/*VoxelMesher.DirectionalStitchingRequest req, VoxelChunk lod1, VoxelStitch stitch*/) {
+            /*
             counter.Count = 0;
             quads.Count = 0;
 
@@ -105,7 +106,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we could just read them back from some cached state, but that would introduce chunk mesh dependency (we'd need to wait for the chunk to finish meshing first)
             for (int i = 0; i < 4; i++) {
                 DuplicateLod0VerticesJob createDuplicateVertsLod0 = new DuplicateLod0VerticesJob() {
-                    voxels = stitch.lod0Neighbours[i].voxels,
+                    voxels = stitch.lod0NeighboursPositiveX[i].voxels,
                     vertices = vertices,
                     counter = counter,
                     indices = lod0Indices[i],
@@ -122,7 +123,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     lod0indices = lod0Indices[i],
                     lod1indices = lod1Indices,
                     triangles = triangles,
-                    voxels = stitch.lod0Neighbours[i].voxels,
+                    voxels = stitch.lod0NeighboursPositiveX[i].voxels,
                     relativeOffsetToLod1 = VoxelUtils.IndexToPosMorton2D(i),
                 };
 
@@ -136,6 +137,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             mesh.vertices = stitch.vertices;
             mesh.triangles = stitch.triangles;
             filter.mesh = mesh;
+            */
 
 
             // do some sort of meshing sheise that will use the new blurred data and the old data from lod1 but going INTO the negative direction (face direction)
