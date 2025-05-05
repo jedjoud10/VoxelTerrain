@@ -15,7 +15,8 @@ namespace jedjoud.VoxelTerrain.Octree {
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
         public NativeList<OctreeNode> nodesList;
-        public NativeList<int> neighbourData;
+        public NativeList<OctreeOmnidirectionalNeighbourData> omniDirectionalNeighbourDataList;
+        public NativeList<int> neighbourIndices;
 
 
         // only used from inside the job. for some reason, jobs can't dipose of native queues inside of them
@@ -32,7 +33,8 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         public override void CallerStart() {
             nodesList = new NativeList<OctreeNode>(Allocator.Persistent);
-            neighbourData = new NativeList<int>(Allocator.Persistent);
+            neighbourIndices = new NativeList<int>(Allocator.Persistent);
+            omniDirectionalNeighbourDataList = new NativeList<OctreeOmnidirectionalNeighbourData>(Allocator.Persistent);
             oldNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             newNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
 
@@ -56,7 +58,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         private void Compute() {
             nodesList.Clear();
             newNodesSet.Clear();
-            neighbourData.Clear();
+            neighbourIndices.Clear();
             addedNodes.Clear();
             removedNodes.Clear();
 
@@ -73,12 +75,14 @@ namespace jedjoud.VoxelTerrain.Octree {
                 maxDepth = maxDepth,
                 nodes = nodesList,
                 target = target.data,
+                omniDirectionalNeighbourData = omniDirectionalNeighbourDataList,
             };
 
             NeighbourJob neighbourJob = new NeighbourJob {
                 nodes = nodesList,
-                neighbours = neighbourData,
-                pending = pending,
+                neighbourIndices = neighbourIndices.AsParallelWriter(),
+                omnidirectionalNeighbourData = omniDirectionalNeighbourDataList.AsDeferredJobArray(),
+                maxDepth = maxDepth,
             };
 
             ToHashSetJob toHashSetJob = new ToHashSetJob {
@@ -104,7 +108,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             };
 
             JobHandle subdivideJobHandle = job.Schedule();
-            JobHandle neighbourJobHandle = neighbourJob.Schedule(subdivideJobHandle);
+            JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(nodesList, 1024, subdivideJobHandle);
             JobHandle setJobHandle = toHashSetJob.Schedule(neighbourJobHandle);
             JobHandle addedJobHandle = addedDiffJob.Schedule(setJobHandle);
             JobHandle removedJobHandle = removedDiffJob.Schedule(setJobHandle);
@@ -126,7 +130,8 @@ namespace jedjoud.VoxelTerrain.Octree {
             removedNodes.Dispose();
             pending.Dispose();
             nodesList.Dispose();
-            neighbourData.Dispose();
+            neighbourIndices.Dispose();
+            omniDirectionalNeighbourDataList.Dispose();
         }
 
         private void OnDrawGizmos() {

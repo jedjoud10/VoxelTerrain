@@ -136,10 +136,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // since that one represent the source chunk (this)
                         VoxelChunk[] diffLodNeighbours = new VoxelChunk[27];
                         BitField32 diffLodMask = new BitField32(0);
-
+                        
                         // Get the neighbour indices from the octree
-                        int neighbourIndicesStart = src.node.neighbourDataStartIndex;
-                        NativeSlice<int> slice = terrain.octree.neighbourData.AsArray().Slice(neighbourIndicesStart, 27);
+                        int baseIndex = src.node.neighbourDataBaseIndex;
+                        NativeSlice<OctreeOmnidirectionalNeighbourData> slice = terrain.octree.omniDirectionalNeighbourDataList.AsArray().Slice(baseIndex, 27);
+
+                        /*
                         int depth = src.node.depth;
 
                         // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
@@ -175,6 +177,50 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                 }
                             }
                         }
+                        */
+
+                        for (int j = 0; j < 27; j++) {
+                            sameLodNeighbours[j] = null;
+                            diffLodNeighbours[j] = null;
+
+                            uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                            int3 offset = (int3)_offset - 1;
+
+                            // Skip self since that's the source chunk
+                            if (math.all(offset == int3.zero)) {
+                                continue;
+                            }
+
+                            // If no valid octree neighbour, skip
+                            if (!slice[j].IsValid())
+                                continue;
+
+                            // Octree neighbours if we have multiple
+                            // Store 4, since that's the worst case scenario (plane, and multi-res)
+                            Span<OctreeNode> neighbours = stackalloc OctreeNode[10];
+
+                            // There are multiple case scenario (same lod, diff lod)
+                            switch (slice[j].mode) {
+                                case OctreeOmnidirectionalNeighbourData.Mode.SameLod:
+                                    neighbours[0] = terrain.octree.nodesList[slice[j].baseIndex];
+                                    sameLodMask.SetBits(j, true);
+                                    break;
+                                case OctreeOmnidirectionalNeighbourData.Mode.HigherLod:
+                                    neighbours[0] = terrain.octree.nodesList[slice[j].baseIndex];
+                                    break;
+                                case OctreeOmnidirectionalNeighbourData.Mode.LowerLod:
+                                    // hard...
+                                    break;
+                            }
+
+                            /*
+                            OctreeNode node = terrain.octree. slice[j].baseIndex
+
+                            if (terrain.chunks.TryGetValue(neighbourNode, out var neighbourGo)) {
+                                sameLodMask.SetBits(j, true);
+                            }
+                            */
+                        }
 
                         src.neighbourMask = sameLodMask;
                         src.stitchingMask = diffLodMask;
@@ -182,11 +228,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // check if we have any neighbours of the same resolution
                         // we only need to look in the pos axii for this one
                         // start at 1 to skip src chunk
-                        FetchPositiveNeighbours(stitch, sameLodNeighbours, sameLodMask, false);
+                        //FetchPositiveNeighbours(stitch, sameLodNeighbours, sameLodMask, false);
 
                         // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1)
                         // we only need to look in the pos axii for this one
-                        FetchPositiveNeighbours(stitch, diffLodNeighbours, diffLodMask, true);
+                        //FetchPositiveNeighbours(stitch, diffLodNeighbours, diffLodMask, true);
 
                         // THIS DOESNT WORK!!! WE NEED TO IMPLEMENT PROPER MULTINEIGHBOUR SUPPORT FOR LOD1!!!
                         // TIME TO FIX MY OCTREE NEIGHBOUR DETECTION CODE!!!
@@ -195,7 +241,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // FetchNegativeNeighboursLod1(src, diffLodNeighbours, diffLodMask);
 
                         // Tell the chunk to wait until all neighbours have voxel data to begin sampling the extra padding voxels
-                        pendingPaddingVoxelSamplingRequests.Add(stitch);
+                        //pendingPaddingVoxelSamplingRequests.Add(stitch);
                     }
                 }
             }

@@ -21,7 +21,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public int index;
         public int parentIndex;
         public int childBaseIndex;
-        public int neighbourDataStartIndex;
+        public int neighbourDataBaseIndex;
 
         public float3 Center => math.float3(position) + math.float3(size) / 2.0F;
         public MinMaxAABB Bounds => new MinMaxAABB(position, position + size);
@@ -44,6 +44,10 @@ namespace jedjoud.VoxelTerrain.Octree {
                 this.depth == other.depth &&
                 this.size == other.size &&
                 (this.childBaseIndex == -1) == (other.childBaseIndex == -1);
+        }
+
+        public override string ToString() {
+            return $"index={index}, pos={position}, d={depth}, s={size}";
         }
 
         // https://forum.unity.com/threads/burst-error-bc1091-external-and-internal-calls-are-not-allowed-inside-static-constructors.1347293/

@@ -64,7 +64,7 @@ namespace jedjoud.VoxelTerrain {
 
             float s = node.size / VoxelUtils.SIZE;
 
-            
+            /*
             for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
                 uint3 coord = StitchUtils.BoundaryIndexToPos(i, 64);
                 float d = stitch.boundaryVoxels[i].density;
@@ -91,6 +91,7 @@ namespace jedjoud.VoxelTerrain {
                     Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
                 }
             }
+            */
 
             /*
             if (debugValues) {

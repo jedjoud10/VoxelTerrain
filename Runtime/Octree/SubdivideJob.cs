@@ -9,6 +9,7 @@ namespace jedjoud.VoxelTerrain.Octree {
     [BurstCompile(CompileSynchronously = true)]
     public struct SubdivideJob : IJob {
         public NativeList<OctreeNode> nodes;
+        public NativeList<OctreeOmnidirectionalNeighbourData> omniDirectionalNeighbourData;
         public NativeQueue<OctreeNode> pending;
 
         [ReadOnly]
@@ -33,6 +34,18 @@ namespace jedjoud.VoxelTerrain.Octree {
                 OctreeNode node = nodes[i];
                 if (node.childBaseIndex == -1 && node.depth < maxDepth) {
                     Subdivide(node);
+                }
+            }
+
+            // loop over the nodes again and add the omniDirectionalNeighbourData for the leaf ones
+            copy = nodes.Length;
+            for (int i = 0; i < copy; i++) {
+                OctreeNode node = nodes[i];
+                if (node.childBaseIndex == -1) {
+                    int index = omniDirectionalNeighbourData.Length;
+                    omniDirectionalNeighbourData.AddReplicate(OctreeOmnidirectionalNeighbourData.Invalid, 27);
+                    node.neighbourDataBaseIndex = index;
+                    nodes[i] = node;
                 }
             }
         }
