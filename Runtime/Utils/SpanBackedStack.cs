@@ -3,24 +3,24 @@ using jedjoud.VoxelTerrain.Props;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
-    public ref struct SpanBackedStack {
-        private Span<int> backing;
+    public ref struct SpanBackedStack<T> where T: unmanaged {
+        private Span<T> backing;
         private int length;
 
         public int Length => length;
 
-        public int this[int index] {
+        public T this[int index] {
             get { return backing[index]; }
         }
 
-        public static SpanBackedStack New(Span<int> backing) {
-            SpanBackedStack queue = new SpanBackedStack();
+        public static SpanBackedStack<T> New(Span<T> backing) {
+            SpanBackedStack<T> queue = new SpanBackedStack<T>();
             queue.backing = backing;
             queue.length = 0;
             return queue;
         }
 
-        public void Enqueue(int value) {
+        public void Enqueue(T value) {
             if (length == backing.Length) {
                 throw new InvalidOperationException("Backing Span is full. Cannot enqueue");
             }
@@ -29,15 +29,19 @@ namespace jedjoud.VoxelTerrain {
             length++;
         }
 
-        public bool TryDequeue(out int val) {
+        public bool TryDequeue(out T val) {
             if (length == 0) {
-                val = -1;
+                val = default;
                 return false;
             }
 
             length--;
             val = backing[length];
             return true;
+        }
+
+        public void Clear() {
+            length = 0;
         }
     }
 }

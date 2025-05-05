@@ -2,6 +2,7 @@ using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
 using Unity.Mathematics;
+using Unity.Mathematics.Geometry;
 using UnityEditor;
 using UnityEngine;
 
@@ -175,7 +176,13 @@ namespace jedjoud.VoxelTerrain {
             }
 
             Gizmos.color = Color.white;
-            Gizmos.DrawWireCube(node.Center, Vector3.one * node.size);
+            MinMaxAABB bounds = node.Bounds;
+            Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
+
+            for (int j = 0; j < 6; j++) {
+                MinMaxAABB plane = NeighbourJob.CreatePlane(bounds.Min, bounds.Max, j);
+                Gizmos.DrawWireCube(plane.Center, plane.Extents);
+            }
         }
             
         // Get the AABB world bounds of this chunk
