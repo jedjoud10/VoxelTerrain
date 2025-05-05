@@ -1,4 +1,5 @@
 using System;
+using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -13,7 +14,10 @@ namespace jedjoud.VoxelTerrain.Octree {
         public NativeList<OctreeNode> nodes;
 
         [WriteOnly]
-        public NativeList<int>.ParallelWriter neighbourIndices;
+        [NativeDisableParallelForRestriction]
+        public NativeArray<int> neighbourIndices;
+
+        public NativeCounter.Concurrent counter;
 
         [WriteOnly]
         [NativeDisableParallelForRestriction]
@@ -41,11 +45,16 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         public int maxDepth;
 
+        private int FlipChildIndexWithDir(int childIndex, int dir) {
+            uint3 offset = VoxelUtils.IndexToPosMorton(childIndex);
+            offset[dir] = (uint)(1 - (int)offset[dir]);
+            return VoxelUtils.PosToIndexMorton(offset);
+        }
 
         public void Execute(int index) {
             // We should never modify this one...
             OctreeNode original = nodes[index];
-            Debug.Log(original);
+            //Debug.Log(original);
 
             // skip if we're the root node, no way we can ever get neighbours for it
             if (index == 0)
@@ -72,6 +81,8 @@ namespace jedjoud.VoxelTerrain.Octree {
 
                 // go up the tree until we find a node of "interest"
                 for (int b = 0; b < maxDepth; b++) {
+                    //Debug.Log($"b={b}, node={current.depth}");
+
                     // exit if we reached the root (meaning we have no neighbour)
                     if (current.parentIndex == -1) {
                         break;
@@ -100,7 +111,10 @@ namespace jedjoud.VoxelTerrain.Octree {
                                 baseIndex = siblingIndex,
                             };
                         } else {
-                            Debug.Log("amogus");
+                            //Debug.Log("amogus");
+
+                            current = nodes[sibling.index];
+
                             // if not, start going down the tree in the opposite direction STARTING FROM THE PARENT
                             // also need to keep a queue of pending nodes to visit (children). needed for multi res.
                             Span<int> backingForwardProp = stackalloc int[30];
@@ -111,7 +125,60 @@ namespace jedjoud.VoxelTerrain.Octree {
                             Span<int> backingNeighbours = stackalloc int[4];
                             SpanBackedStack neighbours = SpanBackedStack.New(backingNeighbours);
 
-                            // hard coded limit just case it shits itself
+                            // we can skip a lot of the steps if we do the child index shit in reverse but also flipped about the direction
+                            previousChildOffsetIndices.TryDequeue(out int _);
+                            //Debug.Log($"begin = {current}");
+                            while (previousChildOffsetIndices.TryDequeue(out int childIndex2)) {
+                                // we found a leaf node early, meaning this is the neighbour
+                                if (current.childBaseIndex == -1) {
+                                    //Debug.Log($"add = {current}");
+                                    neighbours.Enqueue(current.index);
+                                    break;
+                                }
+
+                                int flipped = FlipChildIndexWithDir(childIndex2, i % 3);
+                                current = nodes[current.childBaseIndex + flipped];
+                            }
+
+                            // either it's of the same LOD or a higher LOD
+                            if (neighbours.Length == 1) {
+                                if (nodes[neighbours[0]].depth == original.depth) {
+                                    omnidirectionalNeighbourData[omniDirectionalIndexBase + omniDirectionalIndex] = new OctreeOmnidirectionalNeighbourData {
+                                        mode = OctreeOmnidirectionalNeighbourData.Mode.SameLod,
+                                        baseIndex = neighbours[0],
+                                    };
+                                    break;
+                                } else if ((nodes[neighbours[0]].depth) == (original.depth-1)) {
+                                    omnidirectionalNeighbourData[omniDirectionalIndexBase + omniDirectionalIndex] = new OctreeOmnidirectionalNeighbourData {
+                                        mode = OctreeOmnidirectionalNeighbourData.Mode.HigherLod,
+                                        baseIndex = neighbours[0],
+                                    };
+                                    break;
+                                } else {
+                                    Debug.Log($"other={nodes[neighbours[0]].depth}, src={original.depth}");
+                                    Debug.LogError("Bro... where's that 2:1 ratio you were talking about??? :skull:");
+                                }
+                            }
+
+                            // since we assume 2:1 ratio, the node that we're currently at contains 4 of our neighbours (LOD0 whilst we are at LOD1)
+                            for (int c = 0; c < 8; c++) {
+                                if (math.any(triggers == new uint4(c))) {
+                                    neighbours.Enqueue(current.childBaseIndex + c);
+                                }
+                            }
+
+                            int baseIndex = counter.Add(4);
+                            omnidirectionalNeighbourData[omniDirectionalIndexBase + omniDirectionalIndex] = new OctreeOmnidirectionalNeighbourData {
+                                mode = OctreeOmnidirectionalNeighbourData.Mode.LowerLod,
+                                baseIndex = baseIndex,
+                            };
+
+                            for (int c = 0; c < 4; c++) {
+                                neighbourIndices[baseIndex + c] = neighbours[c];
+                            }
+
+                            /*
+                            // mr white I don't feel so good... auuyuyuyuuuuugh
                             for (int f = 0; f < 10000; f++) {
                                 if (pendingNodeIndices.TryDequeue(out int idx)) {
                                     OctreeNode child = nodes[idx];
@@ -143,22 +210,9 @@ namespace jedjoud.VoxelTerrain.Octree {
                                 }
                             }
 
-                            if (neighbours.Length == 1) {
-                                // Either it's of the same LOD or a higher LOD
-                                if (nodes[neighbours[0]].depth == original.depth) {
-                                    omnidirectionalNeighbourData[omniDirectionalIndexBase + omniDirectionalIndex] = new OctreeOmnidirectionalNeighbourData {
-                                        mode = OctreeOmnidirectionalNeighbourData.Mode.SameLod,
-                                        baseIndex = neighbours[0],
-                                    };
-                                } else {
-                                    omnidirectionalNeighbourData[omniDirectionalIndexBase + omniDirectionalIndex] = new OctreeOmnidirectionalNeighbourData {
-                                        mode = OctreeOmnidirectionalNeighbourData.Mode.HigherLod,
-                                        baseIndex = neighbours[0],
-                                    };
-                                }
-                            } else {
-                                // multiple neighbours....
-                            }
+
+                            */
+
                         }
                     } else {
                         // keep going up the tree...

@@ -1,8 +1,10 @@
 using System.Linq;
 using Codice.Client.BaseCommands;
 using Codice.Client.BaseCommands.BranchExplorer;
+using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Octree {
@@ -16,7 +18,8 @@ namespace jedjoud.VoxelTerrain.Octree {
         private NativeHashSet<OctreeNode> newNodesSet;
         public NativeList<OctreeNode> nodesList;
         public NativeList<OctreeOmnidirectionalNeighbourData> omniDirectionalNeighbourDataList;
-        public NativeList<int> neighbourIndices;
+        private NativeCounter neighboursIndicesCounter;
+        public NativeArray<int> neighbourIndices;
 
 
         // only used from inside the job. for some reason, jobs can't dipose of native queues inside of them
@@ -33,8 +36,14 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         public override void CallerStart() {
             nodesList = new NativeList<OctreeNode>(Allocator.Persistent);
-            neighbourIndices = new NativeList<int>(Allocator.Persistent);
             omniDirectionalNeighbourDataList = new NativeList<OctreeOmnidirectionalNeighbourData>(Allocator.Persistent);
+
+            // TODO: change this heuristic for a more tighter fit
+            // currently calculates worst worst case (which is actually impossible but wtv)
+            int worst = 56 * (int)math.pow(8f, (float)maxDepth);
+            neighbourIndices = new NativeArray<int>(worst, Allocator.Persistent);
+            neighboursIndicesCounter = new NativeCounter(Allocator.Persistent);
+
             oldNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             newNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
 
@@ -56,9 +65,9 @@ namespace jedjoud.VoxelTerrain.Octree {
         }
 
         private void Compute() {
+            neighboursIndicesCounter.Count = 0;
             nodesList.Clear();
             newNodesSet.Clear();
-            neighbourIndices.Clear();
             addedNodes.Clear();
             removedNodes.Clear();
 
@@ -80,7 +89,8 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             NeighbourJob neighbourJob = new NeighbourJob {
                 nodes = nodesList,
-                neighbourIndices = neighbourIndices.AsParallelWriter(),
+                neighbourIndices = neighbourIndices,
+                counter = neighboursIndicesCounter,
                 omnidirectionalNeighbourData = omniDirectionalNeighbourDataList.AsDeferredJobArray(),
                 maxDepth = maxDepth,
             };
@@ -132,6 +142,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             nodesList.Dispose();
             neighbourIndices.Dispose();
             omniDirectionalNeighbourDataList.Dispose();
+            neighboursIndicesCounter.Dispose();
         }
 
         private void OnDrawGizmos() {

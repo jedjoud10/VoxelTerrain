@@ -43,7 +43,9 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public Bounds bounds;
         public BitField32 neighbourMask;
-        public BitField32 stitchingMask;
+        public BitField32 highLodMask;
+        public BitField32 lowLodMask;
+        public VoxelChunk[][] lowLodNeighbours;
         public float3 other;
         public uint2 relativeOffsetToLod1;
         public VoxelStitch stitch;
@@ -153,8 +155,22 @@ namespace jedjoud.VoxelTerrain {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
                 int3 offset = (int3)_offset - 1;
 
-                if (stitchingMask.IsSet(j)) {
+                if (highLodMask.IsSet(j)) {
                     Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+            }
+
+            Gizmos.color = Color.cyan;
+            for (int j = 0; j < 27; j++) {
+                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                int3 offset = (int3)_offset - 1;
+
+                if (lowLodMask.IsSet(j)) {
+                    VoxelChunk[] neighbours = lowLodNeighbours[j];
+
+                    foreach (VoxelChunk neighbour in neighbours) {
+                        Gizmos.DrawSphere(neighbour.node.Center, 5f);
+                    }
                 }
             }
 

@@ -134,12 +134,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // All of the chunk neighbours of a higher LOD in the 3 axii
                         // This contains one more chunk ptr that is always set to null (the one at index 13)
                         // since that one represent the source chunk (this)
-                        VoxelChunk[] diffLodNeighbours = new VoxelChunk[27];
-                        BitField32 diffLodMask = new BitField32(0);
-                        
+                        VoxelChunk[] highLodNeighbours = new VoxelChunk[27];
+                        BitField32 highLodMask = new BitField32(0);
+
+                        // All of the chunk neighbours of a lower LOD in the 3 axii
+                        // This contains one more chunk ptr that is always set to null (the one at index 13)
+                        // since that one represent the source chunk (this)
+                        // Since we assume a 2:1 ratio, we will at most have 4 neighbours of a lower LOD in any planes (2 in any edge)
+                        VoxelChunk[][] lowLodNeighbours = new VoxelChunk[27][];
+                        BitField32 lowLodMask = new BitField32(0);
+
                         // Get the neighbour indices from the octree
-                        int baseIndex = src.node.neighbourDataBaseIndex;
-                        NativeSlice<OctreeOmnidirectionalNeighbourData> slice = terrain.octree.omniDirectionalNeighbourDataList.AsArray().Slice(baseIndex, 27);
+                        int omniDirBaseIndex = src.node.neighbourDataBaseIndex;
+                        NativeSlice<OctreeOmnidirectionalNeighbourData> slice = terrain.octree.omniDirectionalNeighbourDataList.AsArray().Slice(omniDirBaseIndex, 27);
 
                         /*
                         int depth = src.node.depth;
@@ -181,7 +188,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                         for (int j = 0; j < 27; j++) {
                             sameLodNeighbours[j] = null;
-                            diffLodNeighbours[j] = null;
+                            highLodNeighbours[j] = null;
+                            lowLodNeighbours[j] = null;
 
                             uint3 _offset = VoxelUtils.IndexToPos(j, 3);
                             int3 offset = (int3)_offset - 1;
@@ -192,24 +200,50 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             }
 
                             // If no valid octree neighbour, skip
-                            if (!slice[j].IsValid())
+                            OctreeOmnidirectionalNeighbourData omni = slice[j];
+                            if (!omni.IsValid())
                                 continue;
 
                             // Octree neighbours if we have multiple
                             // Store 4, since that's the worst case scenario (plane, and multi-res)
-                            Span<OctreeNode> neighbours = stackalloc OctreeNode[10];
+                            Span<OctreeNode> neighbours = stackalloc OctreeNode[4];
 
                             // There are multiple case scenario (same lod, diff lod)
-                            switch (slice[j].mode) {
+                            int baseIndex = omni.baseIndex;
+                            switch (omni.mode) {
                                 case OctreeOmnidirectionalNeighbourData.Mode.SameLod:
-                                    neighbours[0] = terrain.octree.nodesList[slice[j].baseIndex];
+                                    neighbours[0] = terrain.octree.nodesList[baseIndex];
                                     sameLodMask.SetBits(j, true);
                                     break;
                                 case OctreeOmnidirectionalNeighbourData.Mode.HigherLod:
-                                    neighbours[0] = terrain.octree.nodesList[slice[j].baseIndex];
+                                    neighbours[0] = terrain.octree.nodesList[baseIndex];
+                                    highLodMask.SetBits(j, true);
                                     break;
                                 case OctreeOmnidirectionalNeighbourData.Mode.LowerLod:
-                                    // hard...
+                                    bool3 bool3 = offset == 1 | offset == -1;
+                                    int bitmask = math.bitmask(new bool4(bool3, false));
+                                    int bitsSet = math.countbits(bitmask);
+                                    int multiNeighbourCount = 0;
+
+                                    if (bitsSet == 1) {
+                                        multiNeighbourCount = 4;
+                                    } else if (bitsSet == 2) {
+                                        multiNeighbourCount = 2;
+                                    } else if (bitsSet == 3) {
+                                        multiNeighbourCount = 1;
+                                    } else {
+                                        throw new Exception("wut");
+                                    }
+
+                                    lowLodNeighbours[j] = new VoxelChunk[multiNeighbourCount];
+
+                                    for (int c = 0; c < multiNeighbourCount; c++) {
+                                        int index = omni.baseIndex + c;
+                                        OctreeNode neigh = terrain.octree.nodesList[terrain.octree.neighbourIndices[index]];
+                                        lowLodNeighbours[j][c] = terrain.chunks[neigh];
+                                    }
+
+                                    lowLodMask.SetBits(j, true);
                                     break;
                             }
 
@@ -223,7 +257,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         }
 
                         src.neighbourMask = sameLodMask;
-                        src.stitchingMask = diffLodMask;
+                        src.highLodMask = highLodMask;
+                        src.lowLodMask = lowLodMask;
+                        src.lowLodNeighbours = lowLodNeighbours;
+
 
                         // check if we have any neighbours of the same resolution
                         // we only need to look in the pos axii for this one

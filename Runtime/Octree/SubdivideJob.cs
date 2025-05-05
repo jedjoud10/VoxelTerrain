@@ -29,6 +29,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             // go through each node and subdivide again if we can
             // makes us able to take advantage of the octal readback stuff from GPU
+            // TODO: Remove this by being smart with our readback system (aka passing unique chunk scale / offsets as buffer)
             int copy = nodes.Length;
             for (int i = 0; i < copy; i++) {
                 OctreeNode node = nodes[i];
