@@ -46,7 +46,6 @@ namespace jedjoud.VoxelTerrain {
         public BitField32 neighbourMask;
         public BitField32 highLodMask;
         public BitField32 lowLodMask;
-        public VoxelChunk[][] lowLodNeighbours;
         public float3 other;
         public uint2 relativeOffsetToLod1;
         public VoxelStitch stitch;
@@ -129,12 +128,22 @@ namespace jedjoud.VoxelTerrain {
 
             */
 
-            Gizmos.color = Color.white;
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
                 int3 offset = (int3)_offset - 1;
 
                 if (neighbourMask.IsSet(j)) {
+                    Gizmos.color = Color.white;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+
+                if (lowLodMask.IsSet(j)) {
+                    Gizmos.color = Color.cyan;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+
+                if (highLodMask.IsSet(j)) {
+                    Gizmos.color = Color.yellow;
                     Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
                 }
             }
@@ -151,6 +160,7 @@ namespace jedjoud.VoxelTerrain {
             }
             */
 
+            /*
             Gizmos.color = Color.yellow;
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
@@ -174,16 +184,19 @@ namespace jedjoud.VoxelTerrain {
                     }
                 }
             }
+            */
 
             Gizmos.color = Color.white;
             MinMaxAABB bounds = node.Bounds;
             Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
+            /*
 
             Gizmos.color = Color.red;
             for (int j = 0; j < 8; j++) {
                 MinMaxAABB corner = NeighbourJob.CreateCorner(bounds.Min, bounds.Max, j);
                 Gizmos.DrawWireCube(corner.Center, corner.Extents);
             }
+            */
         }
             
         // Get the AABB world bounds of this chunk

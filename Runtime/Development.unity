@@ -530,7 +530,7 @@ Transform:
   m_GameObject: {fileID: 664809940}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -150, y: 150, z: 150}
+  m_LocalPosition: {x: -150, y: 150, z: -150}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -798,7 +798,7 @@ PrefabInstance:
       objectReference: {fileID: 6177338312385691531, guid: bddc1aaa282df6c45aa02798bacfd520, type: 3}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: meshJobsPerTick
-      value: 8
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5361457892440788241, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_LocalPosition.x

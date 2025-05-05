@@ -31,6 +31,7 @@ namespace jedjoud.VoxelTerrain {
         /// </summary>
         /// <param name="coordinate">x,y,z coordinate</param>
         /// <returns>The morton code</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint EncodeMorton32(uint3 coordinate) {
             DebugCheckLimits32(coordinate);
             return (Part1By2_32(coordinate.z) << 2) + (Part1By2_32(coordinate.y) << 1) + Part1By2_32(coordinate.x);
@@ -44,6 +45,7 @@ namespace jedjoud.VoxelTerrain {
         /// <param name="coordinateY">(yyyy)</param>
         /// <param name="coordinateZ">(zzzz)</param>
         /// <returns>The 4 morton codes</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint4 EncodeMorton32(uint4 coordinateX, uint4 coordinateY, uint4 coordinateZ) {
             DebugCheckLimits32(coordinateX);
             DebugCheckLimits32(coordinateY);
@@ -56,6 +58,7 @@ namespace jedjoud.VoxelTerrain {
         /// </summary>
         /// <param name="coordinates"></param>
         /// <returns>The morton code</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong EncodeMorton64(uint3 coordinates) {
             DebugCheckLimits64(coordinates);
             return (Part1By2_64(coordinates.z) << 2) + (Part1By2_64(coordinates.y) << 1) + Part1By2_64(coordinates.x);
@@ -66,6 +69,7 @@ namespace jedjoud.VoxelTerrain {
         /// </summary>
         /// <param name="code">The morton code</param>
         /// <returns>The (x,y,z) coordinate</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint3 DecodeMorton32(uint code) {
             var x = Compact1By2_32(code);
             var y = Compact1By2_32(code >> 1);
@@ -78,6 +82,7 @@ namespace jedjoud.VoxelTerrain {
         /// </summary>
         /// <param name="code">Four morton codes</param>
         /// <returns>For sets of coordinates, packed as (x,x,x,x),(y,y,y,y),(z,z,z,z)</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint4x3 DecodeMorton32(uint4 code) {
             var x = Compact1By2_32(code);
             var y = Compact1By2_32(code >> 1);
@@ -91,6 +96,7 @@ namespace jedjoud.VoxelTerrain {
         /// </summary>
         /// <param name="code"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint3 DecodeMorton64(ulong code) {
             var x = Compact1By2_64(code);
             var y = Compact1By2_64(code >> 1);

@@ -73,18 +73,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Unsafe.NativeCounter.Concurrent counter;
         [ReadOnly] public float voxelScale;
 
-        [ReadOnly]
-        public UnsafePtrList<Voxel> neighbours;
-
-        [ReadOnly]
-        public BitField32 neighbourMask;
-
         // Excuted for each cell within the grid
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPosMorton(index);
             indices[index] = int.MaxValue;
 
-            if (!VoxelUtils.CheckCubicVoxelPosition((int3)position, neighbourMask))
+            if (math.any(position > 62))
                 return;
 
             float3 vertex = float3.zero;
@@ -117,8 +111,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 //float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
 
                 // Get the Voxels of the edge
-                Voxel startVoxel = VoxelUtils.FetchVoxelNeighbours(startIndex, ref voxels, ref neighbours);
-                Voxel endVoxel = VoxelUtils.FetchVoxelNeighbours(endIndex, ref voxels, ref neighbours);
+                Voxel startVoxel = voxels[startIndex];
+                Voxel endVoxel = voxels[endIndex];
 
                 // Create a vertex on the line of the edge
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);

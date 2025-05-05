@@ -73,12 +73,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeParallelHashMap<byte, int>.ReadOnly materialHashMap;
 
-        [ReadOnly]
-        public UnsafePtrList<Voxel> neighbours;
-
-        [ReadOnly]
-        public BitField32 neighbourMask;
-
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint3 basePosition, int index, bool skirts, bool skirtsForceDir) {
             uint3 forward = quadForwardDirection[index];
@@ -86,8 +80,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int baseIndex = VoxelUtils.PosToIndexMorton(basePosition);
             int endIndex = VoxelUtils.PosToIndexMorton(basePosition + forward);
 
-            Voxel startVoxel = VoxelUtils.FetchVoxelNeighbours(baseIndex, ref voxels, ref neighbours);
-            Voxel endVoxel = VoxelUtils.FetchVoxelNeighbours(endIndex, ref voxels, ref neighbours);
+            Voxel startVoxel = voxels[baseIndex];
+            Voxel endVoxel = voxels[endIndex];
 
             bool flip = (endVoxel.density >= 0.0);
 
@@ -140,11 +134,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             if (math.any(position > 62))
                 return;
-
-            /*
-            if (!VoxelUtils.CheckCubicVoxelPosition((int3)position, neighbourMask))
-                return;
-            */
 
             // Allows us to save two voxel fetches (very important)
             ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];

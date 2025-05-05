@@ -92,7 +92,6 @@ namespace jedjoud.VoxelTerrain.Octree {
                 neighbourIndices = neighbourIndices,
                 counter = neighboursIndicesCounter,
                 omnidirectionalNeighbourData = omniDirectionalNeighbourDataList.AsDeferredJobArray(),
-                //maxDepth = maxDepth,
             };
 
             ToHashSetJob toHashSetJob = new ToHashSetJob {

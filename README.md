@@ -27,8 +27,9 @@
   - We can do the same dedupe/lookup system as normal material values.
   - Maybe rename "materials" to shaders and "material variants" to materials? would make more sense...
 - Do some sort of Minecraft-style spreading lighting calculations
-# Current Screenies
+- Meshing (uniform) code has to be COMPLETELY OVERHAULED. So many microoptimizations that I didn't profile / test. Also I just figured out there's a diagnostic tab for Burst in the editor so I can see what couldn't get vectorized. Gonna optimize all of that later 
 
+# Current Screenies
 Runtime terrain gen with some simple props
 ![Screenshot 2025-04-23 162113](https://github.com/user-attachments/assets/69548b73-7dc9-409a-85c0-98f5f2279cc6)
 ![Screenshot 2025-04-23 162127](https://github.com/user-attachments/assets/4e6c4f6e-8cac-418a-8f66-9f0612d59771)

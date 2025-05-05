@@ -144,32 +144,6 @@ namespace jedjoud.VoxelTerrain {
             return (int)Morton.EncodeMorton2D_32(position);
         }
 
-        // Fetches a neighbour's voxel given the given index (mortonated)
-        // This will also return the source voxels if index < VOLUME
-        // Just like FetchVoxelNeighbours, but using a given index instead. Also means that this can only fetch the positive neighbours
-        public static Voxel FetchVoxelNeighbours(int index, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
-            int mortonChunkIndex = index / VOLUME;
-
-            // Local fetch (same thing as index < Volume)
-            if (mortonChunkIndex == 0)
-                return voxels[index];
-
-            // This is where shit gets... shit...
-            unsafe {
-                // Convert the mortonated index to a flat-array index
-                int flatChunkIndex = MORTON_INDEX_LOOKUP_NEIGHBOUR_THINGY_MA_JIG_A_BOB[mortonChunkIndex];
-                Voxel* ptr = neighbours[flatChunkIndex];
-
-                if (ptr != null) {
-                    Voxel* offset = ptr + (index % VOLUME);
-                    return *offset;
-                } else {
-                    Debug.Log("Not good");
-                    return Voxel.Empty;
-                }
-            }
-        }
-
         // Fetch the Voxels with neighbour data fallback, but consider ALL 26 neighbours, not just the ones in the positive axii
         // Solely used for AO, since that needs to fetch data from all the neighbours
         public static Voxel FetchVoxelNeighbours(int3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {

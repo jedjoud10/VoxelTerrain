@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -19,9 +20,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float2> uvs;
         public NativeArray<int> tempTriangles;
         public NativeArray<int> permTriangles;
-
         public UnsafePtrList<Voxel> neighbourPtrs;
-        public UnsafePtrList<Voxel> positiveNeighbourPtrs;
 
         // Native buffer for mesh generation data
         public NativeArray<int> indices;
@@ -45,7 +44,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
-        public const int INNER_LOOP_BATCH_COUNT = 128;
+        public const int INNER_LOOP_BATCH_COUNT = 64;
 
         internal MeshJobHandler(VoxelMesher mesher) {
             this.mesher = mesher;
@@ -81,10 +80,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // We can't discard 0,0,0 since we start at -1,-1,-1, which kinda makes remapping hard. Wtv
             neighbourPtrs = new UnsafePtrList<Voxel>(27, Allocator.Persistent);
 
-            // We CAN discard 0,0,0 (index=0) since we start there! so the first index now is the neighbour in the x direction
-            // DOES NOT INCLUDE SELF!!!
-            positiveNeighbourPtrs = new UnsafePtrList<Voxel>(7, Allocator.Persistent);
-
             buckets = new NativeArray<uint>(8, Allocator.Persistent);
             bounds = new NativeArray<float3>(2, Allocator.Persistent);
         }
@@ -116,8 +111,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             CornerJob cornerJob = new CornerJob {
                 voxels = voxels,
                 enabled = enabled,
-                neighbours = neighbourPtrs,
-                neighbourMask = mask,
             };
 
             // Welcome back material job!
@@ -146,8 +139,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uvs = uvs,
                 counter = counter,
                 voxelScale = voxelSizeFactor,
-                neighbours = neighbourPtrs,
-                neighbourMask = mask,
             };
 
             // Copy boundary vertices and indices to the stitching object for later stitching (at v=62)
@@ -197,8 +188,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 triangles = tempTriangles,
                 materialHashMap = materialHashMap.AsReadOnly(),
                 materialCounter = materialCounter,
-                neighbours = neighbourPtrs,
-                neighbourMask = mask,
             };
 
             // Create sum job to calculate offsets for each material type 
@@ -275,8 +264,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Set mesh shared vertices
             mesh.Clear();
-
-            
 
             // TODO: batch this
             Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(1);
@@ -358,7 +345,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             vertexAttributeDescriptors.Dispose();
             enabled.Dispose();
             voxelCounters.Dispose();
-            positiveNeighbourPtrs.Dispose();
             neighbourPtrs.Dispose();
             buckets.Dispose();
             boundaryCounter.Dispose();

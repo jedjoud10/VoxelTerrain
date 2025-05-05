@@ -38,12 +38,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // TODO: make this faster. I still feel like 5ms is too slow for this shit
         // I most definitely caved in for the micro optimizations kek. I need to rework the whole CPU side mesher jobs...
         public unsafe void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPosMorton(index);
-
-            if (!VoxelUtils.CheckPosition((int3)position, neighbourMask))
-                return;
-            
-            Voxel voxel = VoxelUtils.FetchVoxelNeighbours(VoxelUtils.PosToIndexMorton(position), ref voxels, ref neighbours);
+            Voxel voxel = voxels[index];
             byte material = voxel.material;
 
             int bucketIndex = material / 32;
