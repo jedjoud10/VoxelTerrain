@@ -28,6 +28,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<byte> enabled;
         public Unsafe.NativeMultiCounter countersQuad;
         public Unsafe.NativeCounter counter;
+        public Unsafe.NativeCounter boundaryCounter;
         public Unsafe.NativeMultiCounter voxelCounters;
 
         // Native buffer for handling multiple materials
@@ -64,6 +65,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             enabled = new NativeArray<byte>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             countersQuad = new Unsafe.NativeMultiCounter(materialCount, Allocator.Persistent);
             counter = new Unsafe.NativeCounter(Allocator.Persistent);
+            boundaryCounter = new Unsafe.NativeCounter(Allocator.Persistent);
 
             // Native buffer for handling multiple materials
             materialHashMap = new NativeParallelHashMap<byte, int>(materialCount, Allocator.Persistent);
@@ -94,6 +96,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             countersQuad.Reset();
             counter.Count = 0;
             materialCounter.Count = 0;
+            boundaryCounter.Count = 0;
             materialHashSet.Clear();
             materialHashMap.Clear();
             bounds[0] = new float3(VoxelUtils.SIZE * voxelSizeFactor);
@@ -145,6 +148,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 voxelScale = voxelSizeFactor,
                 neighbours = neighbourPtrs,
                 neighbourMask = mask,
+            };
+
+            // Copy boundary vertices and indices to the stitching object for later stitching (at v=62)
+            CopyPositiveBoundaryVerticesJob copyBoundaryVertices = new CopyPositiveBoundaryVerticesJob {
+                counter = boundaryCounter,
+                indices = indices,
+                vertices = vertices,
+                boundaryIndices = request.chunk.stitch.boundaryIndices,
+                boundaryVertices = request.chunk.stitch.boundaryVertices,
+            };
+
+            // Copy boundary voxels as well, but these ones are at v=63
+            CopyPositiveBoundaryVoxelsJob copyBoundaryVoxels = new CopyPositiveBoundaryVoxelsJob {
+                voxels = voxels,
+                boundaryVoxels = request.chunk.stitch.boundaryVoxels,
             };
 
             // Calculate vertex ambient occlusion 
@@ -202,7 +220,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Material job and indexer job
             JobHandle materialJobHandle = materialJob.Schedule(VoxelUtils.VOLUME, 2048 * 8 * INNER_LOOP_BATCH_COUNT, dependency);
             JobHandle materialIndexerJobHandle = materialIndexerJob.Schedule(materialJobHandle);
-
+            
             // Start the corner job and material job
             JobHandle cornerJobHandle = cornerJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, dependency);
 
@@ -211,6 +229,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
             JobHandle aoJobHandle = aoJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
+
+            // Copy the boundary data. One job runs at size=64 and other runs at size=63
+            JobHandle copyBoundaryVerticesHandle = copyBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(63), 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
+            JobHandle copyBoundaryVoxelsHandle = copyBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048 * INNER_LOOP_BATCH_COUNT, dependency);
 
             // Start the quad job
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
@@ -222,7 +244,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Start the copy job
             JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, sumJobHandle);
 
-            finalJobHandle = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, aoJobHandle);
+            JobHandle cpyBoundaryData = JobHandle.CombineDependencies(copyBoundaryVerticesHandle, copyBoundaryVoxelsHandle);
+            JobHandle temp = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, cpyBoundaryData);
+            finalJobHandle = JobHandle.CombineDependencies(temp, aoJobHandle);
             return finalJobHandle;
         }
 
@@ -337,6 +361,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             positiveNeighbourPtrs.Dispose();
             neighbourPtrs.Dispose();
             buckets.Dispose();
+            boundaryCounter.Dispose();
             bounds.Dispose();
         }
     }

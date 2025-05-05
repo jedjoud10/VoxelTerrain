@@ -6,10 +6,7 @@ using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
-    public struct CopyPositiveBoundaryDataJob : IJobParallelFor {
-        [ReadOnly]
-        public NativeArray<Voxel> voxels;
-
+    public struct CopyPositiveBoundaryVerticesJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<int> indices;
 
@@ -18,9 +15,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public Unsafe.NativeCounter.Concurrent counter;
 
-        // Voxels|Indices at the (x=63 || y=63 || z=63) boundary
-        [WriteOnly]
-        public NativeArray<Voxel> boundaryVoxels;
+        // Indices at the (x=62 || y=62 || z=62) boundary
         [WriteOnly]
         public NativeArray<int> boundaryIndices;
 
@@ -30,10 +25,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> boundaryVertices;
 
         public void Execute(int index) {
-            int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 64));
-            boundaryVoxels[index] = voxels[morton];
-
+            int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 63));
+            
             int oldVertexIndex = indices[morton];
+
+            boundaryIndices[index] = int.MaxValue;
+            if (oldVertexIndex == int.MaxValue)
+                return;
 
             int newVertexIndex = counter.Increment();
             boundaryIndices[index] = newVertexIndex;
@@ -41,4 +39,4 @@ namespace jedjoud.VoxelTerrain.Meshing {
             boundaryVertices[newVertexIndex] = vertices[oldVertexIndex];
         }
     }
-}
+} 

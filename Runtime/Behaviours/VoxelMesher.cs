@@ -21,10 +21,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public Action<VoxelChunk> callback;
         }
 
-        internal struct StitchRequest {
-            public VoxelChunk chunk;
-        }
-
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
 
@@ -111,11 +107,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     if (queuedMeshingRequests.TryDequeue(out MeshingRequest job)) {
                         meshingRequests.Remove(job);
 
-                        // Create a mesh for this chunk (no stitching involved)
-                        Profiler.BeginSample("Begin Mesh Job");
-                        BeginJob(handlers[i], job);
-                        Profiler.EndSample();
-
                         // Always create a stitching mesh no matter what
                         VoxelChunk chunk = job.chunk;
                         GameObject stitchGo = Instantiate(stichingPrefab, chunk.transform);
@@ -123,6 +114,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         stitchGo.transform.localScale = Vector3.one;
                         chunk.stitch = stitchGo.GetComponent<VoxelStitch>();
                         chunk.stitch.Init();
+                        chunk.stitch.source = chunk;
+
+                        // Create a mesh for this chunk (no stitching involved)
+                        // We do need to keep some boundary data for *upcomging* stitching though
+                        Profiler.BeginSample("Begin Mesh Job");
+                        BeginJob(handlers[i], job);
+                        Profiler.EndSample();
 
                         VoxelChunk src = job.chunk;
                         VoxelStitch stitch = src.stitch;
@@ -193,9 +191,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1), but this time to update *their* stitch values
                         // we need to look in the negative direction only, since LOD1 chunks that need to be LoToHi will be in that direction
                         FetchNegativeNeighboursLod1(src, diffLodNeighbours, diffLodMask);
-
-                        // Create a voxel adaptation request
-                        pendingPaddingVoxelSamplingRequests.Add(stitch);
                     }
                 }
             }
@@ -204,11 +199,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = pendingPaddingVoxelSamplingRequests.Count - 1; i >= 0; i--) {
                 VoxelStitch stitch = pendingPaddingVoxelSamplingRequests[i];
             
+                /*
                 // When we can, create the extra padding voxels using downsampled or upsampled data from the neighbours
                 if (stitch.CanSampleExtraVoxels()) {
                     Debug.Log("thingimante");
+                    stitch.SamplePaddingVoxels();
                     pendingPaddingVoxelSamplingRequests.RemoveAt(i);
                 }
+                */
             }
 
             // If we have LOD1 neighbours in the negative directions, they also need to create their own stitching mesh

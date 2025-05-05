@@ -8,6 +8,7 @@ using Unity.Mathematics;
 using UnityEngine.Profiling;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections.LowLevel.Unsafe;
+using jedjoud.VoxelTerrain.Unsafe;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // We only do stitching in the positive x,y,z directions
@@ -146,6 +147,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
+        // Source chunk
+        public VoxelChunk source;
+
         // X,Y,Z
         public Plane[] planes;
         
@@ -187,21 +191,27 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private bool adaptedVoxels;
 
         // Copied indices from the source chunk mesh
-        // Packed so we only store the indices on the boundary (x=63 | y=63 | z=63)
+        // Packed so we only store the indices on the boundary (x=62 | y=62 | z=62)
         public NativeArray<int> boundaryIndices;
 
         // Also copied from the source mesh, but this time to match up with the boundary values since these are packed
         public NativeArray<float3> boundaryVertices;
 
         public void Init() {
+            int smallerBoundary = StitchUtils.CalculateBoundaryLength(63);
             int boundary = StitchUtils.CalculateBoundaryLength(64);
             int paddedBoundary = StitchUtils.CalculateBoundaryLength(65);
 
-
+            // limit=64
             extraVoxels = new NativeArray<Voxel>(paddedBoundary, Allocator.Persistent);
-            boundaryIndices = new NativeArray<int>(boundary, Allocator.Persistent);
-            boundaryVertices = new NativeArray<float3>(boundary, Allocator.Persistent);
+            
+            // limit=63
             boundaryVoxels = new NativeArray<Voxel>(boundary, Allocator.Persistent);
+            
+            // limit=62
+            boundaryIndices = new NativeArray<int>(smallerBoundary, Allocator.Persistent);
+            boundaryVertices = new NativeArray<float3>(smallerBoundary, Allocator.Persistent);
+            
             adaptedVoxels = false;
 
             // Set the boundary helpers to null since we haven't set them up yet
@@ -226,10 +236,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         struct GenericCorner {
-
-        }
-
-        public void SamplePaddingVoxels() {
 
         }
 

@@ -64,13 +64,24 @@ namespace jedjoud.VoxelTerrain {
 
             float s = node.size / VoxelUtils.SIZE;
 
+            
+            /*
             for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
                 uint3 coord = StitchUtils.BoundaryIndexToPos(i, 64);
-                int index = VoxelUtils.PosToIndexMorton(coord);
-                float d = voxels[index].density;
+                float d = stitch.boundaryVoxels[i].density;
                 if (d > -4 && d < 4) {
                     Gizmos.color = d > 0f ? Color.red : Color.green;
                     Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
+                }
+            }
+            */
+
+            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
+                int vertexIndex = stitch.boundaryIndices[i];
+
+                if (vertexIndex != int.MaxValue) {
+                    float3 vertex = stitch.boundaryVertices[vertexIndex];
+                    Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
                 }
             }
 
