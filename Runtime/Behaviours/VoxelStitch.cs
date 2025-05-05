@@ -171,7 +171,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // This requires us to have access to all the neighbouring chunks in the positive axii in 3D ABD also that they have valid voxel data
         public bool CanSampleExtraVoxels() {
             bool valid = planes.All(x => x != null) && edges.All(x => x != null) && corner != null;
-
+            
             if (!valid)
                 return false;
 

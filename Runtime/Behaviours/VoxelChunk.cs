@@ -50,14 +50,18 @@ namespace jedjoud.VoxelTerrain {
         public uint2 relativeOffsetToLod1;
         public VoxelStitch stitch;
         public bool debugValues;
-
-        // ONLY STORED ON THE LOD1 CHUNK.
-        public NativeArray<Voxel> blurredPositiveXFacingExtraVoxelsFlat;
+        public NativeArray<int> negativeBoundaryIndices;
+        public NativeArray<float3> negativeBoundaryVertices;
 
 
         // Check if the chunk has valid voxel data 
         public bool HasVoxelData() {
-            return voxels.IsCreated && state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp;
+            return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
+        }
+
+        // Check if the chunk has valid mesh data (at the x=y=z=0 boundary at least)
+        public bool HasMeshData() {
+            return negativeBoundaryIndices.IsCreated && negativeBoundaryVertices.IsCreated && state == ChunkState.Done;
         }
 
         public void OnDrawGizmosSelected() {
@@ -66,67 +70,45 @@ namespace jedjoud.VoxelTerrain {
 
             float s = node.size / VoxelUtils.SIZE;
 
-            /*
-            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
-                uint3 coord = StitchUtils.BoundaryIndexToPos(i, 64);
-                float d = stitch.boundaryVoxels[i].density;
-                if (d > -4 && d < 4) {
-                    Gizmos.color = d > 0f ? Color.red : Color.green;
-                    Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
-                }
-            }
-
-            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
-                int vertexIndex = stitch.boundaryIndices[i];
-
-                if (vertexIndex != int.MaxValue) {
-                    float3 vertex = stitch.boundaryVertices[vertexIndex];
-                    Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
-                }
-            }
-
-            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
-                uint3 coord = StitchUtils.BoundaryIndexToPos(i, 65);
-                float d = stitch.extraVoxels[i].density;
-                if (d > -4 && d < 4) {
-                    Gizmos.color = d > 0f ? Color.black : Color.white;
-                    Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
-                }
-            }
-            */
-
-            /*
             if (debugValues) {
-                Gizmos.color = Color.red;
-                if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
-                    for (int i = 0; i < blurredPositiveXFacingExtraVoxelsFlat.Length; i++) {
-                        float2 _pos = (float2)VoxelUtils.IndexToPosMorton2D(i);
-                        float3 pos1 = new float3(VoxelUtils.SIZE, _pos);
-                        float d1 = blurredPositiveXFacingExtraVoxelsFlat[i].density;
-
-                        if (d1 > -4 && d1 < 4) {
-                            Gizmos.color = d1 > 0f ? Color.white : Color.black;
-                            Gizmos.DrawSphere(pos1 * s + node.position, 0.05f);
-                        }
+                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
+                    uint3 coord = StitchUtils.BoundaryIndexToPos(i, 64);
+                    float d = stitch.boundaryVoxels[i].density;
+                    if (d > -4 && d < 4) {
+                        Gizmos.color = d > 0f ? Color.red : Color.green;
+                        Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
                     }
                 }
 
-                Gizmos.color = Color.white;
-                for (int i = 0; i < voxels.Length; i++) {
-                    float d = voxels[i].density;
-                    float3 p = (float3)VoxelUtils.IndexToPosMorton(i);
-                    if (d > -4 && d < 4 && (p.x == 0 || p.x == 1 || p.x == 63)) {
-                        Gizmos.color = d > 0f ? Color.red : Color.green;
-                        Gizmos.DrawSphere(p * s + node.position, 0.05f);
+                Gizmos.color = Color.blue;
+                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
+                    int vertexIndex = stitch.boundaryIndices[i];
+
+                    if (vertexIndex != int.MaxValue) {
+                        float3 vertex = stitch.boundaryVertices[vertexIndex];
+                        Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
+                    }
+                }
+
+                Gizmos.color = Color.green;
+                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
+                    int vertexIndex = negativeBoundaryIndices[i];
+
+                    if (vertexIndex != int.MaxValue) {
+                        float3 vertex = negativeBoundaryVertices[vertexIndex];
+                        Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
+                    }
+                }
+
+                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
+                    uint3 coord = StitchUtils.BoundaryIndexToPos(i, 65);
+                    float d = stitch.extraVoxels[i].density;
+                    if (d > -4 && d < 4) {
+                        Gizmos.color = d > 0f ? Color.black : Color.white;
+                        Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
                     }
                 }
             }
-            */
-
-
-            /*
-
-            */
 
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
@@ -239,12 +221,12 @@ namespace jedjoud.VoxelTerrain {
 
         public void Dispose() {
             voxels.Dispose();
-
-            if (blurredPositiveXFacingExtraVoxelsFlat.IsCreated) {
-                blurredPositiveXFacingExtraVoxelsFlat.Dispose();
-            }
-
             stitch?.Dispose();
+
+            if (negativeBoundaryIndices.IsCreated) {
+                negativeBoundaryIndices.Dispose();
+                negativeBoundaryVertices.Dispose();
+            }
         }
     }
 }

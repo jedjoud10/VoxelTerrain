@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Profiling;
 using static jedjoud.VoxelTerrain.VoxelChunk;
@@ -136,6 +137,8 @@ namespace jedjoud.VoxelTerrain {
                     // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
                     // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
                     chunk.voxels = FetchVoxelsContainer();
+                    chunk.negativeBoundaryIndices = new NativeArray<int>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
+                    chunk.negativeBoundaryVertices = new NativeArray<float3>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
 
                     // Begin the voxel pipeline by generating the voxels for this chunk
                     readback.GenerateVoxels(chunk, ref all);

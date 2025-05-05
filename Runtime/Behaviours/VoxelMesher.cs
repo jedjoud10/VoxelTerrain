@@ -249,7 +249,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         FetchPositiveNeighboursMultiNeighbour(stitch, lowLodNeighbours, lowLodMask);
 
                         // Tell the chunk to wait until all neighbours have voxel data to begin sampling the extra padding voxels
-                        //pendingPaddingVoxelSamplingRequests.Add(stitch);
+                        pendingPaddingVoxelSamplingRequests.Add(stitch);
                     }
                 }
             }
@@ -260,183 +260,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             
                 // When we can, create the extra padding voxels using downsampled or upsampled data from the neighbours
                 if (stitch.CanSampleExtraVoxels()) {
-                    Debug.Log("thingimante");
-
-                    /*
                     unsafe {
                         stitch.DoTheSamplinThing();
                     }
-                    */
-
                     pendingPaddingVoxelSamplingRequests.RemoveAt(i);
                 }
             }
-
-            // If we have LOD1 neighbours in the negative directions, they also need to create their own stitching mesh
-            // 4, 10, 12
-
-            /*
-            // Negative X
-            if (req.stitchMask.IsSet(4)) {
-
-            }
-
-            // Negative 
-            if (req.stitchMask.IsSet(4)) {
-
-            }
-
-            // Negative Z
-            if (req.stitchMask.IsSet(4)) {
-
-            }
-            */
-
-            /*
-            // For testing only:
-            // src data is coming from LOD0. 
-            // dst data is onto LOD1; face that is facing the positive x axis (padding)
-            if (!result.stitchMask.IsSet(14)) {
-                return;
-            }
-
-            // we only care about going to the NEGATIVE directions... (-x, -y, -z)
-            VoxelChunk lod0 = result.chunk;
-
-            OctreeNode test = result.stitchingNeighbours[14];
-            VoxelChunk lod1 = terrain.chunks[test];
-            lod0.other = test.Center;
-            lod0.blurredPositiveXFacingExtraVoxelsFlat = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent);
-
-            // Create a new gameobject specific for holding the stitching mesh data
-            if (lod1.stitch == null) {
-                lod1.blurredPositiveXFacingExtraVoxelsFlat = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent);
-
-
-            }
-
-            // calculate offset
-            int quadrantVolume = VoxelUtils.SIZE * VoxelUtils.SIZE / 4;
-            float3 srcPos = lod0.node.position;
-            float3 dstPos = lod1.node.position;
-            uint2 offset = (uint2)((srcPos - dstPos).yz / lod0.node.size);
-
-            // store this chunk for later stitching
-            int localIndex = VoxelUtils.PosToIndexMorton2D(offset);
-            lod0.relativeOffsetToLod1 = offset;
-            lod1.stitch.lod0NeighboursNegativeX[localIndex] = lod0;
-            //lod1.stitch.lod0NeighboursPositiveX[] = lod0;
-
-            // fetch the voxels from the source chunk and blur them
-            int mortonOffset = VoxelUtils.PosToIndexMorton2D(offset) * quadrantVolume;
-            //Debug.Log(mortonOffset);
-            */
-
-            /*
-            FaceVoxelsDownsampleJob downsample = new FaceVoxelsDownsampleJob() {
-                lod0Voxels = lod0.voxels,
-                dstFace = lod1.blurredPositiveXFacingExtraVoxelsFlat,
-                mortonOffset = mortonOffset,
-            };
-            */
-
-            /*
-            FaceVoxelsUpsampleJob upsample = new FaceVoxelsUpsampleJob() {
-                dstFace = lod0.blurredPositiveXFacingExtraVoxelsFlat,
-                lod1Voxels = lod1.voxels,
-                relativeLod1Offset = offset,
-            };
-
-            upsample.Schedule(VoxelUtils.SIZE * VoxelUtils.SIZE, 1024).Complete();
-            */
-
-            // since we will be blurring each 2x2x2 region (from LOD0) into a single voxel (into LOD1) we will at max be writing to a single "quadrant" of the face
-            //copy.Schedule(quadrantVolume, 1024).Complete();
-            //lod1.stitch.neighbourChunkBlurredSections++;
-
-
-            /*
-            // we can do stitching if LOD1 has fully blurred out data
-            if (lod1.stitch.neighbourChunkBlurredSections == 4) {
-                stitcher.DoThingyMajig(result, lod1, lod1.stitch);
-            }
-            */
-
         }
 
-
-        /*
-        private static void FetchNegativeNeighboursLod1(VoxelChunk src, VoxelChunk[] diffLodNeighbours, BitField32 diffLodMask) {
-            VoxelChunk lod0 = src;
-
-            // skip j=7 since that's source
-            for (int j = 0; j < 7; j++) {
-                uint3 zeroToOneOffset = VoxelUtils.IndexToPos(j, 2);
-                int zeroToTwoIndex = VoxelUtils.PosToIndex(zeroToOneOffset, 3);
-                VoxelChunk lod1 = diffLodNeighbours[zeroToTwoIndex];
-                uint3 offset = VoxelUtils.IndexToPos(zeroToTwoIndex, 3);
-
-                // set the corresponding plane/edge/corner
-                if (diffLodMask.IsSet(zeroToTwoIndex)) {
-                    // do the negative direction check
-                    bool3 bool3 = offset == 0;
-
-                    // 1=plane, 2=edge, 3=corner
-                    int bitmask = math.bitmask(new bool4(bool3, false));
-                    int bitsSet = math.countbits(bitmask);
-
-                    // Calculate relative offset in 3D
-                    float3 srcPos = src.node.position;
-                    float3 dstPos = lod1.node.position;
-                    uint3 relativeOffset = (uint3)((srcPos - dstPos) / VoxelUtils.SIZE);
-                    //Debug.Log($"src={srcPos}, lod1={dstPos}, rel={relativeOffset}");
-
-                    if (bitsSet == 1) {
-                        // check which axis is set
-                        int dir = math.tzcnt(bitmask);
-
-                        // Update LOD1's plane
-                        if (lod1.stitch.planes[dir] == null) {
-                            lod1.stitch.planes[dir] = new VoxelStitch.LoToHiPlane {
-                                lod0Neighbours = new VoxelChunk[4],
-                            };
-                        }
-
-                        // Map the 3D position's to the face 2D flattened position
-                        uint2 flattenedOffset = StitchUtils.FlattenToFaceRelative(relativeOffset, dir);
-
-                        // Set the LOD0 neighbour (this) using calculated offset index (2D plane)
-                        int index = VoxelUtils.PosToIndexMorton2D(flattenedOffset);
-                        VoxelStitch.LoToHiPlane plane = lod1.stitch.planes[dir] as VoxelStitch.LoToHiPlane;
-                        plane.lod0Neighbours[index] = lod0;
-                    } else if (bitsSet == 2) {
-                        // check which axis is NOT set
-                        int inv = (~bitmask) & 0b111;
-                        int dir = math.tzcnt(inv);
-
-                        // Update LOD1's edge
-                        if (lod1.stitch.edges[dir] == null) {
-                            lod1.stitch.edges[dir] = new VoxelStitch.LoToHiEdge {
-                                lod0Neighbours = new VoxelChunk[2],
-                            };
-                        }
-
-                        // Map the 3D position's to the edge 1D flattened index
-                        uint index = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
-                        VoxelStitch.LoToHiEdge edge = lod1.stitch.edges[dir] as VoxelStitch.LoToHiEdge;
-                        Debug.Log(edge == null);
-                        Debug.Log($"lod0={lod0.node.position}, lod1={lod1.node.position}", lod0.gameObject);
-                        edge.lod0Neighbours[index] = lod0;
-                    } else {
-                        // Update LOD1's corner. There can only be one corner piece so we don't need to check for this one
-                        lod1.stitch.corner = new VoxelStitch.LoToHiCorner {
-                            lod0Neighbour = lod0,
-                        };
-                    }
-                }
-            }
-        }
-        */
 
         // Sets the appropriate plane/edge/corner values with the given neighbour data and neighbour mask data
         // Only works with single neighbour systems, so only with Uniform or HiToLow
@@ -500,6 +331,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                         // sort the neighbours based on their face relative local index
                         VoxelChunk[] sortedNeighbours = new VoxelChunk[4];
+
                         for (int c = 0; c < 4; c++) {
                             int neighbourIndex = multiNeighbourIndices[zeroToTwoIndex][c];
                             OctreeNode neighbourNode = terrain.octree.nodesList[neighbourIndex];
@@ -519,7 +351,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         int inv = (~bitmask) & 0b111;
                         int dir = math.tzcnt(inv);
 
-                        VoxelChunk[] sortedNeighbours = new VoxelChunk[4];
+                        VoxelChunk[] sortedNeighbours = new VoxelChunk[2];
                         for (int c = 0; c < 2; c++) {
                             int neighbourIndex = multiNeighbourIndices[zeroToTwoIndex][c];
                             OctreeNode neighbourNode = terrain.octree.nodesList[neighbourIndex];

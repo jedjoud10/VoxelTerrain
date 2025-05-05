@@ -68,6 +68,20 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             EditorGUILayout.LabelField($"Corner: {t}");
             EditorGUI.indentLevel--;
+
+            EditorGUILayout.LabelField($"Sigma: ");
+            EditorGUI.indentLevel++;
+
+            for (int i = 0; i < 3; i++) {
+                EditorGUILayout.LabelField($"Plane {i}: {stitch.planes[i].HasVoxelData()}");
+            }
+
+            for (int i = 0; i < 3; i++) {
+                EditorGUILayout.LabelField($"Edge {i}: {stitch.edges[i].HasVoxelData()}");
+            }
+
+            EditorGUILayout.LabelField($"Corner: {stitch.corner.HasVoxelData()}");
+            EditorGUI.indentLevel--;
         }
     }
 }

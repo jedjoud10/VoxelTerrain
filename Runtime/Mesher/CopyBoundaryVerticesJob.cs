@@ -6,7 +6,7 @@ using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
-    public struct CopyPositiveBoundaryVerticesJob : IJobParallelFor {
+    public struct CopyBoundaryVerticesJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<int> indices;
 
@@ -24,8 +24,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<float3> boundaryVertices;
 
+        // Whether we copy the data for the positive or negative boundary
+        public bool negative;
+
         public void Execute(int index) {
-            int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 63));
+            int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 63, !negative));
             
             int oldVertexIndex = indices[morton];
 
