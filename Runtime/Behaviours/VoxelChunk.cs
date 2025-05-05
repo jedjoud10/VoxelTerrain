@@ -65,7 +65,6 @@ namespace jedjoud.VoxelTerrain {
             float s = node.size / VoxelUtils.SIZE;
 
             
-            /*
             for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
                 uint3 coord = StitchUtils.BoundaryIndexToPos(i, 64);
                 float d = stitch.boundaryVoxels[i].density;
@@ -74,7 +73,6 @@ namespace jedjoud.VoxelTerrain {
                     Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
                 }
             }
-            */
 
             for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
                 int vertexIndex = stitch.boundaryIndices[i];
@@ -85,6 +83,14 @@ namespace jedjoud.VoxelTerrain {
                 }
             }
 
+            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
+                uint3 coord = StitchUtils.BoundaryIndexToPos(i, 65);
+                float d = stitch.extraVoxels[i].density;
+                if (d > -4 && d < 4) {
+                    Gizmos.color = d > 0f ? Color.black : Color.white;
+                    Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
+                }
+            }
 
             /*
             if (debugValues) {

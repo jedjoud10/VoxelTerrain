@@ -1,5 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
+using Codice.Client.BaseCommands.WkStatus.Printers;
+using jedjoud.VoxelTerrain.Meshing;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -47,8 +49,8 @@ namespace jedjoud.VoxelTerrain {
 
         // Flatten a 3D position to an edge 1D index using a given direction axis
         // dir order = X,Y,Z
-        public static int FlattenToEdgeRelative(uint3 position, int dir) {
-            return (int)position[dir];
+        public static uint FlattenToEdgeRelative(uint3 position, int dir) {
+            return position[dir];
         }
 
         // Unflatten a 1D index to an 3D position using a given direction axis
@@ -103,6 +105,59 @@ namespace jedjoud.VoxelTerrain {
             }
 
             throw new Exception();
+        }
+
+        // type=0 -> uniform (normal)
+        // type=1 -> lotohi (downsample)
+        // type=2 -> hitolo (upsample)
+        private unsafe static Voxel SamplePlaneUsingType(uint3 paddingPosition, uint type, int dir, ref VoxelStitch.JobData data) {
+            uint3 flatPosition = paddingPosition;
+            flatPosition[dir] = 0;
+
+            if (type == 0) {
+                Voxel* voxels = data.planes[dir].uniform;
+                Voxel voxel = *(voxels + VoxelUtils.PosToIndexMorton(flatPosition));
+                return voxel;
+            } else if (type == 1) {
+                uint2 flattened = FlattenToFaceRelative(paddingPosition, dir);
+                int mortonOffset = VoxelUtils.PosToIndexMorton2D(flattened / 32);
+                Voxel* voxels = data.planes[dir].lod0s[mortonOffset];
+                Voxel voxel = *(voxels + VoxelUtils.PosToIndexMorton((flatPosition * 2) % 64));
+                return voxel;
+            } else if (type == 2) {
+                return Voxel.Empty;
+            }
+
+            return Voxel.Empty;
+        }
+
+        // Fetch a voxel at the given size=65 padding position
+        // Requires the neighbour stuff from the stitcher to be calculated and converted to raw pointers
+        // Handles downsampling/upsampling of data automatically
+        public static Voxel Sample(uint3 paddingPosition, ref VoxelStitch.JobData data) {
+            // 1=plane, 2=edge, 3=corner
+            bool3 bool3 = paddingPosition == 64;
+            int bitmask = math.bitmask(new bool4(bool3, false));
+            int bitsSet = math.countbits(bitmask);
+
+            if (bitsSet == 1) {
+                // check which axis is set
+                int dir = math.tzcnt(bitmask);
+                uint type = data.state.GetBits(dir * 2, 2);
+                return SamplePlaneUsingType(paddingPosition, type, dir, ref data);
+            } else if (bitsSet == 2) {
+                // check which axis is NOT set
+                int inv = (~bitmask) & 0b111;
+                int dir = math.tzcnt(inv);
+
+            } else {
+                // corner case
+
+            }
+
+            return new Voxel() {
+                density = (half)(-100f),
+            };
         }
     }
 }

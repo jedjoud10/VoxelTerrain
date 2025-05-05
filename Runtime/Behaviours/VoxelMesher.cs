@@ -191,6 +191,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1), but this time to update *their* stitch values
                         // we need to look in the negative direction only, since LOD1 chunks that need to be LoToHi will be in that direction
                         FetchNegativeNeighboursLod1(src, diffLodNeighbours, diffLodMask);
+
+                        // Tell the chunk to wait until all neighbours have voxel data to begin sampling the extra padding voxels
+                        pendingPaddingVoxelSamplingRequests.Add(stitch);
                     }
                 }
             }
@@ -199,14 +202,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = pendingPaddingVoxelSamplingRequests.Count - 1; i >= 0; i--) {
                 VoxelStitch stitch = pendingPaddingVoxelSamplingRequests[i];
             
-                /*
                 // When we can, create the extra padding voxels using downsampled or upsampled data from the neighbours
                 if (stitch.CanSampleExtraVoxels()) {
                     Debug.Log("thingimante");
-                    stitch.SamplePaddingVoxels();
+
+                    unsafe {
+                        stitch.DoTheSamplinThing();
+                    }
+
                     pendingPaddingVoxelSamplingRequests.RemoveAt(i);
                 }
-                */
             }
 
             // If we have LOD1 neighbours in the negative directions, they also need to create their own stitching mesh
@@ -359,7 +364,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         }
 
                         // Map the 3D position's to the edge 1D flattened index
-                        int index = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
+                        uint index = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
                         VoxelStitch.LoToHiEdge edge = lod1.stitch.edges[dir] as VoxelStitch.LoToHiEdge;
                         edge.lod0Neighbours[index] = lod0;
                     } else {
@@ -387,15 +392,23 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     int bitmask = math.bitmask(new bool4(bool3, false));
                     int bitsSet = math.countbits(bitmask);
 
+                    // Calculate relative offset in 3D
+                    // Only needed when hiToLow is set to true
+                    float3 srcPos = stitch.source.node.position;
+                    float3 dstPos = neighbour.node.position;
+                    uint3 relativeOffset = (uint3)((srcPos - dstPos) / VoxelUtils.SIZE);
+
                     if (bitsSet == 1) {
                         // check which axis is set
                         int dir = math.tzcnt(bitmask);
-                        stitch.planes[dir] = VoxelStitch.Plane.CreateWithNeighbour(neighbour, hiToLow);
+                        uint2? relativePlaneOffset = hiToLow ? StitchUtils.FlattenToFaceRelative(relativeOffset, dir) : null;
+                        stitch.planes[dir] = VoxelStitch.Plane.CreateWithNeighbour(neighbour, hiToLow, relativePlaneOffset);
                     } else if (bitsSet == 2) {
                         // check which axis is NOT set
                         int inv = (~bitmask) & 0b111;
                         int dir = math.tzcnt(inv);
-                        stitch.edges[dir] = VoxelStitch.Edge.CreateWithNeighbour(neighbour, hiToLow);
+                        uint? relativeEdgeOffset = hiToLow ? StitchUtils.FlattenToEdgeRelative(relativeOffset, dir) : null;
+                        stitch.edges[dir] = VoxelStitch.Edge.CreateWithNeighbour(neighbour, hiToLow, relativeEdgeOffset);
                     } else {
                         // corner case
                         stitch.corner = VoxelStitch.Corner.CreateWithNeighbour(neighbour, hiToLow);

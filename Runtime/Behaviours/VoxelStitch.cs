@@ -24,9 +24,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Stitch boundary (plane) (stored 3 times for each of the x,y,z axii)
         public abstract class Plane : IHasVoxelData {
             public abstract bool HasVoxelData();
-            public static Plane CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow) {
+            public static Plane CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow, uint2? relativeOffset) {
                 if (hiToLow) {
-                    return new HiToLoPlane() { lod1Neighbour = neighbour };
+                    return new HiToLoPlane() { lod1Neighbour = neighbour, relativeOffset = relativeOffset.Value };
                 } else {
                     return new UniformPlane() { neighbour = neighbour };
                 }
@@ -37,6 +37,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public class HiToLoPlane : Plane {
             // we only have one LOD1 neighbour
             public VoxelChunk lod1Neighbour;
+
+            // relative offset of the LOD0 chunk relative to LOD1
+            public uint2 relativeOffset;
 
             public override bool HasVoxelData() {
                 return lod1Neighbour.HasVoxelData();
@@ -66,9 +69,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Stitch edge (line) (stored 3 times for each of the x,y,z axii)
         public abstract class Edge : IHasVoxelData {
             public abstract bool HasVoxelData();
-            public static Edge CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow) {
+            public static Edge CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow, uint? relativeOffset) {
                 if (hiToLow) {
-                    return new HiToLoEdge() { lod1Neighbour = neighbour };
+                    return new HiToLoEdge() { lod1Neighbour = neighbour, relativeOffset = relativeOffset.Value };
                 } else {
                     return new UniformEdge() { neighbour = neighbour };
                 }
@@ -80,6 +83,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we only have one LOD1 neighbour
             public VoxelChunk lod1Neighbour;
 
+            // relative offset of the LOD0 chunk relative to LOD1
+            public uint relativeOffset;
+
             public override bool HasVoxelData() {
                 return lod1Neighbour.HasVoxelData();
             }
@@ -88,7 +94,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // this=LOD1, diagonal neighbour=LOD0
         // means that we need to downsample the data
         public class LoToHiEdge : Edge {
-            // We can have up to 2 neighbours in that direction
+            // we can have up to 2 neighbours in that direction
             public VoxelChunk[] lod0Neighbours;
 
             public override bool HasVoxelData() {
@@ -121,6 +127,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public class HiToLoCorner : Corner {
             // we only have one LOD1 neighbour
             public VoxelChunk lod1Neighbour;
+
+            // we don't need to store the relative offset since we know it's always (0,0,0)
 
             public override bool HasVoxelData() {
                 return lod1Neighbour.HasVoxelData();
@@ -220,23 +228,205 @@ namespace jedjoud.VoxelTerrain.Meshing {
             corner = null;
         }
 
-        struct GenericPlane {
+        public unsafe struct GenericPlane {
             // Uniform neighbour data
-            NativeArray<Voxel> uniform;
+            [ReadOnly]
+            public Voxel* uniform;
 
             // LOD1 neighbour data, not sliced, whole
-            NativeArray<Voxel> lod1;
+            [ReadOnly]
+            public Voxel* lod1;
+            public uint2 relativeOffset;
 
             // LOD0 neighbours (4 of them) data, morton 2D
-            UnsafePtrList<Voxel> lod0MortonedNeighbours;
+            [ReadOnly]
+            public UnsafePtrList<Voxel> lod0s;
         }
 
-        struct GenericEdge {
+        public unsafe struct GenericEdge {
+            // Uniform neighbour data
+            [ReadOnly]
+            public Voxel* uniform;
 
+            // LOD1 neighbour data, not sliced, whole
+            [ReadOnly]
+            public Voxel* lod1;
+            public uint relativeOffset;
+
+            // LOD0 neighbours (2 of them) data
+            [ReadOnly]
+            public UnsafePtrList<Voxel> lod0s;
         }
 
-        struct GenericCorner {
+        public unsafe struct GenericCorner {
+            // Uniform neighbour data
+            [ReadOnly]
+            public Voxel* uniform;
 
+            // LOD1 neighbour data, not sliced, whole
+            [ReadOnly]
+            public Voxel* lod1;
+
+            // LOD0 neighbour data
+            [ReadOnly]
+            public Voxel* lod0;
+        }
+
+        public struct JobData {
+            [ReadOnly]
+            public UnsafeList<GenericPlane> planes;
+            [ReadOnly]
+            public UnsafeList<GenericEdge> edges;
+            [ReadOnly]
+            public GenericCorner corner;
+
+            // Uniform | LoToHi | HiToLo => 3 states => 2 bits
+            // 2 bits per plane, 2 bits per edge, 2 bits per corner
+            // 3 planes, 3 edges, 1 corner => 2*3 + 2*3 + 2 => 14 bits in total
+            [ReadOnly]
+            public BitField32 state;
+
+            public void Dispose() {
+                for (int i = 0; i < 3; i++) {
+                    if (planes[i].lod0s.IsCreated) {
+                        planes[i].lod0s.Dispose();
+                    }
+
+                    if (edges[i].lod0s.IsCreated) {
+                        edges[i].lod0s.Dispose();
+                    }
+                }
+
+                planes.Dispose();
+                edges.Dispose();
+            }
+        }
+
+        public unsafe void DoTheSamplinThing() {
+            JobData jobData = new JobData();
+            jobData.planes = new UnsafeList<GenericPlane>(3, Allocator.TempJob);
+            jobData.edges = new UnsafeList<GenericEdge>(3, Allocator.TempJob);
+            BitField32 bits = new BitField32(0);
+
+            // map the planes
+            for (int i = 0; i < 3; i++) {
+                Plane plane = planes[i];
+
+                int type = -1;
+                if (plane is UniformPlane uniform) {
+                    jobData.planes.Add(new GenericPlane {
+                        uniform = (Voxel*)uniform.neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod0s = new UnsafePtrList<Voxel>(),
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 0;
+                } else if (plane is LoToHiPlane loToHi) {
+                    UnsafePtrList<Voxel> lod0s = new UnsafePtrList<Voxel>(4, Allocator.TempJob);
+
+                    for (int n = 0; n < 4; n++) {
+                        lod0s.Add(loToHi.lod0Neighbours[n].voxels.GetUnsafeReadOnlyPtr());
+                    }
+
+                    jobData.planes.Add(new GenericPlane {
+                        uniform = null,
+                        lod0s = lod0s,
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 1;
+                } else if (plane is HiToLoPlane hiToLo) {
+                    jobData.planes.Add(new GenericPlane {
+                        uniform = null,
+                        lod0s = new UnsafePtrList<Voxel>(),
+                        lod1 = (Voxel*)hiToLo.lod1Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        relativeOffset = hiToLo.relativeOffset,
+                    });
+                    type = 2;
+                }
+
+                bits.SetBits(i * 2, (type & 1) == 1);
+                bits.SetBits(i * 2 + 1, (type & 2) == 2);
+            }
+
+            // map the edges
+            for (int i = 0; i < 3; i++) {
+                Edge edge = edges[i];
+
+                int type = -1;
+                if (edge is UniformEdge uniform) {
+                    jobData.edges.Add(new GenericEdge {
+                        uniform = (Voxel*)uniform.neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod0s = new UnsafePtrList<Voxel>(),
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 0;
+                } else if (edge is LoToHiEdge loToHi) {
+                    UnsafePtrList<Voxel> lod0s = new UnsafePtrList<Voxel>(2, Allocator.TempJob);
+
+                    for (int n = 0; n < 2; n++) {
+                        lod0s.Add(loToHi.lod0Neighbours[n].voxels.GetUnsafeReadOnlyPtr());
+                    }
+
+                    jobData.edges.Add(new GenericEdge {
+                        uniform = null,
+                        lod0s = lod0s,
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 1;
+                } else if (edge is HiToLoEdge hiToLo) {
+                    jobData.edges.Add(new GenericEdge {
+                        uniform = null,
+                        lod0s = new UnsafePtrList<Voxel>(),
+                        lod1 = (Voxel*)hiToLo.lod1Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        relativeOffset = hiToLo.relativeOffset,
+                    });
+                    type = 2;
+                }
+
+                bits.SetBits(i * 2 + 6, (type & 1) == 1);
+                bits.SetBits(i * 2 + 1 + 6, (type & 2) == 2);
+            }
+
+            // map the corner
+            {
+                int type = -1;
+                if (corner is UniformCorner uniform) {
+                    jobData.corner = new GenericCorner {
+                        uniform = (Voxel*)uniform.neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod0 = null,
+                        lod1 = null,
+                    };
+                    type = 0;
+                } else if (corner is LoToHiCorner loToHi) {
+                    jobData.corner = new GenericCorner {
+                        uniform = null,
+                        lod0 = (Voxel*)loToHi.lod0Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod1 = null,
+                    };
+                    type = 1;
+                } else if (corner is HiToLoCorner hiToLo) {
+                    jobData.corner = new GenericCorner {
+                        uniform = null,
+                        lod0 = null,
+                        lod1 = (Voxel*)hiToLo.lod1Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                    };
+                    type = 2;
+                }
+
+                bits.SetBits(12, (type & 1) == 1);
+                bits.SetBits(13, (type & 2) == 2);
+            }
+
+            jobData.state = bits;
+            SampleVoxelsLodJob job = new SampleVoxelsLodJob {
+                paddingVoxels = extraVoxels,
+                jobData = jobData,
+            };
+            job.Schedule(StitchUtils.CalculateBoundaryLength(65), 1024).Complete();
+            jobData.Dispose();
         }
 
         public void Dispose() {
