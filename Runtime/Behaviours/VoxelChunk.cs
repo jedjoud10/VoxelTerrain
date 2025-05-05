@@ -179,9 +179,10 @@ namespace jedjoud.VoxelTerrain {
             MinMaxAABB bounds = node.Bounds;
             Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
 
-            for (int j = 0; j < 6; j++) {
-                MinMaxAABB plane = NeighbourJob.CreatePlane(bounds.Min, bounds.Max, j);
-                Gizmos.DrawWireCube(plane.Center, plane.Extents);
+            Gizmos.color = Color.red;
+            for (int j = 0; j < 8; j++) {
+                MinMaxAABB corner = NeighbourJob.CreateCorner(bounds.Min, bounds.Max, j);
+                Gizmos.DrawWireCube(corner.Center, corner.Extents);
             }
         }
             

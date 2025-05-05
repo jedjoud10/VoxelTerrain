@@ -119,7 +119,7 @@ namespace jedjoud.VoxelTerrain.Unsafe {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
-                return Interlocked.Add(ref *m_Counter, value) - 1;
+                return Interlocked.Add(ref *m_Counter, value) - value;
             }
 
             public int Increment() {

@@ -204,22 +204,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             if (!omni.IsValid())
                                 continue;
 
-                            // Octree neighbours if we have multiple
-                            // Store 4, since that's the worst case scenario (plane, and multi-res)
-                            Span<OctreeNode> neighbours = stackalloc OctreeNode[4];
-
-                            // There are multiple case scenario (same lod, diff lod)
+                            // There are multiple case scenario (same lod, diff lod {high, low})
                             int baseIndex = omni.baseIndex;
                             switch (omni.mode) {
                                 case OctreeOmnidirectionalNeighbourData.Mode.SameLod:
-                                    neighbours[0] = terrain.octree.nodesList[baseIndex];
                                     sameLodMask.SetBits(j, true);
+                                    //neighbours[0] = terrain.octree.nodesList[baseIndex];
                                     break;
                                 case OctreeOmnidirectionalNeighbourData.Mode.HigherLod:
-                                    neighbours[0] = terrain.octree.nodesList[baseIndex];
                                     highLodMask.SetBits(j, true);
+                                    //neighbours[0] = terrain.octree.nodesList[baseIndex];
                                     break;
                                 case OctreeOmnidirectionalNeighbourData.Mode.LowerLod:
+                                    lowLodMask.SetBits(j, true);
                                     bool3 bool3 = offset == 1 | offset == -1;
                                     int bitmask = math.bitmask(new bool4(bool3, false));
                                     int bitsSet = math.countbits(bitmask);
@@ -230,7 +227,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                     } else if (bitsSet == 2) {
                                         multiNeighbourCount = 2;
                                     } else if (bitsSet == 3) {
-                                        multiNeighbourCount = 1;
+                                        // custom corner case, index is stored in the struct instead of the array
+                                        lowLodNeighbours[j] = new VoxelChunk[1];
+                                        lowLodNeighbours[j][0] = terrain.chunks[terrain.octree.nodesList[baseIndex]];
+                                        break;
                                     } else {
                                         throw new Exception("wut");
                                     }
@@ -243,9 +243,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                         lowLodNeighbours[j][c] = terrain.chunks[neigh];
                                     }
 
-                                    lowLodMask.SetBits(j, true);
+
                                     break;
                             }
+
+                            // Fetch the neighbours from the actual terrain using their octree node keys
 
                             /*
                             OctreeNode node = terrain.octree. slice[j].baseIndex

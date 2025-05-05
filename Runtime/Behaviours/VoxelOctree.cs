@@ -118,7 +118,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             };
 
             JobHandle subdivideJobHandle = job.Schedule();
-            JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(nodesList, 1024, subdivideJobHandle);
+            JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(nodesList, 128, subdivideJobHandle);
             JobHandle setJobHandle = toHashSetJob.Schedule(neighbourJobHandle);
             JobHandle addedJobHandle = addedDiffJob.Schedule(setJobHandle);
             JobHandle removedJobHandle = removedDiffJob.Schedule(setJobHandle);

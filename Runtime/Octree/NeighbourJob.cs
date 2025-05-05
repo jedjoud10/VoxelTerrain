@@ -32,8 +32,8 @@ namespace jedjoud.VoxelTerrain.Octree {
             new int3(0, 0, 1),
         };
 
-        public static MinMaxAABB CreatePlane(float3 min, float3 max, int dir) {
-            int axii = dir % 3;
+        public static MinMaxAABB CreatePlane(float3 min, float3 max, int signedDir) {
+            int axii = signedDir % 3;
 
             // so that we don't trigger literal "edge" cases
             min += 1f;
@@ -41,17 +41,64 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             // flatten in the direction of the axis
             float value = 0f;
-            if (dir < 3) {
-                value = min[dir % 3];
+            if (signedDir < 3) {
+                value = min[signedDir % 3];
             } else {
-                value = max[dir % 3];
+                value = max[signedDir % 3];
             }
-            value += dir < 3 ? -4f : 4f;
+            value += signedDir < 3 ? -4f : 4f;
 
             // thin stripping time
             min[axii] = value-0.1f;
             max[axii] = value+0.1f;
             return new MinMaxAABB(min, max);
+        }
+
+        public static MinMaxAABB CreateEdge(float3 min, float3 max, int axii, int localEdgeIndex) {
+            // so that we don't trigger literal "edge" cases
+            min += 1f;
+            max -= 1f;
+            float size = max.x - min.x;
+
+            // calculate edge local position
+            uint2 mortoned = VoxelUtils.IndexToPosMorton2D(localEdgeIndex);
+            float2 offset = (float2)mortoned * (size + 8) - 4;
+
+            if (axii == 0) {
+                offset += min.yz;
+            } else if (axii == 1) {
+                offset += min.xz;
+            } else if (axii == 2) {
+                offset += min.xy;
+            }
+
+            // flatten the bounds into a single edge
+            if (axii == 0) {
+                min.yz = offset;
+                max.yz = offset;
+            } else if (axii == 1) {
+                min.xz = offset;
+                max.xz = offset;
+            } else if (axii == 2) {
+                min.xy = offset;
+                max.xy = offset;
+            }
+
+            return new MinMaxAABB(min, max);
+        }
+
+        public static MinMaxAABB CreateCorner(float3 min, float3 max, int corner) {
+            // expand the bounds so we can fetch corners
+            min -= 1f;
+            max += 1f;
+
+            float3 position = min;
+            float size = max.x - min.x;
+
+            uint3 mortoned = VoxelUtils.IndexToPosMorton(corner);
+
+            float3 point = position + size * (float3)mortoned;
+            return MinMaxAABB.CreateFromCenterAndHalfExtents(point, 0.5f);
         }
 
         private void TraverseAndCollect(MinMaxAABB bounds, ref SpanBackedStack<ushort> pending, ref SpanBackedStack<ushort> neighbours, int omniDirIndex, int ogDepth) {
@@ -77,8 +124,20 @@ namespace jedjoud.VoxelTerrain.Octree {
                 return;
             } else if (neighbours.Length == 1) {
                 OctreeNode neighbour = nodes[neighbours[0]];
+                OctreeOmnidirectionalNeighbourData.Mode mode = default;
+
+                if (ogDepth == neighbour.depth) {
+                    mode = OctreeOmnidirectionalNeighbourData.Mode.SameLod;
+                } else if ((ogDepth - 1) == neighbour.depth) {
+                    mode = OctreeOmnidirectionalNeighbourData.Mode.HigherLod;
+                } else if ((ogDepth + 1) == neighbour.depth) {
+                    mode = OctreeOmnidirectionalNeighbourData.Mode.LowerLod;
+                } else {
+                    Debug.Log("nice 2:1 ratio you got there kek");
+                }
+
                 omnidirectionalNeighbourData[omniDirIndex] = new OctreeOmnidirectionalNeighbourData {
-                    mode = ogDepth == neighbour.depth ? OctreeOmnidirectionalNeighbourData.Mode.SameLod : OctreeOmnidirectionalNeighbourData.Mode.HigherLod,
+                    mode = mode,
                     baseIndex = (int)neighbours[0],
                 };
             } else if (neighbours.Length == 4) {
@@ -89,6 +148,15 @@ namespace jedjoud.VoxelTerrain.Octree {
                 };
 
                 for (int c = 0; c < 4; c++) {
+                    neighbourIndices[baseIndex + c] = neighbours[c];
+                }
+            } else if (neighbours.Length == 2) {
+                int baseIndex = counter.Add(2);
+                omnidirectionalNeighbourData[omniDirIndex] = new OctreeOmnidirectionalNeighbourData {
+                    mode = OctreeOmnidirectionalNeighbourData.Mode.LowerLod,
+                    baseIndex = baseIndex,
+                };
+                for (int c = 0; c < 2; c++) {
                     neighbourIndices[baseIndex + c] = neighbours[c];
                 }
             } else {
@@ -108,23 +176,54 @@ namespace jedjoud.VoxelTerrain.Octree {
             if (original.childBaseIndex != -1)
                 return;
 
-            Span<ushort> pendingNodesBacking = stackalloc ushort[100];
+            Span<ushort> pendingNodesBacking = stackalloc ushort[50];
             SpanBackedStack<ushort> pending = SpanBackedStack<ushort>.New(pendingNodesBacking);
 
             Span<ushort> neighboursBacking = stackalloc ushort[4];
             SpanBackedStack<ushort> neighbours = SpanBackedStack<ushort>.New(neighboursBacking);
 
+            MinMaxAABB bounds = original.Bounds;
+            float3 min = bounds.Min;
+            float3 max = bounds.Max;
+
             // planes only. 
+            int omniDirBaseIndex = original.neighbourDataBaseIndex;
             for (int i = 0; i < 6; i++) {
                 // convert to 0-26 index for the omni directional data
-                int omniDirectionalIndex = VoxelUtils.PosToIndex((uint3)(DIRECTIONS[i] + 1), 3);
-                int omniDirectionalIndexBase = original.neighbourDataBaseIndex;
-
-                MinMaxAABB bounds = original.Bounds;
-                float3 min = bounds.Min;
-                float3 max = bounds.Max;
+                int omniDirOffsetIndex = VoxelUtils.PosToIndex((uint3)(DIRECTIONS[i] + 1), 3);
                 MinMaxAABB plane = CreatePlane(min, max, i);
-                TraverseAndCollect(plane, ref pending, ref neighbours, omniDirectionalIndex + omniDirectionalIndexBase, original.depth);
+                TraverseAndCollect(plane, ref pending, ref neighbours, omniDirOffsetIndex + omniDirBaseIndex, original.depth);
+            }
+
+            // edges only. 
+            for (int i = 0; i < 3; i++) {
+                int3 dir = DIRECTIONS[i+3];
+
+                // for each axis we have 4 edges
+                for (int l = 0; l < 4; l++) {
+                    uint2 mortoned = VoxelUtils.IndexToPosMorton2D(l) * 2;
+                    uint3 offset = 1;
+
+                    if (i == 0) {
+                        offset.yz = mortoned;
+                    } else if (i == 1) {
+                        offset.xz = mortoned;
+                    } else if (i == 2) {
+                        offset.xy = mortoned;
+                    }
+
+                    int omniDirOffsetIndex = VoxelUtils.PosToIndex(offset, 3);
+                    MinMaxAABB edge = CreateEdge(min, max, i, l);
+                    TraverseAndCollect(edge, ref pending, ref neighbours, omniDirOffsetIndex + omniDirBaseIndex, original.depth);
+                }
+            }
+
+            // corners only
+            for (int i = 0; i < 8; i++) {
+                uint3 mortoned = VoxelUtils.IndexToPosMorton(i) * 2;
+                int omniDirOffsetIndex = VoxelUtils.PosToIndex(mortoned, 3);
+                MinMaxAABB corner = CreateCorner(min, max, i);
+                TraverseAndCollect(corner, ref pending, ref neighbours, omniDirOffsetIndex + omniDirBaseIndex, original.depth);
             }
         }
     }
