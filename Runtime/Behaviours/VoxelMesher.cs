@@ -188,9 +188,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // we only need to look in the pos axii for this one
                         FetchPositiveNeighbours(stitch, diffLodNeighbours, diffLodMask, true);
 
+                        // THIS DOESNT WORK!!! WE NEED TO IMPLEMENT PROPER MULTINEIGHBOUR SUPPORT FOR LOD1!!!
+                        // TIME TO FIX MY OCTREE NEIGHBOUR DETECTION CODE!!!
                         // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1), but this time to update *their* stitch values
                         // we need to look in the negative direction only, since LOD1 chunks that need to be LoToHi will be in that direction
-                        FetchNegativeNeighboursLod1(src, diffLodNeighbours, diffLodMask);
+                        // FetchNegativeNeighboursLod1(src, diffLodNeighbours, diffLodMask);
 
                         // Tell the chunk to wait until all neighbours have voxel data to begin sampling the extra padding voxels
                         pendingPaddingVoxelSamplingRequests.Add(stitch);
@@ -206,9 +208,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (stitch.CanSampleExtraVoxels()) {
                     Debug.Log("thingimante");
 
+                    /*
                     unsafe {
                         stitch.DoTheSamplinThing();
                     }
+                    */
 
                     pendingPaddingVoxelSamplingRequests.RemoveAt(i);
                 }
@@ -306,8 +310,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         }
 
-        // Sets the appropriate plane/edge/corner values for the LOD1 neighbours manually
-        // Looks in the negative direciton, since that's where the LOD1 neighbours do their own stitching
+
+        /*
         private static void FetchNegativeNeighboursLod1(VoxelChunk src, VoxelChunk[] diffLodNeighbours, BitField32 diffLodMask) {
             VoxelChunk lod0 = src;
 
@@ -366,6 +370,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // Map the 3D position's to the edge 1D flattened index
                         uint index = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
                         VoxelStitch.LoToHiEdge edge = lod1.stitch.edges[dir] as VoxelStitch.LoToHiEdge;
+                        Debug.Log(edge == null);
+                        Debug.Log($"lod0={lod0.node.position}, lod1={lod1.node.position}", lod0.gameObject);
                         edge.lod0Neighbours[index] = lod0;
                     } else {
                         // Update LOD1's corner. There can only be one corner piece so we don't need to check for this one
@@ -376,6 +382,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
         }
+        */
 
         // Sets the appropriate plane/edge/corner values with the given neighbour data and neighbour mask data
         // The bool hiToLow allows you to set the plane/edge/corner instances as HiToLow variants which means that src=LOD0, neighbour=LOD1 and where the stitch goes in the positive directions
