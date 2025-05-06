@@ -55,6 +55,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 handlers.Add(new MeshJobHandler(this));
             }
 
+
+            /*
+            Debug.Log(cal);
+            if (bitsSet == 1) {
+                Debug.Log("plane");
+            } else if (bitsSet == 2) {
+                Debug.Log("edge");
+            } else if (bitsSet == 3) {
+                Debug.Log("corner");
+            } else {
+                Debug.LogError("WHAT!!!");
+            }
+            */
+
+            /*
             for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
                 bool check = StitchUtils.PosToBoundaryIndex(StitchUtils.BoundaryIndexToPos(i, 64, false), 64, false) == i;
                 uint3 cal = StitchUtils.BoundaryIndexToPos(i, 64, false);
@@ -63,18 +78,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int bitmask = math.bitmask(new bool4(bool3, false));
                 int bitsSet = math.countbits(bitmask);
 
-                /*
-                Debug.Log(cal);
-                if (bitsSet == 1) {
-                    Debug.Log("plane");
-                } else if (bitsSet == 2) {
-                    Debug.Log("edge");
-                } else if (bitsSet == 3) {
-                    Debug.Log("corner");
-                } else {
-                    Debug.LogError("WHAT!!!");
-                }
-                */
 
                 if (bitsSet == 1) {
                     Debug.Log($"plane: {check}");
@@ -86,6 +89,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     Debug.LogError("WHAT!!!");
                 }
             }
+            */
         }
 
         // Begin generating the mesh data using the given chunk and voxel container

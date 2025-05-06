@@ -270,5 +270,56 @@ namespace jedjoud.VoxelTerrain {
                 density = (half)(-100f),
             };
         }
+
+        // Fetch unpacked chunk index that we will use to index the offsets array (unpacked)
+        public static int FetchUnpackedNeighbourIndex(uint3 paddingPosition, BitField32 state) {
+            // 1=plane, 2=edge, 3=corner
+            bool3 bool3 = paddingPosition == 64;
+            int bitmask = math.bitmask(new bool4(bool3, false));
+            int bitsSet = math.countbits(bitmask);
+
+            if (bitsSet == 1) {
+                // check which axis is set
+                int dir = math.tzcnt(bitmask);
+                uint type = state.GetBits(dir * 2, 2);
+
+                if (type == 0) {
+                    // do a bit of simple copying
+                    return dir * 4;
+                } else if (type == 1) {
+                    // do a bit of downsampling
+                    uint2 flattened = FlattenToFaceRelative(paddingPosition, dir);
+                    int mortonOffset = VoxelUtils.PosToIndexMorton2D(flattened / 32);
+                    return dir * 4 + mortonOffset;
+                } else if (type == 2) {
+                    // do a bit of upsampling
+                    return dir * 4;
+                }
+            } else if (bitsSet == 2) {
+                // check which axis is NOT set
+                int inv = (~bitmask) & 0b111;
+                int dir = math.tzcnt(inv);
+                uint type = state.GetBits(dir * 2 + 6, 2);
+
+                if (type == 0) {
+                    // do a bit of simple copying
+                    return dir * 2 + 12;
+                } else if (type == 1) {
+                    // do a bit of downsampling
+                    (uint3 edged, uint axis) = FetchAxisAndKeepOnEdging(paddingPosition[dir], dir);
+                    uint offset = axis / 32;
+                    return dir * 2 + (int)offset;
+                } else if (type == 2) {
+                    // do a bit of upsampling
+                    return dir * 2;
+                }
+            } else {
+                // corner case
+                // always at the same index, since there can only be one chunk there anyways...
+                return 18;
+            }
+
+            return -1;
+        }
     }
 }

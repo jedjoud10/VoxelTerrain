@@ -78,6 +78,7 @@ namespace jedjoud.VoxelTerrain {
             node = item;
             voxelMaterialsLookup = null;
             triangleOffsetLocalMaterials = null;
+            negativeBoundaryCounter.Count = 0;
             state = ChunkState.Idle;
         }
 
@@ -140,6 +141,21 @@ namespace jedjoud.VoxelTerrain {
 
                 Gizmos.color = Color.red;
                 if (stitch.stitched) {
+                    for (int i = 0; i < stitch.vertices.Length; i++) {
+                        float3 vertex = stitch.vertices[i];
+                        Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
+                    }
+
+                    /*
+                    for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
+                        int vertexIndex = stitch.boundaryIndices[i];
+
+                        if (vertexIndex != int.MaxValue) {
+                            float3 vertex = stitch.boundaryIndices[vertexIndex];
+                            Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
+                        }
+                    }
+
                     for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
                         int vertexIndex = stitch.paddingIndices[i];
 
@@ -148,6 +164,7 @@ namespace jedjoud.VoxelTerrain {
                             Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
                         }
                     }
+                    */
                 }
 
                 /*

@@ -242,6 +242,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeCounter paddingCounter;
         public bool stitched;
 
+        // The generated stitched vertices & triangles for our mesh
+        public NativeArray<float3> vertices;
+        public NativeArray<int> indices;
+
         public void Init(VoxelChunk self) {
             this.source = self;
             stitched = false;
@@ -482,13 +486,104 @@ namespace jedjoud.VoxelTerrain.Meshing {
             adaptedVoxels = true;
         }
 
+        // Data type for unpacked neighbours (for the stitch jobs)
+        // Contains extra data that will be used to transform its negative boundary vertices
+        private struct UnpackedNeighbour {
+            public VoxelChunk chunk;
+            public float3 vertexGlobalOffset;
+            public float vertexGlobalSize;
+
+            public static UnpackedNeighbour Uniform(VoxelChunk src, VoxelChunk chunk) {
+                float3 offset = chunk.node.position - src.node.position;
+
+                return new UnpackedNeighbour {
+                    chunk = chunk,
+                    vertexGlobalOffset = offset,
+                    vertexGlobalSize = 1f
+                };
+            }
+
+            public static UnpackedNeighbour LoToHi(VoxelChunk src, VoxelChunk lod0) {
+                float3 srcPos = lod0.node.position;
+                float3 dstPos = src.node.position;
+                float3 offset = (float3)(srcPos - dstPos) / 2f;
+
+                return new UnpackedNeighbour {
+                    chunk = lod0,
+                    vertexGlobalOffset = offset,
+                    vertexGlobalSize = 0.5f
+                };
+            }
+
+            public static UnpackedNeighbour HiToLo(VoxelChunk src, VoxelChunk lod1) {
+                float3 srcPos = lod1.node.position;
+                float3 dstPos = src.node.position;
+                uint3 offset = (uint3)(srcPos - dstPos);
+
+                return new UnpackedNeighbour {
+                    chunk = lod1,
+                    vertexGlobalOffset = offset,
+                    vertexGlobalSize = 2f
+                };
+            }
+        }
+
+        // Fetch the chunks in an unpacked order, leaving some of them being null
+        private UnpackedNeighbour[] CollectNeighboursUnpacked() {
+            UnpackedNeighbour[] arr = new UnpackedNeighbour[19];
+            Array.Fill(arr, default);
+            for (int p = 0; p < 3; p++) {
+                Plane plane = planes[p];
+
+                if (plane is UniformPlane uniform) {
+                    arr[p * 4] = UnpackedNeighbour.Uniform(source, uniform.neighbour);
+                } else if (plane is LoToHiPlane loTohi) {
+                    for (int i = 0; i < 4; i++) {
+                        arr[p * 4 + i] = UnpackedNeighbour.LoToHi(source, loTohi.lod0Neighbours[i]);
+                    }
+                } else if (plane is HiToLoPlane hiToLo) {
+                    arr[p * 4] = UnpackedNeighbour.HiToLo(source, hiToLo.lod1Neighbour);
+                } 
+            }
+
+            /*
+            for (int e = 0; e < 3; e++) {
+                Edge edge = edges[e];
+
+                if (edge is UniformEdge uniform) {
+                    arr[e * 2 + 12] = UnpackedNeighbour.Uniform(source, uniform.neighbour);
+                } else if (edge is LoToHiEdge loTohi) {
+                    for (int i = 0; i < 2; i++) {
+                        arr[e * 2 + i + 12] = UnpackedNeighbour.LoToHi(source, loTohi.lod0Neighbours[i]);
+                    }
+                } else if (edge is HiToLoEdge hiToLo) {
+                    arr[e * 2 + 12] = UnpackedNeighbour.HiToLo(source, hiToLo.lod1Neighbour);
+                }
+            }
+            */
+
+            {
+                if (corner is UniformCorner uniform) {
+                    arr[18] = UnpackedNeighbour.Uniform(source, uniform.neighbour);
+                } else if (corner is LoToHiCorner loTohi) {
+                    arr[18] = UnpackedNeighbour.LoToHi(source, loTohi.lod0Neighbour);
+                } else if (corner is HiToLoCorner hiToLo) {
+                    arr[18] = UnpackedNeighbour.HiToLo(source, hiToLo.lod1Neighbour);
+                }
+            }
+
+            return arr;
+        }
+
         public unsafe void DoTheStitchingThing() {
-            List<VoxelChunk> list = CollectNeighbours();
-            list.Add(source);
-            
-            for (int i = 0; i < list.Count; i++) {
-                list[i].copyBoundaryVerticesJobHandle.Value.Complete();
-                list[i].copyBoundaryVoxelsJobHandle.Value.Complete();
+            // Just makes sure that the copy boundary jobs are done
+            {
+                List<VoxelChunk> chunks = CollectNeighbours();
+                chunks.Insert(0, source);
+                for (int i = 0; i < chunks.Count; i++) {
+                    chunks[i].copyBoundaryVerticesJobHandle.Value.Complete();
+                    chunks[i].copyBoundaryVoxelsJobHandle.Value.Complete();
+                }
             }
 
             // then use padding voxels and extra voxels to create padding vertices of the same resolution as the current chunk
@@ -503,11 +598,81 @@ namespace jedjoud.VoxelTerrain.Meshing {
             paddingVertexJob.Schedule(StitchUtils.CalculateBoundaryLength(64), 1024).Complete();
 
             // then copy all the vertices into one big contiguous array
+            int totalVertices = 0;
+            int worstCaseIndices = 0;
+
             // create some sort of look up table for vertex index offsets for each of the planes, edges, and corner
-            // worst case scenario, we have 19 offsets (19 LOD0 chunks) if all of the boundary thingimabobs are LoToHi;
+            // each index will represent the offset that each chunk should use. this is unpacked data since it makes reading from it in the job easier
+            UnpackedNeighbour[] unpackedNeighbours = CollectNeighboursUnpacked();
+            NativeArray<int> indexOffsets = new NativeArray<int>(19, Allocator.TempJob);
+            NativeArray<int> vertexCounts = new NativeArray<int>(19, Allocator.TempJob);
+
+            // create the copy job that will copy the neighbours' vertices and src vertices to the permanent vertex buffer
+            UnsafePtrList<float3> neighbourVertices = new UnsafePtrList<float3>(19, Allocator.TempJob);
+
+            // add the source chunk vertices (boundary + padding)
+            int srcCount = boundaryCounter.Count + paddingCounter.Count;
+            totalVertices += srcCount;
+
+            // add the neighbour chunks negative boundary vertices (also keep track of offsets and count)
+            for (int i = 0; i < 19; i++) {
+                VoxelChunk maybe = unpackedNeighbours[i].chunk;
+                if (maybe != null) {
+                    int count = maybe.negativeBoundaryCounter.Count;
+                    indexOffsets[i] = totalVertices;
+                    vertexCounts[i] = count;
+                    totalVertices += count;
+                    neighbourVertices.Add(maybe.negativeBoundaryVertices.GetUnsafeReadOnlyPtr());
+                } else {
+                    indexOffsets[i] = -1;
+                    vertexCounts[i] = -1;
+                    neighbourVertices.Add(IntPtr.Zero);
+                }
+            }
+            worstCaseIndices = totalVertices * 5; // idk bro...
+
+            // Ermmm... what the sigmoid functor???
+            vertices = new NativeArray<float3>(totalVertices, Allocator.Persistent);
+
+
+            CopyVerticesStitch copyVerticesStitch = new CopyVerticesStitch {
+                indexOffsets = indexOffsets,
+                vertexCounts = vertexCounts,
+                boundaryVertices = boundaryVertices,
+                boundaryVerticesCount = boundaryCounter.Count,
+                paddingVertices = paddingVertices,
+                paddingVerticesCount = paddingCounter.Count,
+                neighbourVertices = neighbourVertices,
+                vertices = vertices
+            };
+
+            copyVerticesStitch.Schedule().Complete();
+
+            for (int i = 0; i < 19; i++) {
+                UnpackedNeighbour maybe = unpackedNeighbours[i];
+                if (maybe.chunk != null) {
+                    int offset = indexOffsets[i];
+                    int count = vertexCounts[i];
+
+                    TransformVerticesStitch transformer = new TransformVerticesStitch {
+                        globalOffset = maybe.vertexGlobalOffset,
+                        globalScale = maybe.vertexGlobalSize,
+                        localVertices = vertices.Slice(offset, count),
+                    };
+
+                    transformer.Schedule(count, 1024).Complete();
+                }
+            }
+
+            /*
+            for (int i = 0; i < 19; i++) {
+                Debug.Log(indexOffsets[i]);
+            }
+            */
+
+
 
             // then create quads between padding vertices and boundary vertices (same res)
-
 
             // then create quads between neighbouring chunks vertices and padding vertices
             // this must always run at a higher resolution than the source chunk
@@ -515,6 +680,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // if it is LoToHi, run the stitch quadding stuff for each of its neighbours (since *they* contain the negative boundary voxels)
             // if it is HiToLo, run the stitch quadding stuff for its LOD1 neighbours (since *it* contains the negative boundary voxels)
             stitched = true;
+
+            indexOffsets.Dispose();
+            vertexCounts.Dispose();
+            neighbourVertices.Dispose();
         }
 
         public void Dispose() {
@@ -528,6 +697,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             paddingVertices.Dispose();
             paddingIndices.Dispose();
             paddingCounter.Dispose();
+
+            if (vertices.IsCreated) {
+                vertices.Dispose();
+            }
         }
     }
 }
