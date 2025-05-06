@@ -1,6 +1,8 @@
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
+using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Mathematics.Geometry;
 using UnityEditor;
@@ -29,7 +31,6 @@ namespace jedjoud.VoxelTerrain {
             Done,
         }
 
-        [HideInInspector]
         public NativeArray<Voxel> voxels;
 
         public OctreeNode node;
@@ -52,16 +53,51 @@ namespace jedjoud.VoxelTerrain {
         public bool debugValues;
         public NativeArray<int> negativeBoundaryIndices;
         public NativeArray<float3> negativeBoundaryVertices;
+        public NativeCounter negativeBoundaryCounter;
+        public NativeArray<Voxel> negativeBoundaryVoxels;
+        public JobHandle? copyBoundaryVoxelsJobHandle;
+        public JobHandle? copyBoundaryVerticesJobHandle;
 
+        // Initialize hte chunk with completely new native arrays (during pooled chunk creation)
+        public void InitChunk() {
+            negativeBoundaryIndices = new NativeArray<int>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
+            negativeBoundaryVertices = new NativeArray<float3>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
+            negativeBoundaryCounter = new NativeCounter(Allocator.Persistent);
+            negativeBoundaryVoxels = new NativeArray<Voxel>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
+            copyBoundaryVoxelsJobHandle = null;
+            copyBoundaryVerticesJobHandle = null;
 
-        // Check if the chunk has valid voxel data 
+            // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
+            // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
+            //NativeArray<Voxel> allocated = FetchVoxelsContainer();
+            voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        }
+
+        // Reset the chunk so we can use it to represent a new octree node (don't allocate new native arrays)
+        public void ResetChunk(OctreeNode item) {
+            node = item;
+            voxelMaterialsLookup = null;
+            triangleOffsetLocalMaterials = null;
+            state = ChunkState.Idle;
+        }
+
+        // Check if the chunk has valid uniform voxel data
         public bool HasVoxelData() {
             return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
         }
 
-        // Check if the chunk has valid mesh data (at the x=y=z=0 boundary at least)
-        public bool HasMeshData() {
-            return negativeBoundaryIndices.IsCreated && negativeBoundaryVertices.IsCreated && state == ChunkState.Done;
+        // Check if the chunk has valid negative boundary voxel data
+        public bool HasNegativeBoundaryVoxelData() {
+            return copyBoundaryVoxelsJobHandle.HasValue && copyBoundaryVoxelsJobHandle.Value.IsCompleted && negativeBoundaryVoxels.IsCreated;
+        }
+
+
+        // Check if the chunk has valid mesh data at the negative boundary
+        public bool HasNegativeBoundaryMeshData() {
+            bool job = copyBoundaryVerticesJobHandle.HasValue && copyBoundaryVerticesJobHandle.Value.IsCompleted;
+            bool boundaryVoxels = HasNegativeBoundaryVoxelData();
+            bool created = negativeBoundaryVertices.IsCreated && negativeBoundaryIndices.IsCreated;
+            return state == ChunkState.Done && boundaryVoxels && job && created;
         }
 
         public void OnDrawGizmosSelected() {
@@ -71,6 +107,7 @@ namespace jedjoud.VoxelTerrain {
             float s = node.size / VoxelUtils.SIZE;
 
             if (debugValues) {
+                /*
                 for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
                     uint3 coord = StitchUtils.BoundaryIndexToPos(i, 64);
                     float d = stitch.boundaryVoxels[i].density;
@@ -99,15 +136,30 @@ namespace jedjoud.VoxelTerrain {
                         Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
                     }
                 }
+                */
 
+                Gizmos.color = Color.red;
+                if (stitch.stitched) {
+                    for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
+                        int vertexIndex = stitch.paddingIndices[i];
+
+                        if (vertexIndex != int.MaxValue) {
+                            float3 vertex = stitch.paddingVertices[vertexIndex];
+                            Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
+                        }
+                    }
+                }
+
+                /*
                 for (int i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
                     uint3 coord = StitchUtils.BoundaryIndexToPos(i, 65);
-                    float d = stitch.extraVoxels[i].density;
+                    float d = stitch.paddingVoxels[i].density;
                     if (d > -4 && d < 4) {
                         Gizmos.color = d > 0f ? Color.black : Color.white;
                         Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
                     }
                 }
+                */
             }
 
             for (int j = 0; j < 27; j++) {
@@ -223,10 +275,10 @@ namespace jedjoud.VoxelTerrain {
             voxels.Dispose();
             stitch?.Dispose();
 
-            if (negativeBoundaryIndices.IsCreated) {
-                negativeBoundaryIndices.Dispose();
-                negativeBoundaryVertices.Dispose();
-            }
+            negativeBoundaryIndices.Dispose();
+            negativeBoundaryVertices.Dispose();
+            negativeBoundaryCounter.Dispose();
+            negativeBoundaryVoxels.Dispose();
         }
     }
 }

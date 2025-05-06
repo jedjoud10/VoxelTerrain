@@ -57,9 +57,23 @@ namespace jedjoud.VoxelTerrain.Meshing {
             half4 test = math.half4(0.0F);
 
             if (X86.Avx2.IsAvx2Supported) {
+
+                // I LOVE MICROOPTIMIZATIONS!!! I LOVE DOING THIS ON A WHIM WITHOUT ACTUALLY TRUSTING PROFILER DATA!!!!
                 unsafe {
                     void* baseAddr = voxels.GetUnsafeReadOnlyPtr();
-                    return LoadVoxelsSIMD(indices, baseAddr);
+                    v128 indices_v128 = new v128(indices.x, indices.y, indices.z, indices.w);
+                    v128 voxels_v128 = X86.Avx2.i32gather_epi32(baseAddr, indices_v128, 4);
+
+                    // deep-seeked fucking kekek
+                    v128 shuffleMask = new v128(
+                        0x00, 0x01, 0x04, 0x05,  // Bytes 0-1 (0x3C00) and 4-5 (0x4000)
+                        0x08, 0x09, 0x0C, 0x0D,  // Bytes 8-9 (0x4200) and 12-13 (0x4400)
+                        0x80, 0x80, 0x80, 0x80,  // Zero out upper 64 bits
+                        0x80, 0x80, 0x80, 0x80
+                    );
+
+                    v128 packedHalfs = X86.Ssse3.shuffle_epi8(voxels_v128, shuffleMask);
+                    return *(half4*)&packedHalfs;
                 }
             } else {
                 for (int i = 0; i < 4; i++) {
@@ -68,24 +82,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             return test;
-        }
-
-
-        // I LOVE MICROOPTIMIZATIONS!!! I LOVE DOING THIS ON A WHIM WITHOUT ACTUALLY TRUSTING PROFILER DATA!!!!
-        public unsafe static half4 LoadVoxelsSIMD(int4 indices, void* baseAddr) {
-            v128 indices_v128 = new v128(indices.x, indices.y, indices.z, indices.w);
-            v128 voxels_v128 = X86.Avx2.i32gather_epi32(baseAddr, indices_v128, 4);
-
-            // deep-seeked fucking kekek
-            v128 shuffleMask = new v128(
-                0x00, 0x01, 0x04, 0x05,  // Bytes 0-1 (0x3C00) and 4-5 (0x4000)
-                0x08, 0x09, 0x0C, 0x0D,  // Bytes 8-9 (0x4200) and 12-13 (0x4400)
-                0x80, 0x80, 0x80, 0x80,  // Zero out upper 64 bits
-                0x80, 0x80, 0x80, 0x80
-            );
-
-            v128 packedHalfs = X86.Ssse3.shuffle_epi8(voxels_v128, shuffleMask);
-            return *(half4*)&packedHalfs;
         }
     }
 }

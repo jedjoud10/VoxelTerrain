@@ -15,7 +15,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public Unsafe.NativeCounter.Concurrent counter;
 
-        // Indices at the (x=62 || y=62 || z=62) boundary
+        // Indices at the (x=62 || y=62 || z=62) boundary OR the (x=0 || y=0 || z=0)
         [WriteOnly]
         public NativeArray<int> boundaryIndices;
 
@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool negative;
 
         public void Execute(int index) {
-            int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 63, !negative));
+            int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 63, negative));
             
             int oldVertexIndex = indices[morton];
 

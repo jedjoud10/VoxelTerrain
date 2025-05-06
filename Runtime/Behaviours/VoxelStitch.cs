@@ -17,13 +17,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // you only care about the data for 3 faces but also the 3 edges and single corner
     // if we're smart we can also handle same-res stitching using this algo!!!
     public class VoxelStitch : MonoBehaviour {
-        interface IHasVoxelData {
-            bool HasVoxelData();
+        interface IChunkCollector {
+            void Collect(List<VoxelChunk> list);
         }
 
         // Stitch boundary (plane) (stored 3 times for each of the x,y,z axii)
-        public abstract class Plane : IHasVoxelData {
-            public abstract bool HasVoxelData();
+        public abstract class Plane : IChunkCollector {
+            public abstract void Collect(List<VoxelChunk> list);
             public static Plane CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow, uint2? relativeOffset) {
                 if (hiToLow) {
                     return new HiToLoPlane() { lod1Neighbour = neighbour, relativeOffset = relativeOffset.Value };
@@ -41,8 +41,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // relative offset of the LOD0 chunk relative to LOD1
             public uint2 relativeOffset;
 
-            public override bool HasVoxelData() {
-                return lod1Neighbour.HasVoxelData();
+            public override void Collect(List<VoxelChunk> list) {
+                list.Add(lod1Neighbour);
             }
         }
 
@@ -52,8 +52,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // We can have up to 4 neighbours in that direction
             public VoxelChunk[] lod0Neighbours;
 
-            public override bool HasVoxelData() {
-                return lod0Neighbours.All(x => x != null && x.HasVoxelData());
+            public override void Collect(List<VoxelChunk> list) {
+                list.AddRange(lod0Neighbours);
             }
         }
 
@@ -61,14 +61,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public class UniformPlane : Plane {
             public VoxelChunk neighbour;
 
-            public override bool HasVoxelData() {
-                return neighbour.HasVoxelData();
+            public override void Collect(List<VoxelChunk> list) {
+                list.Add(neighbour);
             }
         }
 
         // Stitch edge (line) (stored 3 times for each of the x,y,z axii)
-        public abstract class Edge : IHasVoxelData {
-            public abstract bool HasVoxelData();
+        public abstract class Edge : IChunkCollector {
+            public abstract void Collect(List<VoxelChunk> list);
             public static Edge CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow, uint? relativeOffset) {
                 if (hiToLow) {
                     return new HiToLoEdge() { lod1Neighbour = neighbour, relativeOffset = relativeOffset.Value };
@@ -86,8 +86,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // relative offset of the LOD0 chunk relative to LOD1
             public uint relativeOffset;
 
-            public override bool HasVoxelData() {
-                return lod1Neighbour.HasVoxelData();
+            public override void Collect(List<VoxelChunk> list) {
+                list.Add(lod1Neighbour);
             }
         }
 
@@ -97,8 +97,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we can have up to 2 neighbours in that direction
             public VoxelChunk[] lod0Neighbours;
 
-            public override bool HasVoxelData() {
-                return lod0Neighbours.All(x => x != null && x.HasVoxelData());
+            public override void Collect(List<VoxelChunk> list) {
+                list.AddRange(lod0Neighbours);
             }
         }
 
@@ -106,14 +106,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public class UniformEdge : Edge {
             public VoxelChunk neighbour;
 
-            public override bool HasVoxelData() {
-                return neighbour.HasVoxelData();
+            public override void Collect(List<VoxelChunk> list) {
+                list.Add(neighbour);
             }
         }
 
         // Stitch corner (point) stored one since we only have one corner
-        public abstract class Corner : IHasVoxelData {
-            public abstract bool HasVoxelData();
+        public abstract class Corner : IChunkCollector {
+            public abstract void Collect(List<VoxelChunk> list);
             public static Corner CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow) {
                 if (hiToLow) {
                     return new HiToLoCorner() { lod1Neighbour = neighbour };
@@ -130,8 +130,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // we don't need to store the relative offset since we know it's always (0,0,0)
 
-            public override bool HasVoxelData() {
-                return lod1Neighbour.HasVoxelData();
+            public override void Collect(List<VoxelChunk> list) {
+                list.Add(lod1Neighbour);
             }
         }
 
@@ -141,8 +141,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we only have one LOD0 neighbour
             public VoxelChunk lod0Neighbour;
 
-            public override bool HasVoxelData() {
-                return lod0Neighbour.HasVoxelData();
+            public override void Collect(List<VoxelChunk> list) {
+                list.Add(lod0Neighbour);
             }
         }
 
@@ -150,8 +150,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public class UniformCorner : Corner {
             public VoxelChunk neighbour;
 
-            public override bool HasVoxelData() {
-                return neighbour.HasVoxelData();
+            public override void Collect(List<VoxelChunk> list) {
+                list.Add(neighbour);
             }
         }
 
@@ -167,21 +167,53 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Corner
         public Corner corner;
 
+        // Collects all the neighbouring chunks in a list so we can do bulk operations on them
+        // Returns null if any of the planes/edges/corner are null
+        public List<VoxelChunk> CollectNeighbours() {
+            bool valid = planes.All(x => x != null) && edges.All(x => x != null) && corner != null;
+
+            if (!valid) {
+                return null;
+            }
+
+            List<VoxelChunk> list = new List<VoxelChunk>();
+
+            for (int i = 0; i < 3; i++) {
+                planes[i].Collect(list);
+            }
+
+            for (int i = 0; i < 3; i++) {
+                edges[i].Collect(list);
+            }
+
+            corner.Collect(list);
+            return list;
+        }
+
         // Check if we can adapt neighbouring voxels to our padding voxels array
         // This requires us to have access to all the neighbouring chunks in the positive axii in 3D ABD also that they have valid voxel data
         public bool CanSampleExtraVoxels() {
-            bool valid = planes.All(x => x != null) && edges.All(x => x != null) && corner != null;
-            
-            if (!valid)
-                return false;
+            List<VoxelChunk> neighbours = CollectNeighbours();
 
-            bool hasVoxelData = planes.All(x => x.HasVoxelData()) && edges.All(x => x.HasVoxelData()) && corner.HasVoxelData();
-            return hasVoxelData;
+            if (neighbours == null) {
+                return false;
+            } else {
+                return neighbours.All(x => x != null && x.HasNegativeBoundaryVoxelData());
+            }
         }
 
-        // Check if we can do stitching (if we have our [down/up]-sampled extra voxels)
+        // Check if we can do stitching (if we have our [down/up]-sampled extra voxels and if the neighbouring chunks got their mesh data ready)
         public bool CanStitch() {
-            return adaptedVoxels;
+            List<VoxelChunk> neighbours = CollectNeighbours();
+
+            if (neighbours == null) {
+                return false;
+            } else {
+                bool neighboursValid = neighbours.All(x => x != null && x.HasNegativeBoundaryMeshData());
+                bool selfBoundaryVoxelsValid = source.copyBoundaryVoxelsJobHandle.HasValue && source.copyBoundaryVoxelsJobHandle.Value.IsCompleted;
+                bool selfBoundaryVerticesValid = source.copyBoundaryVerticesJobHandle.HasValue && source.copyBoundaryVerticesJobHandle.Value.IsCompleted;
+                return neighboursValid && selfBoundaryVoxelsValid && selfBoundaryVerticesValid && adaptedVoxels;
+            }
         }
 
 
@@ -191,36 +223,47 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Then I store the edges separately, x,y,z
         // Then I store the corner piece by itself, last value
         // Down/up-sampling is done SEPARATELY FROM STITCHING
-        public NativeArray<Voxel> extraVoxels;
+        public NativeArray<Voxel> paddingVoxels;
 
         // These are the boundary voxels from the source chunk. Compacted the same way as extraVoxels but with size=64
         public NativeArray<Voxel> boundaryVoxels;
-
         private bool adaptedVoxels;
 
         // Copied indices from the source chunk mesh
-        // Packed so we only store the indices on the boundary (x=62 | y=62 | z=62)
-        public NativeArray<int> boundaryIndices;
-
-        // Also copied from the source mesh, but this time to match up with the boundary values since these are packed
+        // Packed so we only store the indices on the boundary (v=62)
         public NativeArray<float3> boundaryVertices;
+        public NativeArray<int> boundaryIndices;
+        public NativeCounter boundaryCounter;
 
-        public void Init() {
+        // Padding vertices that are generated using the boundary voxels and extra voxels
+        // Packed so we only store the indices for the padding strip (v=63)
+        public NativeArray<float3> paddingVertices;
+        public NativeArray<int> paddingIndices;
+        public NativeCounter paddingCounter;
+        public bool stitched;
+
+        public void Init(VoxelChunk self) {
+            this.source = self;
+            stitched = false;
+            adaptedVoxels = false;
             int smallerBoundary = StitchUtils.CalculateBoundaryLength(63);
             int boundary = StitchUtils.CalculateBoundaryLength(64);
             int paddedBoundary = StitchUtils.CalculateBoundaryLength(65);
 
             // limit=64
-            extraVoxels = new NativeArray<Voxel>(paddedBoundary, Allocator.Persistent);
-            
+            paddingVoxels = new NativeArray<Voxel>(paddedBoundary, Allocator.Persistent);
+
             // limit=63
+            paddingVertices = new NativeArray<float3>(boundary, Allocator.Persistent);
+            paddingIndices = new NativeArray<int>(boundary, Allocator.Persistent);
             boundaryVoxels = new NativeArray<Voxel>(boundary, Allocator.Persistent);
             
             // limit=62
             boundaryIndices = new NativeArray<int>(smallerBoundary, Allocator.Persistent);
             boundaryVertices = new NativeArray<float3>(smallerBoundary, Allocator.Persistent);
-            
-            adaptedVoxels = false;
+
+            paddingCounter = new NativeCounter(Allocator.Persistent);
+            boundaryCounter = new NativeCounter(Allocator.Persistent);
 
             // Set the boundary helpers to null since we haven't set them up yet
             planes = new Plane[3] { null, null, null };
@@ -228,57 +271,59 @@ namespace jedjoud.VoxelTerrain.Meshing {
             corner = null;
         }
 
-        public unsafe struct GenericPlane {
+        public unsafe struct GenericBoundaryPlane<T> where T: unmanaged {
             // Uniform neighbour data
             [ReadOnly]
-            public Voxel* uniform;
+            public T* uniform;
 
             // LOD1 neighbour data, not sliced, whole
             [ReadOnly]
-            public Voxel* lod1;
+            public T* lod1;
             public uint2 relativeOffset;
 
             // LOD0 neighbours (4 of them) data, morton 2D
             [ReadOnly]
-            public UnsafePtrList<Voxel> lod0s;
+            public UnsafePtrList<T> lod0s;
         }
 
-        public unsafe struct GenericEdge {
+        public unsafe struct GenericBoundaryEdge<T> where T : unmanaged {
             // Uniform neighbour data
             [ReadOnly]
-            public Voxel* uniform;
+            public T* uniform;
 
             // LOD1 neighbour data, not sliced, whole
             [ReadOnly]
-            public Voxel* lod1;
+            public T* lod1;
             public uint relativeOffset;
 
             // LOD0 neighbours (2 of them) data
             [ReadOnly]
-            public UnsafePtrList<Voxel> lod0s;
+            public UnsafePtrList<T> lod0s;
         }
 
-        public unsafe struct GenericCorner {
+        public unsafe struct GenericBoundaryCorner<T> where T : unmanaged {
             // Uniform neighbour data
             [ReadOnly]
-            public Voxel* uniform;
+            public T* uniform;
 
             // LOD1 neighbour data, not sliced, whole
             [ReadOnly]
-            public Voxel* lod1;
+            public T* lod1;
 
             // LOD0 neighbour data
             [ReadOnly]
-            public Voxel* lod0;
+            public T* lod0;
         }
 
-        public struct JobData {
+        // All the data stored in boundary formatting.
+        // ALWAYS ASSUMES WE ARE DEALING WITH THE NEGATIVE BOUNDARIES!!!!
+        public struct GenericBoundaryData<T> where T: unmanaged {
             [ReadOnly]
-            public UnsafeList<GenericPlane> planes;
+            public UnsafeList<GenericBoundaryPlane<T>> planes;
             [ReadOnly]
-            public UnsafeList<GenericEdge> edges;
+            public UnsafeList<GenericBoundaryEdge<T>> edges;
             [ReadOnly]
-            public GenericCorner corner;
+            public GenericBoundaryCorner<T> corner;
 
             // Uniform | LoToHi | HiToLo => 3 states => 2 bits
             // 2 bits per plane, 2 bits per edge, 2 bits per corner
@@ -303,19 +348,26 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         public unsafe void DoTheSamplinThing() {
-            JobData jobData = new JobData();
-            jobData.planes = new UnsafeList<GenericPlane>(3, Allocator.TempJob);
-            jobData.edges = new UnsafeList<GenericEdge>(3, Allocator.TempJob);
-            BitField32 bits = new BitField32(0);
+            List<VoxelChunk> list = CollectNeighbours();
 
+            foreach (VoxelChunk chunk in list) {
+                chunk.copyBoundaryVoxelsJobHandle.Value.Complete();
+            }
+
+            GenericBoundaryData<Voxel> jobData = new GenericBoundaryData<Voxel>();
+            jobData.planes = new UnsafeList<GenericBoundaryPlane<Voxel>>(3, Allocator.TempJob);
+            jobData.edges = new UnsafeList<GenericBoundaryEdge<Voxel>>(3, Allocator.TempJob);
+            
+            BitField32 bits = new BitField32(0);
+            
             // map the planes
             for (int i = 0; i < 3; i++) {
                 Plane plane = planes[i];
 
                 int type = -1;
                 if (plane is UniformPlane uniform) {
-                    jobData.planes.Add(new GenericPlane {
-                        uniform = (Voxel*)uniform.neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                    jobData.planes.Add(new GenericBoundaryPlane<Voxel> {
+                        uniform = (Voxel*)uniform.neighbour.negativeBoundaryVoxels.GetUnsafeReadOnlyPtr(),
                         lod0s = new UnsafePtrList<Voxel>(),
                         lod1 = null,
                         relativeOffset = 0,
@@ -325,10 +377,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     UnsafePtrList<Voxel> lod0s = new UnsafePtrList<Voxel>(4, Allocator.TempJob);
 
                     for (int n = 0; n < 4; n++) {
-                        lod0s.Add(loToHi.lod0Neighbours[n].voxels.GetUnsafeReadOnlyPtr());
+                        lod0s.Add(loToHi.lod0Neighbours[n].negativeBoundaryVoxels.GetUnsafeReadOnlyPtr());
                     }
 
-                    jobData.planes.Add(new GenericPlane {
+                    jobData.planes.Add(new GenericBoundaryPlane<Voxel> {
                         uniform = null,
                         lod0s = lod0s,
                         lod1 = null,
@@ -336,10 +388,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     });
                     type = 1;
                 } else if (plane is HiToLoPlane hiToLo) {
-                    jobData.planes.Add(new GenericPlane {
+                    jobData.planes.Add(new GenericBoundaryPlane<Voxel> {
                         uniform = null,
                         lod0s = new UnsafePtrList<Voxel>(),
-                        lod1 = (Voxel*)hiToLo.lod1Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod1 = (Voxel*)hiToLo.lod1Neighbour.negativeBoundaryVoxels.GetUnsafeReadOnlyPtr(),
                         relativeOffset = hiToLo.relativeOffset,
                     });
                     type = 2;
@@ -355,8 +407,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 int type = -1;
                 if (edge is UniformEdge uniform) {
-                    jobData.edges.Add(new GenericEdge {
-                        uniform = (Voxel*)uniform.neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                    jobData.edges.Add(new GenericBoundaryEdge<Voxel> {
+                        uniform = (Voxel*)uniform.neighbour.negativeBoundaryVoxels.GetUnsafeReadOnlyPtr(),
                         lod0s = new UnsafePtrList<Voxel>(),
                         lod1 = null,
                         relativeOffset = 0,
@@ -366,10 +418,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     UnsafePtrList<Voxel> lod0s = new UnsafePtrList<Voxel>(2, Allocator.TempJob);
 
                     for (int n = 0; n < 2; n++) {
-                        lod0s.Add(loToHi.lod0Neighbours[n].voxels.GetUnsafeReadOnlyPtr());
+                        lod0s.Add(loToHi.lod0Neighbours[n].negativeBoundaryVoxels.GetUnsafeReadOnlyPtr());
                     }
 
-                    jobData.edges.Add(new GenericEdge {
+                    jobData.edges.Add(new GenericBoundaryEdge<Voxel> {
                         uniform = null,
                         lod0s = lod0s,
                         lod1 = null,
@@ -377,10 +429,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     });
                     type = 1;
                 } else if (edge is HiToLoEdge hiToLo) {
-                    jobData.edges.Add(new GenericEdge {
+                    jobData.edges.Add(new GenericBoundaryEdge<Voxel> {
                         uniform = null,
                         lod0s = new UnsafePtrList<Voxel>(),
-                        lod1 = (Voxel*)hiToLo.lod1Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod1 = (Voxel*)hiToLo.lod1Neighbour.negativeBoundaryVoxels.GetUnsafeReadOnlyPtr(),
                         relativeOffset = hiToLo.relativeOffset,
                     });
                     type = 2;
@@ -394,24 +446,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
             {
                 int type = -1;
                 if (corner is UniformCorner uniform) {
-                    jobData.corner = new GenericCorner {
-                        uniform = (Voxel*)uniform.neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                    jobData.corner = new GenericBoundaryCorner<Voxel> {
+                        uniform = (Voxel*)uniform.neighbour.negativeBoundaryVoxels.GetUnsafeReadOnlyPtr(),
                         lod0 = null,
                         lod1 = null,
                     };
                     type = 0;
                 } else if (corner is LoToHiCorner loToHi) {
-                    jobData.corner = new GenericCorner {
+                    jobData.corner = new GenericBoundaryCorner<Voxel> {
                         uniform = null,
-                        lod0 = (Voxel*)loToHi.lod0Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod0 = (Voxel*)loToHi.lod0Neighbour.negativeBoundaryVoxels.GetUnsafeReadOnlyPtr(),
                         lod1 = null,
                     };
                     type = 1;
                 } else if (corner is HiToLoCorner hiToLo) {
-                    jobData.corner = new GenericCorner {
+                    jobData.corner = new GenericBoundaryCorner<Voxel> {
                         uniform = null,
                         lod0 = null,
-                        lod1 = (Voxel*)hiToLo.lod1Neighbour.voxels.GetUnsafeReadOnlyPtr(),
+                        lod1 = (Voxel*)hiToLo.lod1Neighbour.negativeBoundaryVoxels.GetUnsafeReadOnlyPtr(),
                     };
                     type = 2;
                 }
@@ -422,18 +474,60 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             jobData.state = bits;
             SampleVoxelsLodJob job = new SampleVoxelsLodJob {
-                paddingVoxels = extraVoxels,
+                paddingVoxels = paddingVoxels,
                 jobData = jobData,
             };
             job.Schedule(StitchUtils.CalculateBoundaryLength(65), 1024).Complete();
             jobData.Dispose();
+            adaptedVoxels = true;
+        }
+
+        public unsafe void DoTheStitchingThing() {
+            List<VoxelChunk> list = CollectNeighbours();
+            list.Add(source);
+            
+            for (int i = 0; i < list.Count; i++) {
+                list[i].copyBoundaryVerticesJobHandle.Value.Complete();
+                list[i].copyBoundaryVoxelsJobHandle.Value.Complete();
+            }
+
+            // then use padding voxels and extra voxels to create padding vertices of the same resolution as the current chunk
+            PaddingVertexJob paddingVertexJob = new PaddingVertexJob {
+                paddingVoxels = paddingVoxels,
+                boundaryVoxels = boundaryVoxels,
+                counter = paddingCounter,
+                paddingIndices = paddingIndices,
+                vertices = paddingVertices,
+            };
+
+            paddingVertexJob.Schedule(StitchUtils.CalculateBoundaryLength(64), 1024).Complete();
+
+            // then copy all the vertices into one big contiguous array
+            // create some sort of look up table for vertex index offsets for each of the planes, edges, and corner
+            // worst case scenario, we have 19 offsets (19 LOD0 chunks) if all of the boundary thingimabobs are LoToHi;
+
+            // then create quads between padding vertices and boundary vertices (same res)
+
+
+            // then create quads between neighbouring chunks vertices and padding vertices
+            // this must always run at a higher resolution than the source chunk
+            // if we have a plane for example of type Uniform, just run it at a 1:1 scale 
+            // if it is LoToHi, run the stitch quadding stuff for each of its neighbours (since *they* contain the negative boundary voxels)
+            // if it is HiToLo, run the stitch quadding stuff for its LOD1 neighbours (since *it* contains the negative boundary voxels)
+            stitched = true;
         }
 
         public void Dispose() {
-            extraVoxels.Dispose();
-            boundaryIndices.Dispose();
-            boundaryVertices.Dispose();
+            paddingVoxels.Dispose();
             boundaryVoxels.Dispose();
+
+            boundaryVertices.Dispose();
+            boundaryIndices.Dispose();
+            boundaryCounter.Dispose();
+            
+            paddingVertices.Dispose();
+            paddingIndices.Dispose();
+            paddingCounter.Dispose();
         }
     }
 }

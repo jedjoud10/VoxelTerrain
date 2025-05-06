@@ -39,6 +39,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal Queue<MeshingRequest> queuedMeshingRequests;
         internal HashSet<MeshingRequest> meshingRequests;
         internal List<VoxelStitch> pendingPaddingVoxelSamplingRequests;
+        internal List<VoxelStitch> pendingStitchRequests;
         private StitchJobHandler stitcher;
 
         // Initialize the voxel mesher
@@ -47,10 +48,43 @@ namespace jedjoud.VoxelTerrain.Meshing {
             queuedMeshingRequests = new Queue<MeshingRequest>();
             meshingRequests = new HashSet<MeshingRequest>();
             pendingPaddingVoxelSamplingRequests = new List<VoxelStitch>();
+            pendingStitchRequests = new List<VoxelStitch>();
             stitcher = new StitchJobHandler(this);
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 handlers.Add(new MeshJobHandler(this));
+            }
+
+            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
+                bool check = StitchUtils.PosToBoundaryIndex(StitchUtils.BoundaryIndexToPos(i, 64, false), 64, false) == i;
+                uint3 cal = StitchUtils.BoundaryIndexToPos(i, 64, false);
+
+                bool3 bool3 = cal == 63;
+                int bitmask = math.bitmask(new bool4(bool3, false));
+                int bitsSet = math.countbits(bitmask);
+
+                /*
+                Debug.Log(cal);
+                if (bitsSet == 1) {
+                    Debug.Log("plane");
+                } else if (bitsSet == 2) {
+                    Debug.Log("edge");
+                } else if (bitsSet == 3) {
+                    Debug.Log("corner");
+                } else {
+                    Debug.LogError("WHAT!!!");
+                }
+                */
+
+                if (bitsSet == 1) {
+                    Debug.Log($"plane: {check}");
+                } else if (bitsSet == 2) {
+                    Debug.Log($"edge: {check}");
+                } else if (bitsSet == 3) {
+                    Debug.Log($"corner: {check}");
+                } else {
+                    Debug.LogError("WHAT!!!");
+                }
             }
         }
 
@@ -78,11 +112,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public override void CallerTick() {
             foreach (var handler in handlers) {
-                //  || (tick - handler.startingTick) > handler.request.maxTicks)
-                if (handler.finalJobHandle.IsCompleted && !handler.Free) {
-                    Profiler.BeginSample("Finish Mesh Jobs");
-                    FinishJob(handler);
-                    Profiler.EndSample();
+                // do NOT forget this check!
+                if (handler.request.chunk != null) {
+                    VoxelChunk chunk = handler.request.chunk;
+                    bool copyBoundaryJobs = chunk.copyBoundaryVerticesJobHandle.Value.IsCompleted && chunk.copyBoundaryVoxelsJobHandle.Value.IsCompleted;
+
+                    //  || (tick - handler.startingTick) > handler.request.maxTicks)
+                    if (handler.finalJobHandle.IsCompleted && copyBoundaryJobs && !handler.Free) {
+                        Profiler.BeginSample("Finish Mesh Jobs");
+                        chunk.copyBoundaryVerticesJobHandle.Value.Complete();
+                        chunk.copyBoundaryVoxelsJobHandle.Value.Complete();
+                        FinishJob(handler);
+                        Profiler.EndSample();
+                    }
                 }
             }
 
@@ -97,8 +139,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         stitchGo.transform.localPosition = Vector3.zero;
                         stitchGo.transform.localScale = Vector3.one;
                         chunk.stitch = stitchGo.GetComponent<VoxelStitch>();
-                        chunk.stitch.Init();
-                        chunk.stitch.source = chunk;
+                        chunk.stitch.Init(chunk);
 
                         // Create a mesh for this chunk (no stitching involved)
                         // We do need to keep some boundary data for *upcomging* stitching though
@@ -264,6 +305,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         stitch.DoTheSamplinThing();
                     }
                     pendingPaddingVoxelSamplingRequests.RemoveAt(i);
+                    pendingStitchRequests.Add(stitch);
+                }
+            }
+
+            // Check the stitching request and wait until all the required neighbours have had their mesh generated
+            for (int i = pendingStitchRequests.Count - 1; i >= 0; i--) {
+                VoxelStitch stitch = pendingStitchRequests[i];
+
+                // When we can, create do the awesome pawsome stitching!!
+                if (stitch.CanStitch()) {
+                    unsafe {
+                        stitch.DoTheStitchingThing();
+                    }
+                    pendingStitchRequests.RemoveAt(i);
                 }
             }
         }
@@ -302,7 +357,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // check which axis is NOT set
                         int inv = (~bitmask) & 0b111;
                         int dir = math.tzcnt(inv);
-                        uint? relativeEdgeOffset = hiToLow ? StitchUtils.FlattenToEdgeRelative(relativeOffset, dir) : null;
+                        uint? relativeEdgeOffset = hiToLow ? (uint)StitchUtils.FlattenToEdgeRelative(relativeOffset, dir) : null;
                         stitch.edges[dir] = VoxelStitch.Edge.CreateWithNeighbour(neighbour, hiToLow, relativeEdgeOffset);
                     } else {
                         // corner case
@@ -358,7 +413,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             float3 srcPos = neighbourNode.position;
                             float3 dstPos = stitch.source.node.position;
                             uint3 relativeOffset = (uint3)((srcPos - dstPos) / neighbourNode.size);
-                            uint relativeEdgeOffset = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
+                            int relativeEdgeOffset = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
                             sortedNeighbours[relativeEdgeOffset] = terrain.chunks[neighbourNode];
                         }
 
@@ -381,6 +436,49 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             var copy = new AsyncMemCpy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
             handler.BeginJob(copy);
+
+            // Copy positive boundary vertices and indices to the stitching object for later stitching (as src) (at v=62)
+            CopyBoundaryVerticesJob copyPositiveBoundaryVertices = new CopyBoundaryVerticesJob {
+                counter = request.chunk.stitch.boundaryCounter,
+                indices = handler.indices,
+                vertices = handler.vertices,
+                boundaryIndices = request.chunk.stitch.boundaryIndices,
+                boundaryVertices = request.chunk.stitch.boundaryVertices,
+                negative = false,
+            };
+
+            // Copy negative boundary vertices and indices to the stitching object for later stitching (as neighbour) (at v=0)
+            CopyBoundaryVerticesJob copyNegativeBoundaryVertices = new CopyBoundaryVerticesJob {
+                counter = request.chunk.negativeBoundaryCounter,
+                indices = handler.indices,
+                vertices = handler.vertices,
+                boundaryIndices = request.chunk.negativeBoundaryIndices,
+                boundaryVertices = request.chunk.negativeBoundaryVertices,
+                negative = true,
+            };
+
+            // Copy positive boundary voxels at v=63
+            CopyBoundaryVoxelsJob copyPositiveBoundaryVoxels = new CopyBoundaryVoxelsJob {
+                voxels = handler.voxels,
+                boundaryVoxels = request.chunk.stitch.boundaryVoxels,
+                negative = false
+            };
+
+            // Copy negative boundary voxels at v=0
+            CopyBoundaryVoxelsJob copyNegativeBoundaryVoxels = new CopyBoundaryVoxelsJob {
+                voxels = handler.voxels,
+                boundaryVoxels = request.chunk.negativeBoundaryVoxels,
+                negative = true
+            };
+
+            JobHandle copyPosBoundaryVoxelsHandle = copyPositiveBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048, copy);
+            JobHandle copyNegBoundaryVoxelsHandle = copyNegativeBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048, copy);
+            request.chunk.copyBoundaryVoxelsJobHandle = JobHandle.CombineDependencies(copyPosBoundaryVoxelsHandle, copyNegBoundaryVoxelsHandle);
+
+            // Copy the boundary data. One job runs at size=64 and other runs at size=63
+            JobHandle copyPosBoundaryVerticesHandle = copyPositiveBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(63), 2048, handler.vertexJobHandle);
+            JobHandle copyNegBoundaryVerticesHandle = copyNegativeBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(63), 2048, handler.vertexJobHandle);
+            request.chunk.copyBoundaryVerticesJobHandle = JobHandle.CombineDependencies(copyPosBoundaryVerticesHandle, copyNegBoundaryVerticesHandle);
         }
 
         private void FinishJob(MeshJobHandler handler) {

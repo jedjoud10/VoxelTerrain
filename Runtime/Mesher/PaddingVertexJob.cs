@@ -1,12 +1,12 @@
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
-    public struct CreatePaddingVerticesLod1Job : IJobParallelFor {
+    public struct PaddingVertexJob : IJobParallelFor {
         // Positions of the first vertex in edges
         [ReadOnly]
         static readonly uint3[] edgePositions0 = new uint3[] {
@@ -41,49 +41,36 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new uint3(0, 1, 1),
         };
 
-        // Voxel array for LOD1
-        // 3d morton encoded
+        // Boundary voxels (at v=63)
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public NativeArray<Voxel> boundaryVoxels;
 
-        // Extra padding voxels that contain blurred data of LOD0 neighbours
-        // 2D morton encoded
+        // Padding voxels (at v=64)
         [ReadOnly]
-        public NativeArray<Voxel> paddingBlurredFaceVoxels;
+        public NativeArray<Voxel> paddingVoxels;
 
-        // Contains 3D data of the indices of the vertices
         [WriteOnly]
-        public NativeArray<int> indices;
+        public NativeArray<int> paddingIndices;
 
-        // Vertices that we generated
         [WriteOnly]
         [NativeDisableParallelForRestriction]
         public NativeArray<float3> vertices;
 
-        // Vertex Counter
         public Unsafe.NativeCounter.Concurrent counter;
 
-        private Voxel FetchVoxel(uint3 position) {
-            if (position.x > 63) {
-                return paddingBlurredFaceVoxels[VoxelUtils.PosToIndexMorton2D(position.yz)];
+        // Selects between fetching from padding voxels or boundary voxels
+        private Voxel Fetch(uint3 position) {
+            if (StitchUtils.LiesOnBoundary(position, 65)) {
+                return paddingVoxels[StitchUtils.PosToBoundaryIndex(position, 65)];
             } else {
-                return voxels[VoxelUtils.PosToIndexMorton(position)];
+                return boundaryVoxels[StitchUtils.PosToBoundaryIndex(position, 64)];
             }
         }
 
-        public void Execute(int _index) {
-            indices[_index] = int.MaxValue;
+        public void Execute(int index) {
+            paddingIndices[index] = int.MaxValue;
 
-
-            // we run this as 64x64x2 so we need to take account for the x2
-            int index = _index % (VoxelUtils.SIZE * VoxelUtils.SIZE);
-            int slice = _index / (VoxelUtils.SIZE * VoxelUtils.SIZE);
-
-            uint2 facePos = VoxelUtils.IndexToPosMorton2D(index);
-            uint3 position = new uint3(62 + (uint)slice, facePos);
-
-            if (!math.all(facePos < 63))
-                return;
+            uint3 position = StitchUtils.BoundaryIndexToPos(index, 64);
 
             float3 vertex = float3.zero;
 
@@ -94,8 +81,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uint3 startOffset = edgePositions0[edge];
                 uint3 endOffset = edgePositions1[edge];
                 
-                Voxel startVoxel = FetchVoxel(startOffset + position);
-                Voxel endVoxel = FetchVoxel(endOffset + position);
+                Voxel startVoxel = Fetch(startOffset + position);
+                Voxel endVoxel = Fetch(endOffset + position);
 
                 if (startVoxel.density > 0f ^ endVoxel.density > 0f) {
                     count++;
@@ -112,13 +99,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 vertex = 0f;
             }
 
-            // Must be offset by
             int vertexIndex = counter.Increment();
-            indices[_index] = vertexIndex;
+            paddingIndices[index] = vertexIndex;
 
             // Output vertex in object space
-            float3 offset = (vertex / (float)count);
-            float3 outputVertex = (offset) + position;
+            float3 offset = vertex / (float)count;
+            float3 outputVertex = offset + position;
             vertices[vertexIndex] = outputVertex + 0.5f;
         }
     }

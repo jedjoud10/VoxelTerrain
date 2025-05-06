@@ -15,7 +15,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             VoxelChunk src = (VoxelChunk)target;
             VoxelStitch stitch = src.stitch;
 
-            EditorGUILayout.LabelField($"Thingy: {stitch.CanSampleExtraVoxels()}");
+            EditorGUILayout.LabelField($"CanSampleExtraVoxels: {stitch.CanSampleExtraVoxels()}");
+            EditorGUILayout.LabelField($"CanStitch: {stitch.CanStitch()}");
             EditorGUILayout.LabelField("Planes");
             string t = "";
             for (int i = 0; i < 3; i++) {
@@ -69,6 +70,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             EditorGUILayout.LabelField($"Corner: {t}");
             EditorGUI.indentLevel--;
 
+            /*
             EditorGUILayout.LabelField($"Sigma: ");
             EditorGUI.indentLevel++;
 
@@ -81,6 +83,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             EditorGUILayout.LabelField($"Corner: {stitch.corner.HasVoxelData()}");
+            */
             EditorGUI.indentLevel--;
         }
     }

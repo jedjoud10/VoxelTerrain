@@ -80,7 +80,6 @@ namespace jedjoud.VoxelTerrain {
         private int pendingChunks;
         private bool complete;
         private List<GameObject> unusedPooledChunks;
-        private List<NativeArray<Voxel>> unusedPooledContainers;
 
         public void Start() {
             if (materials.Count == 0) {
@@ -91,7 +90,6 @@ namespace jedjoud.VoxelTerrain {
             disposed = false;
             chunks = new Dictionary<OctreeNode, VoxelChunk>();
             unusedPooledChunks = new List<GameObject>();
-            unusedPooledContainers = new List<NativeArray<Voxel>>();
 
             tickDelta = 1 / (float)ticksPerSecond;
 
@@ -127,18 +125,8 @@ namespace jedjoud.VoxelTerrain {
                     obj.transform.position = item.position;
                     obj.transform.localScale = new Vector3(size, size, size);
 
-                    // RESETS ALL THE OLD CACHED PROPERTIES OF THE CHUNK
-                    chunk.node = item;
-                    chunk.voxelMaterialsLookup = null;
-                    chunk.triangleOffsetLocalMaterials = null;
-                    chunk.state = ChunkState.Idle;
+                    chunk.ResetChunk(item);
                     chunks.Add(item, chunk);
-
-                    // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
-                    // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
-                    chunk.voxels = FetchVoxelsContainer();
-                    chunk.negativeBoundaryIndices = new NativeArray<int>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
-                    chunk.negativeBoundaryVertices = new NativeArray<float3>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
 
                     // Begin the voxel pipeline by generating the voxels for this chunk
                     readback.GenerateVoxels(chunk, ref all);
@@ -254,10 +242,6 @@ namespace jedjoud.VoxelTerrain {
             foreach (var go in unusedPooledChunks) {
                 go.GetComponent<VoxelChunk>().Dispose();
             }
-
-            foreach (var voxels in unusedPooledContainers) {
-                voxels.Dispose();
-            }
         }
 
         private GameObject FetchChunk() {
@@ -268,6 +252,7 @@ namespace jedjoud.VoxelTerrain {
                 chunk.name = $"Voxel Chunk";
                 Mesh mesh = new Mesh();
                 VoxelChunk component = chunk.GetComponent<VoxelChunk>();
+                component.InitChunk();
                 component.sharedMesh = mesh;
             } else {
                 chunk = unusedPooledChunks[unusedPooledChunks.Count - 1];
@@ -283,27 +268,8 @@ namespace jedjoud.VoxelTerrain {
         private void PoolChunk(GameObject chunk) {
             chunk.SetActive(false);
             unusedPooledChunks.Add(chunk);
-
-            VoxelChunk component = chunk.GetComponent<VoxelChunk>();
-            if (component.voxels.IsCreated) {
-                unusedPooledContainers.Add(component.voxels);
-            }
-
-            component.voxels = default;
         }
 
-        private NativeArray<Voxel> FetchVoxelsContainer() {
-            NativeArray<Voxel> array;
-
-            if (unusedPooledContainers.Count == 0) {
-                array = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            } else {
-                array = unusedPooledContainers[unusedPooledContainers.Count - 1];
-                unusedPooledContainers.RemoveAt(unusedPooledContainers.Count - 1);
-            }
-
-            return array;
-        }
 
         private void OnDrawGizmosSelected() {
             if (chunks != null && drawGizmos) {

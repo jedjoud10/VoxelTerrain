@@ -19,6 +19,9 @@ namespace jedjoud.VoxelTerrain {
         // Max possible number of materials supported by the terrain mesh
         public const int MAX_MATERIAL_COUNT = 256;
 
+        // Ermm.. what the sigma?
+        public const bool BLOCKY = false;
+
         // Offsets used for octree generation
         // Also mortonated!!!
         public static readonly int3[] OCTREE_CHILD_OFFSETS = {
@@ -95,7 +98,6 @@ namespace jedjoud.VoxelTerrain {
         public static readonly int[] MortonNeighbourLookup = new int[] {
             0, 1, 9, 10, 3, 4, 12, 13
         };
-        public const bool BLOCKY = false;
 
         // Convert an index to a 3D position (morton coding)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

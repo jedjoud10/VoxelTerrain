@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [ReadOnly]
         [NativeDisableUnsafePtrRestriction]
-        public VoxelStitch.JobData jobData;
+        public VoxelStitch.GenericBoundaryData<Voxel> jobData;
         
         public void Execute(int index) {
             uint3 position = StitchUtils.BoundaryIndexToPos(index, 65);
