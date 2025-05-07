@@ -109,6 +109,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                         pending.Remove(chunk);
                         if (count == max || count == -max) {
                             chunk.state = VoxelChunk.ChunkState.Done;
+                            chunk.skipped = true;
                         } else {
                             chunk.state = VoxelChunk.ChunkState.Temp;
                             onReadback?.Invoke(chunk);

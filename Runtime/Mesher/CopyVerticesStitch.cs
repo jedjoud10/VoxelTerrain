@@ -13,14 +13,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> vertices;
         
         public NativeArray<float3> boundaryVertices;
-        public NativeArray<float3> paddingVertices;
         public int boundaryVerticesCount;
-        public int paddingVerticesCount;
 
         public void Execute() {
             // copy boundary vertices THEN padding vertices
             vertices.Slice(0, boundaryVerticesCount).CopyFrom(boundaryVertices.Slice(0, boundaryVerticesCount));
-            vertices.Slice(boundaryVerticesCount, paddingVerticesCount).CopyFrom(paddingVertices.Slice(0, paddingVerticesCount));
 
             for (int i = 0; i < 19; i++) {
                 int count = vertexCounts[i];

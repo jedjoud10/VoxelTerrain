@@ -8,7 +8,7 @@ namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
         // Ermm.. what the sigma?
-        public const bool BLOCKY = false;
+        public const bool BLOCKY = true;
 
         // Offsets used for octree generation
         // Also mortonated!!!

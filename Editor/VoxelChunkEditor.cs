@@ -15,7 +15,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             VoxelChunk src = (VoxelChunk)target;
             VoxelStitch stitch = src.stitch;
 
-            EditorGUILayout.LabelField($"CanSampleExtraVoxels: {stitch.CanSampleExtraVoxels()}");
             EditorGUILayout.LabelField($"CanStitch: {stitch.CanStitch()}");
             EditorGUILayout.LabelField("Planes");
             string t = "";

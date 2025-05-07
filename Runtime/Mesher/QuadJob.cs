@@ -129,9 +129,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, 65);
 
-            if (math.any(position < 1))
-                return;
-
             if (math.any(position > 63))
                 return;
 
@@ -139,6 +136,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];
 
             for (int i = 0; i < 3; i++) {
+                // we CAN do quad stuff on the v=0 boundary as long as we're doing it parallel to the face boundary
+                if (math.any(position < (1 - quadForwardDirection[i])))
+                    continue;
+
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {
                     CheckEdge(position, i, false, false);
                 }

@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
-        // Voxels at the (x=63 || y=63 || z=63) boundary OR the (x=0 || y=0 || z=0) boundary
+        // Voxels at the (x=64 || y=64 || z=64) boundary OR the (x=0 || y=0 || z=0) boundary
         [WriteOnly]
         public NativeArray<Voxel> boundaryVoxels;
 
@@ -18,10 +18,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool negative;
 
         public void Execute(int index) {
-            /*
-            int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 64, negative));
+            int morton = VoxelUtils.PosToIndex(StitchUtils.BoundaryIndexToPos(index, 65, negative), 65);
             boundaryVoxels[index] = voxels[morton];
-            */
         }
     }
 } 

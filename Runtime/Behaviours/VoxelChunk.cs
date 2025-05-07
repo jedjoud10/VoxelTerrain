@@ -36,6 +36,9 @@ namespace jedjoud.VoxelTerrain {
         public OctreeNode node;
         public ChunkState state;
 
+        // if we skipped meshing the chunk
+        public bool skipped;
+
         [HideInInspector]
         public Mesh sharedMesh;
         [HideInInspector]
@@ -50,22 +53,21 @@ namespace jedjoud.VoxelTerrain {
         public float3 other;
         public uint2 relativeOffsetToLod1;
         public VoxelStitch stitch;
-        public bool debugValues;
+
         public NativeArray<int> negativeBoundaryIndices;
         public NativeArray<float3> negativeBoundaryVertices;
         public NativeCounter negativeBoundaryCounter;
-        public NativeArray<Voxel> negativeBoundaryVoxels;
-        public JobHandle? copyBoundaryVoxelsJobHandle;
         public JobHandle? copyBoundaryVerticesJobHandle;
+        public JobHandle? copyBoundaryVoxelsJobHandle;
+        public bool debugValues;
 
         // Initialize hte chunk with completely new native arrays (during pooled chunk creation)
         public void InitChunk() {
-            negativeBoundaryIndices = new NativeArray<int>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
-            negativeBoundaryVertices = new NativeArray<float3>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
+            negativeBoundaryIndices = new NativeArray<int>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
+            negativeBoundaryVertices = new NativeArray<float3>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
             negativeBoundaryCounter = new NativeCounter(Allocator.Persistent);
-            negativeBoundaryVoxels = new NativeArray<Voxel>(StitchUtils.CalculateBoundaryLength(64), Allocator.Persistent);
-            copyBoundaryVoxelsJobHandle = null;
             copyBoundaryVerticesJobHandle = null;
+            copyBoundaryVoxelsJobHandle = null;
 
             // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
             // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
@@ -78,7 +80,10 @@ namespace jedjoud.VoxelTerrain {
             node = item;
             voxelMaterialsLookup = null;
             triangleOffsetLocalMaterials = null;
+            copyBoundaryVerticesJobHandle = null;
+            copyBoundaryVoxelsJobHandle = null;
             negativeBoundaryCounter.Count = 0;
+            skipped = false;
             state = ChunkState.Idle;
         }
 
@@ -87,27 +92,63 @@ namespace jedjoud.VoxelTerrain {
             return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
         }
 
-        // Check if the chunk has valid negative boundary voxel data
-        public bool HasNegativeBoundaryVoxelData() {
-            return copyBoundaryVoxelsJobHandle.HasValue && copyBoundaryVoxelsJobHandle.Value.IsCompleted && negativeBoundaryVoxels.IsCreated;
-        }
-
-
         // Check if the chunk has valid mesh data at the negative boundary
         public bool HasNegativeBoundaryMeshData() {
             bool job = copyBoundaryVerticesJobHandle.HasValue && copyBoundaryVerticesJobHandle.Value.IsCompleted;
-            bool boundaryVoxels = HasNegativeBoundaryVoxelData();
             bool created = negativeBoundaryVertices.IsCreated && negativeBoundaryIndices.IsCreated;
-            return state == ChunkState.Done && boundaryVoxels && job && created;
+            bool voxels = copyBoundaryVoxelsJobHandle.HasValue && copyBoundaryVoxelsJobHandle.Value.IsCompleted;
+            return state == ChunkState.Done && (skipped || (job && voxels && created));
         }
 
         public void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
                 return;
 
+            float s = node.size / 64f;
+            for (int j = 0; j < 27; j++) {
+                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                int3 offset = (int3)_offset - 1;
+
+                if (neighbourMask.IsSet(j)) {
+                    Gizmos.color = Color.white;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+
+                if (lowLodMask.IsSet(j)) {
+                    Gizmos.color = Color.cyan;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+
+                if (highLodMask.IsSet(j)) {
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+            }
+
             Gizmos.color = Color.white;
             MinMaxAABB bounds = node.Bounds;
             Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
+
+            if (debugValues) {
+                /*
+                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
+                    int vertexIndex = stitch.boundaryIndices[i];
+
+                    if (vertexIndex != int.MaxValue) {
+                        float3 vertex = stitch.boundaryVertices[vertexIndex];
+                        Gizmos.DrawSphere(vertex * s + node.position, 0.2f);
+                    }
+                }
+                */
+
+                if (stitch.stitched) {
+                    for (int i = 0; i < stitch.vertices.Length; i++) {
+                        float3 vertex = stitch.vertices[i];
+                        Gizmos.DrawSphere(vertex * s + node.position, 0.2f);
+                    }
+                }
+
+            }
         }
             
         // Get the AABB world bounds of this chunk
@@ -155,7 +196,6 @@ namespace jedjoud.VoxelTerrain {
             negativeBoundaryIndices.Dispose();
             negativeBoundaryVertices.Dispose();
             negativeBoundaryCounter.Dispose();
-            negativeBoundaryVoxels.Dispose();
         }
     }
 }
