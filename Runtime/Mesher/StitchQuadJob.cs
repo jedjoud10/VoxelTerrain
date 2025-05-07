@@ -1,7 +1,9 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using Unity.Plastic.Antlr3.Runtime;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
@@ -9,28 +11,33 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // There are cases where the stitching fails and leaves some gaps behind
     // I know this happens and I think I know why this occurs but I can't manage to replicate it again
 
-
+    // for now, assume uniformity
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Deterministic, OptimizeFor = OptimizeFor.Performance)]
-    public struct StitchQuadJob : IJobParallelFor {
-        // LOD0 data for the current LOD0 chunk
+    public unsafe struct StitchQuadJob : IJobParallelFor {
+        public NativeArray<float4> debugData;
+        
+        // Source boundary voxels
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public NativeArray<Voxel> srcBoundaryVoxels;
 
-        // LOD0 chunk offset relative to LOD1 big man thingy
-        // in the range of 0 to 1
-        // this is in the FACE space, where X,Y are just face local coordinates
-        public uint2 relativeOffsetToLod1;
-
-        // LOD0 FACE indices
-        // 2D mortonated
-        // remember that this is 64x64x2, so we must add a 64x64 offset first to access the ones on the boundary
+        // Source boundary indices
         [ReadOnly]
-        public NativeArray<int> lod0indices;
+        public NativeArray<int> srcBoundaryIndices;
 
-        // LOD1 FACE indices
-        // 2D mortonated
+        // Neighbouring boundary voxels
         [ReadOnly]
-        public NativeArray<int> lod1indices;
+        [NativeDisableUnsafePtrRestriction]
+        public VoxelStitch.GenericBoundaryData<Voxel> neighbourVoxels;
+
+        // Neighbouring boundary vertex indices
+        [ReadOnly]
+        [NativeDisableUnsafePtrRestriction]
+        public VoxelStitch.GenericBoundaryData<int> neighbourIndices;
+
+        // Index offsets since we merged all the vertices in a contiguous manner
+        [ReadOnly]
+        [NativeDisableUnsafePtrRestriction]
+        public NativeArray<int> indexOffsets;
 
         // Triangles that we generated
         [WriteOnly]
@@ -68,52 +75,71 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [WriteOnly]
         public Unsafe.NativeCounter.Concurrent counter;
 
-        /*
         // Fetches the vertex index of a vertex in a specific position
-        // If x=-1, then we use the vertex data from LOD1
-        // If x=0, then we use vertex data from LOD0
-        private int GetVertexIndex(int3 position) {
-            if (position.x < 0) {
-                uint2 offset = relativeOffsetToLod1 * VoxelUtils.SIZE / 2;
+        // If this crosses the v=65 boundary, use the neighbouring chunks' negative boundary indices instead
+        private int GetVertexIndex(uint3 position) {
+            if (neighbourIndices.state.Value != 16215) {
+                return int.MaxValue;
+            }
 
-                // LOD1 voxels are twice as big as LOD0
-                uint2 rounded = (uint2)position.yz / 2 + offset;
-                return lod1indices[VoxelUtils.PosToIndexMorton2D(rounded) + VoxelUtils.SIZE * VoxelUtils.SIZE];
+            Debug.Log($"GetVertexIndex, pos = {position}, state = {neighbourIndices.state.Value}");
+            if (math.any(position >= 64)) {
+                int unpackedNeighbourIndex = StitchUtils.FetchUnpackedNeighbourIndex(position, neighbourIndices.state);
+                
+                if (unpackedNeighbourIndex == -1) {
+                    return int.MaxValue;
+                }
+                
+                int indexOffset = indexOffsets[unpackedNeighbourIndex];
+
+                if (indexOffset == -1) {
+                    Debug.LogError("what the sigmoid?");
+                }
+            
+                int index = StitchUtils.Sample<int>(position, ref neighbourIndices);
+                Debug.Log($"NEIGHBOUR!! unpackedNeighbourIndex = {unpackedNeighbourIndex}, indexOffset = {indexOffset}, index = {index}");
+                return index + indexOffset;
             } else {
-                return lod0indices[VoxelUtils.PosToIndexMorton2D((uint2)position.yz)];
+                Debug.Log($"SOURCE!!!");
+                return srcBoundaryIndices[StitchUtils.PosToBoundaryIndex(position, 64)];
             }
         }
-        */
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint3 basePosition, int index) {
-            /*
             uint3 forward = quadForwardDirection[index];
 
-            Voxel startVoxel = voxels[VoxelUtils.PosToIndexMorton(basePosition)];
-            Voxel endVoxel = voxels[VoxelUtils.PosToIndexMorton(basePosition + forward)];
+            // When we implement multi-res, swap between the two sets here
+            // Either sample from pos-boundary of self, or neg-boundary of neighbours
+            Voxel startVoxel = srcBoundaryVoxels[StitchUtils.PosToBoundaryIndex(basePosition, 65)];
+            Voxel endVoxel = srcBoundaryVoxels[StitchUtils.PosToBoundaryIndex(basePosition + forward, 65)];
 
             if (startVoxel.density > 0 == endVoxel.density > 0)
                 return;
 
+            int bitsset = math.countbits(math.bitmask(new bool4(basePosition == new uint3(64), false)));
+            float data = bitsset == 2 ? 0.2f : 0f;
+            float3 pos = (float3)basePosition + 0.5f * (float3)forward;
+            debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, data);
+
+            if (bitsset != 2)
+                return;
+
             bool flip = (endVoxel.density >= 0.0);
 
-            // not a uint anymore since we will cross ze boundary...
-            int3 offset = (int3)basePosition + (int3)forward - 1;
+            uint3 offset = basePosition + forward - 1;
 
-            // Fetch the indices of the vertex positions ACROSS THE LOD BOUNDARY 
-            // Does the shit in multi-resolution style
-            int vertex0 = GetVertexIndex(offset + (int3)quadPerpendicularOffsets[index * 4]);
-            int vertex1 = GetVertexIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 1]);
-            int vertex2 = GetVertexIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 2]);
-            int vertex3 = GetVertexIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 3]);
+            int vertex0 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4]);
+            int vertex1 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 1]);
+            int vertex2 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 2]);
+            int vertex3 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 3]);
 
             // Don't make a quad if the vertices are invalid
             if ((vertex0 | vertex1 | vertex2 | vertex3) == int.MaxValue)
                 return;
 
             // Get the triangle index base
-            int triIndex = counter.Increment() * 6;
+            int triIndex = counter.Add(6);
 
             // Set the first tri
             triangles[triIndex + (flip ? 0 : 2)] = vertex0;
@@ -124,26 +150,25 @@ namespace jedjoud.VoxelTerrain.Meshing {
             triangles[triIndex + (flip ? 3 : 5)] = vertex2;
             triangles[triIndex + 4] = vertex3;
             triangles[triIndex + (flip ? 5 : 3)] = vertex0;
-            */
         }
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            /*
-            uint2 facePos = VoxelUtils.IndexToPosMorton2D(index);
-            uint3 position = new uint3(0, facePos);
-
-            if (math.any(facePos < 1))
-                return;
-
-            if (math.any(facePos > 62))
-                return;
+            // When we implement multi-res, swap between the two sets here
+            // Either sample from pos-boundary of self, or neg-boundary of neighbours
+            uint3 boundaryPosition = StitchUtils.BoundaryIndexToPos(index, 65);
             
+            if (math.any(boundaryPosition < 1))
+                return;
 
-            CheckEdge(position, 0);
-            CheckEdge(position, 1);
-            CheckEdge(position, 2);
-            */
+            int debugDirsDisable = 0b010;
+
+            for (int i = 0; i < 3; i++) {
+                if (boundaryPosition[i] > 63 || ((debugDirsDisable >> i) & 1) == 0)
+                    continue;
+
+                CheckEdge(boundaryPosition, i);
+            }
         }
     }
 }

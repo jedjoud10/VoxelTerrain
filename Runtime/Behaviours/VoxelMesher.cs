@@ -290,7 +290,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     // Only needed when hiToLow is set to true
                     float3 srcPos = stitch.source.node.position;
                     float3 dstPos = neighbour.node.position;
+                    Debug.Log($"src: {srcPos}, neighbour: {dstPos}");
                     uint3 relativeOffset = (uint3)((srcPos - dstPos) / 64);
+                    Debug.Log(relativeOffset);
 
                     if (bitsSet == 1) {
                         // check which axis is set
@@ -302,6 +304,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         int inv = (~bitmask) & 0b111;
                         int dir = math.tzcnt(inv);
                         uint? relativeEdgeOffset = hiToLow ? (uint)StitchUtils.FlattenToEdgeRelative(relativeOffset, dir) : null;
+
+                        // compressed iron sheet be like: "hold up I'm flattened"
+                        uint3 relativeOffsetSoonToBeFlattened = relativeOffset;
+                        relativeOffset[dir] = 0;
+
+                        // offset that we must apply when we read the voxel data from the neighbour
+                        // this is to account for the special case that only occurs in 3D
+                        // we basically have to create a plane between the two chunks. the direction vector of the edge should live on the plane's space
+                        // if this is a vanilla edge then the plane offset should be zero
+                        //uint2 relativeEdgeOffsetPlaneOffset = hiToLow ?  : uint2.zero;
+                        //stitch.edges[dir] = null;
                         stitch.edges[dir] = VoxelStitch.Edge.CreateWithNeighbour(neighbour, hiToLow, relativeEdgeOffset);
                     } else {
                         // corner case
@@ -416,8 +429,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 negative = false
             };
 
+            // Copy negative boundary voxels at v=0
+            CopyBoundaryVoxelsJob copyNegativeBoundaryVoxels = new CopyBoundaryVoxelsJob {
+                voxels = handler.voxels,
+                boundaryVoxels = request.chunk.negativeBoundaryVoxels,
+                negative = true
+            };
+
             JobHandle copyPosBoundaryVoxelsHandle = copyPositiveBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048, copy);
-            request.chunk.copyBoundaryVoxelsJobHandle = copyPosBoundaryVoxelsHandle;
+            JobHandle copyNegBoundaryVoxelsHandle = copyNegativeBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048, copy);
+            request.chunk.copyBoundaryVoxelsJobHandle = JobHandle.CombineDependencies(copyPosBoundaryVoxelsHandle, copyNegBoundaryVoxelsHandle);
 
             // Copy the boundary data. One job runs at size=64 and other runs at size=63
             JobHandle copyPosBoundaryVerticesHandle = copyPositiveBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048, handler.vertexJobHandle);

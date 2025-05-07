@@ -74,7 +74,7 @@ namespace jedjoud.VoxelTerrain {
         static void DebugCheckBounds(uint3 coordinates, int size) {
             if (math.cmax(coordinates) >= size) {
                 throw new System.OverflowException(
-                    $"An element of coordinates {coordinates} is larger then the maximum {size}");
+                    $"An element of coordinates {coordinates} is larger than the maximum {size - 1} (size={size})");
             }
         }
 
@@ -95,7 +95,7 @@ namespace jedjoud.VoxelTerrain {
         static void DebugCheckBounds2D(uint2 coordinates, int size) {
             if (math.cmax(coordinates) >= size) {
                 throw new System.OverflowException(
-                    $"An element of coordinates {coordinates} is larger then the maximum {size}");
+                    $"An element of coordinates {coordinates} is larger than the maximum {size - 1} (size={size})");
             }
         }
 

@@ -9,6 +9,7 @@ using UnityEngine.Profiling;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections.LowLevel.Unsafe;
 using jedjoud.VoxelTerrain.Unsafe;
+using UnityEditor;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // We only do stitching in the positive x,y,z directions
@@ -216,7 +217,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // The generated stitched vertices & triangles for our mesh
         public NativeArray<float3> vertices;
-        public NativeArray<int> indices;
+        public NativeArray<int> triangles;
+        public NativeCounter triangleCounter;
+        public int[] test;
 
         public void Init(VoxelChunk self) {
             this.source = self;
@@ -232,6 +235,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             boundaryVertices = new NativeArray<float3>(smallerBoundary, Allocator.Persistent);
 
             boundaryCounter = new NativeCounter(Allocator.Persistent);
+            triangleCounter = new NativeCounter(Allocator.Persistent);
 
             // Set the boundary helpers to null since we haven't set them up yet
             planes = new Plane[3] { null, null, null };
@@ -263,6 +267,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             [ReadOnly]
             public T* lod1;
             public uint relativeOffset;
+
+            // There is a specific case when the LOD0 chunk refers to data from the very middle of the LOD1 chunk
+            public bool specialCase;
 
             // LOD0 neighbours (2 of them) data
             [ReadOnly]
@@ -315,15 +322,140 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
+        private unsafe GenericBoundaryData<T> FetchNeighbourGenericData<T>(Func<VoxelChunk, NativeArray<T>> map) where T: unmanaged {
+            GenericBoundaryData<T> jobData = new GenericBoundaryData<T>();
+            jobData.planes = new UnsafeList<GenericBoundaryPlane<T>>(3, Allocator.TempJob);
+            jobData.edges = new UnsafeList<GenericBoundaryEdge<T>>(3, Allocator.TempJob);
+
+            BitField32 bits = new BitField32(0);
+
+            // map the planes
+            for (int i = 0; i < 3; i++) {
+                Plane plane = planes[i];
+
+                int type = -1;
+                if (plane is UniformPlane uniform) {
+                    jobData.planes.Add(new GenericBoundaryPlane<T> {
+                        uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
+                        lod0s = new UnsafePtrList<T>(),
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 1;
+                } else if (plane is LoToHiPlane loToHi) {
+                    UnsafePtrList<T> lod0s = new UnsafePtrList<T>(4, Allocator.TempJob);
+
+                    for (int n = 0; n < 4; n++) {
+                        lod0s.Add(map(loToHi.lod0Neighbours[n]).GetUnsafeReadOnlyPtr());
+                    }
+
+                    jobData.planes.Add(new GenericBoundaryPlane<T> {
+                        uniform = null,
+                        lod0s = lod0s,
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 2;
+                } else if (plane is HiToLoPlane hiToLo) {
+                    jobData.planes.Add(new GenericBoundaryPlane<T> {
+                        uniform = null,
+                        lod0s = new UnsafePtrList<T>(),
+                        lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr(),
+                        relativeOffset = hiToLo.relativeOffset,
+                    });
+                    type = 3;
+                }
+
+                bits.SetBits(i * 2, (type & 1) == 1);
+                bits.SetBits(i * 2 + 1, (type & 2) == 2);
+            }
+
+            // map the edges
+            for (int i = 0; i < 3; i++) {
+                Edge edge = edges[i];
+
+                int type = -1;
+                if (edge is UniformEdge uniform) {
+                    jobData.edges.Add(new GenericBoundaryEdge<T> {
+                        uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
+                        lod0s = new UnsafePtrList<T>(),
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 1;
+                } else if (edge is LoToHiEdge loToHi) {
+                    UnsafePtrList<T> lod0s = new UnsafePtrList<T>(2, Allocator.TempJob);
+
+                    for (int n = 0; n < 2; n++) {
+                        lod0s.Add(map(loToHi.lod0Neighbours[n]).GetUnsafeReadOnlyPtr());
+                    }
+
+                    jobData.edges.Add(new GenericBoundaryEdge<T> {
+                        uniform = null,
+                        lod0s = lod0s,
+                        lod1 = null,
+                        relativeOffset = 0,
+                    });
+                    type = 2;
+                } else if (edge is HiToLoEdge hiToLo) {
+                    jobData.edges.Add(new GenericBoundaryEdge<T> {
+                        uniform = null,
+                        lod0s = new UnsafePtrList<T>(),
+                        lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr(),
+                        relativeOffset = hiToLo.relativeOffset,
+                    });
+                    type = 3;
+                }
+
+                bits.SetBits(i * 2 + 6, (type & 1) == 1);
+                bits.SetBits(i * 2 + 1 + 6, (type & 2) == 2);
+            }
+
+            // map the corner
+            {
+                int type = -1;
+                if (corner is UniformCorner uniform) {
+                    jobData.corner = new GenericBoundaryCorner<T> {
+                        uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
+                        lod0 = null,
+                        lod1 = null,
+                    };
+                    type = 1;
+                } else if (corner is LoToHiCorner loToHi) {
+                    jobData.corner = new GenericBoundaryCorner<T> {
+                        uniform = null,
+                        lod0 = (T*)map(loToHi.lod0Neighbour).GetUnsafeReadOnlyPtr(),
+                        lod1 = null,
+                    };
+                    type = 2;
+                } else if (corner is HiToLoCorner hiToLo) {
+                    jobData.corner = new GenericBoundaryCorner<T> {
+                        uniform = null,
+                        lod0 = null,
+                        lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr(),
+                    };
+                    type = 3;
+                }
+
+                bits.SetBits(12, (type & 1) == 1);
+                bits.SetBits(13, (type & 2) == 2);
+            }
+
+            //bits.SetBits(0, false, 6);
+            jobData.state = bits;
+            return jobData;
+        }
+
         // Data type for unpacked neighbours (for the stitch jobs)
         // Contains extra data that will be used to transform its negative boundary vertices
-        private struct UnpackedNeighbour {
+        [Serializable]
+        public struct UnpackedNeighbour {
             public VoxelChunk chunk;
             public float3 vertexGlobalOffset;
             public float vertexGlobalSize;
 
             public static UnpackedNeighbour Uniform(VoxelChunk src, VoxelChunk chunk) {
-                float3 offset = chunk.node.position - src.node.position;
+                float3 offset = (chunk.node.position - src.node.position) / (src.node.size / 64f);
 
                 return new UnpackedNeighbour {
                     chunk = chunk,
@@ -402,6 +534,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             return arr;
         }
 
+        public UnpackedNeighbour[] wtf;
+
         public unsafe void DoTheStitchingThing() {
             // Just makes sure that the copy boundary jobs are done
             {
@@ -425,6 +559,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // create some sort of look up table for vertex index offsets for each of the planes, edges, and corner
             // each index will represent the offset that each chunk should use. this is unpacked data since it makes reading from it in the job easier
             UnpackedNeighbour[] unpackedNeighbours = CollectNeighboursUnpacked();
+            wtf = unpackedNeighbours;
             NativeArray<int> indexOffsets = new NativeArray<int>(19, Allocator.TempJob);
             NativeArray<int> vertexCounts = new NativeArray<int>(19, Allocator.TempJob);
 
@@ -449,11 +584,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     neighbourVertices.Add(IntPtr.Zero);
                 }
             }
-            worstCaseIndices = totalVertices * 5; // idk bro...
 
             // Ermmm... what the sigmoid functor???
+            worstCaseIndices = totalVertices * 5; // idk bro...
             vertices = new NativeArray<float3>(totalVertices, Allocator.Persistent);
-
+            triangles = new NativeArray<int>(worstCaseIndices, Allocator.Persistent);
 
             CopyVerticesStitch copyVerticesStitch = new CopyVerticesStitch {
                 indexOffsets = indexOffsets,
@@ -482,41 +617,67 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            /*
-            for (int i = 0; i < 19; i++) {
-                Debug.Log(indexOffsets[i]);
-            }
-            */
-
-
-
-            // then create quads between padding vertices and boundary vertices (same res)
+            // collect neighbour indices and voxels...
+            GenericBoundaryData<Voxel> neighbourBoundaryVoxels = FetchNeighbourGenericData<Voxel>(x => x.negativeBoundaryVoxels);
+            GenericBoundaryData<int> neighbourBoundaryIndices = FetchNeighbourGenericData<int>(x => x.negativeBoundaryIndices);
 
             // then create quads between neighbouring chunks vertices and padding vertices
             // this must always run at a higher resolution than the source chunk
             // if we have a plane for example of type Uniform, just run it at a 1:1 scale 
             // if it is LoToHi, run the stitch quadding stuff for each of its neighbours (since *they* contain the negative boundary voxels)
             // if it is HiToLo, run the stitch quadding stuff for its LOD1 neighbours (since *it* contains the negative boundary voxels)
-            stitched = true;
+            // since we store the extra voxel we can chose between two sets, the source (boundary voxels) or neighbours (negative boundary voxels). we must chose the set that's obvi higher res
+            debugDataStuff = new NativeArray<float4>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
+            StitchQuadJob stitchJob = new StitchQuadJob {
+                debugData = debugDataStuff,
+                srcBoundaryVoxels = boundaryVoxels,
+                srcBoundaryIndices = boundaryIndices,
+                counter = triangleCounter,
+                indexOffsets = indexOffsets,
+                neighbourIndices = neighbourBoundaryIndices,
+                neighbourVoxels = neighbourBoundaryVoxels,
+                triangles = triangles,
+            };
 
+            stitchJob.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048).Complete();
+            test = triangles.ToArray();
+            Debug.Log(triangleCounter.Count);
+            debugIntVal = neighbourBoundaryIndices.state.Value;
+
+            /*
+            MeshFilter filter = GetComponent<MeshFilter>();
+            Mesh mesh = new Mesh();
+            mesh.vertices = vertices.Reinterpret<Vector3>().ToArray();
+            mesh.triangles = triangles.Slice<int>(0, triangleCounter.Count).ToArray();
+            filter.mesh = mesh;
+            */
+
+            stitched = true;
             indexOffsets.Dispose();
             vertexCounts.Dispose();
             neighbourVertices.Dispose();
+            neighbourBoundaryIndices.Dispose();
+            neighbourBoundaryVoxels.Dispose();
         }
+
+        public NativeArray<float4> debugDataStuff;
+        public uint debugIntVal;
 
         public void Dispose() {
             boundaryVoxels.Dispose();
 
             boundaryVertices.Dispose();
             boundaryIndices.Dispose();
+            triangleCounter.Dispose();
             boundaryCounter.Dispose();
             
             if (vertices.IsCreated) {
                 vertices.Dispose();
             }
 
-            if (indices.IsCreated) {
-                indices.Dispose();
+            if (triangles.IsCreated) {
+                triangles.Dispose();
+                debugDataStuff.Dispose();
             }
         }
     }

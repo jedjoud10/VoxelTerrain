@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
 using jedjoud.VoxelTerrain.Unsafe;
@@ -54,6 +55,7 @@ namespace jedjoud.VoxelTerrain {
         public uint2 relativeOffsetToLod1;
         public VoxelStitch stitch;
 
+        public NativeArray<Voxel> negativeBoundaryVoxels;
         public NativeArray<int> negativeBoundaryIndices;
         public NativeArray<float3> negativeBoundaryVertices;
         public NativeCounter negativeBoundaryCounter;
@@ -65,6 +67,7 @@ namespace jedjoud.VoxelTerrain {
         public void InitChunk() {
             negativeBoundaryIndices = new NativeArray<int>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
             negativeBoundaryVertices = new NativeArray<float3>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
+            negativeBoundaryVoxels = new NativeArray<Voxel>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
             negativeBoundaryCounter = new NativeCounter(Allocator.Persistent);
             copyBoundaryVerticesJobHandle = null;
             copyBoundaryVoxelsJobHandle = null;
@@ -99,6 +102,8 @@ namespace jedjoud.VoxelTerrain {
             bool voxels = copyBoundaryVoxelsJobHandle.HasValue && copyBoundaryVoxelsJobHandle.Value.IsCompleted;
             return state == ChunkState.Done && (skipped || (job && voxels && created));
         }
+
+        public List<int> customVertexDebugger = new List<int>();
 
         public void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
@@ -141,11 +146,55 @@ namespace jedjoud.VoxelTerrain {
                 }
                 */
 
+                Vector3 Fetch(int index) {
+                    Vector3 v = stitch.vertices[index];
+                    return v * s + (Vector3)node.position;
+                }
+
+                foreach (var item in customVertexDebugger) {
+                    Vector3 v = negativeBoundaryVertices[item];
+                    Gizmos.DrawSphere(v * s + (Vector3)node.position, 0.8f);
+                }
+
+
                 if (stitch.stitched) {
+                    /*
                     for (int i = 0; i < stitch.vertices.Length; i++) {
                         float3 vertex = stitch.vertices[i];
                         Gizmos.DrawSphere(vertex * s + node.position, 0.2f);
                     }
+                    */
+
+
+
+                    /*
+                    for (int i = 0; i < stitch.debugDataStuff.Length; i++) {
+                        float4 vertexAndDebug = stitch.debugDataStuff[i];
+                        Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, vertexAndDebug.w);
+                    }
+
+                    for (var i = 0; i < stitch.triangles.Length - 3; i += 3) {
+                        int a, b, c;
+                        a = stitch.triangles[i];
+                        b = stitch.triangles[i + 1];
+                        c = stitch.triangles[i + 2];
+                        Gizmos.DrawLine(Fetch(a), Fetch(b));
+                        Gizmos.DrawLine(Fetch(b), Fetch(c));
+                        Gizmos.DrawLine(Fetch(c), Fetch(a));
+                    }
+                    */
+
+                    /*
+                    for (var i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
+                        uint3 _pos = StitchUtils.BoundaryIndexToPos(i, 65);
+                        float d1 = stitch.boundaryVoxels[i].density;
+
+                        if (d1 > -4 && d1 < 4) {
+                            Gizmos.color = d1 > 0f ? Color.white : Color.black;
+                            Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
+                        }
+                    }
+                    */
                 }
 
             }
@@ -196,6 +245,7 @@ namespace jedjoud.VoxelTerrain {
             negativeBoundaryIndices.Dispose();
             negativeBoundaryVertices.Dispose();
             negativeBoundaryCounter.Dispose();
+            negativeBoundaryVoxels.Dispose();
         }
     }
 }
