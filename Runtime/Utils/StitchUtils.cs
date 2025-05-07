@@ -19,6 +19,7 @@ namespace jedjoud.VoxelTerrain {
         // Flatten a 3D position to a face 2D position using a given direction axis
         // dir order = X,Y,Z
         public static uint2 FlattenToFaceRelative(uint3 position, int dir) {
+
             if (dir == 0) {
                 return position.yz;
             } else if (dir == 1) {
@@ -226,7 +227,26 @@ namespace jedjoud.VoxelTerrain {
                 return val;
                 */
             } else if (type == 3) {
-                return notFound;
+                if (data.edges[dir].vanilla) {
+                    edged = UnflattenFromEdgeRelative(axis + data.edges[dir].relativeOffsetVanilla * 64, dir);
+                    T* ptrs = data.edges[dir].lod1;
+                    T val = *(ptrs + PosToBoundaryIndex(edged / 2, 64, true));
+                    return val;
+                } else {
+                    Debug.Log($"dir={dir}");
+                    uint2 offset = data.edges[dir].relativeOffsetNonVanilla * 64;
+                    Debug.Log($"offset={offset}");
+                    uint3 actOffset = UnflattenFromFaceRelative(offset, data.edges[dir].nonVanillaPlaneDir);
+                    Debug.Log($"actOffset={actOffset}");
+                    uint3 yetAnotherOffset = UnflattenFromEdgeRelative(axis, dir);
+                    Debug.Log($"yetAnotherOffset={yetAnotherOffset}");
+
+
+                    T* ptrs = data.edges[dir].lod1;
+                    T val = *(ptrs + PosToBoundaryIndex((actOffset + yetAnotherOffset) / 2, 64, true));
+                    return val;
+                }
+
                 /*
                 // do a bit of upsampling
                 uint offset = axis + data.edges[dir].relativeOffset * 64;

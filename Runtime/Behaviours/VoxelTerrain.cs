@@ -7,6 +7,7 @@ using UnityEngine.Profiling;
 using static jedjoud.VoxelTerrain.VoxelChunk;
 
 namespace jedjoud.VoxelTerrain {
+    // compressed iron sheet be like: "hold up... I'm flattened"
     public class VoxelTerrain : MonoBehaviour {
         [Header("Tick System")]
         public int ticksPerSecond = 128;

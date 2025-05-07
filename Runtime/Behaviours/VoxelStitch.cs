@@ -70,13 +70,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Stitch edge (line) (stored 3 times for each of the x,y,z axii)
         public abstract class Edge : IChunkCollector {
             public abstract void Collect(List<VoxelChunk> list);
-            public static Edge CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow, uint? relativeOffset) {
-                if (hiToLow) {
-                    return new HiToLoEdge() { lod1Neighbour = neighbour, relativeOffset = relativeOffset.Value };
-                } else {
-                    return new UniformEdge() { neighbour = neighbour };
-                }
-            }
         }
 
         // this=LOD0, diagonal neighbour=LOD1
@@ -84,8 +77,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we only have one LOD1 neighbour
             public VoxelChunk lod1Neighbour;
 
-            // relative offset of the LOD0 chunk relative to LOD1
-            public uint relativeOffset;
+            // relative offset of the LOD0 chunk relative to LOD1 when we are using a vanilla case (edge to edge)
+            public uint relativeOffsetVanilla;
+
+            // non vanilla case chunk offsets (edge to mid-face).
+            public uint2 relativeOffsetNonVanilla;
+            public int nonVanillaPlaneDir;
+
+            // vanilla or non-vanilla
+            public bool vanilla;
 
             public override void Collect(List<VoxelChunk> list) {
                 list.Add(lod1Neighbour);
@@ -128,8 +128,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public class HiToLoCorner : Corner {
             // we only have one LOD1 neighbour
             public VoxelChunk lod1Neighbour;
-
-            // we don't need to store the relative offset since we know it's always (0,0,0)
 
             public override void Collect(List<VoxelChunk> list) {
                 list.Add(lod1Neighbour);
@@ -266,10 +264,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // LOD1 neighbour data, not sliced, whole
             [ReadOnly]
             public T* lod1;
-            public uint relativeOffset;
-
-            // There is a specific case when the LOD0 chunk refers to data from the very middle of the LOD1 chunk
-            public bool specialCase;
+            public uint relativeOffsetVanilla;
+            public uint2 relativeOffsetNonVanilla;
+            public int nonVanillaPlaneDir;
+            public bool vanilla;
 
             // LOD0 neighbours (2 of them) data
             [ReadOnly]
@@ -380,7 +378,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
                         lod0s = new UnsafePtrList<T>(),
                         lod1 = null,
-                        relativeOffset = 0,
+                        relativeOffsetNonVanilla = 0,
+                        relativeOffsetVanilla = 0,
+                        nonVanillaPlaneDir = 0,
+                        vanilla = false,
                     });
                     type = 1;
                 } else if (edge is LoToHiEdge loToHi) {
@@ -394,7 +395,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         uniform = null,
                         lod0s = lod0s,
                         lod1 = null,
-                        relativeOffset = 0,
+                        relativeOffsetNonVanilla = 0,
+                        relativeOffsetVanilla = 0,
+                        nonVanillaPlaneDir = 0,
+                        vanilla = false,
                     });
                     type = 2;
                 } else if (edge is HiToLoEdge hiToLo) {
@@ -402,7 +406,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         uniform = null,
                         lod0s = new UnsafePtrList<T>(),
                         lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr(),
-                        relativeOffset = hiToLo.relativeOffset,
+                        relativeOffsetNonVanilla = hiToLo.relativeOffsetNonVanilla,
+                        relativeOffsetVanilla = hiToLo.relativeOffsetVanilla,
+                        vanilla = hiToLo.vanilla,
+                        nonVanillaPlaneDir = hiToLo.nonVanillaPlaneDir,
                     });
                     type = 3;
                 }

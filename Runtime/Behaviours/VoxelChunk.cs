@@ -88,6 +88,7 @@ namespace jedjoud.VoxelTerrain {
             negativeBoundaryCounter.Count = 0;
             skipped = false;
             state = ChunkState.Idle;
+            gameObject.name = item.position.ToString();
         }
 
         // Check if the chunk has valid uniform voxel data
@@ -158,19 +159,9 @@ namespace jedjoud.VoxelTerrain {
 
 
                 if (stitch.stitched) {
-                    /*
                     for (int i = 0; i < stitch.vertices.Length; i++) {
                         float3 vertex = stitch.vertices[i];
                         Gizmos.DrawSphere(vertex * s + node.position, 0.2f);
-                    }
-                    */
-
-
-
-                    /*
-                    for (int i = 0; i < stitch.debugDataStuff.Length; i++) {
-                        float4 vertexAndDebug = stitch.debugDataStuff[i];
-                        Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, vertexAndDebug.w);
                     }
 
                     for (var i = 0; i < stitch.triangles.Length - 3; i += 3) {
@@ -182,6 +173,13 @@ namespace jedjoud.VoxelTerrain {
                         Gizmos.DrawLine(Fetch(b), Fetch(c));
                         Gizmos.DrawLine(Fetch(c), Fetch(a));
                     }
+
+                    /*
+                    for (int i = 0; i < stitch.debugDataStuff.Length; i++) {
+                        float4 vertexAndDebug = stitch.debugDataStuff[i];
+                        Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, vertexAndDebug.w);
+                    }
+
                     */
 
                     /*

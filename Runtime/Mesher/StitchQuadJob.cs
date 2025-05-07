@@ -96,7 +96,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     Debug.LogError("what the sigmoid?");
                 }
             
-                int index = StitchUtils.Sample<int>(position, ref neighbourIndices);
+                int index = StitchUtils.Sample<int>(position, ref neighbourIndices, -1);
+
+                if (index == -1) {
+                    return int.MaxValue;
+                }
+
                 Debug.Log($"NEIGHBOUR!! unpackedNeighbourIndex = {unpackedNeighbourIndex}, indexOffset = {indexOffset}, index = {index}");
                 return index + indexOffset;
             } else {
@@ -161,7 +166,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (math.any(boundaryPosition < 1))
                 return;
 
-            int debugDirsDisable = 0b010;
+            int debugDirsDisable = 0b111;
 
             for (int i = 0; i < 3; i++) {
                 if (boundaryPosition[i] > 63 || ((debugDirsDisable >> i) & 1) == 0)

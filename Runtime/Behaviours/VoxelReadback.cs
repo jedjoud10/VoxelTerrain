@@ -17,6 +17,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         private Queue<VoxelChunk> queued;
         private HashSet<VoxelChunk> pending;
 
+        public bool skipEmptyChunks;
         public delegate void OnReadback(VoxelChunk chunk);
         public event OnReadback onReadback;
 
@@ -107,7 +108,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                         int max = 65 * 65 * 65;
                         pending.Remove(chunk);
-                        if (count == max || count == -max) {
+                        if ((count == max || count == -max) && skipEmptyChunks) {
                             chunk.state = VoxelChunk.ChunkState.Done;
                             chunk.skipped = true;
                         } else {

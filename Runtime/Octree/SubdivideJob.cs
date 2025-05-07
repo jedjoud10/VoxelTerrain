@@ -25,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                 //bool subdivide = node.Bounds.Overlaps(targetBounds);
 
                 // relative distance method
-                bool subdivide = math.distance(node.Center, targetBounds.Center) < target.radius * node.size;
+                bool subdivide = math.distance(node.Center, target.center) < target.radius * node.size;
 
                 if (subdivide && node.depth < maxDepth) {
                     Subdivide(node, true);
