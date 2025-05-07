@@ -358,7 +358,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                     relativeOffsetVanilla = relativeOffsetVanilla
                                 };
                             } else {
-                                //Debug.LogWarning("HOLD UP IM NOT VANILLA", stitch.source);
+                                Debug.LogWarning("HOLD UP IM NOT VANILLA", stitch.source);
 
                                 // calculate a 2D offset by using the plane that is spanned by the edge direction and the direction set to -1 (meaning that it's the axis in which the boundary between LOD0 and LOD1 exists)
                                 int basis2 = GetFirstTrueIndex(relativeOffset == -1);
@@ -367,9 +367,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                     throw new Exception("what the fuck???");
                                 }
 
-                                //Debug.LogWarning($"Face normal: {basis2}");
+                                Debug.LogWarning($"Face normal: {basis2}");
                                 uint2 relativeOffsetNonVanilla = StitchUtils.FlattenToFaceRelative((uint3)relativeOffset, basis2);
-                                //Debug.LogWarning($"Relative Offset Non Vanilla: {relativeOffsetNonVanilla}");
+                                Debug.LogWarning($"Relative Offset Non Vanilla: {relativeOffsetNonVanilla}");
+
+                                // need to offset by 1 in the "free direction" (that isn't the plane normal dir or the edge dir)
+                                bool3 freeCheck = new bool3(true);
+                                freeCheck[basis2] = false;
+                                freeCheck[dir] = false;
+                                int free = GetFirstTrueIndex(freeCheck);
+
+                                // convert 3d direction to 2d plane relative dir
+                                relativeOffsetNonVanilla[StitchUtils.ConvertDir3Dto2D(free, basis2)] += 1;
+
+                                Debug.LogWarning($"Relative Offset Non Vanilla After Plane Shift: {relativeOffsetNonVanilla}");
 
 
                                 stitch.edges[dir] = new VoxelStitch.HiToLoEdge {
@@ -377,6 +388,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                     lod1Neighbour = neighbour,
                                     relativeOffsetNonVanilla = relativeOffsetNonVanilla,
                                     relativeOffsetVanilla = 0,
+                                    nonVanillaPlaneDir = basis2,
                                 };
                             }
                         } else {

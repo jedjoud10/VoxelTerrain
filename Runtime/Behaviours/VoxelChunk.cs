@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
@@ -105,6 +106,18 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public List<int> customVertexDebugger = new List<int>();
+        public float whatTheFlirpSize = 100;
+        public GizmoFlags flags;
+        public float voxelsTolerance = 0.3f;
+
+        [Flags]
+        public enum GizmoFlags {
+            InternalVoxels = 1,
+            BoundaryVoxels = 2,
+            NegativeBoundaryVertices = 4,
+            StitchVertices = 8,
+            StitchTris = 16,
+        }
 
         public void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
@@ -152,47 +165,78 @@ namespace jedjoud.VoxelTerrain {
                     return v * s + (Vector3)node.position;
                 }
 
-                foreach (var item in customVertexDebugger) {
-                    Vector3 v = negativeBoundaryVertices[item];
-                    Gizmos.DrawSphere(v * s + (Vector3)node.position, 0.8f);
+                if (flags.HasFlag(GizmoFlags.NegativeBoundaryVertices)) {
+                    foreach (var item in customVertexDebugger) {
+                        Vector3 v = negativeBoundaryVertices[item];
+                        Gizmos.DrawSphere(v * s + (Vector3)node.position, 0.8f);
+                    }
                 }
 
 
+
                 if (stitch.stitched) {
-                    for (int i = 0; i < stitch.vertices.Length; i++) {
-                        float3 vertex = stitch.vertices[i];
-                        Gizmos.DrawSphere(vertex * s + node.position, 0.2f);
-                    }
-
-                    for (var i = 0; i < stitch.triangles.Length - 3; i += 3) {
-                        int a, b, c;
-                        a = stitch.triangles[i];
-                        b = stitch.triangles[i + 1];
-                        c = stitch.triangles[i + 2];
-                        Gizmos.DrawLine(Fetch(a), Fetch(b));
-                        Gizmos.DrawLine(Fetch(b), Fetch(c));
-                        Gizmos.DrawLine(Fetch(c), Fetch(a));
-                    }
-
-                    /*
-                    for (int i = 0; i < stitch.debugDataStuff.Length; i++) {
-                        float4 vertexAndDebug = stitch.debugDataStuff[i];
-                        Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, vertexAndDebug.w);
-                    }
-
-                    */
-
-                    /*
-                    for (var i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
-                        uint3 _pos = StitchUtils.BoundaryIndexToPos(i, 65);
-                        float d1 = stitch.boundaryVoxels[i].density;
-
-                        if (d1 > -4 && d1 < 4) {
-                            Gizmos.color = d1 > 0f ? Color.white : Color.black;
-                            Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
+                    if (flags.HasFlag(GizmoFlags.StitchVertices)) {
+                        Gizmos.color = Color.blue;
+                        for (int i = 0; i < stitch.vertices.Length; i++) {
+                            float3 vertex = stitch.vertices[i];
+                            Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
                         }
                     }
-                    */
+
+                    if (flags.HasFlag(GizmoFlags.StitchTris)) {
+                        Gizmos.color = Color.blue;
+                        for (var i = 0; i < stitch.triangles.Length - 3; i += 3) {
+                            int a, b, c;
+                            a = stitch.triangles[i];
+                            b = stitch.triangles[i + 1];
+                            c = stitch.triangles[i + 2];
+
+                            if (a < 0 || b < 0 || c < 0) {
+                                continue;
+                            }
+
+                            if (a == int.MaxValue || b == int.MaxValue || c == int.MaxValue) {
+                                continue;
+                            }
+
+                            Gizmos.DrawLine(Fetch(a), Fetch(b));
+                            Gizmos.DrawLine(Fetch(b), Fetch(c));
+                            Gizmos.DrawLine(Fetch(c), Fetch(a));
+                        }
+                    }
+
+                    Gizmos.color = Color.red;
+                    for (int i = 0; i < stitch.debugDataStuff.Length; i++) {
+                        float4 vertexAndDebug = stitch.debugDataStuff[i];
+
+                        if (vertexAndDebug.w > 0) {
+                            Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, whatTheFlirpSize);
+                        }
+                    }
+
+                    if (flags.HasFlag(GizmoFlags.BoundaryVoxels)) {
+                        for (var i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
+                            uint3 _pos = StitchUtils.BoundaryIndexToPos(i, 65);
+                            float d1 = stitch.boundaryVoxels[i].density;
+
+                            if (d1 > -voxelsTolerance && d1 < voxelsTolerance) {
+                                Gizmos.color = d1 > 0f ? Color.white : Color.black;
+                                Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
+                            }
+                        }
+                    }
+
+                    if (flags.HasFlag(GizmoFlags.InternalVoxels)) {
+                        for (var i = 0; i < 65 * 65 * 65; i++) {
+                            uint3 _pos = VoxelUtils.IndexToPos(i, 65);
+                            float d1 = voxels[i].density;
+
+                            if (d1 > -voxelsTolerance && d1 < voxelsTolerance) {
+                                Gizmos.color = d1 > 0f ? Color.yellow : Color.magenta;
+                                Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
+                            }
+                        }
+                    }
                 }
 
             }

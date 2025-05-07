@@ -78,9 +78,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Fetches the vertex index of a vertex in a specific position
         // If this crosses the v=65 boundary, use the neighbouring chunks' negative boundary indices instead
         private int GetVertexIndex(uint3 position) {
-            if (neighbourIndices.state.Value != 16215) {
+            /*
+            if (neighbourIndices.state.Value != 14325) {
                 return int.MaxValue;
             }
+            */
 
             Debug.Log($"GetVertexIndex, pos = {position}, state = {neighbourIndices.state.Value}");
             if (math.any(position >= 64)) {
@@ -98,8 +100,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
             
                 int index = StitchUtils.Sample<int>(position, ref neighbourIndices, -1);
 
+                // it's fine if this happens, just means that we didn't find proper neighbours (happens for the chunks on the map edge)
                 if (index == -1) {
                     return int.MaxValue;
+                }
+
+                // COULD HAPPEN, AND IT IS VERY BAD IF IT DOES!!!!
+                // means that we are thinking we "think" there's a valid vertex there, but it isn't actually there!
+                if (index == int.MaxValue) {
+                    Debug.LogError("notto good at allu");
                 }
 
                 Debug.Log($"NEIGHBOUR!! unpackedNeighbourIndex = {unpackedNeighbourIndex}, indexOffset = {indexOffset}, index = {index}");
@@ -125,10 +134,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int bitsset = math.countbits(math.bitmask(new bool4(basePosition == new uint3(64), false)));
             float data = bitsset == 2 ? 0.2f : 0f;
             float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-            debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, data);
+            debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 0.0f);
 
+            /*
             if (bitsset != 2)
                 return;
+            */
 
             bool flip = (endVoxel.density >= 0.0);
 
@@ -142,6 +153,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Don't make a quad if the vertices are invalid
             if ((vertex0 | vertex1 | vertex2 | vertex3) == int.MaxValue)
                 return;
+
+            int4 what = new int4(vertex0, vertex1, vertex2, vertex3);
+            if (math.any(what > 500000 | what < 0)) {
+                Debug.LogError($"what: {what}");
+                debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 0.2f);
+            }
 
             // Get the triangle index base
             int triIndex = counter.Add(6);
@@ -161,18 +178,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute(int index) {
             // When we implement multi-res, swap between the two sets here
             // Either sample from pos-boundary of self, or neg-boundary of neighbours
-            uint3 boundaryPosition = StitchUtils.BoundaryIndexToPos(index, 65);
+            uint3 position = StitchUtils.BoundaryIndexToPos(index, 65);
             
-            if (math.any(boundaryPosition < 1))
-                return;
-
-            int debugDirsDisable = 0b111;
-
             for (int i = 0; i < 3; i++) {
-                if (boundaryPosition[i] > 63 || ((debugDirsDisable >> i) & 1) == 0)
+                // need this to create tris that might be on the v=0 boundary
+                bool skipnation = math.any(position < (1 - quadForwardDirection[i]));
+
+                // need this to create tris that might be on the v=63 boundary
+                bool skipnation2 = position[i] > 63;
+
+                if (skipnation || skipnation2)
                     continue;
 
-                CheckEdge(boundaryPosition, i);
+                CheckEdge(position, i);
             }
         }
     }

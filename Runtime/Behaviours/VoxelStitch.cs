@@ -167,40 +167,28 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Corner corner;
 
         // Collects all the neighbouring chunks in a list so we can do bulk operations on them
-        // Returns null if any of the planes/edges/corner are null
         public List<VoxelChunk> CollectNeighbours() {
-            bool valid = planes.All(x => x != null) && edges.All(x => x != null) && corner != null;
-
-            if (!valid) {
-                return null;
-            }
-
             List<VoxelChunk> list = new List<VoxelChunk>();
 
             for (int i = 0; i < 3; i++) {
-                planes[i].Collect(list);
+                planes[i]?.Collect(list);
             }
 
             for (int i = 0; i < 3; i++) {
-                edges[i].Collect(list);
+                edges[i]?.Collect(list);
             }
 
-            corner.Collect(list);
+            corner?.Collect(list);
             return list;
         }
 
         // Check if we can do stitching (if we have our [down/up]-sampled extra voxels and if the neighbouring chunks got their mesh data ready)
         public bool CanStitch() {
             List<VoxelChunk> neighbours = CollectNeighbours();
-
-            if (neighbours == null) {
-                return false;
-            } else {
-                bool neighboursValid = neighbours.All(x => x != null && x.HasNegativeBoundaryMeshData());
-                bool selfBoundaryVerticesValid = source.copyBoundaryVerticesJobHandle.HasValue && source.copyBoundaryVerticesJobHandle.Value.IsCompleted;
-                bool selfBoundaryVoxelsValid = source.copyBoundaryVoxelsJobHandle.HasValue && source.copyBoundaryVoxelsJobHandle.Value.IsCompleted;
-                return neighboursValid && selfBoundaryVerticesValid && selfBoundaryVoxelsValid;
-            }
+            bool neighboursValid = neighbours.All(x => x == null || x.HasNegativeBoundaryMeshData());
+            bool selfBoundaryVerticesValid = source.copyBoundaryVerticesJobHandle.HasValue && source.copyBoundaryVerticesJobHandle.Value.IsCompleted;
+            bool selfBoundaryVoxelsValid = source.copyBoundaryVoxelsJobHandle.HasValue && source.copyBoundaryVoxelsJobHandle.Value.IsCompleted;
+            return neighboursValid && selfBoundaryVerticesValid && selfBoundaryVoxelsValid;
         }
 
         // These are the boundary voxels from the source chunk.
@@ -332,7 +320,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Plane plane = planes[i];
 
                 int type = -1;
-                if (plane is UniformPlane uniform) {
+
+                if (plane == null) {
+                    jobData.planes.Add(default);
+                    type = 0;
+                } else if (plane is UniformPlane uniform) {
                     jobData.planes.Add(new GenericBoundaryPlane<T> {
                         uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
                         lod0s = new UnsafePtrList<T>(),
@@ -373,14 +365,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Edge edge = edges[i];
 
                 int type = -1;
-                if (edge is UniformEdge uniform) {
+                if (edge == null) {
+                    jobData.edges.Add(default);
+                    type = 0;
+                } else if (edge is UniformEdge uniform) {
                     jobData.edges.Add(new GenericBoundaryEdge<T> {
                         uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
                         lod0s = new UnsafePtrList<T>(),
                         lod1 = null,
-                        relativeOffsetNonVanilla = 0,
-                        relativeOffsetVanilla = 0,
-                        nonVanillaPlaneDir = 0,
+                        relativeOffsetNonVanilla = new uint2(int.MaxValue),
+                        relativeOffsetVanilla = uint.MaxValue,
+                        nonVanillaPlaneDir = -1,
                         vanilla = false,
                     });
                     type = 1;
@@ -395,9 +390,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         uniform = null,
                         lod0s = lod0s,
                         lod1 = null,
-                        relativeOffsetNonVanilla = 0,
-                        relativeOffsetVanilla = 0,
-                        nonVanillaPlaneDir = 0,
+                        relativeOffsetNonVanilla = new uint2(int.MaxValue),
+                        relativeOffsetVanilla = uint.MaxValue,
+                        nonVanillaPlaneDir = -1,
                         vanilla = false,
                     });
                     type = 2;
@@ -421,7 +416,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // map the corner
             {
                 int type = -1;
-                if (corner is UniformCorner uniform) {
+                if (corner == null) {
+                    jobData.corner = default;
+                    type = 0;
+                } else if (corner is UniformCorner uniform) {
                     jobData.corner = new GenericBoundaryCorner<T> {
                         uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
                         lod0 = null,
@@ -651,13 +649,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Debug.Log(triangleCounter.Count);
             debugIntVal = neighbourBoundaryIndices.state.Value;
 
-            /*
             MeshFilter filter = GetComponent<MeshFilter>();
             Mesh mesh = new Mesh();
             mesh.vertices = vertices.Reinterpret<Vector3>().ToArray();
             mesh.triangles = triangles.Slice<int>(0, triangleCounter.Count).ToArray();
             filter.mesh = mesh;
-            */
 
             stitched = true;
             indexOffsets.Dispose();

@@ -16,6 +16,33 @@ namespace jedjoud.VoxelTerrain {
             return size * size * 3 - 3 * size + 1;
         }
 
+        // Convert a 3D direction to a 2D plane relative direction
+        public static int ConvertDir3Dto2D(int dir, int faceNormal) {
+
+            if (faceNormal == 0) {
+                if (dir == 1) {
+                    return 0;
+                } else if (dir == 2) {
+                    return 1;
+                }
+            } else if (faceNormal == 1) {
+                if (dir == 0) {
+                    return 0;
+                } else if (dir == 2) {
+                    return 1;
+                }
+            } else if (faceNormal == 2) {
+                if (dir == 0) {
+                    return 0;
+                } else if (dir == 1) {
+                    return 1;
+                }
+            }
+
+            // never should happen
+            throw new Exception();
+        }
+
         // Flatten a 3D position to a face 2D position using a given direction axis
         // dir order = X,Y,Z
         public static uint2 FlattenToFaceRelative(uint3 position, int dir) {
@@ -231,9 +258,17 @@ namespace jedjoud.VoxelTerrain {
                     edged = UnflattenFromEdgeRelative(axis + data.edges[dir].relativeOffsetVanilla * 64, dir);
                     T* ptrs = data.edges[dir].lod1;
                     T val = *(ptrs + PosToBoundaryIndex(edged / 2, 64, true));
+                    Debug.Log($"positioned: {edged / 2} valued: {val}");
+
+                    val = *(ptrs + PosToBoundaryIndex(edged / 2 + new uint3(0, 1, 0), 64, true));
+                    Debug.Log($"positioned2: plus one, valued: {val}");
+
+                    val = *(ptrs + PosToBoundaryIndex(edged / 2 - new uint3(0, 1, 0), 64, true));
+                    Debug.Log($"positioned2: minus one, valued: {val}");
+
                     return val;
                 } else {
-                    Debug.Log($"dir={dir}");
+                    Debug.Log($"dir={dir}, planeDir={data.edges[dir].nonVanillaPlaneDir}");
                     uint2 offset = data.edges[dir].relativeOffsetNonVanilla * 64;
                     Debug.Log($"offset={offset}");
                     uint3 actOffset = UnflattenFromFaceRelative(offset, data.edges[dir].nonVanillaPlaneDir);
@@ -242,6 +277,7 @@ namespace jedjoud.VoxelTerrain {
                     Debug.Log($"yetAnotherOffset={yetAnotherOffset}");
 
 
+                    Debug.Log((actOffset + yetAnotherOffset) / 2);
                     T* ptrs = data.edges[dir].lod1;
                     T val = *(ptrs + PosToBoundaryIndex((actOffset + yetAnotherOffset) / 2, 64, true));
                     return val;
@@ -269,7 +305,8 @@ namespace jedjoud.VoxelTerrain {
         // type=2 -> lotohi (downsample)
         // type=3 -> hitolo (upsample)
         private unsafe static T SampleCornerUsingType<T>(uint3 paddingPosition, uint type, ref VoxelStitch.GenericBoundaryData<T> data, T notFound = default) where T: unmanaged {
-
+            return notFound;
+            /*
             // Corner piece always at (0,0,0), but that's the last element in our padding array
             T* ptr = null;
             if (type == 1) {
@@ -286,6 +323,7 @@ namespace jedjoud.VoxelTerrain {
             }
 
             return *(ptr + 63 * 63 * 3 + 63 * 3);
+            */
         }
 
         /*
@@ -471,16 +509,28 @@ namespace jedjoud.VoxelTerrain {
                 // check which axis is set
                 int dir = math.tzcnt(bitmask);
                 uint type = data.state.GetBits(dir * 2, 2);
+
+                if (type == 0)
+                    return notFound;
+
                 return SamplePlaneUsingType(paddingPosition, type, dir, ref data, notFound);
             } else if (bitsSet == 2) {
                 // check which axis is NOT set
                 int inv = (~bitmask) & 0b111;
                 int dir = math.tzcnt(inv);
                 uint type = data.state.GetBits(dir * 2 + 6, 2);
+
+                if (type == 0)
+                    return notFound;
+
                 return SampleEdgeUsingType(paddingPosition, type, dir, ref data, notFound);
             } else {
                 // corner case
                 uint type = data.state.GetBits(12, 2);
+
+                if (type == 0)
+                    return notFound;
+
                 return SampleCornerUsingType(paddingPosition, type, ref data, notFound);
             }
         }
