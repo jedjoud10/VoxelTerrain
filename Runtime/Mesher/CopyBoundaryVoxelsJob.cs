@@ -18,8 +18,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool negative;
 
         public void Execute(int index) {
+            /*
             int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 64, negative));
             boundaryVoxels[index] = voxels[morton];
+            */
         }
     }
 } 

@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain {
         [NativeDisableUnsafePtrRestriction]
         public uint* dst;
         public void Execute() {
-            UnsafeUtility.MemCpy(dst, src, VoxelUtils.VOLUME * Voxel.size);
+            UnsafeUtility.MemCpy(dst, src, 65*65*65 * Voxel.size);
         }
     }
 }

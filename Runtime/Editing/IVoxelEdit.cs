@@ -27,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                 voxelScale = VoxelTerrain.Instance.voxelSizeFactor,
                 counters = counters,
             };
-            return job.Schedule(VoxelUtils.VOLUME, VoxelUtils.VOLUME / 4);
+            return job.Schedule(65*65*65, 4096);
         }
     }
 }

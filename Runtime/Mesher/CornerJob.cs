@@ -35,11 +35,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         };
 
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPosMorton(index);
+            uint3 position = VoxelUtils.IndexToPos(index, 65);
 
-
-            if (math.any(position > 62))
+            if (math.any(position > 63))
                 return;
+
             half4 test = Load4(position, 0);
             half4 test2 = Load4(position, 1);
 
@@ -51,6 +51,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
             enabled[index] = (byte)value;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private half4 Load4(uint3 position, int index) {
+            uint4 x = offsets[index].c0 + position.x;
+            uint4 y = offsets[index].c1 + position.y;
+            uint4 z = offsets[index].c2 + position.z;
+
+            half4 test = math.half4(0.0F);
+            for (int i = 0; i < 4; i++) {
+                int newIndex = VoxelUtils.PosToIndex(new uint3(x[i], y[i], z[i]), 65);
+                test[i] = voxels[newIndex].density;
+            }
+
+            return test;
+        }
+
+        /*
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private half4 Load4(uint3 position, int index) {
             int4 indices = math.int4(Morton.EncodeMorton32(offsets[index].c0 + position.x, offsets[index].c1 + position.y, offsets[index].c2 + position.z));
@@ -83,5 +99,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             return test;
         }
+        */
     }
 }

@@ -14,8 +14,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int asyncReadbackPerTick = 1;
 
         private OngoingVoxelReadback[] readbacks;
-        private Queue<(OctreeNode, VoxelChunk[])> queuedOctalUnits;
-        private Dictionary<OctreeNode, VoxelChunk[]> pendingOctalUnits;
+        private Queue<VoxelChunk> queued;
+        private HashSet<VoxelChunk> pending;
 
         public delegate void OnReadback(VoxelChunk chunk);
         public event OnReadback onReadback;
@@ -29,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             public NativeArray<JobHandle> copies;
 
             public OngoingVoxelReadback() {
-                data = new NativeArray<uint>(VoxelUtils.VOLUME * 8, Allocator.Persistent);
+                data = new NativeArray<uint>(65*65*65 * 8, Allocator.Persistent);
                 chunks = new List<VoxelChunk>();
                 copies = new NativeArray<JobHandle>(8, Allocator.Persistent);
                 free = true;
@@ -50,8 +50,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public override void CallerStart() {
-            pendingOctalUnits = new Dictionary<OctreeNode, VoxelChunk[]>();
-            queuedOctalUnits = new Queue<(OctreeNode, VoxelChunk[])>();
+            queued = new Queue<VoxelChunk>();
+            pending = new HashSet<VoxelChunk>();
             readbacks = new OngoingVoxelReadback[asyncReadbackPerTick];
             for (int i = 0; i < asyncReadbackPerTick; i++) {
                 readbacks[i] = new OngoingVoxelReadback();
@@ -59,19 +59,27 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         // Add the given chunk inside the queue for voxel generation
-        public void GenerateVoxels(VoxelChunk chunk, ref NativeList<OctreeNode> all) {
-            OctreeNode parent = all[chunk.node.parentIndex];
-            chunk.state = VoxelChunk.ChunkState.VoxelGeneration;
-            int index = chunk.node.index - parent.childBaseIndex;
-            if (pendingOctalUnits.TryGetValue(parent, out VoxelChunk[] chunks)) {
-                chunks[index] = chunk;
+        // Internally will try to batch this with 7 other chunks for octal generation
+        public void GenerateVoxels(VoxelChunk chunk) {
+            if (pending.Contains(chunk))
                 return;
-            }
+            
+            chunk.state = VoxelChunk.ChunkState.VoxelGeneration;
+            queued.Enqueue(chunk);
+            pending.Add(chunk);
+        }
 
-            VoxelChunk[] arr = new VoxelChunk[8];
-            arr[index] = chunk;
-            queuedOctalUnits.Enqueue((parent, arr));
-            pendingOctalUnits.Add(parent, arr);
+        struct FillTest : IJobParallelFor {
+            public NativeArray<Voxel> volume;
+
+            public void Execute(int index) {
+                float3 pos = VoxelUtils.IndexToPos(index, 65);
+                half density = (half)((float)pos.y - 10f);
+                volume[index] = new Voxel {
+                    density = density,
+                    material = 0,
+                };
+            }
         }
 
         // Get the latest chunk in the queue and generate voxel data for it
@@ -88,6 +96,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     for (int j = 0; j < readback.chunks.Count; j++) {
                         VoxelChunk chunk = readback.chunks[j];
                         chunk.state = VoxelChunk.ChunkState.Temp;
+                        pending.Remove(chunk);
                         onReadback?.Invoke(chunk);
                     }
 
@@ -98,23 +107,30 @@ namespace jedjoud.VoxelTerrain.Generation {
                     continue;
                 }
 
-                if (queuedOctalUnits.TryDequeue(out var temp)) {
-                    (OctreeNode node, VoxelChunk[] chunks) = temp;
-                    pendingOctalUnits.Remove(node);
-                    readback.free = false;
+                // we have chunks!!!
+                // tries to batch em up, but even if we don't have 8 it'll still work
+                if (queued.Count > 0) {
+                    Vector4[] posScaleOctals = new Vector4[8];
 
-                    // Size*2 since we are using octal generation!
-                    Vector3 worldPosition = 2.0f * node.position;
-                    Vector3 worldScale = Vector3.one * node.size / (VoxelUtils.SIZE);
-                    terrain.executor.ExecuteShader(VoxelUtils.SIZE*2, terrain.compiler.voxelsDispatchIndex, worldPosition, worldScale, true, true);
+                    // I hope the GPU has no issue doing async NPOT texture readback...
+                    readback.free = false;
 
                     // Change chunk states, since we are now waiting for voxel readback
                     readback.chunks.Clear();
                     for (int j = 0; j < 8; j++) {
-                        VoxelChunk voxelChunk = chunks[j];
-                        voxelChunk.state = VoxelChunk.ChunkState.VoxelReadback;
-                        readback.chunks.Add(voxelChunk);
+                        if (queued.TryDequeue(out VoxelChunk chunk)) {
+                            readback.chunks.Add(chunk);
+                            Vector3 pos = chunk.node.position;
+                            float scale = chunk.node.size / 64f;
+                            Vector4 packed = new Vector4(pos.x, pos.y, pos.z, scale);
+                            posScaleOctals[j] = packed;
+                            chunk.state = VoxelChunk.ChunkState.VoxelReadback;
+                        }
+                        
                     }
+
+                    // Size*2 since we are using octal generation!
+                    terrain.executor.ExecuteShader(65 * 2, terrain.compiler.voxelsDispatchIndex, Vector3.zero, Vector3.zero, posScaleOctals, true);
 
                     // Request GPU data into the native array we allocated at the start
                     // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
@@ -122,7 +138,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     NativeArray<uint> voxelData = readback.data;
                     AsyncGPUReadback.RequestIntoNativeArray(
                         ref voxelData,
-                        terrain.executor.textures["voxels"], 0,
+                        terrain.executor.buffers["voxels"],
                         delegate (AsyncGPUReadbackRequest asyncRequest) {
                             unsafe {
                                 if (disposed) {
@@ -137,9 +153,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                                 for (int j = 0; j < readback.chunks.Count; j++) {
                                     VoxelChunk chunk = readback.chunks[j];
 
-                                    // Since we are using morton encoding, an 2x2x2 unit contains 8 sequential chunks
-                                    // We just need to do some memory copies at the right src offsets
-                                    uint* src = pointer + (VoxelUtils.VOLUME * j);
+                                    // Since we are using a buffer where the data for chunks is contiguous
+                                    // we can just do parallel copies from the source buffer at the appropriate offset
+                                    uint* src = pointer + (65*65*65 * j);
 
                                     uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
                                     readback.copies[j] = new UnsafeAsyncMemCpy {

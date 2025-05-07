@@ -79,16 +79,6 @@ namespace jedjoud.VoxelTerrain {
             return val;
         }
 
-        // Convert an index to a 2D position
-        public static uint2 IndexToPos2D(int index, int size) {
-            return new uint2((uint)(index % size), (uint)(index / size));
-        }
-
-        // Convert a 2D position into an index
-        public static int PosToIndex2D(uint2 position, int size) {
-            return (int)(position.x + position.y * size);
-        }
-
         // Check if a position lies on a boundary
         // Assumes positive boundary
         public static bool LiesOnBoundary(uint3 position, int size) {
@@ -114,7 +104,7 @@ namespace jedjoud.VoxelTerrain {
                 // check which axis is set
                 int dir = math.tzcnt(bitmask);
                 uint2 flattened = (uint2)((int2)FlattenToFaceRelative(position, dir) - math.select(int2.zero, 1, negative));
-                int faceLocalIndex = PosToIndex2D(flattened, size-1);
+                int faceLocalIndex = VoxelUtils.PosToIndex2D(flattened, size-1);
                 return faceLocalIndex + face * dir;
             } else if (bitsSet == 2) {
                 // check which axis is NOT set
@@ -141,7 +131,7 @@ namespace jedjoud.VoxelTerrain {
                 
                 // local 2D index within the face
                 int index2D = index % face;
-                uint2 faceLocalPos = IndexToPos2D(index2D, size-1);
+                uint2 faceLocalPos = VoxelUtils.IndexToPos2D(index2D, size-1);
                 return UnflattenFromFaceRelative(faceLocalPos + math.select(uint2.zero, 1, negative), faceIndex, math.select((uint)(size - 1), 0, negative));
             } else if (index < (face * 3 + edge * 3)) {
                 // edges
@@ -173,7 +163,7 @@ namespace jedjoud.VoxelTerrain {
             } else if (type == 1) {
                 // do a bit of downsampling
                 uint2 flattened = FlattenToFaceRelative(paddingPosition, dir);
-                int mortonOffset = VoxelUtils.PosToIndexMorton2D(flattened / 32);
+                int mortonOffset = VoxelUtils.PosToIndex2D(flattened / 32, 2);
                 Voxel* voxels = data.planes[dir].lod0s[mortonOffset];
                 Voxel voxel = *(voxels + PosToBoundaryIndex((flatPosition * 2) % 64, 64, true));
                 return voxel;
@@ -289,7 +279,7 @@ namespace jedjoud.VoxelTerrain {
                 } else if (type == 1) {
                     // do a bit of downsampling
                     uint2 flattened = FlattenToFaceRelative(paddingPosition, dir);
-                    int mortonOffset = VoxelUtils.PosToIndexMorton2D(flattened / 32);
+                    int mortonOffset = VoxelUtils.PosToIndex2D(flattened / 32, 2);
                     return dir * 4 + mortonOffset;
                 } else if (type == 2) {
                     // do a bit of upsampling

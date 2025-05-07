@@ -68,6 +68,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [WriteOnly]
         public Unsafe.NativeCounter.Concurrent counter;
 
+        /*
         // Fetches the vertex index of a vertex in a specific position
         // If x=-1, then we use the vertex data from LOD1
         // If x=0, then we use vertex data from LOD0
@@ -82,9 +83,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return lod0indices[VoxelUtils.PosToIndexMorton2D((uint2)position.yz)];
             }
         }
+        */
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint3 basePosition, int index) {
+            /*
             uint3 forward = quadForwardDirection[index];
 
             Voxel startVoxel = voxels[VoxelUtils.PosToIndexMorton(basePosition)];
@@ -121,10 +124,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             triangles[triIndex + (flip ? 3 : 5)] = vertex2;
             triangles[triIndex + 4] = vertex3;
             triangles[triIndex + (flip ? 5 : 3)] = vertex0;
+            */
         }
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
+            /*
             uint2 facePos = VoxelUtils.IndexToPosMorton2D(index);
             uint3 position = new uint3(0, facePos);
 
@@ -138,6 +143,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             CheckEdge(position, 0);
             CheckEdge(position, 1);
             CheckEdge(position, 2);
+            */
         }
     }
 }

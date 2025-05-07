@@ -48,8 +48,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                     EditorGUILayout.LabelField($"Name: {dispatch.name} (i={i})", EditorStyles.boldLabel);
                     EditorGUI.indentLevel++;
                     EditorGUILayout.LabelField($"Scope Name: {dispatch.scopeName}");
-                    EditorGUILayout.LabelField($"Morton Encoding: {dispatch.mortonate}");
-                    EditorGUILayout.LabelField($"Thread Group Dimensions: {dispatch.numThreads}");
                     EditorGUI.indentLevel--;
                     EditorGUI.indentLevel--;
                 }

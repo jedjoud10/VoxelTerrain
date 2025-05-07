@@ -28,6 +28,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool negative;
 
         public void Execute(int index) {
+            /*
             int morton = VoxelUtils.PosToIndexMorton(StitchUtils.BoundaryIndexToPos(index, 63, negative));
             
             int oldVertexIndex = indices[morton];
@@ -40,6 +41,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             boundaryIndices[index] = newVertexIndex;
 
             boundaryVertices[newVertexIndex] = vertices[oldVertexIndex];
+            */
         }
     }
 } 

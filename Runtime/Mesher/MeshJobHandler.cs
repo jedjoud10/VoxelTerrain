@@ -46,25 +46,27 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
         public const int INNER_LOOP_BATCH_COUNT = 64;
+        const int VOL = 65 * 65 * 65;
 
         internal MeshJobHandler(VoxelMesher mesher) {
             vertexJobHandle = default;
             quadJobHandle = default;
             this.mesher = mesher;
 
+
             // Native buffers for mesh data
-            int materialCount = VoxelUtils.MAX_MATERIAL_COUNT;
-            voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            vertices = new NativeArray<float3>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            normals = new NativeArray<float3>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            uvs = new NativeArray<float2>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            tempTriangles = new NativeArray<int>(VoxelUtils.VOLUME * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            permTriangles = new NativeArray<int>(VoxelUtils.VOLUME * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            int materialCount = 256;
+            voxels = new NativeArray<Voxel>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            vertices = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            normals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            uvs = new NativeArray<float2>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            tempTriangles = new NativeArray<int>(VOL * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            permTriangles = new NativeArray<int>(VOL * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             voxelCounters = new NativeMultiCounter(materialCount, Allocator.Persistent);
 
             // Native buffer for mesh generation data
-            indices = new NativeArray<int>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            enabled = new NativeArray<byte>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            indices = new NativeArray<int>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            enabled = new NativeArray<byte>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             countersQuad = new NativeMultiCounter(materialCount, Allocator.Persistent);
             counter = new NativeCounter(Allocator.Persistent);
 
@@ -96,7 +98,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             materialCounter.Count = 0;
             materialHashSet.Clear();
             materialHashMap.Clear();
-            bounds[0] = new float3(VoxelUtils.SIZE * voxelSizeFactor);
+            bounds[0] = new float3(65 * voxelSizeFactor);
             bounds[1] = new float3(0.0);
             Free = false;
 
@@ -194,27 +196,27 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Material job and indexer job
-            JobHandle materialJobHandle = materialJob.Schedule(VoxelUtils.VOLUME, 2048 * 8 * INNER_LOOP_BATCH_COUNT, dependency);
+            JobHandle materialJobHandle = materialJob.Schedule(VOL, 2048 * 8 * INNER_LOOP_BATCH_COUNT, dependency);
             JobHandle materialIndexerJobHandle = materialIndexerJob.Schedule(materialJobHandle);
             
             // Start the corner job and material job
-            JobHandle cornerJobHandle = cornerJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, 2048 * INNER_LOOP_BATCH_COUNT, dependency);
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
-            vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
+            vertexJobHandle = vertexJob.Schedule(VOL, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-            JobHandle aoJobHandle = aoJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
+            JobHandle aoJobHandle = aoJob.Schedule(VOL, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
 
             // Start the quad job
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
-            quadJobHandle = quadJob.Schedule(VoxelUtils.VOLUME, 2048 * INNER_LOOP_BATCH_COUNT, merged);
+            quadJobHandle = quadJob.Schedule(VOL, 2048 * INNER_LOOP_BATCH_COUNT, merged);
 
             // Start the sum job 
             JobHandle sumJobHandle = sumJob.Schedule(quadJobHandle);
 
             // Start the copy job
-            JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, sumJobHandle);
+            JobHandle copyJobHandle = copyJob.Schedule(256, 32, sumJobHandle);
             finalJobHandle = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, aoJobHandle);
             return finalJobHandle;
         }

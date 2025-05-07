@@ -9,59 +9,51 @@ namespace jedjoud.VoxelTerrain.Generation {
         public bool buffer;
     }
 
-    public class KernelDispatch {
+    public abstract class KernelDispatch {
         public string name;
         public int depth;
-        public int sizeReductionPower;
-        public bool threeDimensions;
         public string scopeName;
         public int scopeIndex;
-        public Vector3Int numThreads;
-        public string remappedCoords;
-        public bool mortonate;
-        public string writeCoords;
         public KernelOutput[] outputs;
 
-        public float frac;
-
-        public string ConvertToKernelString(TreeContext ctx) {
+        public virtual string InjectBeforeScopeInit(TreeContext ctx) => "";
+        public virtual string InjectAfterScopeCalls(TreeContext ctx) => "";
+        public string CreateKernel(TreeContext ctx) {
             TreeScope scope = ctx.scopes[scopeIndex];
-
-            // Create the variable definitions and assignment for variables to set within the scope
-            string kernelOutputSetter = "";
-            foreach (var item in outputs) {
-                string input = $"id.{writeCoords}";
-
-                if (mortonate) {
-                    input = $"morton ? indexToPos(encodeMorton32({input})).xzy : {input}";
-                }
-
-                if (item.buffer) {
-                    // TODO: what the fuck?????
-                    kernelOutputSetter += $@"
-    if ({item.setter}.scale > 0.0) {{
-        int index = 0;
-        InterlockedAdd({item.outputBufferName}_counter[0], 1, index);
-        {item.outputBufferName}[index] = PackProp({item.setter});
-    }}
-";
-
-                } else {
-                    kernelOutputSetter += $"    {item.outputTextureName}_write[{input}] = {item.setter};\n";
-                }
-            }
-
             return $@"
 #pragma kernel CS{scopeName}
-[numthreads({numThreads.x}, {numThreads.y}, {numThreads.z})]
-// Name: {name}, Scope name: {scopeName}, Scope index: {scopeIndex}, Outputs: {outputs.Length}, Arguments: {scope.arguments.Length}
+[numthreads(8, 8, 8)]
+// Name: {name}, Scope name: {scopeName}, Scope index: {scopeIndex}, Outputs: {outputs.Length}, Arguments: {scope.arguments.Length}, Nodes: {scope.namesToNodes.Count}
 void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
-    uint3 remapped = uint3({remappedCoords});
-    float3 position = ConvertIntoWorldPosition(float3(remapped) * {frac});
+{InjectBeforeScopeInit(ctx)}
 {scope.InitArgVars()}
 {scope.CallWithArgs()}
-{kernelOutputSetter}
+{InjectAfterScopeCalls(ctx)}
 }}";
+        }
+    }
+
+    public class VoxelKernelDispatch : KernelDispatch {
+        public override string InjectBeforeScopeInit(TreeContext ctx) {
+            return @"
+if (any(id >= (uint)size)) {
+    return;
+}
+
+    float3 position = ConvertIntoWorldPosition(id);
+";
+        }
+
+        public override string InjectAfterScopeCalls(TreeContext ctx) {
+            KernelOutput output = outputs[0];
+
+            return $@"
+#ifdef _ASYNC_READBACK_OCTAL
+voxels[CalcIdIndex(id)] = {output.setter};
+#else
+voxels_write[id] = {output.setter};
+#endif
+";
         }
     }
 }

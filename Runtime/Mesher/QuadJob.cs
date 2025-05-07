@@ -77,8 +77,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         void CheckEdge(uint3 basePosition, int index, bool skirts, bool skirtsForceDir) {
             uint3 forward = quadForwardDirection[index];
 
-            int baseIndex = VoxelUtils.PosToIndexMorton(basePosition);
-            int endIndex = VoxelUtils.PosToIndexMorton(basePosition + forward);
+            int baseIndex = VoxelUtils.PosToIndex(basePosition, 65);
+            int endIndex = VoxelUtils.PosToIndex(basePosition + forward, 65);
 
             Voxel startVoxel = voxels[baseIndex];
             Voxel endVoxel = voxels[endIndex];
@@ -93,10 +93,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
-            int index0 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4]);
-            int index1 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4 + 1]);
-            int index2 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4 + 2]);
-            int index3 = VoxelUtils.PosToIndexMorton(offset + quadPerpendicularOffsets[index * 4 + 3]);
+            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4], 65);
+            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1], 65);
+            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2], 65);
+            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3], 65);
 
             // Fetch the actual indices of the vertices
             int vertex0 = vertexIndices[index0];
@@ -127,12 +127,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPosMorton(index);
+            uint3 position = VoxelUtils.IndexToPos(index, 65);
 
             if (math.any(position < 1))
                 return;
 
-            if (math.any(position > 62))
+            if (math.any(position > 63))
                 return;
 
             // Allows us to save two voxel fetches (very important)

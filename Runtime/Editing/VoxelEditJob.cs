@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain.Edits {
         public Unsafe.NativeMultiCounter.Concurrent counters;
 
         public void Execute(int index) {
-            uint3 id = VoxelUtils.IndexToPosMorton(index);
+            uint3 id = VoxelUtils.IndexToPos(index, 65);
             float3 position = (math.float3(id));
             position *= voxelScale;
             position += offset;

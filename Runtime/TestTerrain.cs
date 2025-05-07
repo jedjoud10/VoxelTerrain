@@ -64,12 +64,14 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             output.density = ((Variable<bool>)check2).Select(y + (new Simplex(0.02f, testHeight).Evaluate(flat)), density);
 
             // For now we support only spawning one prop per voxel dispatch, but this will be changed for a more flexible system
+            /*
             output.prop = GraphUtils.Zero<GpuProp>().With(
                 ("position", position),
                 ("rotation", rotation),
                 ("scale", check.Select<float>(0f, 1f)),
                 ("variant", Random.Uniform(position.Scaled(0.2584f), 0.5f).Select<int>(0, 1))
             );
+            */
 
             // Do some funky material picking
             var uhhh = (Noise.Simplex(xz, 0.02f, 1.0f) > 0).Select<int>(1, 0);

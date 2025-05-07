@@ -70,7 +70,7 @@ namespace jedjoud.VoxelTerrain {
             // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
             // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
             //NativeArray<Voxel> allocated = FetchVoxelsContainer();
-            voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            voxels = new NativeArray<Voxel>(65*65*65, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         }
 
         // Reset the chunk so we can use it to represent a new octree node (don't allocate new native arrays)
@@ -105,149 +105,9 @@ namespace jedjoud.VoxelTerrain {
             if (Selection.activeGameObject != gameObject)
                 return;
 
-            float s = node.size / VoxelUtils.SIZE;
-
-            if (debugValues) {
-                /*
-                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
-                    uint3 coord = StitchUtils.BoundaryIndexToPos(i, 64);
-                    float d = stitch.boundaryVoxels[i].density;
-                    if (d > -4 && d < 4) {
-                        Gizmos.color = d > 0f ? Color.red : Color.green;
-                        Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
-                    }
-                }
-
-                Gizmos.color = Color.blue;
-                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
-                    int vertexIndex = stitch.boundaryIndices[i];
-
-                    if (vertexIndex != int.MaxValue) {
-                        float3 vertex = stitch.boundaryVertices[vertexIndex];
-                        Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
-                    }
-                }
-
-                Gizmos.color = Color.green;
-                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
-                    int vertexIndex = negativeBoundaryIndices[i];
-
-                    if (vertexIndex != int.MaxValue) {
-                        float3 vertex = negativeBoundaryVertices[vertexIndex];
-                        Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
-                    }
-                }
-                */
-
-                Gizmos.color = Color.red;
-                if (stitch.stitched) {
-                    for (int i = 0; i < stitch.vertices.Length; i++) {
-                        float3 vertex = stitch.vertices[i];
-                        Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
-                    }
-
-                    /*
-                    for (int i = 0; i < StitchUtils.CalculateBoundaryLength(63); i++) {
-                        int vertexIndex = stitch.boundaryIndices[i];
-
-                        if (vertexIndex != int.MaxValue) {
-                            float3 vertex = stitch.boundaryIndices[vertexIndex];
-                            Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
-                        }
-                    }
-
-                    for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
-                        int vertexIndex = stitch.paddingIndices[i];
-
-                        if (vertexIndex != int.MaxValue) {
-                            float3 vertex = stitch.paddingVertices[vertexIndex];
-                            Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
-                        }
-                    }
-                    */
-                }
-
-                /*
-                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
-                    uint3 coord = StitchUtils.BoundaryIndexToPos(i, 65);
-                    float d = stitch.paddingVoxels[i].density;
-                    if (d > -4 && d < 4) {
-                        Gizmos.color = d > 0f ? Color.black : Color.white;
-                        Gizmos.DrawSphere((float3)coord * s + node.position, 0.05f);
-                    }
-                }
-                */
-            }
-
-            for (int j = 0; j < 27; j++) {
-                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
-                int3 offset = (int3)_offset - 1;
-
-                if (neighbourMask.IsSet(j)) {
-                    Gizmos.color = Color.white;
-                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
-                }
-
-                if (lowLodMask.IsSet(j)) {
-                    Gizmos.color = Color.cyan;
-                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
-                }
-
-                if (highLodMask.IsSet(j)) {
-                    Gizmos.color = Color.yellow;
-                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
-                }
-            }
-
-            /*
-            Gizmos.color = Color.yellow;
-            for (int j = 0; j < 27; j++) {
-                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
-                int3 offset = (int3)_offset - 1;
-
-                if (stitchingMask.IsSet(j)) {
-                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
-                }
-            }
-            */
-
-            /*
-            Gizmos.color = Color.yellow;
-            for (int j = 0; j < 27; j++) {
-                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
-                int3 offset = (int3)_offset - 1;
-
-                if (highLodMask.IsSet(j)) {
-                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
-                }
-            }
-
-            Gizmos.color = Color.cyan;
-            for (int j = 0; j < 27; j++) {
-                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
-                int3 offset = (int3)_offset - 1;
-
-                if (lowLodMask.IsSet(j)) {
-                    VoxelChunk[] neighbours = lowLodNeighbours[j];
-
-                    foreach (VoxelChunk neighbour in neighbours) {
-                        Gizmos.DrawSphere(neighbour.node.Center, 5f);
-                    }
-                }
-            }
-            */
-
             Gizmos.color = Color.white;
             MinMaxAABB bounds = node.Bounds;
             Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
-            /*
-
-            Gizmos.color = Color.red;
-            for (int j = 0; j < 8; j++) {
-                MinMaxAABB corner = NeighbourJob.CreateCorner(bounds.Min, bounds.Max, j);
-                Gizmos.DrawWireCube(corner.Center, corner.Extents);
-            }
-            */
         }
             
         // Get the AABB world bounds of this chunk
