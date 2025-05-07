@@ -20,13 +20,13 @@ RWStructuredBuffer<uint> voxels;
 RWTexture3D<uint> voxels_write;
 #endif
 
-RWStructuredBuffer<BlittableProp> props;
-RWStructuredBuffer<int> props_counter;
+//RWStructuredBuffer<BlittableProp> props;
+//RWStructuredBuffer<int> props_counter;
 
-//RWStructuredBuffer<int> pos_neg_counter;
 
 #ifdef _ASYNC_READBACK_OCTAL
 // why the FUCK does CBUFFER not work :sob: :skull:
+RWStructuredBuffer<int> neg_pos_octal_counters;
 StructuredBuffer<float4> pos_scale_octals;
 #endif
 
@@ -59,3 +59,11 @@ int CalcIdIndex(uint3 id) {
         return id.x + id.z * size + id.y * size * size;
     #endif
 }
+
+#ifdef _ASYNC_READBACK_OCTAL
+void CheckVoxelSign(uint3 id, float value) {
+    uint3 zero_to_one = id / 65;
+    int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
+    InterlockedAdd(neg_pos_octal_counters[chunk_index], value >= 0.0 ? 1 : -1);
+}
+#endif

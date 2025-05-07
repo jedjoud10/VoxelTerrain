@@ -12,7 +12,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int seed = 1234;
         public Vector3Int permutationSeed;
         public Vector3Int moduloSeed;
-        private ComputeBuffer posScaleOctalBuffer;
+        public ComputeBuffer posScaleOctalBuffer;
+        public ComputeBuffer negPosOctalCountersBuffer;
 
         [HideInInspector]
         [NonSerialized]
@@ -39,6 +40,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 posScaleOctalBuffer.Dispose();
             }
 
+            if (negPosOctalCountersBuffer != null) {
+                negPosOctalCountersBuffer.Dispose();
+            }
+
             if (textures != null) {
                 foreach (var (name, tex) in textures) {
                     tex.Dispose();
@@ -62,6 +67,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             DisposeResources();
 
             posScaleOctalBuffer = new ComputeBuffer(8, sizeof(float) * 4, ComputeBufferType.Structured);
+            negPosOctalCountersBuffer = new ComputeBuffer(8, sizeof(int), ComputeBufferType.Structured);
 
             /*
             float4[] packed = new float4[8];
@@ -119,9 +125,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             LocalKeyword keyword = shader.keywordSpace.FindKeyword("_ASYNC_READBACK_OCTAL");
             if (posScaleOctals != null && posScaleOctals.Length == 8) {
                 commands.EnableKeyword(shader, keyword);
+                
                 commands.SetBufferData(posScaleOctalBuffer, posScaleOctals);
                 commands.SetComputeBufferParam(shader, dispatchIndex, "pos_scale_octals", posScaleOctalBuffer);
-                //commands.SetComputeVectorArrayParam(shader, "pos_scale_octals", posScaleOctals);
+
+                commands.SetBufferData(negPosOctalCountersBuffer, new int[8]);
+                commands.SetComputeBufferParam(shader, dispatchIndex, "neg_pos_octal_counters", negPosOctalCountersBuffer);
             } else {
                 commands.DisableKeyword(shader, keyword);
             }

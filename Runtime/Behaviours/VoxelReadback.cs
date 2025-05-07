@@ -27,13 +27,18 @@ namespace jedjoud.VoxelTerrain.Generation {
             public NativeArray<uint> data;
             public List<VoxelChunk> chunks;
             public NativeArray<JobHandle> copies;
+            public NativeArray<int> counters;
+            public bool countersFetched, voxelsFetched;
 
             public OngoingVoxelReadback() {
                 data = new NativeArray<uint>(65*65*65 * 8, Allocator.Persistent);
                 chunks = new List<VoxelChunk>();
                 copies = new NativeArray<JobHandle>(8, Allocator.Persistent);
+                counters = new NativeArray<int>(8, Allocator.Persistent);
                 free = true;
                 pendingCopies = null;
+                voxelsFetched = false;
+                countersFetched = false;
             }
 
             public void Reset() {
@@ -41,10 +46,13 @@ namespace jedjoud.VoxelTerrain.Generation {
                 free = true;
                 pendingCopies = null;
                 copies.AsSpan().Fill(default);
+                voxelsFetched = false;
+                countersFetched = false;
             }
 
             public void Dispose() {
                 data.Dispose();
+                counters.Dispose();
                 copies.Dispose();
             }
         }
@@ -87,17 +95,24 @@ namespace jedjoud.VoxelTerrain.Generation {
             for (int i = 0; i < asyncReadbackPerTick; i++) {
                 OngoingVoxelReadback readback = readbacks[i];
 
-                if (readback.pendingCopies.HasValue && readback.pendingCopies.Value.IsCompleted) {
+                if (readback.pendingCopies.HasValue && readback.pendingCopies.Value.IsCompleted && readback.countersFetched && readback.voxelsFetched) {
                     readback.pendingCopies.Value.Complete();
-
-                    // Since we're now using inter-chunk dependencies (for meshing), we can't use the pos/neg optimization, since now we need
-                    // to check the neighbours values on the CPU, which goes against the idea of doing the check atomically on the GPU in the first place
-                    // No pos-neg optimization for you little bro... (unless you figure out a way to do the count with n+1 thingymajig,idk how tho
+                    
+                    // Since we now fetch n+1 voxels (65^3) we can actually use the pos/neg optimizations
+                    // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
+                    // heheheha....
                     for (int j = 0; j < readback.chunks.Count; j++) {
+                        int count = readback.counters[j];
                         VoxelChunk chunk = readback.chunks[j];
-                        chunk.state = VoxelChunk.ChunkState.Temp;
+
+                        int max = 65 * 65 * 65;
                         pending.Remove(chunk);
-                        onReadback?.Invoke(chunk);
+                        if (count == max || count == -max) {
+                            chunk.state = VoxelChunk.ChunkState.Done;
+                        } else {
+                            chunk.state = VoxelChunk.ChunkState.Temp;
+                            onReadback?.Invoke(chunk);
+                        }
                     }
 
                     readback.Reset();
@@ -165,7 +180,21 @@ namespace jedjoud.VoxelTerrain.Generation {
                                 }
                                 
                                 readback.pendingCopies = JobHandle.CombineDependencies(readback.copies.Slice(0, readback.chunks.Count));
+                                readback.voxelsFetched = true;
                             }
+                        }
+                    );
+
+                    NativeArray<int> counters = readback.counters;
+                    AsyncGPUReadback.RequestIntoNativeArray(
+                        ref counters,
+                        terrain.executor.negPosOctalCountersBuffer,
+                        delegate (AsyncGPUReadbackRequest asyncRequest) {
+                            if (disposed) {
+                                return;
+                            }
+
+                            readback.countersFetched = true;
                         }
                     );
                 }

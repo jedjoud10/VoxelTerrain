@@ -50,6 +50,7 @@ if (any(id >= (uint)size)) {
             return $@"
 #ifdef _ASYNC_READBACK_OCTAL
 voxels[CalcIdIndex(id)] = {output.setter};
+CheckVoxelSign(id, voxel);
 #else
 voxels_write[id] = {output.setter};
 #endif
