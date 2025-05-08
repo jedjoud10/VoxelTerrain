@@ -646,7 +646,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             stitchJob.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048).Complete();
             test = indices.ToArray();
-            Debug.Log(indexCounter.Count);
+            //Debug.Log(indexCounter.Count);
             debugIntVal = neighbourBoundaryIndices.state.Value;
 
             if (totalVertices > 0) {
