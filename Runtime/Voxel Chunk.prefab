@@ -232,6 +232,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   state: 0
+  skipped: 0
   sharedMesh: {fileID: 0}
   voxelMaterialsLookup: 
   bounds:
@@ -246,3 +247,7 @@ MonoBehaviour:
     y: 0
   stitch: {fileID: 0}
   debugValues: 0
+  customVertexDebugger: 
+  whatTheFlirpSize: 0.5
+  flags: 0
+  voxelsTolerance: 0.3

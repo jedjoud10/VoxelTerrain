@@ -61,7 +61,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             float size = max.x - min.x;
 
             // calculate edge local position
-            uint2 mortoned = VoxelUtils.IndexToPosMorton2D(localEdgeIndex);
+            uint2 mortoned = VoxelUtils.IndexToPos2D(localEdgeIndex, 2);
             float2 offset = (float2)mortoned * (size + 8) - 4;
 
             if (axii == 0) {
@@ -95,7 +95,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             float3 position = min;
             float size = max.x - min.x;
 
-            uint3 mortoned = VoxelUtils.IndexToPosMorton(corner);
+            uint3 mortoned = VoxelUtils.IndexToPos(corner, 2);
 
             float3 point = position + size * (float3)mortoned;
             return MinMaxAABB.CreateFromCenterAndHalfExtents(point, 0.5f);
@@ -201,7 +201,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
                 // for each axis we have 4 edges
                 for (int l = 0; l < 4; l++) {
-                    uint2 mortoned = VoxelUtils.IndexToPosMorton2D(l) * 2;
+                    uint2 mortoned = VoxelUtils.IndexToPos2D(l, 2) * 2;
                     uint3 offset = 1;
 
                     if (i == 0) {
@@ -220,7 +220,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             // corners only
             for (int i = 0; i < 8; i++) {
-                uint3 mortoned = VoxelUtils.IndexToPosMorton(i) * 2;
+                uint3 mortoned = VoxelUtils.IndexToPos(i, 2) * 2;
                 int omniDirOffsetIndex = VoxelUtils.PosToIndex(mortoned, 3);
                 MinMaxAABB corner = CreateCorner(min, max, i);
                 TraverseAndCollect(corner, ref pending, ref neighbours, omniDirOffsetIndex + omniDirBaseIndex, original.depth);

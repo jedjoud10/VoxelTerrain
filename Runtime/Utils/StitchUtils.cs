@@ -16,9 +16,37 @@ namespace jedjoud.VoxelTerrain {
             return size * size * 3 - 3 * size + 1;
         }
 
+        // Convert a 3D direction to a 2D plane relative direction
+        public static int ConvertDir3Dto2D(int dir, int faceNormal) {
+
+            if (faceNormal == 0) {
+                if (dir == 1) {
+                    return 0;
+                } else if (dir == 2) {
+                    return 1;
+                }
+            } else if (faceNormal == 1) {
+                if (dir == 0) {
+                    return 0;
+                } else if (dir == 2) {
+                    return 1;
+                }
+            } else if (faceNormal == 2) {
+                if (dir == 0) {
+                    return 0;
+                } else if (dir == 1) {
+                    return 1;
+                }
+            }
+
+            // never should happen
+            throw new Exception();
+        }
+
         // Flatten a 3D position to a face 2D position using a given direction axis
         // dir order = X,Y,Z
         public static uint2 FlattenToFaceRelative(uint3 position, int dir) {
+
             if (dir == 0) {
                 return position.yz;
             } else if (dir == 1) {
@@ -79,28 +107,43 @@ namespace jedjoud.VoxelTerrain {
             return val;
         }
 
-        // Convert an index to a 2D position
-        public static uint2 IndexToPos2D(int index, int size) {
-            return new uint2((uint)(index % size), (uint)(index / size));
-        }
-
-        // Convert a 2D position into an index
-        public static int PosToIndex2D(uint2 position, int size) {
-            return (int)(position.x + position.y * size);
+        // Check if a position lies on a boundary
+        // Assumes positive boundary
+        public static bool LiesOnBoundary(uint3 position, int size) {
+            return math.any(position == new uint3(size - 1)) && math.all(position < new uint3(size));
         }
 
         // Check if a position lies on a boundary
         // Assumes positive boundary
-        public static bool LiesOnBoundary(uint3 position, int size) {
-            return math.any(position == new uint3(size - 1));
+        public static bool LiesOnBoundary(int3 position, int size) {
+            return math.any(position == new int3(size - 1)) && math.all(position < new int3(size) & position >= 0);
+        }
+
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckBounds(uint3 coordinates, int size) {
+            if (math.cmax(coordinates) >= size) {
+                throw new System.OverflowException(
+                    $"An element of coordinates {coordinates} is larger than the maximum {size-1} (size={size})");
+            }
+        }
+
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckIndex(int index, int size) {
+            if (index >= (size * size * 3 - size * 3 + 1)) {
+                throw new System.OverflowException(
+                    $"The given index {index} is larger than the maximum {size * size * 3 - size * 3 + 1}");
+            }
+
+            if (index < 0) {
+                throw new System.OverflowException(
+                    $"The given index is negative");
+            }
         }
 
         // Convert a 3D position into an index that we can use for our boundary data (custom packing)
         // Encoding: 3 faces, 3 edges, 1 corner
         public static int PosToBoundaryIndex(uint3 position, int size, bool negative=false) {
-            if (math.any(position >= (new uint3(size)))) {
-                throw new Exception("WHAT THE FUCK????");
-            }
+            DebugCheckBounds(position, size);
 
             int face = (size - 1) * (size - 1);
             int edge = (size - 1);
@@ -114,7 +157,7 @@ namespace jedjoud.VoxelTerrain {
                 // check which axis is set
                 int dir = math.tzcnt(bitmask);
                 uint2 flattened = (uint2)((int2)FlattenToFaceRelative(position, dir) - math.select(int2.zero, 1, negative));
-                int faceLocalIndex = PosToIndex2D(flattened, size-1);
+                int faceLocalIndex = VoxelUtils.PosToIndex2D(flattened, size-1);
                 return faceLocalIndex + face * dir;
             } else if (bitsSet == 2) {
                 // check which axis is NOT set
@@ -132,6 +175,8 @@ namespace jedjoud.VoxelTerrain {
         // Encoding: 3 faces, 3 edges, 1 corner
         // Assumes we are dealing with the positive boundary, but it is toggable
         public static uint3 BoundaryIndexToPos(int index, int size, bool negative=false) {
+            DebugCheckIndex(index, size);
+
             int face = (size-1) * (size-1);
             int edge = (size-1);
             
@@ -141,7 +186,7 @@ namespace jedjoud.VoxelTerrain {
                 
                 // local 2D index within the face
                 int index2D = index % face;
-                uint2 faceLocalPos = IndexToPos2D(index2D, size-1);
+                uint2 faceLocalPos = VoxelUtils.IndexToPos2D(index2D, size-1);
                 return UnflattenFromFaceRelative(faceLocalPos + math.select(uint2.zero, 1, negative), faceIndex, math.select((uint)(size - 1), 0, negative));
             } else if (index < (face * 3 + edge * 3)) {
                 // edges
@@ -158,119 +203,6 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
 
-        // type=0 -> uniform (normal)
-        // type=1 -> lotohi (downsample)
-        // type=2 -> hitolo (upsample)
-        private unsafe static Voxel SamplePlaneUsingType(uint3 paddingPosition, uint type, int dir, ref VoxelStitch.GenericBoundaryData<Voxel> data) {
-            uint3 flatPosition = paddingPosition;
-            flatPosition[dir] = 0;
-
-            if (type == 0) {
-                // do a bit of simple copying
-                Voxel* voxels = data.planes[dir].uniform;
-                Voxel voxel = *(voxels + PosToBoundaryIndex(flatPosition, 64, true));
-                return voxel;
-            } else if (type == 1) {
-                // do a bit of downsampling
-                uint2 flattened = FlattenToFaceRelative(paddingPosition, dir);
-                int mortonOffset = VoxelUtils.PosToIndexMorton2D(flattened / 32);
-                Voxel* voxels = data.planes[dir].lod0s[mortonOffset];
-                Voxel voxel = *(voxels + PosToBoundaryIndex((flatPosition * 2) % 64, 64, true));
-                return voxel;
-            } else if (type == 2) {
-                // do a bit of upsampling
-                uint2 flattened = FlattenToFaceRelative(paddingPosition, dir);
-                flattened += data.planes[dir].relativeOffset * 64;
-                flatPosition = UnflattenFromFaceRelative(flattened, dir);
-                Voxel* voxels = data.planes[dir].lod1;
-                Voxel voxel = *(voxels + PosToBoundaryIndex(flatPosition / 2, 64, true));
-                return voxel;
-            }
-
-            return Voxel.Empty;
-        }
-
-        // type=0 -> uniform (normal)
-        // type=1 -> lotohi (downsample)
-        // type=2 -> hitolo (upsample)
-        private unsafe static Voxel SampleEdgeUsingType(uint3 paddingPosition, uint type, int dir, ref VoxelStitch.GenericBoundaryData<Voxel> data) {
-            (uint3 edged, uint axis) = FetchAxisAndKeepOnEdging(paddingPosition[dir], dir);
-
-            if (type == 0) {
-                // do a bit of simple copying
-                Voxel* voxels = data.edges[dir].uniform;
-                Voxel voxel = *(voxels + PosToBoundaryIndex(edged, 64, true));
-                return voxel;
-            } else if (type == 1) {
-                // do a bit of downsampling
-                uint offset = axis / 32;
-                Voxel* voxels = data.edges[dir].lod0s[(int)offset];
-                Voxel voxel = *(voxels + PosToBoundaryIndex((edged * 2) % 64, 64, true));
-                return voxel;
-            } else if (type == 2) {
-                // do a bit of upsampling
-                uint offset = axis + data.edges[dir].relativeOffset * 64;
-                edged = UnflattenFromEdgeRelative(offset, dir);
-                Voxel* voxels = data.edges[dir].lod1;
-                Voxel voxel = *(voxels + PosToBoundaryIndex(edged / 2, 64, true));
-                return voxel;
-            }
-
-            return Voxel.Empty;
-        }
-
-        // type=0 -> uniform (normal)
-        // type=1 -> lotohi (downsample)
-        // type=2 -> hitolo (upsample)
-        private unsafe static Voxel SampleCornerUsingType(uint3 paddingPosition, uint type, ref VoxelStitch.GenericBoundaryData<Voxel> data) {
-
-            // Corner piece always at (0,0,0), but that's the last element in our padding array
-            Voxel* voxels = null;
-            if (type == 0) {
-                // do a bit of simple copying
-                voxels = data.corner.uniform;
-            } else if (type == 1) {
-                voxels = data.corner.lod0;
-            } else if (type == 2) {
-                voxels = data.corner.lod1;
-            } else {
-                throw new Exception("I LOVE NULL POINTERS!!!!");
-            }
-
-            return *(voxels + 63*63 * 3 + 63*3);
-        }
-
-        // Fetch a voxel at the given size=65 padding position
-        // Requires the neighbour stuff from the stitcher to be calculated and converted to raw pointers
-        // Handles downsampling/upsampling of data automatically
-        public static Voxel Sample(uint3 paddingPosition, ref VoxelStitch.GenericBoundaryData<Voxel> data) {
-            // 1=plane, 2=edge, 3=corner
-            bool3 bool3 = paddingPosition == 64;
-            int bitmask = math.bitmask(new bool4(bool3, false));
-            int bitsSet = math.countbits(bitmask);
-            
-            if (bitsSet == 1) {
-                // check which axis is set
-                int dir = math.tzcnt(bitmask);
-                uint type = data.state.GetBits(dir * 2, 2);
-                return SamplePlaneUsingType(paddingPosition, type, dir, ref data);
-            } else if (bitsSet == 2) {
-                // check which axis is NOT set
-                int inv = (~bitmask) & 0b111;
-                int dir = math.tzcnt(inv);
-                uint type = data.state.GetBits(dir * 2 + 6, 2);
-                return SampleEdgeUsingType(paddingPosition, type, dir, ref data);
-            } else {
-                // corner case
-                uint type = data.state.GetBits(12, 2);
-                return SampleCornerUsingType(paddingPosition, type, ref data);
-            }
-
-            return new Voxel() {
-                density = (half)(-100f),
-            };
-        }
-
         // Fetch unpacked chunk index that we will use to index the offsets array (unpacked)
         public static int FetchUnpackedNeighbourIndex(uint3 paddingPosition, BitField32 state) {
             // 1=plane, 2=edge, 3=corner
@@ -283,15 +215,15 @@ namespace jedjoud.VoxelTerrain {
                 int dir = math.tzcnt(bitmask);
                 uint type = state.GetBits(dir * 2, 2);
 
-                if (type == 0) {
+                if (type == 1) {
                     // do a bit of simple copying
                     return dir * 4;
-                } else if (type == 1) {
+                } else if (type == 2) {
                     // do a bit of downsampling
                     uint2 flattened = FlattenToFaceRelative(paddingPosition, dir);
-                    int mortonOffset = VoxelUtils.PosToIndexMorton2D(flattened / 32);
-                    return dir * 4 + mortonOffset;
-                } else if (type == 2) {
+                    int offset = VoxelUtils.PosToIndex2D(flattened / 32, 2);
+                    return dir * 4 + offset;
+                } else if (type == 3) {
                     // do a bit of upsampling
                     return dir * 4;
                 }
@@ -301,17 +233,17 @@ namespace jedjoud.VoxelTerrain {
                 int dir = math.tzcnt(inv);
                 uint type = state.GetBits(dir * 2 + 6, 2);
 
-                if (type == 0) {
+                if (type == 1) {
                     // do a bit of simple copying
                     return dir * 2 + 12;
-                } else if (type == 1) {
+                } else if (type == 2) {
                     // do a bit of downsampling
                     (uint3 edged, uint axis) = FetchAxisAndKeepOnEdging(paddingPosition[dir], dir);
                     uint offset = axis / 32;
-                    return dir * 2 + (int)offset;
-                } else if (type == 2) {
+                    return dir * 2 + (int)offset + 12;
+                } else if (type == 3) {
                     // do a bit of upsampling
-                    return dir * 2;
+                    return dir * 2 + 12;
                 }
             } else {
                 // corner case

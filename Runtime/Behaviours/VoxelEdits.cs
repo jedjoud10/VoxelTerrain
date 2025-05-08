@@ -45,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             // Start the edit jobs all at once, and they will execute in parallel to each other...
             for (int i = 0; i < chunks.Count; i++) {
-                var counter = new Unsafe.NativeMultiCounter(VoxelUtils.MAX_MATERIAL_COUNT, Allocator.Persistent);
+                var counter = new Unsafe.NativeMultiCounter(256, Allocator.Persistent);
                 counters.Add(counter);
                 VoxelChunk chunk = chunks[i];
 

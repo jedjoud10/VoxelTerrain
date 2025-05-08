@@ -24,7 +24,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 script.RandomizeSeed();
             }
 
-            
+            if (GUILayout.Button("Dispose Resources")) {
+                script.DisposeResources();
+            }
+
 
             if (script.textures == null || script.buffers == null) {
                 EditorGUILayout.LabelField("Interally Allocated Resources (NONE! You should press the Recompile button...)", EditorStyles.boldLabel);

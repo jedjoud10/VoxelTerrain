@@ -24,7 +24,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
-
+        public bool keepBlocky;
+        public bool useStitching;
         public float aoGlobalOffset = 1f;
         public float aoMinDotNormal = 0.0f;
         public float aoGlobalSpread = 0.5f;
@@ -38,18 +39,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public event OnMeshingComplete onMeshingComplete;
         internal Queue<MeshingRequest> queuedMeshingRequests;
         internal HashSet<MeshingRequest> meshingRequests;
-        internal List<VoxelStitch> pendingPaddingVoxelSamplingRequests;
         internal List<VoxelStitch> pendingStitchRequests;
-        private StitchJobHandler stitcher;
 
         // Initialize the voxel mesher
         public override void CallerStart() {
             handlers = new List<MeshJobHandler>(meshJobsPerTick);
             queuedMeshingRequests = new Queue<MeshingRequest>();
             meshingRequests = new HashSet<MeshingRequest>();
-            pendingPaddingVoxelSamplingRequests = new List<VoxelStitch>();
             pendingStitchRequests = new List<VoxelStitch>();
-            stitcher = new StitchJobHandler(this);
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 handlers.Add(new MeshJobHandler(this));
@@ -119,13 +116,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // do NOT forget this check!
                 if (handler.request.chunk != null) {
                     VoxelChunk chunk = handler.request.chunk;
-                    bool copyBoundaryJobs = chunk.copyBoundaryVerticesJobHandle.Value.IsCompleted && chunk.copyBoundaryVoxelsJobHandle.Value.IsCompleted;
-
+                    
                     //  || (tick - handler.startingTick) > handler.request.maxTicks)
-                    if (handler.finalJobHandle.IsCompleted && copyBoundaryJobs && !handler.Free) {
+                    if (handler.finalJobHandle.IsCompleted && !handler.Free) {
                         Profiler.BeginSample("Finish Mesh Jobs");
-                        chunk.copyBoundaryVerticesJobHandle.Value.Complete();
-                        chunk.copyBoundaryVoxelsJobHandle.Value.Complete();
                         FinishJob(handler);
                         Profiler.EndSample();
                     }
@@ -176,44 +170,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         // Get the neighbour indices from the octree
                         int omniDirBaseIndex = src.node.neighbourDataBaseIndex;
                         NativeSlice<OctreeOmnidirectionalNeighbourData> slice = terrain.octree.omniDirectionalNeighbourDataList.AsArray().Slice(omniDirBaseIndex, 27);
-
-                        /*
-                        int depth = src.node.depth;
-
-                        // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
-                        for (int j = 0; j < 27; j++) {
-                            sameLodNeighbours[j] = null;
-                            diffLodNeighbours[j] = null;
-
-                            uint3 _offset = VoxelUtils.IndexToPos(j, 3);
-                            int3 offset = (int3)_offset - 1;
-
-                            // Skip self since that's the source chunk
-                            if (math.all(offset == int3.zero)) {
-                                continue;
-                            }
-
-                            // If no valid octree neighbour, skip
-                            int index = slice[j];
-                            if (index == -1)
-                                continue;
-
-                            OctreeNode neighbourNode = terrain.octree.nodesList[index];
-                            if (terrain.chunks.TryGetValue(neighbourNode, out var neighbourGo)) {
-                                VoxelChunk neighbour = neighbourGo.GetComponent<VoxelChunk>();
-
-                                if (neighbourNode.depth == depth) {
-                                    // If the neighbour is of the same depth, just do normal meshing with neighbour data
-                                    sameLodNeighbours[j] = neighbour;
-                                    sameLodMask.SetBits(j, true);
-                                } else if ((neighbourNode.depth + 1) == depth) {
-                                    // If the neighbour is one level higher (neighbour is lower res) then we can use it for octree stitching
-                                    diffLodNeighbours[j] = neighbour;
-                                    diffLodMask.SetBits(j, true);
-                                }
-                            }
-                        }
-                        */
 
                         for (int j = 0; j < 27; j++) {
                             sameLodNeighbours[j] = -1;
@@ -279,37 +235,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         src.highLodMask = highLodMask;
                         src.lowLodMask = lowLodMask;
                         
+                        if (useStitching) {
+                            // check if we have any neighbours of the same resolution
+                            // we only need to look in the pos axii for this one
+                            // start at 1 to skip src chunk
+                            FetchPositiveNeighbours(stitch, sameLodNeighbours, sameLodMask, false);
 
-                        // check if we have any neighbours of the same resolution
-                        // we only need to look in the pos axii for this one
-                        // start at 1 to skip src chunk
-                        FetchPositiveNeighbours(stitch, sameLodNeighbours, sameLodMask, false);
+                            // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1)
+                            // we only need to look in the pos axii for this one
+                            FetchPositiveNeighbours(stitch, highLodNeighbours, highLodMask, true);
 
-                        // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1)
-                        // we only need to look in the pos axii for this one
-                        FetchPositiveNeighbours(stitch, highLodNeighbours, highLodMask, true);
+                            // check if we have any neighbours that are at a low LOD (src=LOD0, neigh=LOD1)
+                            // we only need to look in the pos axii for this one. there can be multiple neighbours for this!!!
+                            FetchPositiveNeighboursMultiNeighbour(stitch, lowLodNeighbours, lowLodMask);
 
-                        // check if we have any neighbours that are at a low LOD (src=LOD0, neigh=LOD1)
-                        // we only need to look in the pos axii for this one. there can be multiple neighbours for this!!!
-                        FetchPositiveNeighboursMultiNeighbour(stitch, lowLodNeighbours, lowLodMask);
-
-                        // Tell the chunk to wait until all neighbours have voxel data to begin sampling the extra padding voxels
-                        pendingPaddingVoxelSamplingRequests.Add(stitch);
+                            // Let's do the stitching!!!!
+                            pendingStitchRequests.Add(stitch);
+                        }
                     }
-                }
-            }
-
-            // Check the padding voxel sampling requests and wait until all the planes/edges/corners have valid voxel data so we can start sampling
-            for (int i = pendingPaddingVoxelSamplingRequests.Count - 1; i >= 0; i--) {
-                VoxelStitch stitch = pendingPaddingVoxelSamplingRequests[i];
-            
-                // When we can, create the extra padding voxels using downsampled or upsampled data from the neighbours
-                if (stitch.CanSampleExtraVoxels()) {
-                    unsafe {
-                        stitch.DoTheSamplinThing();
-                    }
-                    pendingPaddingVoxelSamplingRequests.RemoveAt(i);
-                    pendingStitchRequests.Add(stitch);
                 }
             }
 
@@ -350,19 +293,140 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     // Only needed when hiToLow is set to true
                     float3 srcPos = stitch.source.node.position;
                     float3 dstPos = neighbour.node.position;
-                    uint3 relativeOffset = (uint3)((srcPos - dstPos) / VoxelUtils.SIZE);
 
+                    // relative offset from the viewpoint of the NEIGHBOUR NODE!!!!
+                    int3 relativeOffset = (int3)((srcPos - dstPos) / stitch.source.node.size);
+                    
                     if (bitsSet == 1) {
                         // check which axis is set
                         int dir = math.tzcnt(bitmask);
-                        uint2? relativePlaneOffset = hiToLow ? StitchUtils.FlattenToFaceRelative(relativeOffset, dir) : null;
+
+                        // relative offset in this case should be negative, BUT ONLY IN THE DIRECTION THAT THE PLANE NORMAL EXISTS IN!!!!
+                        int3 tempTempTempTempTempTemp = relativeOffset;
+                        tempTempTempTempTempTemp[dir] = 0;
+                        if (hiToLow && (relativeOffset[dir] != -1 || math.any(tempTempTempTempTempTemp < 0 | tempTempTempTempTempTemp > 1))) {
+                            Debug.LogError("Erm, what the source?", stitch.source);
+                            Debug.LogError("Erm, what the neighbour?", neighbour);
+                            throw new Exception("we done fucked up dawg...");
+                        }
+
+                        uint2? relativePlaneOffset = hiToLow ? StitchUtils.FlattenToFaceRelative((uint3)relativeOffset, dir) : null;
                         stitch.planes[dir] = VoxelStitch.Plane.CreateWithNeighbour(neighbour, hiToLow, relativePlaneOffset);
                     } else if (bitsSet == 2) {
                         // check which axis is NOT set
                         int inv = (~bitmask) & 0b111;
                         int dir = math.tzcnt(inv);
-                        uint? relativeEdgeOffset = hiToLow ? (uint)StitchUtils.FlattenToEdgeRelative(relativeOffset, dir) : null;
-                        stitch.edges[dir] = VoxelStitch.Edge.CreateWithNeighbour(neighbour, hiToLow, relativeEdgeOffset);
+
+                        /*
+                        if (hiToLow) {
+                            Debug.Log($"dir: {dir}, offset: {relativeOffset}");
+                            Debug.Log("Erm, what the source?", stitch.source);
+                            Debug.Log("Erm, what the neighbour?", neighbour);
+                        }
+                        */
+
+                        // relative offset CAN be negative, but not in the direction we're looking at
+                        if (hiToLow && relativeOffset[dir] < 0) {
+                            Debug.LogError("Erm, what the source?", stitch.source);
+                            Debug.LogError("Erm, what the neighbour?", neighbour);
+                            throw new Exception("we done fucked up dawg... type 2");
+                        }
+
+                        // check if this edge is a vanilla edge
+                        // the problem with the current implementation is that it always assumes this is the case, which, it obviously isn't
+                        int3 temp = relativeOffset;
+                        temp[dir] = -1;
+                        
+
+                        int GetFirstTrueIndex(bool3 b) {
+                            if (b.x)
+                                return 0;
+                            if (b.y)
+                                return 1;
+                            if (b.z)
+                                return 2;
+                            return -1;
+                        }
+
+
+                        if (hiToLow) {
+                            if ((relativeOffset[dir] == 0 || relativeOffset[dir] == 1) && math.all(temp == -1)) {
+                                //Debug.LogWarning("HOLD UP IM VANILLA", stitch.source);
+                                uint relativeOffsetVanilla = (uint)StitchUtils.FlattenToEdgeRelative((uint3)relativeOffset, dir);
+
+                                stitch.edges[dir] = new VoxelStitch.HiToLoEdge {
+                                    vanilla = true,
+                                    lod1Neighbour = neighbour,
+                                    relativeOffsetNonVanilla = 0,
+                                    relativeOffsetVanilla = relativeOffsetVanilla
+                                };
+                            } else {
+                                //Debug.LogWarning("HOLD UP IM NOT VANILLA", stitch.source);
+
+                                // calculate a 2D offset by using the plane that is spanned by the edge direction and the direction set to -1 (meaning that it's the axis in which the boundary between LOD0 and LOD1 exists)
+                                int basis2 = GetFirstTrueIndex(relativeOffset == -1);
+
+                                if (basis2 == -1) {
+                                    throw new Exception("what the fuck???");
+                                }
+
+                                //Debug.LogWarning($"Face normal: {basis2}");
+                                uint2 relativeOffsetNonVanilla = StitchUtils.FlattenToFaceRelative((uint3)relativeOffset, basis2);
+                                //Debug.LogWarning($"Relative Offset Non Vanilla: {relativeOffsetNonVanilla}");
+
+                                // need to offset by 1 in the "free direction" (that isn't the plane normal dir or the edge dir)
+                                bool3 freeCheck = new bool3(true);
+                                freeCheck[basis2] = false;
+                                freeCheck[dir] = false;
+                                int free = GetFirstTrueIndex(freeCheck);
+
+                                // convert 3d direction to 2d plane relative dir
+                                relativeOffsetNonVanilla[StitchUtils.ConvertDir3Dto2D(free, basis2)] += 1;
+
+                                //Debug.LogWarning($"Relative Offset Non Vanilla After Plane Shift: {relativeOffsetNonVanilla}");
+
+
+                                stitch.edges[dir] = new VoxelStitch.HiToLoEdge {
+                                    vanilla = false,
+                                    lod1Neighbour = neighbour,
+                                    relativeOffsetNonVanilla = relativeOffsetNonVanilla,
+                                    relativeOffsetVanilla = 0,
+                                    nonVanillaPlaneDir = basis2,
+                                };
+                            }
+                        } else {
+                            stitch.edges[dir] = new VoxelStitch.UniformEdge {
+                                neighbour = neighbour,
+                            };
+                        }
+
+                        /*
+                                    public static Edge CreateWithNeighbour(VoxelChunk neighbour, bool hiToLow, uint? relativeOffsetVanilla, uint2? relativeOffsetNonVanilla, bool vanilla) {
+                if (hiToLow) {
+                    return new HiToLoEdge() { lod1Neighbour = neighbour, relativeOffsetVanilla = relativeOffsetVanilla.Value, relativeOffsetNonVanilla = relativeOffsetNonVanilla, vanilla = vanilla };
+                } else {
+                    return new UniformEdge() { neighbour = neighbour };
+                }
+            }
+                        */
+
+                        /*
+                        // if we have EXACTLY two values that are set to -1 in here then it is a vanilla edge (these two values should NOT be the direction)
+                        if (hiToLow && math.countbits(math.bitmask(new bool4(relativeOffset == 1, false))) == 2 && relativeOffset[dir] == 0) {
+                            Debug.LogError("Erm, what the source?", stitch.source);
+                            Debug.LogError("Erm, what the neighbour?", neighbour);
+                            throw new Exception("we done fucked up dawg... type 3");
+                        }
+                        */
+
+                        //relativeOffsetSoonToBeFlattened[dir] = 0;
+
+                        // whatever axis is set to 0 is the important axis
+
+
+                        //uint2 relativeEdgeOffsetPlaneOffset = hiToLow ?  : uint2.zero;
+                        //stitch.edges[dir] = null;
+                        
                     } else {
                         // corner case
                         stitch.corner = VoxelStitch.Corner.CreateWithNeighbour(neighbour, hiToLow);
@@ -398,7 +462,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             float3 dstPos = stitch.source.node.position;
                             uint3 relativeOffset = (uint3)((srcPos - dstPos) / neighbourNode.size);
                             uint2 relativePlaneOffset = StitchUtils.FlattenToFaceRelative(relativeOffset, dir);
-                            int targetIndex = VoxelUtils.PosToIndexMorton2D(relativePlaneOffset);
+                            int targetIndex = VoxelUtils.PosToIndex2D(relativePlaneOffset, 2);
                             sortedNeighbours[targetIndex] = terrain.chunks[neighbourNode];
                         }
 
@@ -435,6 +499,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
 
         private void BeginJob(MeshJobHandler handler, MeshingRequest request) {
+            // SHUT THE FUCK UP!!!! (insert cat screaming at kitten meme)
+            if (handler.request.chunk != null) {
+                if (handler.request.chunk.copyBoundaryVoxelsJobHandle.HasValue) {
+                    handler.request.chunk.copyBoundaryVerticesJobHandle.Value.Complete();
+                    handler.request.chunk.copyBoundaryVoxelsJobHandle.Value.Complete();
+                }
+            }
+
             handler.request = request;
             handler.startingTick = tick;
 
@@ -461,7 +533,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 negative = true,
             };
 
-            // Copy positive boundary voxels at v=63
+            // Copy positive boundary voxels at v=64
             CopyBoundaryVoxelsJob copyPositiveBoundaryVoxels = new CopyBoundaryVoxelsJob {
                 voxels = handler.voxels,
                 boundaryVoxels = request.chunk.stitch.boundaryVoxels,
@@ -475,13 +547,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 negative = true
             };
 
-            JobHandle copyPosBoundaryVoxelsHandle = copyPositiveBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048, copy);
-            JobHandle copyNegBoundaryVoxelsHandle = copyNegativeBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048, copy);
+            JobHandle copyPosBoundaryVoxelsHandle = copyPositiveBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048, copy);
+            JobHandle copyNegBoundaryVoxelsHandle = copyNegativeBoundaryVoxels.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048, copy);
             request.chunk.copyBoundaryVoxelsJobHandle = JobHandle.CombineDependencies(copyPosBoundaryVoxelsHandle, copyNegBoundaryVoxelsHandle);
 
             // Copy the boundary data. One job runs at size=64 and other runs at size=63
-            JobHandle copyPosBoundaryVerticesHandle = copyPositiveBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(63), 2048, handler.vertexJobHandle);
-            JobHandle copyNegBoundaryVerticesHandle = copyNegativeBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(63), 2048, handler.vertexJobHandle);
+            JobHandle copyPosBoundaryVerticesHandle = copyPositiveBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048, handler.vertexJobHandle);
+            JobHandle copyNegBoundaryVerticesHandle = copyNegativeBoundaryVertices.Schedule(StitchUtils.CalculateBoundaryLength(64), 2048, handler.vertexJobHandle);
             request.chunk.copyBoundaryVerticesJobHandle = JobHandle.CombineDependencies(copyPosBoundaryVerticesHandle, copyNegBoundaryVerticesHandle);
         }
 
@@ -501,7 +573,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 renderer.enabled = true;
                 renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
-                float scalingFactor = chunk.node.size / (VoxelUtils.SIZE * terrain.voxelSizeFactor);
+                float scalingFactor = chunk.node.size / (64f * terrain.voxelSizeFactor);
                 chunk.bounds = new Bounds {
                     min = chunk.transform.position + stats.Bounds.min * scalingFactor,
                     max = chunk.transform.position + stats.Bounds.max * scalingFactor,
@@ -512,11 +584,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public override void CallerDispose() {
             foreach (MeshJobHandler handler in handlers) {
+                VoxelChunk chunk = handler.request.chunk;
+                if (chunk.copyBoundaryVoxelsJobHandle.HasValue)
+                    chunk.copyBoundaryVoxelsJobHandle.Value.Complete();
+
+                if (chunk.copyBoundaryVerticesJobHandle.HasValue)
+                    chunk.copyBoundaryVerticesJobHandle.Value.Complete();
+
                 handler.Complete(new Mesh());
                 handler.Dispose();
             }
-            stitcher.Dispose();
         }
     }
-
 }

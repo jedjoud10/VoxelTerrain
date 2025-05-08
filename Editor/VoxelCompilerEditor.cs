@@ -19,6 +19,11 @@ namespace jedjoud.VoxelTerrain.Generation {
                 script.OnPropertiesChanged();
             }
 
+            if (GUILayout.Button("Retranspile")) {
+                script.ParsedTranspilation();
+                script.OnPropertiesChanged();
+            }
+
             EditorGUILayout.LabelField($"Properties: {script.ctx.properties.Count}");
 
             scopeFoldout = EditorGUILayout.Foldout(scopeFoldout, "Scopes: " + script.ctx.scopes.Count);
@@ -48,8 +53,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                     EditorGUILayout.LabelField($"Name: {dispatch.name} (i={i})", EditorStyles.boldLabel);
                     EditorGUI.indentLevel++;
                     EditorGUILayout.LabelField($"Scope Name: {dispatch.scopeName}");
-                    EditorGUILayout.LabelField($"Morton Encoding: {dispatch.mortonate}");
-                    EditorGUILayout.LabelField($"Thread Group Dimensions: {dispatch.numThreads}");
                     EditorGUI.indentLevel--;
                     EditorGUI.indentLevel--;
                 }

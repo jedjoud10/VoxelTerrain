@@ -15,24 +15,27 @@ namespace jedjoud.VoxelTerrain.Generation {
             VoxelChunk src = (VoxelChunk)target;
             VoxelStitch stitch = src.stitch;
 
-            EditorGUILayout.LabelField($"CanSampleExtraVoxels: {stitch.CanSampleExtraVoxels()}");
             EditorGUILayout.LabelField($"CanStitch: {stitch.CanStitch()}");
             EditorGUILayout.LabelField("Planes");
             string t = "";
             for (int i = 0; i < 3; i++) {
                 EditorGUI.indentLevel++;
 
+                bool anyValidChunk = false;
                 if (stitch.planes[i] == null) {
                     t = "Null";
-                } else if (stitch.planes[i] is VoxelStitch.UniformPlane) {
+                } else if (stitch.planes[i] is VoxelStitch.UniformPlane a) {
                     t = "Uniform";
-                } else if (stitch.planes[i] is VoxelStitch.HiToLoPlane) {
+                    anyValidChunk = a.neighbour != null;
+                } else if (stitch.planes[i] is VoxelStitch.HiToLoPlane b) {
                     t = "HiToLo";
-                } else if (stitch.planes[i] is VoxelStitch.LoToHiPlane) {
+                    anyValidChunk = b.lod1Neighbour != null;
+                } else if (stitch.planes[i] is VoxelStitch.LoToHiPlane c) {
                     t = "LoToHi";
+                    anyValidChunk = c.lod0Neighbours.Any(x => x != null);
                 }
 
-                EditorGUILayout.LabelField($"Plane {i}: {t}");
+                EditorGUILayout.LabelField($"Plane {i}: {t}, {anyValidChunk}");
                 EditorGUI.indentLevel--;
             }
 
@@ -40,34 +43,43 @@ namespace jedjoud.VoxelTerrain.Generation {
             for (int i = 0; i < 3; i++) {
                 EditorGUI.indentLevel++;
 
+                bool anyValidChunk = false;
                 if (stitch.edges[i] == null) {
                     t = "Null";
-                } else if (stitch.edges[i] is VoxelStitch.UniformEdge) {
+                } else if (stitch.edges[i] is VoxelStitch.UniformEdge a) {
                     t = "Uniform";
-                } else if (stitch.edges[i] is VoxelStitch.HiToLoEdge) {
+                    anyValidChunk = a.neighbour != null;
+                } else if (stitch.edges[i] is VoxelStitch.HiToLoEdge b) {
                     t = "HiToLo";
-                } else if (stitch.edges[i] is VoxelStitch.LoToHiEdge) {
+                    anyValidChunk = b.lod1Neighbour != null;
+                } else if (stitch.edges[i] is VoxelStitch.LoToHiEdge c) {
                     t = "LoToHi";
+                    anyValidChunk = c.lod0Neighbours.Any(x => x != null);
                 }
 
-                EditorGUILayout.LabelField($"Edge {i}: {t}");
+                EditorGUILayout.LabelField($"Edge {i}: {t}, {anyValidChunk}");
                 EditorGUI.indentLevel--;
             }
 
             EditorGUILayout.LabelField("Corner");
             EditorGUI.indentLevel++;
-
-            if (stitch.corner == null) {
-                t = "Null";
-            } else if (stitch.corner is VoxelStitch.UniformCorner) {
-                t = "Uniform";
-            } else if (stitch.corner is VoxelStitch.HiToLoCorner) {
-                t = "HiToLo";
-            } else if (stitch.corner is VoxelStitch.LoToHiCorner) {
-                t = "LoToHi";
+            {
+                bool anyValidChunk = false;
+                if (stitch.corner == null) {
+                    t = "Null";
+                } else if (stitch.corner is VoxelStitch.UniformCorner a) {
+                    t = "Uniform";
+                    anyValidChunk = a.neighbour != null;
+                } else if (stitch.corner is VoxelStitch.HiToLoCorner b) {
+                    t = "HiToLo";
+                    anyValidChunk = b.lod1Neighbour != null;
+                } else if (stitch.corner is VoxelStitch.LoToHiCorner c) {
+                    t = "LoToHi";
+                    anyValidChunk = c.lod0Neighbour != null;
+                }
+                EditorGUILayout.LabelField($"Corner: {t}, {anyValidChunk}");
             }
 
-            EditorGUILayout.LabelField($"Corner: {t}");
             EditorGUI.indentLevel--;
 
             /*

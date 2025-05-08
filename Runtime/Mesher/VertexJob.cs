@@ -8,6 +8,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // Surface mesh job that will generate the isosurface mesh vertices
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct VertexJob : IJobParallelFor {
+        public bool blocky;
+
         // Positions of the first vertex in edges
         [ReadOnly]
         static readonly uint3[] edgePositions0 = new uint3[] {
@@ -75,10 +77,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPosMorton(index);
+            uint3 position = VoxelUtils.IndexToPos(index, 65);
             indices[index] = int.MaxValue;
 
-            if (math.any(position > 62))
+            if (math.any(position > 63))
                 return;
 
             float3 vertex = float3.zero;
@@ -104,8 +106,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uint3 startOffset = edgePositions0[edge];
                 uint3 endOffset = edgePositions1[edge];
 
-                int startIndex = VoxelUtils.PosToIndexMorton(startOffset + position);
-                int endIndex = VoxelUtils.PosToIndexMorton(endOffset + position);
+                int startIndex = VoxelUtils.PosToIndex(startOffset + position, 65);
+                int endIndex = VoxelUtils.PosToIndex(endOffset + position, 65);
 
                 //float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
                 //float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
@@ -118,10 +120,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
                 vertex += math.lerp(startOffset, endOffset, value) - math.float3(0.5);
                 normal += -math.up();
+
+                if (blocky)
+                    break;
                 //normal += math.lerp(startNormal, endNormal, value);
             }
 
-            if (count >= 1 && VoxelUtils.BLOCKY) {
+            if (count >= 1 && blocky) {
                 count = 1;
                 vertex = 0f;
                 normal = -math.up();

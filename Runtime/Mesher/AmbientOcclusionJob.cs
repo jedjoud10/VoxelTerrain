@@ -30,6 +30,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         const int SIZE = 2;
 
         public void Execute(int index) {
+            /*
             if (index >= counter.Count)
                 return;
 
@@ -69,6 +70,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             float factor = math.clamp((float)sum / (float)total, 0f, 1f);
             uvs[index] = new float2(1 - factor * strength, 0.0f);
+            */
+            uvs[index] = new float2(1, 0.0f);
         }
     }
 }

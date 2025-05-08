@@ -7,6 +7,7 @@ using UnityEngine.Profiling;
 using static jedjoud.VoxelTerrain.VoxelChunk;
 
 namespace jedjoud.VoxelTerrain {
+    // compressed iron sheet be like: "hold up... I'm flattened"
     public class VoxelTerrain : MonoBehaviour {
         [Header("Tick System")]
         public int ticksPerSecond = 128;
@@ -120,7 +121,7 @@ namespace jedjoud.VoxelTerrain {
                     GameObject obj = FetchChunk();
                     VoxelChunk chunk = obj.GetComponent<VoxelChunk>();
 
-                    float size = item.size / (voxelSizeFactor * VoxelUtils.SIZE);
+                    float size = item.size / (voxelSizeFactor * 64f);
                     obj.GetComponent<MeshRenderer>().enabled = false;
                     obj.transform.position = item.position;
                     obj.transform.localScale = new Vector3(size, size, size);
@@ -129,7 +130,7 @@ namespace jedjoud.VoxelTerrain {
                     chunks.Add(item, chunk);
 
                     // Begin the voxel pipeline by generating the voxels for this chunk
-                    readback.GenerateVoxels(chunk, ref all);
+                    readback.GenerateVoxels(chunk);
                 }
             };
 
