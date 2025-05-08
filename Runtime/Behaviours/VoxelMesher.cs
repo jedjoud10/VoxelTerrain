@@ -24,7 +24,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
-        public bool blocky;
+        public bool keepBlocky;
+        public bool useStitching;
         public float aoGlobalOffset = 1f;
         public float aoMinDotNormal = 0.0f;
         public float aoGlobalSpread = 0.5f;
@@ -234,21 +235,23 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         src.highLodMask = highLodMask;
                         src.lowLodMask = lowLodMask;
                         
-                        // check if we have any neighbours of the same resolution
-                        // we only need to look in the pos axii for this one
-                        // start at 1 to skip src chunk
-                        FetchPositiveNeighbours(stitch, sameLodNeighbours, sameLodMask, false);
+                        if (useStitching) {
+                            // check if we have any neighbours of the same resolution
+                            // we only need to look in the pos axii for this one
+                            // start at 1 to skip src chunk
+                            FetchPositiveNeighbours(stitch, sameLodNeighbours, sameLodMask, false);
 
-                        // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1)
-                        // we only need to look in the pos axii for this one
-                        FetchPositiveNeighbours(stitch, highLodNeighbours, highLodMask, true);
+                            // check if we have any neighbours that are at a higher LOD (src=LOD0, neigh=LOD1)
+                            // we only need to look in the pos axii for this one
+                            FetchPositiveNeighbours(stitch, highLodNeighbours, highLodMask, true);
 
-                        // check if we have any neighbours that are at a low LOD (src=LOD0, neigh=LOD1)
-                        // we only need to look in the pos axii for this one. there can be multiple neighbours for this!!!
-                        FetchPositiveNeighboursMultiNeighbour(stitch, lowLodNeighbours, lowLodMask);
+                            // check if we have any neighbours that are at a low LOD (src=LOD0, neigh=LOD1)
+                            // we only need to look in the pos axii for this one. there can be multiple neighbours for this!!!
+                            FetchPositiveNeighboursMultiNeighbour(stitch, lowLodNeighbours, lowLodMask);
 
-                        // Let's do the stitching!!!!
-                        pendingStitchRequests.Add(stitch);
+                            // Let's do the stitching!!!!
+                            pendingStitchRequests.Add(stitch);
+                        }
                     }
                 }
             }
@@ -581,6 +584,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public override void CallerDispose() {
             foreach (MeshJobHandler handler in handlers) {
+                VoxelChunk chunk = handler.request.chunk;
+                if (chunk.copyBoundaryVoxelsJobHandle.HasValue)
+                    chunk.copyBoundaryVoxelsJobHandle.Value.Complete();
+
+                if (chunk.copyBoundaryVerticesJobHandle.HasValue)
+                    chunk.copyBoundaryVerticesJobHandle.Value.Complete();
+
                 handler.Complete(new Mesh());
                 handler.Dispose();
             }

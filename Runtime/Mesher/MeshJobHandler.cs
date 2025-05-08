@@ -53,7 +53,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             vertexJobHandle = default;
             quadJobHandle = default;
             this.mesher = mesher;
-            this.blocky = mesher.blocky;
+            this.blocky = mesher.keepBlocky;
 
 
             // Native buffers for mesh data

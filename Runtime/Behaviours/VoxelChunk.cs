@@ -185,11 +185,11 @@ namespace jedjoud.VoxelTerrain {
 
                     if (flags.HasFlag(GizmoFlags.StitchTris)) {
                         Gizmos.color = Color.blue;
-                        for (var i = 0; i < stitch.triangles.Length - 3; i += 3) {
+                        for (var i = 0; i < stitch.indices.Length - 3; i += 3) {
                             int a, b, c;
-                            a = stitch.triangles[i];
-                            b = stitch.triangles[i + 1];
-                            c = stitch.triangles[i + 2];
+                            a = stitch.indices[i];
+                            b = stitch.indices[i + 1];
+                            c = stitch.indices[i + 2];
 
                             if (a < 0 || b < 0 || c < 0) {
                                 continue;

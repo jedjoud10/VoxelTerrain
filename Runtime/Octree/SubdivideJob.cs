@@ -19,13 +19,13 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         public void Execute() {
             while (pending.TryDequeue(out OctreeNode node)) {
-                MinMaxAABB targetBounds = MinMaxAABB.CreateFromCenterAndHalfExtents(target.center, target.radius);
-
                 // AABB bounds method
                 //bool subdivide = node.Bounds.Overlaps(targetBounds);
 
+                float3 clamped = math.clamp(target.center, nodes[0].Bounds.Min, nodes[0].Bounds.Max);
+
                 // relative distance method
-                bool subdivide = math.distance(node.Center, target.center) < target.radius * node.size;
+                bool subdivide = math.distance(node.Center, clamped) < target.radius * node.size;
 
                 if (subdivide && node.depth < maxDepth) {
                     Subdivide(node, true);

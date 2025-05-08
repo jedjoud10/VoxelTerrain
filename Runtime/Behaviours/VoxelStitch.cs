@@ -203,8 +203,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // The generated stitched vertices & triangles for our mesh
         public NativeArray<float3> vertices;
-        public NativeArray<int> triangles;
-        public NativeCounter triangleCounter;
+        public NativeArray<int> indices;
+        public NativeCounter indexCounter;
         public int[] test;
 
         public void Init(VoxelChunk self) {
@@ -221,7 +221,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             boundaryVertices = new NativeArray<float3>(smallerBoundary, Allocator.Persistent);
 
             boundaryCounter = new NativeCounter(Allocator.Persistent);
-            triangleCounter = new NativeCounter(Allocator.Persistent);
+            indexCounter = new NativeCounter(Allocator.Persistent);
 
             // Set the boundary helpers to null since we haven't set them up yet
             planes = new Plane[3] { null, null, null };
@@ -593,7 +593,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Ermmm... what the sigmoid functor???
             worstCaseIndices = totalVertices * 5; // idk bro...
             vertices = new NativeArray<float3>(totalVertices, Allocator.Persistent);
-            triangles = new NativeArray<int>(worstCaseIndices, Allocator.Persistent);
+            indices = new NativeArray<int>(worstCaseIndices, Allocator.Persistent);
 
             CopyVerticesStitch copyVerticesStitch = new CopyVerticesStitch {
                 indexOffsets = indexOffsets,
@@ -637,23 +637,50 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 debugData = debugDataStuff,
                 srcBoundaryVoxels = boundaryVoxels,
                 srcBoundaryIndices = boundaryIndices,
-                counter = triangleCounter,
+                indexCounter = indexCounter,
                 indexOffsets = indexOffsets,
                 neighbourIndices = neighbourBoundaryIndices,
                 neighbourVoxels = neighbourBoundaryVoxels,
-                triangles = triangles,
+                indices = indices,
             };
 
             stitchJob.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048).Complete();
-            test = triangles.ToArray();
-            Debug.Log(triangleCounter.Count);
+            test = indices.ToArray();
+            Debug.Log(indexCounter.Count);
             debugIntVal = neighbourBoundaryIndices.state.Value;
 
-            MeshFilter filter = GetComponent<MeshFilter>();
-            Mesh mesh = new Mesh();
-            mesh.vertices = vertices.Reinterpret<Vector3>().ToArray();
-            mesh.triangles = triangles.Slice<int>(0, triangleCounter.Count).ToArray();
-            filter.mesh = mesh;
+            if (totalVertices > 0) {
+                // create new arrays that will store "packed" data (discard the vertices that weren't used in the stitching)
+                NativeArray<float3> packedVertices = new NativeArray<float3>(totalVertices, Allocator.TempJob);
+                NativeArray<int> lookUp = new NativeArray<int>(totalVertices, Allocator.TempJob);
+                NativeArray<int> packedIndices = new NativeArray<int>(worstCaseIndices, Allocator.TempJob);
+
+                // run a job that will get rid of unused vertices
+                NativeBitArray remappedVerticesBitArray = new NativeBitArray(totalVertices, Allocator.TempJob);
+                PostStitchCleanUpJob cleanUp = new PostStitchCleanUpJob {
+                    srcIndices = indices,
+                    srcVertices = vertices,
+                    dstIndices = packedIndices,
+                    dstVertices = packedVertices,
+                    indexCount = indexCounter.Count,
+                    remappedVertices = remappedVerticesBitArray,
+                    lookUp = lookUp,
+                };
+                cleanUp.Schedule().Complete();
+
+                int packedVertexCount = remappedVerticesBitArray.CountBits(0, totalVertices);
+
+                MeshFilter filter = GetComponent<MeshFilter>();
+                Mesh mesh = new Mesh();
+                mesh.vertices = packedVertices.Reinterpret<Vector3>().GetSubArray(0, packedVertexCount).ToArray();
+                mesh.triangles = packedIndices.GetSubArray(0, indexCounter.Count).ToArray();
+                filter.mesh = mesh;
+
+                packedIndices.Dispose();
+                packedVertices.Dispose();
+                remappedVerticesBitArray.Dispose();
+                lookUp.Dispose();
+            }
 
             stitched = true;
             indexOffsets.Dispose();
@@ -661,6 +688,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             neighbourVertices.Dispose();
             neighbourBoundaryIndices.Dispose();
             neighbourBoundaryVoxels.Dispose();
+
         }
 
         public NativeArray<float4> debugDataStuff;
@@ -671,15 +699,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             boundaryVertices.Dispose();
             boundaryIndices.Dispose();
-            triangleCounter.Dispose();
+            indexCounter.Dispose();
             boundaryCounter.Dispose();
             
             if (vertices.IsCreated) {
                 vertices.Dispose();
             }
 
-            if (triangles.IsCreated) {
-                triangles.Dispose();
+            if (indices.IsCreated) {
+                indices.Dispose();
                 debugDataStuff.Dispose();
             }
         }

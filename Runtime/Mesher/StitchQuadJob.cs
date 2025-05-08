@@ -43,7 +43,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Triangles that we generated
         [WriteOnly]
         [NativeDisableParallelForRestriction]
-        public NativeArray<int> triangles;
+        public NativeArray<int> indices;
         [ReadOnly]
         static readonly uint3[] quadForwardDirection = new uint3[3]
         {
@@ -74,7 +74,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         
         // Quad Counter
         [WriteOnly]
-        public Unsafe.NativeCounter.Concurrent counter;
+        public Unsafe.NativeCounter.Concurrent indexCounter;
 
         // Fetches the vertex index of a vertex in a specific position
         // If this crosses the v=65 boundary, use the neighbouring chunks' negative boundary indices instead
@@ -114,8 +114,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 // COULD HAPPEN, AND IT IS VERY BAD IF IT DOES!!!!
                 // means that we are thinking we "think" there's a valid vertex there, but it isn't actually there!
+                // 12:22 AM note: There is actually a very specific literal-edge case that occurs that is unfortunately tricked by this. I haven't thought of a way of getting around it yet
+                // I thought that maybe we can just create an extra vertex by averaging out the requesting vertices' position (since it's always a quad or a tri), but unfortunately the edge case
+                // pops up as a tri with only 2 valid verts (last one is the missing one) meaning that we can't really "average" out the vertex by requesters. idk how this would work across chunks too.
+                // needs something more robust and deterministic (maybe voxel value vertex generator DURING stitching as fallback)
                 if (index == int.MaxValue || index < 0) {
-                    Debug.LogError("notto good at allu");
                     return int.MaxValue;
                 }
 
@@ -168,13 +171,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int vertex3 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 3]);
             int4 v = new int4(vertex0, vertex1, vertex2, vertex3);
 
-            // Don't make a quad if the vertices are invalid
-            if ((vertex0 | vertex1 | vertex2 | vertex3) == int.MaxValue) {
-                //Debug.LogError($"what: {what}");
-                debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 0.2f);
-                return;
-            }
-
             // Ts gpt-ed kek
             int dupeType = 0;
             dupeType |= math.select(0, 1, v.x == v.y);
@@ -190,60 +186,39 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             if (dupeType == 0) {
-                int triIndex = counter.Add(6);
+                // Don't make a quad if the vertices are invalid
+                if (math.cmax(v) == int.MaxValue) {
+                    //Debug.LogWarning(math.countbits(math.bitmask(v == new int4(int.MaxValue))));
+                    return;
+                }
+
+                int triIndex = indexCounter.Add(6);
 
                 // Set the first tri
-                triangles[triIndex + (flip ? 0 : 2)] = vertex0;
-                triangles[triIndex + 1] = vertex1;
-                triangles[triIndex + (flip ? 2 : 0)] = vertex2;
+                indices[triIndex + (flip ? 0 : 2)] = vertex0;
+                indices[triIndex + 1] = vertex1;
+                indices[triIndex + (flip ? 2 : 0)] = vertex2;
 
                 // Set the second tri
-                triangles[triIndex + (flip ? 3 : 5)] = vertex2;
-                triangles[triIndex + 4] = vertex3;
-                triangles[triIndex + (flip ? 5 : 3)] = vertex0;
+                indices[triIndex + (flip ? 3 : 5)] = vertex2;
+                indices[triIndex + 4] = vertex3;
+                indices[triIndex + (flip ? 5 : 3)] = vertex0;
             } else {
                 int config = math.tzcnt(dupeType);
-                int triIndex = counter.Add(3);
                 int3 remapper = DEDUPE_TRIS_THING[config];
-                triangles[triIndex + (flip ? 0 : 2)] = v[remapper[0]];
-                triangles[triIndex + 1] = v[remapper[1]];
-                triangles[triIndex + (flip ? 2 : 0)] = v[remapper[2]];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+
+                // Don't make a tri if the vertices are invalid
+                if (math.cmax(uniques) == int.MaxValue) {
+                    //Debug.LogWarning(math.countbits(math.bitmask(new bool4(uniques == new int3(int.MaxValue), false))));
+                    return;
+                }
+
+                int triIndex = indexCounter.Add(3);
+                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                indices[triIndex + 1] = uniques[1];
+                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
             }
-
-
-            /*
-            if (count == 4) {
-                int triIndex = counter.Add(6);
-
-                // Set the first tri
-                triangles[triIndex + (flip ? 0 : 2)] = vertex0;
-                triangles[triIndex + 1] = vertex1;
-                triangles[triIndex + (flip ? 2 : 0)] = vertex2;
-
-                // Set the second tri
-                triangles[triIndex + (flip ? 3 : 5)] = vertex2;
-                triangles[triIndex + 4] = vertex3;
-                triangles[triIndex + (flip ? 5 : 3)] = vertex0;
-            } else if (count == 3) {
-                int triIndex = counter.Add(3);
-
-                triangles[triIndex + (flip ? 0 : 2)] = vertex0;
-                triangles[triIndex + 1] = vertex1;
-                triangles[triIndex + (flip ? 2 : 0)] = vertex2;
-            } else {
-                // What...
-            }
-            */
-
-            /*
-            int4 what = new int4(vertex0, vertex1, vertex2, vertex3);
-            if (math.any(what > 500000 | what < 0)) {
-                Debug.LogError($"what: {what}");
-                debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 0.2f);
-            }
-            */
-
-
         }
 
         // Excuted for each cell within the grid
@@ -279,7 +254,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int val = *(ptr + StitchUtils.PosToBoundaryIndex(flatPosition, 64, true));
                 return val;
             } else if (type == 2) {
-                throw new Exception("We should not upsample!!!!!");
+                return -1;
             } else if (type == 3) {
                 // do a bit of upsampling
                 uint2 flattened = StitchUtils.FlattenToFaceRelative(paddingPosition, dir);
@@ -309,29 +284,35 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int val = *(ptrs + StitchUtils.PosToBoundaryIndex(edged, 64, true));
                 return val;
             } else if (type == 2) {
-                throw new Exception("We should not upsample!!!!!");
+                return -1;
             } else if (type == 3) {
                 if (neighbourIndices.edges[dir].vanilla) {
                     edged = StitchUtils.UnflattenFromEdgeRelative(axis + neighbourIndices.edges[dir].relativeOffsetVanilla * 64, dir);
                     int* ptrs = neighbourIndices.edges[dir].lod1;
 
                     int3 downsampled = (int3)edged / 2;
-
-                    int val = *(ptrs + StitchUtils.PosToBoundaryIndex(edged / 2, 64, true));
-                    //Debug.Log($"positioned: {edged / 2} valued: {val}");
-
+                    int val = -1;
+                    val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)downsampled, 64, true));
                     if (val != int.MaxValue) {
                         return val;
-                    } else if (StitchUtils.LiesOnBoundary(downsampled + basis, 64)) {
-                        // fallback 1
-                        val = *(ptrs + StitchUtils.PosToBoundaryIndex(+new uint3(0, 1, 0), 64, true));
-                        //Debug.Log($"positioned2: plus one, valued: {val}");
-                        return val;
-                    } else if (StitchUtils.LiesOnBoundary(downsampled - basis, 64)) {
-                        // fallback 2
+                    }
+
+                    // fallback 1
+                    if (StitchUtils.LiesOnBoundary(downsampled + basis, 64)) {
+                        val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)(downsampled + basis), 64, true));
+                        
+                        if (val != int.MaxValue) {
+                            return val;
+                        }
+                    }
+                    
+                    // fallback 2
+                    if (StitchUtils.LiesOnBoundary(downsampled - basis, 64)) {
                         val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)(downsampled - basis), 64, true));
-                        //Debug.Log($"positioned2: minus one, valued: {val}");
-                        return val;
+
+                        if (val != int.MaxValue) {
+                            return val;
+                        }
                     }
 
                     //Debug.LogError("sorry bro...");
@@ -349,8 +330,33 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                     //Debug.Log((actOffset + yetAnotherOffset) / 2);
                     int* ptrs = neighbourIndices.edges[dir].lod1;
-                    int val = *(ptrs + StitchUtils.PosToBoundaryIndex((actOffset + yetAnotherOffset) / 2, 64, true));
-                    return val;
+                    int3 downsampled = ((int3)actOffset + (int3)yetAnotherOffset) / 2;
+                    int val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)downsampled, 64, true));
+
+                    if (val != int.MaxValue) {
+                        return val;
+                    }
+
+                    // fallback 1
+                    if (StitchUtils.LiesOnBoundary(downsampled + basis, 64)) {
+                        val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)(downsampled + basis), 64, true));
+
+                        if (val != int.MaxValue) {
+                            return val;
+                        }
+                    }
+
+                    // fallback 2
+                    if (StitchUtils.LiesOnBoundary(downsampled - basis, 64)) {
+                        val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)(downsampled - basis), 64, true));
+
+                        if (val != int.MaxValue) {
+                            return val;
+                        }
+                    }
+
+                    //Debug.LogError("sorry bro... type 2");
+                    return int.MaxValue;
                 }
 
                 /*
@@ -397,7 +403,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // Fetch a vertex index (neighbour chunk relative) at the given size=65 padding position
-        // Handles downsampling of data automatically. Upsampling is a no-no since we should just run the stuff in the other direction for that
+        // Handles downsampling of data automatically. Upsampling is a no-no since we will use a different job dedicated for that (different case)
         public unsafe int FetchIndexMultiResolution(uint3 paddingPosition) {
             // 1=plane, 2=edge, 3=corner
             bool3 bool3 = paddingPosition == 64;

@@ -41,16 +41,17 @@ if (any(id >= (uint)size)) {
 }
 
 float3 position = ConvertIntoWorldPosition(id);
+
+#ifdef _ASYNC_READBACK_OCTAL
 position = (float3)(floor(position + 0.5));   
+#endif
 ";
         }
 
         public override string InjectAfterScopeCalls(TreeContext ctx) {
             KernelOutput output = outputs[0];
 
-            // TODO: we should really just not use a floating point type like half instead... should prob just use short....
             return $@"
-//voxel = round(voxel * 256.0) / 256.0;
 
 #ifdef _ASYNC_READBACK_OCTAL
 voxels[CalcIdIndex(id)] = {output.setter};
