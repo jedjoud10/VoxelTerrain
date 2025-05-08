@@ -7,9 +7,6 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
-        // Ermm.. what the sigma?
-        public const bool BLOCKY = true;
-
         // Offsets used for octree generation
         // Also mortonated!!!
         public static readonly int3[] OCTREE_CHILD_OFFSETS = {

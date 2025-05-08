@@ -74,7 +74,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeParallelHashMap<byte, int>.ReadOnly materialHashMap;
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
-        void CheckEdge(uint3 basePosition, int index, bool skirts, bool skirtsForceDir) {
+        void CheckEdge(uint3 basePosition, int index) {
             uint3 forward = quadForwardDirection[index];
 
             int baseIndex = VoxelUtils.PosToIndex(basePosition, 65);
@@ -83,11 +83,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Voxel startVoxel = voxels[baseIndex];
             Voxel endVoxel = voxels[endIndex];
 
-            bool flip = (endVoxel.density >= 0.0);
-
-            // Force direction if we are skirting
-            if (skirts)
-                flip = skirtsForceDir;
+            bool flip = (endVoxel.density > 0.0);
 
             byte material = flip ? startVoxel.material : endVoxel.material;
             uint3 offset = basePosition + forward - math.uint3(1);
@@ -141,7 +137,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     continue;
 
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {
-                    CheckEdge(position, i, false, false);
+                    CheckEdge(position, i);
                 }
             }
         }

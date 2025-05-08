@@ -19,6 +19,11 @@ namespace jedjoud.VoxelTerrain.Generation {
                 script.OnPropertiesChanged();
             }
 
+            if (GUILayout.Button("Retranspile")) {
+                script.ParsedTranspilation();
+                script.OnPropertiesChanged();
+            }
+
             EditorGUILayout.LabelField($"Properties: {script.ctx.properties.Count}");
 
             scopeFoldout = EditorGUILayout.Foldout(scopeFoldout, "Scopes: " + script.ctx.scopes.Count);

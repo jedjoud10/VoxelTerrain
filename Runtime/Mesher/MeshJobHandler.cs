@@ -47,11 +47,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public const int INNER_LOOP_BATCH_COUNT = 64;
         const int VOL = 65 * 65 * 65;
+        private bool blocky;
 
         internal MeshJobHandler(VoxelMesher mesher) {
             vertexJobHandle = default;
             quadJobHandle = default;
             this.mesher = mesher;
+            this.blocky = mesher.blocky;
 
 
             // Native buffers for mesh data
@@ -143,6 +145,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uvs = uvs,
                 counter = counter,
                 voxelScale = voxelSizeFactor,
+                blocky = blocky,
             };
 
             // Calculate vertex ambient occlusion 

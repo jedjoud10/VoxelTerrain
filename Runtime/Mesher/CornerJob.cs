@@ -43,8 +43,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             half4 test = Load4(position, 0);
             half4 test2 = Load4(position, 1);
 
-            bool4 check1 = test < math.float4(0.0);
-            bool4 check2 = test2 < math.float4(0.0);
+            bool4 check1 = test <= math.float4(0.0);
+            bool4 check2 = test2 <= math.float4(0.0);
 
             int value = math.bitmask(check1) | (math.bitmask(check2) << 4);
 
