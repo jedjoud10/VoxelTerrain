@@ -202,8 +202,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool stitched;
 
         // The generated stitched vertices & triangles for our mesh
-        public NativeArray<float3> vertices;
-        public NativeArray<int> indices;
+        private NativeArray<float3> vertices;
+        private NativeArray<int> indices;
         public NativeCounter indexCounter;
         public int[] test;
 
@@ -319,18 +319,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = 0; i < 3; i++) {
                 Plane plane = planes[i];
 
-                int type = -1;
+                int type = 0;
+
+                GenericBoundaryPlane<T> generic = new GenericBoundaryPlane<T> {
+                    uniform = null,
+                    lod0s = new UnsafePtrList<T>(),
+                    lod1 = null,
+                    relativeOffset = 0,
+                };
 
                 if (plane == null) {
-                    jobData.planes.Add(default);
                     type = 0;
                 } else if (plane is UniformPlane uniform) {
-                    jobData.planes.Add(new GenericBoundaryPlane<T> {
-                        uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
-                        lod0s = new UnsafePtrList<T>(),
-                        lod1 = null,
-                        relativeOffset = 0,
-                    });
+                    generic.uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr();
                     type = 1;
                 } else if (plane is LoToHiPlane loToHi) {
                     UnsafePtrList<T> lod0s = new UnsafePtrList<T>(4, Allocator.TempJob);
@@ -339,23 +340,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         lod0s.Add(map(loToHi.lod0Neighbours[n]).GetUnsafeReadOnlyPtr());
                     }
 
-                    jobData.planes.Add(new GenericBoundaryPlane<T> {
-                        uniform = null,
-                        lod0s = lod0s,
-                        lod1 = null,
-                        relativeOffset = 0,
-                    });
+                    generic.lod0s = lod0s;
                     type = 2;
                 } else if (plane is HiToLoPlane hiToLo) {
-                    jobData.planes.Add(new GenericBoundaryPlane<T> {
-                        uniform = null,
-                        lod0s = new UnsafePtrList<T>(),
-                        lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr(),
-                        relativeOffset = hiToLo.relativeOffset,
-                    });
+                    generic.lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr();
+                    generic.relativeOffset = hiToLo.relativeOffset;
                     type = 3;
                 }
 
+                jobData.planes.Add(generic);
                 bits.SetBits(i * 2, (type & 1) == 1);
                 bits.SetBits(i * 2 + 1, (type & 2) == 2);
             }
@@ -364,20 +357,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = 0; i < 3; i++) {
                 Edge edge = edges[i];
 
-                int type = -1;
+                GenericBoundaryEdge<T> generic = new GenericBoundaryEdge<T> {
+                    nonVanillaPlaneDir = 0,
+                    lod0s = new UnsafePtrList<T>(),
+                    lod1 = null,
+                    relativeOffsetNonVanilla = 0,
+                    relativeOffsetVanilla = 0,
+                    uniform = null,
+                    vanilla = false,
+                };
+
+                int type = 0;
                 if (edge == null) {
-                    jobData.edges.Add(default);
                     type = 0;
                 } else if (edge is UniformEdge uniform) {
-                    jobData.edges.Add(new GenericBoundaryEdge<T> {
-                        uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
-                        lod0s = new UnsafePtrList<T>(),
-                        lod1 = null,
-                        relativeOffsetNonVanilla = new uint2(int.MaxValue),
-                        relativeOffsetVanilla = uint.MaxValue,
-                        nonVanillaPlaneDir = -1,
-                        vanilla = false,
-                    });
+                    generic.uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr();
                     type = 1;
                 } else if (edge is LoToHiEdge loToHi) {
                     UnsafePtrList<T> lod0s = new UnsafePtrList<T>(2, Allocator.TempJob);
@@ -386,62 +380,45 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         lod0s.Add(map(loToHi.lod0Neighbours[n]).GetUnsafeReadOnlyPtr());
                     }
 
-                    jobData.edges.Add(new GenericBoundaryEdge<T> {
-                        uniform = null,
-                        lod0s = lod0s,
-                        lod1 = null,
-                        relativeOffsetNonVanilla = new uint2(int.MaxValue),
-                        relativeOffsetVanilla = uint.MaxValue,
-                        nonVanillaPlaneDir = -1,
-                        vanilla = false,
-                    });
+                    generic.lod0s = lod0s;
                     type = 2;
                 } else if (edge is HiToLoEdge hiToLo) {
-                    jobData.edges.Add(new GenericBoundaryEdge<T> {
-                        uniform = null,
-                        lod0s = new UnsafePtrList<T>(),
-                        lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr(),
-                        relativeOffsetNonVanilla = hiToLo.relativeOffsetNonVanilla,
-                        relativeOffsetVanilla = hiToLo.relativeOffsetVanilla,
-                        vanilla = hiToLo.vanilla,
-                        nonVanillaPlaneDir = hiToLo.nonVanillaPlaneDir,
-                    });
+                    generic.lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr();
+                    generic.relativeOffsetVanilla = hiToLo.relativeOffsetVanilla;
+                    generic.relativeOffsetNonVanilla = hiToLo.relativeOffsetNonVanilla;
+                    generic.nonVanillaPlaneDir = hiToLo.nonVanillaPlaneDir;
+                    generic.vanilla = hiToLo.vanilla;
                     type = 3;
                 }
 
+                jobData.edges.Add(generic);
                 bits.SetBits(i * 2 + 6, (type & 1) == 1);
                 bits.SetBits(i * 2 + 1 + 6, (type & 2) == 2);
             }
 
             // map the corner
             {
-                int type = -1;
+                GenericBoundaryCorner<T> generic = new GenericBoundaryCorner<T> {
+                    lod0 = null,
+                    lod1 = null,
+                    uniform = null,
+                };
+
+                int type = 0;
                 if (corner == null) {
-                    jobData.corner = default;
                     type = 0;
                 } else if (corner is UniformCorner uniform) {
-                    jobData.corner = new GenericBoundaryCorner<T> {
-                        uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr(),
-                        lod0 = null,
-                        lod1 = null,
-                    };
+                    generic.uniform = (T*)map(uniform.neighbour).GetUnsafeReadOnlyPtr();
                     type = 1;
                 } else if (corner is LoToHiCorner loToHi) {
-                    jobData.corner = new GenericBoundaryCorner<T> {
-                        uniform = null,
-                        lod0 = (T*)map(loToHi.lod0Neighbour).GetUnsafeReadOnlyPtr(),
-                        lod1 = null,
-                    };
+                    generic.lod0 = (T*)map(loToHi.lod0Neighbour).GetUnsafeReadOnlyPtr();
                     type = 2;
                 } else if (corner is HiToLoCorner hiToLo) {
-                    jobData.corner = new GenericBoundaryCorner<T> {
-                        uniform = null,
-                        lod0 = null,
-                        lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr(),
-                    };
+                    generic.lod1 = (T*)map(hiToLo.lod1Neighbour).GetUnsafeReadOnlyPtr();
                     type = 3;
                 }
 
+                jobData.corner = generic;
                 bits.SetBits(12, (type & 1) == 1);
                 bits.SetBits(13, (type & 2) == 2);
             }
@@ -632,7 +609,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // if it is LoToHi, run the stitch quadding stuff for each of its neighbours (since *they* contain the negative boundary voxels)
             // if it is HiToLo, run the stitch quadding stuff for its LOD1 neighbours (since *it* contains the negative boundary voxels)
             // since we store the extra voxel we can chose between two sets, the source (boundary voxels) or neighbours (negative boundary voxels). we must chose the set that's obvi higher res
-            debugDataStuff = new NativeArray<float4>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
+            debugDataStuff = new NativeArray<float4>(StitchUtils.CalculateBoundaryLength(130), Allocator.Persistent);
+
             StitchQuadJob stitchJob = new StitchQuadJob {
                 debugData = debugDataStuff,
                 srcBoundaryVoxels = boundaryVoxels,
@@ -640,20 +618,42 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 indexCounter = indexCounter,
                 indexOffsets = indexOffsets,
                 neighbourIndices = neighbourBoundaryIndices,
-                neighbourVoxels = neighbourBoundaryVoxels,
                 indices = indices,
             };
-
             stitchJob.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048).Complete();
+
+            /*
+            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
+                uint3 pos = StitchUtils.BoundaryIndexToPos(i, 64);
+
+                if (StitchUtils.TryFindBoundaryInfo(pos, neighbourBoundaryIndices.state, 64, out var info)) {
+                    Debug.Log($"p={pos}, info={info}");
+                } else {
+                    Debug.LogWarning("what");
+                }
+            }
+            */
+
+            StitchQuadLoToHiJob loTohiStitchJob = new StitchQuadLoToHiJob {
+                srcBoundaryIndices = boundaryIndices,
+                indexCounter = indexCounter,
+                indexOffsets = indexOffsets,
+                neighbourIndices = neighbourBoundaryIndices,
+                neighbourVoxels = neighbourBoundaryVoxels,
+                indices = indices,
+                //debugData = debugDataStuff,
+            };
+            loTohiStitchJob.Schedule(StitchUtils.CalculateBoundaryLength(130), 2048).Complete();
+
             test = indices.ToArray();
             //Debug.Log(indexCounter.Count);
             debugIntVal = neighbourBoundaryIndices.state.Value;
 
             if (totalVertices > 0) {
                 // create new arrays that will store "packed" data (discard the vertices that weren't used in the stitching)
-                NativeArray<float3> packedVertices = new NativeArray<float3>(totalVertices, Allocator.TempJob);
+                packedVertices = new NativeArray<float3>(totalVertices, Allocator.Persistent);
+                packedIndices = new NativeArray<int>(worstCaseIndices, Allocator.Persistent);
                 NativeArray<int> lookUp = new NativeArray<int>(totalVertices, Allocator.TempJob);
-                NativeArray<int> packedIndices = new NativeArray<int>(worstCaseIndices, Allocator.TempJob);
 
                 // run a job that will get rid of unused vertices
                 NativeBitArray remappedVerticesBitArray = new NativeBitArray(totalVertices, Allocator.TempJob);
@@ -675,9 +675,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 mesh.vertices = packedVertices.Reinterpret<Vector3>().GetSubArray(0, packedVertexCount).ToArray();
                 mesh.triangles = packedIndices.GetSubArray(0, indexCounter.Count).ToArray();
                 filter.mesh = mesh;
-
-                packedIndices.Dispose();
-                packedVertices.Dispose();
                 remappedVerticesBitArray.Dispose();
                 lookUp.Dispose();
             }
@@ -693,7 +690,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public NativeArray<float4> debugDataStuff;
         public uint debugIntVal;
-
+        public NativeArray<float3> packedVertices;
+        public NativeArray<int> packedIndices;
         public void Dispose() {
             boundaryVoxels.Dispose();
 
@@ -709,6 +707,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (indices.IsCreated) {
                 indices.Dispose();
                 debugDataStuff.Dispose();
+            }
+
+            if (packedVertices.IsCreated) {
+                packedIndices.Dispose();
+                packedVertices.Dispose();
             }
         }
     }

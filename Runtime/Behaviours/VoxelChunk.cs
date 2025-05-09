@@ -161,7 +161,7 @@ namespace jedjoud.VoxelTerrain {
                 */
 
                 Vector3 Fetch(int index) {
-                    Vector3 v = stitch.vertices[index];
+                    Vector3 v = stitch.packedVertices[index];
                     return v * s + (Vector3)node.position;
                 }
 
@@ -177,19 +177,19 @@ namespace jedjoud.VoxelTerrain {
                 if (stitch.stitched) {
                     if (flags.HasFlag(GizmoFlags.StitchVertices)) {
                         Gizmos.color = Color.blue;
-                        for (int i = 0; i < stitch.vertices.Length; i++) {
-                            float3 vertex = stitch.vertices[i];
+                        for (int i = 0; i < stitch.packedVertices.Length; i++) {
+                            float3 vertex = stitch.packedVertices[i];
                             Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
                         }
                     }
 
                     if (flags.HasFlag(GizmoFlags.StitchTris)) {
                         Gizmos.color = Color.blue;
-                        for (var i = 0; i < stitch.indices.Length - 3; i += 3) {
+                        for (var i = 0; i < stitch.packedIndices.Length - 3; i += 3) {
                             int a, b, c;
-                            a = stitch.indices[i];
-                            b = stitch.indices[i + 1];
-                            c = stitch.indices[i + 2];
+                            a = stitch.packedIndices[i];
+                            b = stitch.packedIndices[i + 1];
+                            c = stitch.packedIndices[i + 2];
 
                             if (a < 0 || b < 0 || c < 0) {
                                 continue;
@@ -210,7 +210,16 @@ namespace jedjoud.VoxelTerrain {
                         float4 vertexAndDebug = stitch.debugDataStuff[i];
 
                         if (vertexAndDebug.w > 0) {
-                            Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, whatTheFlirpSize);
+                            int type = (int)vertexAndDebug.w - 0;
+
+                            if (type == 0) {
+                                Gizmos.color = Color.white;
+                            } else if (type == 1) {
+                                Gizmos.color = Color.yellow;
+                            } else {
+                                Gizmos.color = Color.cyan;
+                            }
+                                Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, whatTheFlirpSize);
                         }
                     }
 

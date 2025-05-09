@@ -11,17 +11,6 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         // Noise parameter for the simplex 2D noise
         public Inject<float> scale;
         public Inject<float> amplitude;
-        public Inject<float> persistence;
-        public Inject<float> lacunarity;
-        public Inject<float> cellularScale;
-        public Inject<float> cellularOffset;
-        public Inject<float> cellularAmplitude;
-        public Inject<float> materialHeightNoisy;
-        public Inject<float> materialHeight;
-        public Inject<float2> smoothing;
-        public Inject<float> testHeight;
-        public Inject<float> testRandomness;
-        public Inject<bool> check2;
 
         [Range(1, 10)]
         public int octaves;
@@ -36,48 +25,12 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var y = projected.Swizzle<float>("y");
             var xz = projected.Swizzle<float2>("xz");
 
-            // Create fractal 2D simplex noise
-            Variable<float> fractal = new Fractal<float2>(new Simplex(scale, amplitude), FractalMode.Sum, octaves, lacunarity, persistence).Evaluate(xz);
-            Variable<float> cellular = Cellular<float3>.Simple(Sdf.DistanceMetric.Euclidean, 1).Tile(projected.Scaled(cellularScale));
+            Simplex simplex = new Simplex(scale, amplitude);
+            Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves);
 
-            // Add a floor for the cellular nodes
-            Variable<float2> smooth = ((Variable<float2>)smoothing);
-            var floored = Sdf.Union(cellular * cellularAmplitude + cellularOffset, y + 10, smooth: smooth.Swizzle<float>("x"));
-
-            // Create a new density parameter
-            var density = Sdf.Subtraction(fractal + y, floored, smooth: smooth.Swizzle<float>("y"));
-            //var density = cellular;
-
-            // Some checks for prop generation
-            Variable<float> test = position.Swizzle<float>("y");
-            Variable<float2> flat = position.Swizzle<float2>("xz");
-            Variable<bool> check = density > -0.2f & density < 0.2f;
-            Variable<float> val = (new Simplex(0.01f, 1.0f).Evaluate(flat) - 0.2f).ClampZeroOne();
-            check &= Random.Evaluate<float3, float>(position, false) > 0.95f;
-
-            // Generate a random rotation for the props
-            Variable<float3> rotation = Random.Evaluate<float3, float3>(position, true);
-            
-            // Set the output values
             output = new AllOutputs();
-            //output.density = density;
-            //output.density = new SdfSphere(5f, null).Evaluate(input.position);
-            output.density = ((Variable<bool>)check2).Select(y + (new Simplex(0.02f, testHeight).Evaluate(flat) + Random.Evaluate<float3, float>(projected, true) * testRandomness), density);
-
-            // For now we support only spawning one prop per voxel dispatch, but this will be changed for a more flexible system
-            /*
-            output.prop = GraphUtils.Zero<GpuProp>().With(
-                ("position", position),
-                ("rotation", rotation),
-                ("scale", check.Select<float>(0f, 1f)),
-                ("variant", Random.Uniform(position.Scaled(0.2584f), 0.5f).Select<int>(0, 1))
-            );
-            */
-
-            // Do some funky material picking
-            var uhhh = (Noise.Simplex(xz, 0.02f, 1.0f) > 0).Select<int>(1, 0);
+            output.density = y + fractal.Evaluate(xz);
             output.material = 0;
-            //output.material = ((y + Noise.VoronoiF2(xz, 0.04f, 1.0f) * materialHeightNoisy) > materialHeight).Select<int>(2, uhhh);
         }
     }
 }

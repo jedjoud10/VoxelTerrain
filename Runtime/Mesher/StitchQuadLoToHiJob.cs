@@ -6,19 +6,19 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Plastic.Antlr3.Runtime;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Deterministic, OptimizeFor = OptimizeFor.Performance)]
-    public unsafe struct StitchQuadJob : IJobParallelFor {
-        public NativeArray<float4> debugData;
-        
-        // Source boundary voxels
-        [ReadOnly]
-        public NativeArray<Voxel> srcBoundaryVoxels;
-
+    public unsafe struct StitchQuadLoToHiJob : IJobParallelFor {
         // Source boundary indices
         [ReadOnly]
         public NativeArray<int> srcBoundaryIndices;
+
+        // Neighbouring boundary voxels
+        [ReadOnly]
+        [NativeDisableUnsafePtrRestriction]
+        public VoxelStitch.GenericBoundaryData<Voxel> neighbourVoxels;
 
         // Neighbouring boundary vertex indices
         [ReadOnly]
@@ -34,6 +34,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [WriteOnly]
         [NativeDisableParallelForRestriction]
         public NativeArray<int> indices;
+
         [ReadOnly]
         static readonly uint3[] quadForwardDirection = new uint3[3]
         {
@@ -61,43 +62,44 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new uint3(1, 1, 0),
             new uint3(0, 1, 0)
         };
-        
+
         [WriteOnly]
         public Unsafe.NativeCounter.Concurrent indexCounter;
+        //public NativeArray<float4> debugData;
 
         // Fetches the vertex index of a vertex in a specific position
-        // If this crosses the v=65 boundary, use the neighbouring chunks' negative boundary indices instead
-        private int GetVertexIndex(uint3 position) {
-            /*
-            if (neighbourIndices.state.Value != 14325) {
-                return int.MaxValue;
-            }
-            */
-
+        // If this crosses the v=130 boundary, use the neighbouring chunks' negative boundary indices instead
+        private int GetVertexIndex(uint3 hiPos) {
             //Debug.Log($"GetVertexIndex, pos = {position}, state = {neighbourIndices.state.Value}");
-            if (math.any(position >= 64)) {
-                int unpackedNeighbourIndex = StitchUtils.FetchUnpackedNeighbourIndex(position, neighbourIndices.state);
-                
+            if (math.any(hiPos >= 129)) {
+                int unpackedNeighbourIndex = StitchUtils.FetchUnpackedNeighbourIndex(hiPos / 2, neighbourIndices.state);
+
                 // totally fine!
                 if (unpackedNeighbourIndex == -1) {
+                    //Debug.Log("at0");
                     return int.MaxValue;
                 }
-                
+
                 int indexOffset = indexOffsets[unpackedNeighbourIndex];
 
                 // weird chunk thing
                 if (indexOffset == -1) {
                     throw new Exception("Index offset was not set! Means that the stitcher believes there's a chunk here when there really isn't...");
                 }
-            
+
 
                 int index = -1;
                 unsafe {
-                    index = FetchIndexMultiResolution(position);
+                    if (TryFindThings(hiPos, ref neighbourIndices, out int val, true)) {
+                        index = val;
+                    } else {
+                        index = -1;
+                    }
                 }
 
                 // it's fine if this happens, just means that we didn't find proper neighbours (happens for the chunks on the map edge)
                 if (index == -1) {
+                    //Debug.Log("at1");
                     return int.MaxValue;
                 }
 
@@ -107,19 +109,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // I thought that maybe we can just create an extra vertex by averaging out the requesting vertices' position (since it's always a quad or a tri), but unfortunately the edge case
                 // pops up as a tri with only 2 valid verts (last one is the missing one) meaning that we can't really "average" out the vertex by requesters. idk how this would work across chunks too.
                 // needs something more robust and deterministic (maybe voxel value vertex generator DURING stitching as fallback)
-
-                // what if... you do some post processing on the data instead???
-                // figure out what vertices aren't linked to the other LOD and somehow forcefully create the stitch to the nearest vertex
-                // that way we can keep quadding job easy and no gaps hopefully!!!
                 if (index == int.MaxValue || index < 0) {
+                    //Debug.Log("at2");
                     return int.MaxValue;
                 }
 
                 //Debug.Log($"NEIGHBOUR!! unpackedNeighbourIndex = {unpackedNeighbourIndex}, indexOffset = {indexOffset}, index = {index}");
                 return index + indexOffset;
             } else {
-                //Debug.Log($"SOURCE!!!");
-                return srcBoundaryIndices[StitchUtils.PosToBoundaryIndex(position, 64)];
+                // since src is at LOD1 we must downsample hiPos
+                uint3 clamped = math.clamp(hiPos, 0, 127);
+                int sourceIndex = srcBoundaryIndices[StitchUtils.PosToBoundaryIndex((clamped) / 2, 64)];
+                //Debug.Log($"SOURCE!!! {sourceIndex}");
+                return sourceIndex;
             }
         }
 
@@ -133,128 +135,149 @@ namespace jedjoud.VoxelTerrain.Meshing {
         };
 
         // Check and edge and check if we must generate a quad/tri in its forward facing direction
-        void CheckEdge(uint3 basePosition, int index) {
+        void CheckEdge(uint3 loPos, uint3 hiPos, int index, int index2) {
             uint3 forward = quadForwardDirection[index];
 
-            Voxel startVoxel = srcBoundaryVoxels[StitchUtils.PosToBoundaryIndex(basePosition, 65)];
-            Voxel endVoxel = srcBoundaryVoxels[StitchUtils.PosToBoundaryIndex(basePosition + forward, 65)];
+            // check neighbour's negative boundary voxels using hiPos
+            // need to convert hiPos (0 - 130) to chunk local (0 - 65)
+            bool flip = true;
+            //Debug.Log("caller");
 
-            if (startVoxel.density > 0 == endVoxel.density > 0)
+            
+            if (TryFindThings(hiPos, ref neighbourVoxels, out Voxel startVoxel, false) && TryFindThings(hiPos + forward, ref neighbourVoxels, out Voxel endVoxel, false)) {
+                //Debug.Log($"bloated, {startVoxel.density}, {endVoxel.density}");
+                flip = endVoxel.density > 0.0;
+
+                if (startVoxel.density > 0 == endVoxel.density > 0)
+                    return;
+                
+            } else {
                 return;
+            }
 
-            /*
-            int bitsset = math.countbits(math.bitmask(new bool4(basePosition == new uint3(64), false)));
-            float data = bitsset == 2 ? 0.2f : 0f;
-            float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-            debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 0.0f);
-            */
+            //float3 pos = ((float3)hiPos / 2.0f) + 0.5f * (float3)forward;
+            //debugData[index2] = new float4(pos, 100.0f);
 
-            /*
-            if (bitsset != 2)
-                return;
-            */
-
-            bool flip = endVoxel.density > 0.0;
-
-            uint3 offset = basePosition + forward - 1;
-
+            uint3 offset = hiPos + forward - 1;
             int vertex0 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4]);
             int vertex1 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 1]);
             int vertex2 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 2]);
             int vertex3 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 3]);
             int4 v = new int4(vertex0, vertex1, vertex2, vertex3);
 
-            // Ts gpt-ed kek
-            int dupeType = 0;
-            dupeType |= math.select(0, 1, v.x == v.y);
-            dupeType |= math.select(0, 2, v.x == v.z);
-            dupeType |= math.select(0, 4, v.x == v.w);
-            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
-            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
-            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
-
-            // means that there are more than 2 duplicate verts, not possible?
-            if (math.countbits(dupeType) > 1) {
-                float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-                debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 1.0f);
+            // Don't make a quad if the vertices are invalid
+            if (math.cmax(v) == int.MaxValue) {
+                //Debug.Log(v);
+                //Debug.LogWarning(math.countbits(math.bitmask(v == new int4(int.MaxValue))));
                 return;
             }
 
-            if (dupeType == 0) {
-                // Don't make a quad if the vertices are invalid
-                if (math.cmax(v) == int.MaxValue) {
-                    //Debug.LogWarning(math.countbits(math.bitmask(v == new int4(int.MaxValue))));
-                    float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-                    debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 2.0f);
-                    return;
-                }
+            Debug.Log("HOLD UP IM TRIANGLE!!!");
+            int triIndex = indexCounter.Add(6);
 
-                int triIndex = indexCounter.Add(6);
+            // Set the first tri
+            indices[triIndex + (flip ? 0 : 2)] = vertex0;
+            indices[triIndex + 1] = vertex1;
+            indices[triIndex + (flip ? 2 : 0)] = vertex2;
 
-                // Set the first tri
-                indices[triIndex + (flip ? 0 : 2)] = vertex0;
-                indices[triIndex + 1] = vertex1;
-                indices[triIndex + (flip ? 2 : 0)] = vertex2;
-
-                // Set the second tri
-                indices[triIndex + (flip ? 3 : 5)] = vertex2;
-                indices[triIndex + 4] = vertex3;
-                indices[triIndex + (flip ? 5 : 3)] = vertex0;
-            } else {
-                int config = math.tzcnt(dupeType);
-                int3 remapper = DEDUPE_TRIS_THING[config];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-
-                // Don't make a tri if the vertices are invalid
-                if (math.cmax(uniques) == int.MaxValue) {
-                    float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-                    debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 3.0f);
-                    //Debug.LogWarning(math.countbits(math.bitmask(new bool4(uniques == new int3(int.MaxValue), false))));
-                    return;
-                }
-
-                int triIndex = indexCounter.Add(3);
-                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                indices[triIndex + 1] = uniques[1];
-                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
-            }
+            // Set the second tri
+            indices[triIndex + (flip ? 3 : 5)] = vertex2;
+            indices[triIndex + 4] = vertex3;
+            indices[triIndex + (flip ? 5 : 3)] = vertex0;
         }
 
-        // Excuted for each cell within the grid
-        public void Execute(int index) {
-            // When we implement multi-res, swap between the two sets here
-            // Either sample from pos-boundary of self, or neg-boundary of neighbours
-            uint3 position = StitchUtils.BoundaryIndexToPos(index, 65);
-            
+        private static bool TryFindThings<T>(uint3 hiPos, ref VoxelStitch.GenericBoundaryData<T> data, out T val, bool samplingIndices) where T: unmanaged {
+            val = default(T);
+            //Debug.Log($"coords: {hiPos}");
+            hiPos = math.clamp(hiPos, 0, 127);
+
+            int neighbouringSampleSize = 0;
+
+            if (samplingIndices) {
+                // sampling indices
+                neighbouringSampleSize = 64;
+            } else {
+                // sampling voxels
+                neighbouringSampleSize = 65;
+            }
+
+            if (StitchUtils.TryFindBoundaryInfo(hiPos, data.state, 128, out StitchUtils.BoundaryInfo info)) {
+                if (info.type == StitchUtils.BoundaryType.Plane) {
+                    var lod0Neighbours = data.planes[info.direction].lod0s;
+
+                    uint2 flattenToFaceHi = StitchUtils.FlattenToFaceRelative(hiPos, info.direction);
+                    int offset = VoxelUtils.PosToIndex2D(flattenToFaceHi / 64, 2);
+                    //Debug.Log(offset);
+                    T* voxels = data.planes[info.direction].lod0s[offset];
+
+                    uint3 unflattened = StitchUtils.UnflattenFromFaceRelative(flattenToFaceHi % 64, info.direction);
+                    T voxel = *(voxels + StitchUtils.PosToBoundaryIndex(unflattened, neighbouringSampleSize, true));
+                    val = voxel;
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        // Executed StitchUtils.CalculateBoundaryLength(65*2) times
+        public void Execute(int index) {            
+            uint3 hiPos = StitchUtils.BoundaryIndexToPos(index, 130);
+
+            // hold up I'm downsampled
+            uint3 loPos = hiPos / 2;
+
+            // if we are not dealing with LoToHi (the intended use case) just quit early
+            // TODO: can probably optimize this with IJobParallelForBatch since we do planes first then edges then corner
+            if (StitchUtils.TryFindBoundaryInfo(hiPos, neighbourIndices.state, 130, out StitchUtils.BoundaryInfo info)) {
+                if (info.mode != StitchUtils.StitchingMode.LoToHi) {
+                    return;
+                }
+
+                // for testing
+                if (info.type != StitchUtils.BoundaryType.Plane) {
+                    return;
+                }
+            } else {
+                return;
+            }
+
+            if (math.any(hiPos < 1))
+                return;
+            /*
+            CheckEdge(loPos, hiPos, 1);
+            */
+
             for (int i = 0; i < 3; i++) {
                 // need this to create tris that might be on the v=0 boundary
-                bool skipnation = math.any(position < (1 - quadForwardDirection[i]));
+                bool skipnation = math.any(hiPos < (1 - quadForwardDirection[i]));
 
-                // need this to create tris that might be on the v=63 boundary
-                bool skipnation2 = position[i] > 63;
+                // need this to create tris that might be on the v=128 boundary
+                bool skipnation2 = hiPos[i] > 127;
 
                 if (skipnation || skipnation2)
                     continue;
-
-                CheckEdge(position, i);
+                
+                CheckEdge(loPos, hiPos, i, index);
             }
         }
 
+        /*
         // type=1 -> uniform (normal)
         // type=2 -> lotohi (upsample)
         // type=3 -> hitolo (downsample)
         private unsafe int SamplePlaneUsingType(uint3 paddingPosition, uint type, int dir) {
+            if (type != 3) {
+                Debug.Log("what the sigmoid?");
+            }
+
+            return -1;
             uint3 flatPosition = paddingPosition;
             flatPosition[dir] = 0;
 
-            if (type == 1) {
-                // do a bit of simple copying
-                int* ptr = neighbourIndices.planes[dir].uniform;
-                int val = *(ptr + StitchUtils.PosToBoundaryIndex(flatPosition, 64, true));
-                return val;
-            } else if (type == 2) {
-                return -1;
-            } else if (type == 3) {
+            else if (type == 3) {
                 // do a bit of upsampling
                 uint2 flattened = StitchUtils.FlattenToFaceRelative(paddingPosition, dir);
                 flattened += neighbourIndices.planes[dir].relativeOffset * 64;
@@ -267,7 +290,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             throw new Exception("Invalid plane type");
         }
+        */
 
+        /*
         // type=1 -> uniform (normal)
         // type=2 -> lotohi (upsample)
         // type=3 -> hitolo (downsample)
@@ -299,12 +324,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     // fallback 1
                     if (StitchUtils.LiesOnBoundary(downsampled + basis, 64)) {
                         val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)(downsampled + basis), 64, true));
-                        
+
                         if (val != int.MaxValue) {
                             return val;
                         }
                     }
-                    
+
                     // fallback 2
                     if (StitchUtils.LiesOnBoundary(downsampled - basis, 64)) {
                         val = *(ptrs + StitchUtils.PosToBoundaryIndex((uint3)(downsampled - basis), 64, true));
@@ -354,6 +379,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             throw new Exception("Invalid edge type");
         }
+        
 
         // type=1 -> uniform (normal)
         // type=2 -> lotohi (upsample)
@@ -361,14 +387,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private unsafe int SampleCornerUsingType(uint3 paddingPosition, uint type) {
             return -1;
         }
+        */
 
-        // Fetch a vertex index (neighbour chunk relative) at the given size=65 padding position
-        // Handles downsampling of data automatically. Upsampling is a no-no since we will use a different job dedicated for that (different case)
+        /*
         public unsafe int FetchIndexMultiResolution(uint3 paddingPosition) {
-            StitchUtils.DebugCheckMustBeOnBoundary(paddingPosition, 65);
-
             // 1=plane, 2=edge, 3=corner
-            bool3 bool3 = paddingPosition == 64;
+            bool3 bool3 = paddingPosition == 129;
             int bitmask = math.bitmask(new bool4(bool3, false));
             int bitsSet = math.countbits(bitmask);
 
@@ -390,7 +414,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (type == 0)
                     return -1;
 
-                return SampleEdgeUsingType(paddingPosition, type, dir);
+                return -1;
+                //return SampleEdgeUsingType(paddingPosition, type, dir);
             } else {
                 // corner case
                 uint type = neighbourIndices.state.GetBits(12, 2);
@@ -398,8 +423,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (type == 0)
                     return -1;
 
-                return SampleCornerUsingType(paddingPosition, type);
+                return -1;
+                //return SampleCornerUsingType(paddingPosition, type);
             }
+
+            return -1;
         }
+        */
     }
 }

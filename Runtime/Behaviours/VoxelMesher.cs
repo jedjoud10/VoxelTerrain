@@ -13,7 +13,7 @@ using Unity.Collections.LowLevel.Unsafe;
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
     public class VoxelMesher : VoxelBehaviour {
-        public GameObject stichingPrefab;
+        public GameObject stitchingPrefab;
 
         internal struct MeshingRequest {
             public VoxelChunk chunk;
@@ -66,27 +66,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
             */
 
-            /*
-            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
-                bool check = StitchUtils.PosToBoundaryIndex(StitchUtils.BoundaryIndexToPos(i, 64, false), 64, false) == i;
-                uint3 cal = StitchUtils.BoundaryIndexToPos(i, 64, false);
+            BitField32 state = new BitField32(uint.MaxValue);
+            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(130); i++) {
+                uint3 pos = StitchUtils.BoundaryIndexToPos(i, 130, true);
+                StitchUtils.DebugCheckMustBeOnBoundary(pos, 130, true);
 
-                bool3 bool3 = cal == 63;
-                int bitmask = math.bitmask(new bool4(bool3, false));
-                int bitsSet = math.countbits(bitmask);
-
-
-                if (bitsSet == 1) {
-                    Debug.Log($"plane: {check}");
-                } else if (bitsSet == 2) {
-                    Debug.Log($"edge: {check}");
-                } else if (bitsSet == 3) {
-                    Debug.Log($"corner: {check}");
-                } else {
-                    Debug.LogError("WHAT!!!");
+                /*
+                if (!StitchUtils.TryFindBoundaryInfo(pos, state, 130, out var info)) {
+                    throw new Exception("WHAT THE FUCK!!!!");
                 }
+                */
             }
-            */
         }
 
         // Begin generating the mesh data using the given chunk and voxel container
@@ -133,7 +123,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                         // Always create a stitching mesh no matter what
                         VoxelChunk chunk = job.chunk;
-                        GameObject stitchGo = Instantiate(stichingPrefab, chunk.transform);
+                        GameObject stitchGo = Instantiate(stitchingPrefab, chunk.transform);
                         stitchGo.transform.localPosition = Vector3.zero;
                         stitchGo.transform.localScale = Vector3.one;
                         chunk.stitch = stitchGo.GetComponent<VoxelStitch>();

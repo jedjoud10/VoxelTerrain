@@ -108,19 +108,21 @@ namespace jedjoud.VoxelTerrain {
         }
 
         // Check if a position lies on a boundary
-        // Assumes positive boundary
-        public static bool LiesOnBoundary(uint3 position, int size) {
-            return math.any(position == new uint3(size - 1)) && math.all(position < new uint3(size));
-        }
-
-        // Check if a position lies on a boundary
-        // Assumes positive boundary
-        public static bool LiesOnBoundary(int3 position, int size) {
-            return math.any(position == new int3(size - 1)) && math.all(position < new int3(size) & position >= 0);
+        public static bool LiesOnBoundary(int3 position, int size, bool negative=false) {
+            int target = math.select(size - 1, 0, negative);
+            return math.all(position >= 0) && math.all(position < size) && math.any(position == target);
         }
 
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        static void DebugCheckBounds(uint3 coordinates, int size) {
+        public static void DebugCheckMustBeOnBoundary(uint3 coordinates, int size, bool negative=false) {
+            if (!LiesOnBoundary((int3)coordinates, size, negative)) {
+                throw new System.Exception(
+                    $"The given coordinates {coordinates} do not exist on the boundary of size {size}");
+            }
+        }
+
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        public static void DebugCheckBounds(uint3 coordinates, int size) {
             if (math.cmax(coordinates) >= size) {
                 throw new System.OverflowException(
                     $"An element of coordinates {coordinates} is larger than the maximum {size-1} (size={size})");
@@ -128,7 +130,7 @@ namespace jedjoud.VoxelTerrain {
         }
 
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        static void DebugCheckIndex(int index, int size) {
+        public static void DebugCheckIndex(int index, int size) {
             if (index >= (size * size * 3 - size * 3 + 1)) {
                 throw new System.OverflowException(
                     $"The given index {index} is larger than the maximum {size * size * 3 - size * 3 + 1}");
@@ -144,6 +146,7 @@ namespace jedjoud.VoxelTerrain {
         // Encoding: 3 faces, 3 edges, 1 corner
         public static int PosToBoundaryIndex(uint3 position, int size, bool negative=false) {
             DebugCheckBounds(position, size);
+            DebugCheckMustBeOnBoundary(position, size, negative);
 
             int face = (size - 1) * (size - 1);
             int edge = (size - 1);
@@ -203,8 +206,78 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
 
+        public enum BoundaryType: int {
+            Plane = 0,
+            Edge = 1,
+            Corner = 2
+        }
+
+        public enum StitchingMode : int {
+            Uniform = 0,
+            LoToHi = 1,
+            HiToLo = 2,
+        }
+
+        public struct BoundaryInfo {
+            public BoundaryType type;
+            public StitchingMode mode;
+            public int direction;
+
+            public override string ToString() {
+                return $"t={type}, m={mode}, d={direction}";
+            }
+        }
+
+        // Calculate the boundary type and it's stitching mode
+        // Returns false if the boundary simply does not exist
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool TryFindBoundaryInfo(uint3 paddingPosition, BitField32 state, int size, out BoundaryInfo info) {
+            DebugCheckMustBeOnBoundary(paddingPosition, size);
+
+            // 1=plane, 2=edge, 3=corner
+            bool3 bool3 = paddingPosition == (uint)(size - 1);
+            int bitmask = math.bitmask(new bool4(bool3, false));
+            int bitsSet = math.countbits(bitmask);
+            info = default;
+
+            int mode = -1;
+            int type = -1;
+            int direction;
+
+            if (bitsSet == 1) {
+                type = 0;
+                direction = math.tzcnt(bitmask);
+                mode = (int)state.GetBits(direction * 2, 2);
+            } else if (bitsSet == 2) {
+                type = 1;
+                int inv = (~bitmask) & 0b111;
+                direction = math.tzcnt(inv);
+                mode = (int)state.GetBits(direction * 2 + 6, 2);
+            } else {
+                type = 2;
+                mode = (int)state.GetBits(12, 2);
+                direction = -1;
+            }
+
+            // if we don't have proper type (plane/edge/corner) or proper mode (uniform,lotohi,hitolo)
+            if (type == -1 || mode == -1 || mode == 0) {
+                //Debug.Log($"type={type}, mode={mode}");
+                return false;
+            }
+
+            // mode is offset by 1, since mode=0 means null
+            mode -= 1;
+
+            info.type = (BoundaryType)type;
+            info.mode = (StitchingMode)(mode);
+            info.direction = direction;
+            return true;
+        }
+
         // Fetch unpacked chunk index that we will use to index the offsets array (unpacked)
         public static int FetchUnpackedNeighbourIndex(uint3 paddingPosition, BitField32 state) {
+            DebugCheckMustBeOnBoundary(paddingPosition, 65);
+
             // 1=plane, 2=edge, 3=corner
             bool3 bool3 = paddingPosition == 64;
             int bitmask = math.bitmask(new bool4(bool3, false));
@@ -253,5 +326,7 @@ namespace jedjoud.VoxelTerrain {
 
             return -1;
         }
+
+        
     }
 }
