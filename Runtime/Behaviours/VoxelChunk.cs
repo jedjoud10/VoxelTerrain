@@ -107,6 +107,7 @@ namespace jedjoud.VoxelTerrain {
 
         public List<int> customVertexDebugger = new List<int>();
         public float whatTheFlirpSize = 100;
+        public int2 whatTheFlirpRange = new int2(0, 10000);
         public GizmoFlags flags;
         public float voxelsTolerance = 0.3f;
 
@@ -206,20 +207,17 @@ namespace jedjoud.VoxelTerrain {
                     }
 
                     Gizmos.color = Color.red;
-                    for (int i = 0; i < stitch.debugDataStuff.Length; i++) {
+                    for (int i = whatTheFlirpRange.x; i < math.min(stitch.debugDataStuff.Length, whatTheFlirpRange.y); i++) {
                         float4 vertexAndDebug = stitch.debugDataStuff[i];
 
                         if (vertexAndDebug.w > 0) {
-                            int type = (int)vertexAndDebug.w - 0;
+                            int direction = (int)vertexAndDebug.w - 1;
+                            float3 dir = new float3(0);
+                            dir[direction] = 1;
 
-                            if (type == 0) {
-                                Gizmos.color = Color.white;
-                            } else if (type == 1) {
-                                Gizmos.color = Color.yellow;
-                            } else {
-                                Gizmos.color = Color.cyan;
-                            }
-                                Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, whatTheFlirpSize);
+                            Gizmos.DrawRay(vertexAndDebug.xyz * s + node.position, dir);
+                        } else {
+                            Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, whatTheFlirpSize);
                         }
                     }
 

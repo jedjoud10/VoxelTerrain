@@ -9,12 +9,16 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Deterministic, OptimizeFor = OptimizeFor.Performance)]
-    public unsafe struct PostStitchCleanUpJob : IJob {
+    public unsafe struct RemoveUnusedVerticesJob : IJob {
+        // contains vertices from source chunk and vertices from neighbouring chunks
         public NativeArray<float3> srcVertices;
-        public NativeArray<float3> dstVertices;
-        public NativeArray<int> lookUp;
         public NativeArray<int> srcIndices;
+
+        // packed vertices and indices
+        public NativeArray<float3> dstVertices;
         public NativeArray<int> dstIndices;
+        
+        public NativeArray<int> lookUp;
         public int indexCount;
         public NativeBitArray remappedVertices;
 

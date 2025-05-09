@@ -1,4 +1,5 @@
 using System;
+using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -10,7 +11,8 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Deterministic, OptimizeFor = OptimizeFor.Performance)]
     public unsafe struct StitchQuadJob : IJobParallelFor {
-        public NativeArray<float4> debugData;
+        public NativeList<float4>.ParallelWriter debugData;
+        public NativeList<StitchUtils.MissingVerticesEdgeCrossing>.ParallelWriter casesWithMissingVertices;
         
         // Source boundary voxels
         [ReadOnly]
@@ -34,6 +36,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [WriteOnly]
         [NativeDisableParallelForRestriction]
         public NativeArray<int> indices;
+        [ReadOnly]
+        public NativeArray<float3> vertices;
         [ReadOnly]
         static readonly uint3[] quadForwardDirection = new uint3[3]
         {
@@ -101,6 +105,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     return int.MaxValue;
                 }
 
+                // wut?
+                if (index < 0) {
+                    return int.MaxValue;
+                }
+
                 // COULD HAPPEN, AND IT IS VERY BAD IF IT DOES!!!!
                 // means that we are thinking we "think" there's a valid vertex there, but it isn't actually there!
                 // 12:22 AM note: There is actually a very specific literal-edge case that occurs that is unfortunately tricked by this. I haven't thought of a way of getting around it yet
@@ -111,8 +120,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // what if... you do some post processing on the data instead???
                 // figure out what vertices aren't linked to the other LOD and somehow forcefully create the stitch to the nearest vertex
                 // that way we can keep quadding job easy and no gaps hopefully!!!
-                if (index == int.MaxValue || index < 0) {
-                    return int.MaxValue;
+                if (index == int.MaxValue) {
+                    return int.MinValue;
                 }
 
                 //Debug.Log($"NEIGHBOUR!! unpackedNeighbourIndex = {unpackedNeighbourIndex}, indexOffset = {indexOffset}, index = {index}");
@@ -122,15 +131,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return srcBoundaryIndices[StitchUtils.PosToBoundaryIndex(position, 64)];
             }
         }
-
-        static readonly int3[] DEDUPE_TRIS_THING = new int3[] {
-            new int3(0, 2, 3), // x/y
-            new int3(0, 1, 3), // x/z
-            new int3(0, 1, 2), // x/w
-            new int3(0, 1, 3), // y/z
-            new int3(0, 1, 2), // y/w
-            new int3(0, 1, 2), // z/w
-        };
 
         // Check and edge and check if we must generate a quad/tri in its forward facing direction
         void CheckEdge(uint3 basePosition, int index) {
@@ -157,67 +157,33 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool flip = endVoxel.density > 0.0;
 
             uint3 offset = basePosition + forward - 1;
-
-            int vertex0 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4]);
-            int vertex1 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 1]);
-            int vertex2 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 2]);
-            int vertex3 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 3]);
-            int4 v = new int4(vertex0, vertex1, vertex2, vertex3);
-
-            // Ts gpt-ed kek
-            int dupeType = 0;
-            dupeType |= math.select(0, 1, v.x == v.y);
-            dupeType |= math.select(0, 2, v.x == v.z);
-            dupeType |= math.select(0, 4, v.x == v.w);
-            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
-            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
-            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
-
-            // means that there are more than 2 duplicate verts, not possible?
-            if (math.countbits(dupeType) > 1) {
-                float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-                debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 1.0f);
-                return;
+            uint3x4 manyPositions = new uint3x4();
+            int4 manyIndices = new int4(0);
+            for (int i = 0; i < 4; i++) {
+                manyPositions[i] = offset + quadPerpendicularOffsets[index * 4 + i];
+                manyIndices[i] = GetVertexIndex(manyPositions[i]);
             }
 
-            if (dupeType == 0) {
-                // Don't make a quad if the vertices are invalid
-                if (math.cmax(v) == int.MaxValue) {
-                    //Debug.LogWarning(math.countbits(math.bitmask(v == new int4(int.MaxValue))));
-                    float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-                    debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 2.0f);
-                    return;
-                }
-
-                int triIndex = indexCounter.Add(6);
-
-                // Set the first tri
-                indices[triIndex + (flip ? 0 : 2)] = vertex0;
-                indices[triIndex + 1] = vertex1;
-                indices[triIndex + (flip ? 2 : 0)] = vertex2;
-
-                // Set the second tri
-                indices[triIndex + (flip ? 3 : 5)] = vertex2;
-                indices[triIndex + 4] = vertex3;
-                indices[triIndex + (flip ? 5 : 3)] = vertex0;
-            } else {
-                int config = math.tzcnt(dupeType);
-                int3 remapper = DEDUPE_TRIS_THING[config];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-
-                // Don't make a tri if the vertices are invalid
-                if (math.cmax(uniques) == int.MaxValue) {
-                    float3 pos = (float3)basePosition + 0.5f * (float3)forward;
-                    debugData[StitchUtils.PosToBoundaryIndex(basePosition, 65)] = new float4(pos, 3.0f);
-                    //Debug.LogWarning(math.countbits(math.bitmask(new bool4(uniques == new int3(int.MaxValue), false))));
-                    return;
-                }
-
-                int triIndex = indexCounter.Add(3);
-                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                indices[triIndex + 1] = uniques[1];
-                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
+            if (math.cmin(manyIndices) == (int.MinValue)) {
+                casesWithMissingVertices.AddNoResize(new StitchUtils.MissingVerticesEdgeCrossing {
+                    indices = manyIndices,
+                    positions = manyPositions,
+                    flip = flip,
+                });
             }
+
+            StitchUtils.AddQuadsOrTris(flip, manyIndices, ref indexCounter, ref indices);
+
+            /*
+            if (math.cmax(v) == int.MaxValue) {
+                for (int i = 0; i < 3; i++) {
+                    if (v[i] != int.MaxValue) {
+                        int idx = v[i];
+                        debugData.AddNoResize(new float4(vertices[idx], 2.0f));
+                    }
+                }
+            }
+            */
         }
 
         // Excuted for each cell within the grid

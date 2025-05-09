@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using Codice.Client.BaseCommands.WkStatus.Printers;
 using jedjoud.VoxelTerrain.Meshing;
+using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -327,6 +328,79 @@ namespace jedjoud.VoxelTerrain {
             return -1;
         }
 
-        
+        static readonly int3[] DEDUPE_TRIS_THING = new int3[] {
+            new int3(0, 2, 3), // x/y
+            new int3(0, 1, 3), // x/z
+            new int3(0, 1, 2), // x/w
+            new int3(0, 1, 3), // y/z
+            new int3(0, 1, 2), // y/w
+            new int3(0, 1, 2), // z/w
+        };
+
+        // Create quads / triangles based on the given vertex index data in the "v" parameter
+        public static void AddQuadsOrTris(bool flip, int4 v, ref NativeCounter.Concurrent counter, ref NativeArray<int> indices) {
+            // Ts gpt-ed kek
+            int dupeType = 0;
+            dupeType |= math.select(0, 1, v.x == v.y);
+            dupeType |= math.select(0, 2, v.x == v.z);
+            dupeType |= math.select(0, 4, v.x == v.w);
+            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
+            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
+            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
+
+            // means that there are more than 2 duplicate verts, not possible?
+            if (math.countbits(dupeType) > 1) {
+                return;
+            }
+
+            // don't make a quad/tri if the vertices are invalid
+            if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
+                return;
+            }
+
+            if (dupeType == 0) {
+                int triIndex = counter.Add(6);
+
+                // Set the first tri
+                indices[triIndex + (flip ? 0 : 2)] = v.x;
+                indices[triIndex + 1] = v.y;
+                indices[triIndex + (flip ? 2 : 0)] = v.z;
+
+                // Set the second tri
+                indices[triIndex + (flip ? 3 : 5)] = v.z;
+                indices[triIndex + 4] = v.w;
+                indices[triIndex + (flip ? 5 : 3)] = v.x;
+            } else {
+                int config = math.tzcnt(dupeType);
+                int3 remapper = DEDUPE_TRIS_THING[config];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+
+                // Don't make a tri if the vertices are invalid
+                if (math.cmax(uniques) == int.MaxValue) {
+                    return;
+                }
+
+                int triIndex = counter.Add(3);
+                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                indices[triIndex + 1] = uniques[1];
+                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
+            }
+        }
+
+        // Data type that we will use to keep track of quads/tris that have invalid vertex indices
+        // We will then go try clean them up (forcefully create a quad/tri for water-tightness) in a postprocessing job
+        public struct MissingVerticesEdgeCrossing {
+            // vertex indices that were fetched from the index buffers
+            // one or more of the elements in this are set to int.MaxValue
+            public int4 indices;
+
+            // position of the fetched indices, in source chunk space
+            // if we are dealing with LoToHi, then this will be in Hi mode
+            public uint3x4 positions;
+
+            public bool flip;
+        }
+
+        public const int FALLBACK_MAX_VERTS = 1000;
     }
 }

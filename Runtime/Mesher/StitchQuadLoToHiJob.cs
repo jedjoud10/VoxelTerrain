@@ -65,7 +65,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [WriteOnly]
         public Unsafe.NativeCounter.Concurrent indexCounter;
-        //public NativeArray<float4> debugData;
+        public NativeList<float4>.ParallelWriter debugData;
+        [ReadOnly]
+        public NativeArray<float3> vertices;
 
         // Fetches the vertex index of a vertex in a specific position
         // If this crosses the v=130 boundary, use the neighbouring chunks' negative boundary indices instead
@@ -165,25 +167,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int vertex3 = GetVertexIndex(offset + quadPerpendicularOffsets[index * 4 + 3]);
             int4 v = new int4(vertex0, vertex1, vertex2, vertex3);
 
-            // Don't make a quad if the vertices are invalid
+            
             if (math.cmax(v) == int.MaxValue) {
-                //Debug.Log(v);
-                //Debug.LogWarning(math.countbits(math.bitmask(v == new int4(int.MaxValue))));
-                return;
+                debugData.AddNoResize(new float4((float3)hiPos / 2f, index + 1));
+                for (int i = 0; i < 4; i++) {
+                    if (v[i] != int.MaxValue) {
+                        int idx = v[i];
+                        debugData.AddNoResize(new float4(vertices[idx], -1f));
+                    }
+                }
             }
 
-            Debug.Log("HOLD UP IM TRIANGLE!!!");
-            int triIndex = indexCounter.Add(6);
-
-            // Set the first tri
-            indices[triIndex + (flip ? 0 : 2)] = vertex0;
-            indices[triIndex + 1] = vertex1;
-            indices[triIndex + (flip ? 2 : 0)] = vertex2;
-
-            // Set the second tri
-            indices[triIndex + (flip ? 3 : 5)] = vertex2;
-            indices[triIndex + 4] = vertex3;
-            indices[triIndex + (flip ? 5 : 3)] = vertex0;
+            StitchUtils.AddQuadsOrTris(flip, v, ref indexCounter, ref indices);
         }
 
         private static bool TryFindThings<T>(uint3 hiPos, ref VoxelStitch.GenericBoundaryData<T> data, out T val, bool samplingIndices) where T: unmanaged {
@@ -263,34 +258,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 CheckEdge(loPos, hiPos, i, index);
             }
         }
-
-        /*
-        // type=1 -> uniform (normal)
-        // type=2 -> lotohi (upsample)
-        // type=3 -> hitolo (downsample)
-        private unsafe int SamplePlaneUsingType(uint3 paddingPosition, uint type, int dir) {
-            if (type != 3) {
-                Debug.Log("what the sigmoid?");
-            }
-
-            return -1;
-            uint3 flatPosition = paddingPosition;
-            flatPosition[dir] = 0;
-
-            else if (type == 3) {
-                // do a bit of upsampling
-                uint2 flattened = StitchUtils.FlattenToFaceRelative(paddingPosition, dir);
-                flattened += neighbourIndices.planes[dir].relativeOffset * 64;
-                flatPosition = StitchUtils.UnflattenFromFaceRelative(flattened, dir);
-                int* ptr = neighbourIndices.planes[dir].lod1;
-                //Debug.Log(flatPosition / 2);
-                int val = *(ptr + StitchUtils.PosToBoundaryIndex(flatPosition / 2, 64, true));
-                return val;
-            }
-
-            throw new Exception("Invalid plane type");
-        }
-        */
 
         /*
         // type=1 -> uniform (normal)

@@ -567,7 +567,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            // Ermmm... what the sigmoid functor???
+            // create the unpacked vertex and index arrays
+            // add a little margin for totalVertices since we will store extra fallback vertices at the end
+            int fallbackVerticesBaseIndex = totalVertices;
+            totalVertices += StitchUtils.FALLBACK_MAX_VERTS;
             worstCaseIndices = totalVertices * 5; // idk bro...
             vertices = new NativeArray<float3>(totalVertices, Allocator.Persistent);
             indices = new NativeArray<int>(worstCaseIndices, Allocator.Persistent);
@@ -603,24 +606,38 @@ namespace jedjoud.VoxelTerrain.Meshing {
             GenericBoundaryData<Voxel> neighbourBoundaryVoxels = FetchNeighbourGenericData<Voxel>(x => x.negativeBoundaryVoxels);
             GenericBoundaryData<int> neighbourBoundaryIndices = FetchNeighbourGenericData<int>(x => x.negativeBoundaryIndices);
 
+            // special stuff
+            NativeList<StitchUtils.MissingVerticesEdgeCrossing> casesWithMissingVertices = new NativeList<StitchUtils.MissingVerticesEdgeCrossing>(1000, Allocator.TempJob);
+            NativeList<float3> fallbackVertices = new NativeList<float3>(300, Allocator.TempJob);
+
             // then create quads between neighbouring chunks vertices and padding vertices
             // this must always run at a higher resolution than the source chunk
             // if we have a plane for example of type Uniform, just run it at a 1:1 scale 
             // if it is LoToHi, run the stitch quadding stuff for each of its neighbours (since *they* contain the negative boundary voxels)
             // if it is HiToLo, run the stitch quadding stuff for its LOD1 neighbours (since *it* contains the negative boundary voxels)
             // since we store the extra voxel we can chose between two sets, the source (boundary voxels) or neighbours (negative boundary voxels). we must chose the set that's obvi higher res
-            debugDataStuff = new NativeArray<float4>(StitchUtils.CalculateBoundaryLength(130), Allocator.Persistent);
+            debugDataStuff = new NativeList<float4>(1000, Allocator.Persistent);
 
             StitchQuadJob stitchJob = new StitchQuadJob {
-                debugData = debugDataStuff,
+                vertices = vertices,
+                debugData = debugDataStuff.AsParallelWriter(),
                 srcBoundaryVoxels = boundaryVoxels,
                 srcBoundaryIndices = boundaryIndices,
                 indexCounter = indexCounter,
                 indexOffsets = indexOffsets,
                 neighbourIndices = neighbourBoundaryIndices,
                 indices = indices,
+                casesWithMissingVertices = casesWithMissingVertices.AsParallelWriter(),
             };
             stitchJob.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048).Complete();
+
+            FallbackTriangulationJob fallbackJob = new FallbackTriangulationJob {
+                vertices = vertices,
+                indexCounter = indexCounter,
+                indices = indices,
+                casesWithMissingVertices = casesWithMissingVertices,
+            };
+            fallbackJob.Schedule().Complete();
 
             /*
             for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
@@ -634,6 +651,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
             */
 
+            /*
             StitchQuadLoToHiJob loTohiStitchJob = new StitchQuadLoToHiJob {
                 srcBoundaryIndices = boundaryIndices,
                 indexCounter = indexCounter,
@@ -641,9 +659,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 neighbourIndices = neighbourBoundaryIndices,
                 neighbourVoxels = neighbourBoundaryVoxels,
                 indices = indices,
-                //debugData = debugDataStuff,
+                debugData = debugDataStuff.AsParallelWriter(),
+                vertices = vertices,
             };
             loTohiStitchJob.Schedule(StitchUtils.CalculateBoundaryLength(130), 2048).Complete();
+            */
 
             test = indices.ToArray();
             //Debug.Log(indexCounter.Count);
@@ -657,7 +677,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 // run a job that will get rid of unused vertices
                 NativeBitArray remappedVerticesBitArray = new NativeBitArray(totalVertices, Allocator.TempJob);
-                PostStitchCleanUpJob cleanUp = new PostStitchCleanUpJob {
+                RemoveUnusedVerticesJob cleanUp = new RemoveUnusedVerticesJob {
                     srcIndices = indices,
                     srcVertices = vertices,
                     dstIndices = packedIndices,
@@ -685,10 +705,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             neighbourVertices.Dispose();
             neighbourBoundaryIndices.Dispose();
             neighbourBoundaryVoxels.Dispose();
-
+            casesWithMissingVertices.Dispose();
+            fallbackVertices.Dispose();
         }
 
-        public NativeArray<float4> debugDataStuff;
+        public NativeList<float4> debugDataStuff;
         public uint debugIntVal;
         public NativeArray<float3> packedVertices;
         public NativeArray<int> packedIndices;
