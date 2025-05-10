@@ -52,27 +52,10 @@ namespace jedjoud.VoxelTerrain {
         public BitField32 neighbourMask;
         public BitField32 highLodMask;
         public BitField32 lowLodMask;
-        public float3 other;
-        public uint2 relativeOffsetToLod1;
         public VoxelStitch stitch;
-
-        public NativeArray<Voxel> negativeBoundaryVoxels;
-        public NativeArray<int> negativeBoundaryIndices;
-        public NativeArray<float3> negativeBoundaryVertices;
-        public NativeCounter negativeBoundaryCounter;
-        public JobHandle? copyBoundaryVerticesJobHandle;
-        public JobHandle? copyBoundaryVoxelsJobHandle;
-        public bool debugValues;
 
         // Initialize hte chunk with completely new native arrays (during pooled chunk creation)
         public void InitChunk() {
-            negativeBoundaryIndices = new NativeArray<int>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
-            negativeBoundaryVertices = new NativeArray<float3>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
-            negativeBoundaryVoxels = new NativeArray<Voxel>(StitchUtils.CalculateBoundaryLength(65), Allocator.Persistent);
-            negativeBoundaryCounter = new NativeCounter(Allocator.Persistent);
-            copyBoundaryVerticesJobHandle = null;
-            copyBoundaryVoxelsJobHandle = null;
-
             // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
             // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
             //NativeArray<Voxel> allocated = FetchVoxelsContainer();
@@ -84,9 +67,6 @@ namespace jedjoud.VoxelTerrain {
             node = item;
             voxelMaterialsLookup = null;
             triangleOffsetLocalMaterials = null;
-            copyBoundaryVerticesJobHandle = null;
-            copyBoundaryVoxelsJobHandle = null;
-            negativeBoundaryCounter.Count = 0;
             skipped = false;
             state = ChunkState.Idle;
             gameObject.name = item.position.ToString();
@@ -95,29 +75,6 @@ namespace jedjoud.VoxelTerrain {
         // Check if the chunk has valid uniform voxel data
         public bool HasVoxelData() {
             return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
-        }
-
-        // Check if the chunk has valid mesh data at the negative boundary
-        public bool HasNegativeBoundaryMeshData() {
-            bool job = copyBoundaryVerticesJobHandle.HasValue && copyBoundaryVerticesJobHandle.Value.IsCompleted;
-            bool created = negativeBoundaryVertices.IsCreated && negativeBoundaryIndices.IsCreated;
-            bool voxels = copyBoundaryVoxelsJobHandle.HasValue && copyBoundaryVoxelsJobHandle.Value.IsCompleted;
-            return state == ChunkState.Done && (skipped || (job && voxels && created));
-        }
-
-        public List<int> customVertexDebugger = new List<int>();
-        public float whatTheFlirpSize = 100;
-        public int2 whatTheFlirpRange = new int2(0, 10000);
-        public GizmoFlags flags;
-        public float voxelsTolerance = 0.3f;
-
-        [Flags]
-        public enum GizmoFlags {
-            InternalVoxels = 1,
-            BoundaryVoxels = 2,
-            NegativeBoundaryVertices = 4,
-            StitchVertices = 8,
-            StitchTris = 16,
         }
 
         public void OnDrawGizmosSelected() {
@@ -148,99 +105,6 @@ namespace jedjoud.VoxelTerrain {
             Gizmos.color = Color.white;
             MinMaxAABB bounds = node.Bounds;
             Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
-
-            if (debugValues) {
-                /*
-                for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
-                    int vertexIndex = stitch.boundaryIndices[i];
-
-                    if (vertexIndex != int.MaxValue) {
-                        float3 vertex = stitch.boundaryVertices[vertexIndex];
-                        Gizmos.DrawSphere(vertex * s + node.position, 0.2f);
-                    }
-                }
-                */
-
-                Vector3 Fetch(int index) {
-                    Vector3 v = stitch.packedVertices[index];
-                    return v * s + (Vector3)node.position;
-                }
-
-                if (flags.HasFlag(GizmoFlags.NegativeBoundaryVertices)) {
-                    foreach (var item in customVertexDebugger) {
-                        Vector3 v = negativeBoundaryVertices[item];
-                        Gizmos.DrawSphere(v * s + (Vector3)node.position, 0.8f);
-                    }
-                }
-
-
-
-                if (stitch.stitched) {
-                    if (flags.HasFlag(GizmoFlags.StitchVertices)) {
-                        Gizmos.color = Color.blue;
-                        for (int i = 0; i < stitch.packedVertices.Length; i++) {
-                            float3 vertex = stitch.packedVertices[i];
-                            Gizmos.DrawSphere(vertex * s + node.position, 0.1f);
-                        }
-                    }
-
-                    if (flags.HasFlag(GizmoFlags.StitchTris)) {
-                        Gizmos.color = Color.blue;
-                        for (var i = 0; i < stitch.packedIndices.Length - 3; i += 3) {
-                            int a, b, c;
-                            a = stitch.packedIndices[i];
-                            b = stitch.packedIndices[i + 1];
-                            c = stitch.packedIndices[i + 2];
-
-                            if (a < 0 || b < 0 || c < 0) {
-                                continue;
-                            }
-
-                            if (a == int.MaxValue || b == int.MaxValue || c == int.MaxValue) {
-                                continue;
-                            }
-
-                            Gizmos.DrawLine(Fetch(a), Fetch(b));
-                            Gizmos.DrawLine(Fetch(b), Fetch(c));
-                            Gizmos.DrawLine(Fetch(c), Fetch(a));
-                        }
-                    }
-
-                    Gizmos.color = Color.red;
-                    for (int i = whatTheFlirpRange.x; i < math.min(stitch.debugDataStuff.Length, whatTheFlirpRange.y); i++) {
-                        float4 vertexAndDebug = stitch.debugDataStuff[i];
-
-                        if (vertexAndDebug.w > 0) {
-                            Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, whatTheFlirpSize);
-                        }
-                    }
-
-                    if (flags.HasFlag(GizmoFlags.BoundaryVoxels)) {
-                        for (var i = 0; i < StitchUtils.CalculateBoundaryLength(65); i++) {
-                            uint3 _pos = StitchUtils.BoundaryIndexToPos(i, 65);
-                            float d1 = stitch.boundaryVoxels[i].density;
-
-                            if (d1 > -voxelsTolerance && d1 < voxelsTolerance) {
-                                Gizmos.color = d1 > 0f ? Color.white : Color.black;
-                                Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
-                            }
-                        }
-                    }
-
-                    if (flags.HasFlag(GizmoFlags.InternalVoxels)) {
-                        for (var i = 0; i < 65 * 65 * 65; i++) {
-                            uint3 _pos = VoxelUtils.IndexToPos(i, 65);
-                            float d1 = voxels[i].density;
-
-                            if (d1 > -voxelsTolerance && d1 < voxelsTolerance) {
-                                Gizmos.color = d1 > 0f ? Color.yellow : Color.magenta;
-                                Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
-                            }
-                        }
-                    }
-                }
-
-            }
         }
             
         // Get the AABB world bounds of this chunk
@@ -284,11 +148,6 @@ namespace jedjoud.VoxelTerrain {
         public void Dispose() {
             voxels.Dispose();
             stitch?.Dispose();
-
-            negativeBoundaryIndices.Dispose();
-            negativeBoundaryVertices.Dispose();
-            negativeBoundaryCounter.Dispose();
-            negativeBoundaryVoxels.Dispose();
         }
     }
 }
