@@ -24,7 +24,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
-        public bool keepBlocky;
+        public bool useBlocky;
+        public bool useFallback;
         public bool useStitching;
         public float aoGlobalOffset = 1f;
         public float aoMinDotNormal = 0.0f;
@@ -253,7 +254,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // When we can, create do the awesome pawsome stitching!!
                 if (stitch.CanStitch()) {
                     unsafe {
-                        stitch.DoTheStitchingThing();
+                        stitch.DoTheStitchingThing(useFallback);
                     }
                     pendingStitchRequests.RemoveAt(i);
                 }
@@ -471,7 +472,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                             float3 srcPos = neighbourNode.position;
                             float3 dstPos = stitch.source.node.position;
                             uint3 relativeOffset = (uint3)((srcPos - dstPos) / neighbourNode.size);
-                            int relativeEdgeOffset = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
+                            uint relativeEdgeOffset = StitchUtils.FlattenToEdgeRelative(relativeOffset, dir);
                             sortedNeighbours[relativeEdgeOffset] = terrain.chunks[neighbourNode];
                         }
 

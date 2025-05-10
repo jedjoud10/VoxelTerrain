@@ -211,12 +211,6 @@ namespace jedjoud.VoxelTerrain {
                         float4 vertexAndDebug = stitch.debugDataStuff[i];
 
                         if (vertexAndDebug.w > 0) {
-                            int direction = (int)vertexAndDebug.w - 1;
-                            float3 dir = new float3(0);
-                            dir[direction] = 1;
-
-                            Gizmos.DrawRay(vertexAndDebug.xyz * s + node.position, dir);
-                        } else {
                             Gizmos.DrawSphere(vertexAndDebug.xyz * s + node.position, whatTheFlirpSize);
                         }
                     }

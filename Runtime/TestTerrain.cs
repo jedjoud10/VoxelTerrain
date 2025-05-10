@@ -11,6 +11,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         // Noise parameter for the simplex 2D noise
         public Inject<float> scale;
         public Inject<float> amplitude;
+        public Inject<float2> others;
 
         [Range(1, 10)]
         public int octaves;
@@ -26,7 +27,10 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var xz = projected.Swizzle<float2>("xz");
 
             Simplex simplex = new Simplex(scale, amplitude);
-            Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves);
+            var first = ((Variable<float2>)others).Swizzle<float>("x");
+            var second = ((Variable<float2>)others).Swizzle<float>("y");
+
+            Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, first, second);
 
             output = new AllOutputs();
             output.density = y + fractal.Evaluate(xz);

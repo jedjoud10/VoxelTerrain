@@ -95,8 +95,8 @@ namespace jedjoud.VoxelTerrain {
 
         // Flatten a 3D position to an edge 1D index using a given direction axis
         // dir order = X,Y,Z
-        public static int FlattenToEdgeRelative(uint3 position, int dir) {
-            return (int)position[dir];
+        public static uint FlattenToEdgeRelative(uint3 position, int dir) {
+            return position[dir];
         }
 
         // Unflatten a 1D index to an 3D position using a given direction axis
@@ -167,7 +167,7 @@ namespace jedjoud.VoxelTerrain {
                 // check which axis is NOT set
                 int inv = (~bitmask) & 0b111;
                 int dir = math.tzcnt(inv);
-                int edgeLocalIndex = FlattenToEdgeRelative(position, dir) - math.select(0, 1, negative);
+                int edgeLocalIndex = (int)FlattenToEdgeRelative(position, dir) - math.select(0, 1, negative);
                 return edgeLocalIndex + edge * dir + face*3;
             } else {
                 // corner case
@@ -233,13 +233,17 @@ namespace jedjoud.VoxelTerrain {
         // Returns false if the boundary simply does not exist
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool TryFindBoundaryInfo(uint3 paddingPosition, BitField32 state, int size, out BoundaryInfo info) {
-            DebugCheckMustBeOnBoundary(paddingPosition, size);
+            info = default;
+            if (!LiesOnBoundary((int3)paddingPosition, size)) {
+                return false;
+            }
+            //DebugCheckMustBeOnBoundary(paddingPosition, size);
 
             // 1=plane, 2=edge, 3=corner
             bool3 bool3 = paddingPosition == (uint)(size - 1);
             int bitmask = math.bitmask(new bool4(bool3, false));
             int bitsSet = math.countbits(bitmask);
-            info = default;
+
 
             int mode = -1;
             int type = -1;

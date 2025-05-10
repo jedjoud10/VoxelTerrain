@@ -518,7 +518,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public UnpackedNeighbour[] wtf;
 
-        public unsafe void DoTheStitchingThing() {
+        public unsafe void DoTheStitchingThing(bool fallback) {
             // Just makes sure that the copy boundary jobs are done
             {
                 source.copyBoundaryVerticesJobHandle.Value.Complete();
@@ -631,13 +631,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
             stitchJob.Schedule(StitchUtils.CalculateBoundaryLength(65), 2048).Complete();
 
-            FallbackTriangulationJob fallbackJob = new FallbackTriangulationJob {
-                vertices = vertices,
-                indexCounter = indexCounter,
-                indices = indices,
-                casesWithMissingVertices = casesWithMissingVertices,
-            };
-            fallbackJob.Schedule().Complete();
+            /*
+            // TODO The real fix for this is to detect whenever there *shouldn't* be an sign crossing in LOD0 and "repair" it based on data from LOD1
+            // so in reality a fallback system doesn't really help either...
+            if (fallback) {
+                Debug.LogError("need to remove this...");
+                FallbackTriangulationJob fallbackJob = new FallbackTriangulationJob {
+                    debugData = debugDataStuff,
+                    sourceChunkVertexCount = boundaryCounter.Count,
+                    vertices = vertices,
+                    indexCounter = indexCounter,
+                    indices = indices,
+                    casesWithMissingVertices = casesWithMissingVertices,
+                };
+                fallbackJob.Schedule().Complete();
+            }
+            */
 
             /*
             for (int i = 0; i < StitchUtils.CalculateBoundaryLength(64); i++) {
@@ -651,7 +660,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
             */
 
-            /*
             StitchQuadLoToHiJob loTohiStitchJob = new StitchQuadLoToHiJob {
                 srcBoundaryIndices = boundaryIndices,
                 indexCounter = indexCounter,
@@ -663,7 +671,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 vertices = vertices,
             };
             loTohiStitchJob.Schedule(StitchUtils.CalculateBoundaryLength(130), 2048).Complete();
-            */
 
             test = indices.ToArray();
             //Debug.Log(indexCounter.Count);

@@ -184,7 +184,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private static bool TryFindThings<T>(uint3 hiPos, ref VoxelStitch.GenericBoundaryData<T> data, out T val, bool samplingIndices) where T: unmanaged {
             val = default(T);
             //Debug.Log($"coords: {hiPos}");
-            hiPos = math.clamp(hiPos, 0, 127);
+            //hiPos = math.clamp(hiPos, 0, 127);
 
             int neighbouringSampleSize = 0;
 
@@ -209,6 +209,23 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     T voxel = *(voxels + StitchUtils.PosToBoundaryIndex(unflattened, neighbouringSampleSize, true));
                     val = voxel;
                     return true;
+                } else if (info.type == StitchUtils.BoundaryType.Edge) {
+                    var lod0Neighbours = data.edges[info.direction].lod0s;
+
+                    uint flattenToEdgeHi = StitchUtils.FlattenToEdgeRelative(hiPos, info.direction);
+                    uint offset = flattenToEdgeHi / 64;
+
+                    if (lod0Neighbours.Length == 0) {
+                        Debug.Log(hiPos);
+                    }
+
+                    Debug.Log(lod0Neighbours.Length);
+                    T* voxels = lod0Neighbours[(int)offset];
+
+                    uint3 unflattened = StitchUtils.UnflattenFromEdgeRelative(flattenToEdgeHi % 64, info.direction);
+                    T voxel = *(voxels + StitchUtils.PosToBoundaryIndex(unflattened, neighbouringSampleSize, true));
+                    val = voxel;
+                    return true;
                 } else {
                     return false;
                 }
@@ -226,14 +243,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // if we are not dealing with LoToHi (the intended use case) just quit early
             // TODO: can probably optimize this with IJobParallelForBatch since we do planes first then edges then corner
-            if (StitchUtils.TryFindBoundaryInfo(hiPos, neighbourIndices.state, 130, out StitchUtils.BoundaryInfo info)) {
+            if (StitchUtils.TryFindBoundaryInfo(hiPos, neighbourIndices.state, 128, out StitchUtils.BoundaryInfo info)) {
                 if (info.mode != StitchUtils.StitchingMode.LoToHi) {
                     return;
                 }
 
-                // for testing
-                if (info.type != StitchUtils.BoundaryType.Plane) {
-                    return;
+                if (info.type == StitchUtils.BoundaryType.Edge) {
+                    Debug.Log(neighbourVoxels.edges[info.direction].lod0s.Length);
                 }
             } else {
                 return;
@@ -241,9 +257,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             if (math.any(hiPos < 1))
                 return;
-            /*
-            CheckEdge(loPos, hiPos, 1);
-            */
 
             for (int i = 0; i < 3; i++) {
                 // need this to create tris that might be on the v=0 boundary
