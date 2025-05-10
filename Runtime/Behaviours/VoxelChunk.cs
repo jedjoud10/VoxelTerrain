@@ -59,7 +59,7 @@ namespace jedjoud.VoxelTerrain {
             // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
             // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
             //NativeArray<Voxel> allocated = FetchVoxelsContainer();
-            voxels = new NativeArray<Voxel>(65*65*65, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            voxels = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         }
 
         // Reset the chunk so we can use it to represent a new octree node (don't allocate new native arrays)

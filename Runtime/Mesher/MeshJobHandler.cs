@@ -46,7 +46,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
         public const int INNER_LOOP_BATCH_COUNT = 64;
-        const int VOL = 65 * 65 * 65;
+        const int VOL = VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE;
         private bool blocky;
 
         internal MeshJobHandler(VoxelMesher mesher) {
@@ -100,7 +100,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             materialCounter.Count = 0;
             materialHashSet.Clear();
             materialHashMap.Clear();
-            bounds[0] = new float3(65 * voxelSizeFactor);
+            bounds[0] = new float3(VoxelUtils.SIZE * voxelSizeFactor);
             bounds[1] = new float3(0.0);
             Free = false;
 

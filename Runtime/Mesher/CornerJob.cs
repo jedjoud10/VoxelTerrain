@@ -35,9 +35,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         };
 
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, 65);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
 
-            if (math.any(position > 63))
+            if (math.any(position > VoxelUtils.SIZE-2))
                 return;
 
             half4 test = Load4(position, 0);
@@ -59,7 +59,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             half4 test = math.half4(0.0F);
             for (int i = 0; i < 4; i++) {
-                int newIndex = VoxelUtils.PosToIndex(new uint3(x[i], y[i], z[i]), 65);
+                int newIndex = VoxelUtils.PosToIndex(new uint3(x[i], y[i], z[i]), VoxelUtils.SIZE);
                 test[i] = voxels[newIndex].density;
             }
 

@@ -7,6 +7,10 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
+        // "logical" size of the chunks; how many voxels they store in one axis
+        public const int SIZE = 66;
+        public const int VOLUME = SIZE * SIZE * SIZE;
+
         // Offsets used for octree generation
         // Also mortonated!!!
         public static readonly int3[] OCTREE_CHILD_OFFSETS = {

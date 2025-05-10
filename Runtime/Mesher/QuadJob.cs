@@ -77,8 +77,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         void CheckEdge(uint3 basePosition, int index) {
             uint3 forward = quadForwardDirection[index];
 
-            int baseIndex = VoxelUtils.PosToIndex(basePosition, 65);
-            int endIndex = VoxelUtils.PosToIndex(basePosition + forward, 65);
+            int baseIndex = VoxelUtils.PosToIndex(basePosition, VoxelUtils.SIZE);
+            int endIndex = VoxelUtils.PosToIndex(basePosition + forward, VoxelUtils.SIZE);
 
             Voxel startVoxel = voxels[baseIndex];
             Voxel endVoxel = voxels[endIndex];
@@ -89,10 +89,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
-            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4], 65);
-            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1], 65);
-            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2], 65);
-            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3], 65);
+            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4], VoxelUtils.SIZE);
+            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1], VoxelUtils.SIZE);
+            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2], VoxelUtils.SIZE);
+            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3], VoxelUtils.SIZE);
 
             // Fetch the actual indices of the vertices
             int vertex0 = vertexIndices[index0];
@@ -123,9 +123,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, 65);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
 
-            if (math.any(position > 63))
+            if (math.any(position > VoxelUtils.SIZE-2))
                 return;
 
             // Allows us to save two voxel fetches (very important)

@@ -77,10 +77,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, 65);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
             indices[index] = int.MaxValue;
 
-            if (math.any(position > 63))
+            if (math.any(position > VoxelUtils.SIZE - 2))
                 return;
 
             float3 vertex = float3.zero;
@@ -106,8 +106,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uint3 startOffset = edgePositions0[edge];
                 uint3 endOffset = edgePositions1[edge];
 
-                int startIndex = VoxelUtils.PosToIndex(startOffset + position, 65);
-                int endIndex = VoxelUtils.PosToIndex(endOffset + position, 65);
+                int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
+                int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
 
                 //float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
                 //float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);

@@ -32,7 +32,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             public bool countersFetched, voxelsFetched;
 
             public OngoingVoxelReadback() {
-                data = new NativeArray<uint>(65*65*65 * 8, Allocator.Persistent);
+                data = new NativeArray<uint>(VoxelUtils.VOLUME * 8, Allocator.Persistent);
                 chunks = new List<VoxelChunk>();
                 copies = new NativeArray<JobHandle>(8, Allocator.Persistent);
                 counters = new NativeArray<int>(8, Allocator.Persistent);
@@ -78,19 +78,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             pending.Add(chunk);
         }
 
-        struct FillTest : IJobParallelFor {
-            public NativeArray<Voxel> volume;
-
-            public void Execute(int index) {
-                float3 pos = VoxelUtils.IndexToPos(index, 65);
-                half density = (half)((float)pos.y - 10f);
-                volume[index] = new Voxel {
-                    density = density,
-                    material = 0,
-                };
-            }
-        }
-
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {
             for (int i = 0; i < asyncReadbackPerTick; i++) {
@@ -99,14 +86,14 @@ namespace jedjoud.VoxelTerrain.Generation {
                 if (readback.pendingCopies.HasValue && readback.pendingCopies.Value.IsCompleted && readback.countersFetched && readback.voxelsFetched) {
                     readback.pendingCopies.Value.Complete();
                     
-                    // Since we now fetch n+1 voxels (65^3) we can actually use the pos/neg optimizations
+                    // Since we now fetch n+2 voxels (66^3) we can actually use the pos/neg optimizations
                     // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
                     // heheheha....
                     for (int j = 0; j < readback.chunks.Count; j++) {
                         int count = readback.counters[j];
                         VoxelChunk chunk = readback.chunks[j];
 
-                        int max = 65 * 65 * 65;
+                        int max = VoxelUtils.VOLUME;
                         pending.Remove(chunk);
                         if ((count == max || count == -max) && skipEmptyChunks) {
                             chunk.state = VoxelChunk.ChunkState.Done;
@@ -147,7 +134,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     }
 
                     // Size*2 since we are using octal generation!
-                    terrain.executor.ExecuteShader(65 * 2, terrain.compiler.voxelsDispatchIndex, Vector3.zero, Vector3.zero, posScaleOctals, true);
+                    terrain.executor.ExecuteShader(VoxelUtils.SIZE * 2, terrain.compiler.voxelsDispatchIndex, Vector3.zero, Vector3.zero, posScaleOctals, true);
 
                     // Request GPU data into the native array we allocated at the start
                     // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
@@ -172,12 +159,13 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                                     // Since we are using a buffer where the data for chunks is contiguous
                                     // we can just do parallel copies from the source buffer at the appropriate offset
-                                    uint* src = pointer + (65*65*65 * j);
+                                    uint* src = pointer + (VoxelUtils.VOLUME * j);
 
                                     uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
                                     readback.copies[j] = new UnsafeAsyncMemCpy {
                                         src = src,
                                         dst = dst,
+                                        byteSize = Voxel.size * VoxelUtils.VOLUME,
                                     }.Schedule();
                                 }
                                 

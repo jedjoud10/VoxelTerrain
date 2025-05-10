@@ -52,32 +52,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = 0; i < meshJobsPerTick; i++) {
                 handlers.Add(new MeshJobHandler(this));
             }
-
-
-            /*
-            Debug.Log(cal);
-            if (bitsSet == 1) {
-                Debug.Log("plane");
-            } else if (bitsSet == 2) {
-                Debug.Log("edge");
-            } else if (bitsSet == 3) {
-                Debug.Log("corner");
-            } else {
-                Debug.LogError("WHAT!!!");
-            }
-            */
-
-            BitField32 state = new BitField32(uint.MaxValue);
-            for (int i = 0; i < StitchUtils.CalculateBoundaryLength(130); i++) {
-                uint3 pos = StitchUtils.BoundaryIndexToPos(i, 130, true);
-                StitchUtils.DebugCheckMustBeOnBoundary(pos, 130, true);
-
-                /*
-                if (!StitchUtils.TryFindBoundaryInfo(pos, state, 130, out var info)) {
-                    throw new Exception("WHAT THE FUCK!!!!");
-                }
-                */
-            }
         }
 
         // Begin generating the mesh data using the given chunk and voxel container
@@ -254,7 +228,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             handler.request = request;
             handler.startingTick = tick;
 
-            var copy = new AsyncMemCpy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
+            var copy = new AsyncMemCpy<Voxel> { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
             handler.BeginJob(copy);
         }
 

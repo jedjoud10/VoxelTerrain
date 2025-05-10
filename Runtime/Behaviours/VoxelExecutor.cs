@@ -69,32 +69,17 @@ namespace jedjoud.VoxelTerrain.Generation {
             posScaleOctalBuffer = new ComputeBuffer(8, sizeof(float) * 4, ComputeBufferType.Structured);
             negPosOctalCountersBuffer = new ComputeBuffer(8, sizeof(int), ComputeBufferType.Structured);
 
-            /*
-            float4[] packed = new float4[8];
-            for (int i = 0; i < 8; i++) {
-                packed[i] = new Vector4(0f, 0f, 0f, 1f);
-            }
-
-            posScaleOctalBuffer.SetData(packed);
-            */
-
-
             // Creates dictionary with the default voxel graph textures (density + custom data)
             textures = new Dictionary<string, ExecutorTexture> {
-                //{ "voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt), -1) },
             };
 
             // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??
             // I dispose of them just like the render textures idk why it's complaining
             buffers = new Dictionary<string, ExecutorBuffer> {
-                //{ "voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(65*65*65, Voxel.size, ComputeBufferType.Structured)) },
-                //{ "pos_scale_octals", new ExecutorBuffer("pos_scale_octals", new List<string>() { "CSVoxel" }, new ComputeBuffer(8, sizeof(float) * 4, ComputeBufferType.Constant)) },
-                //{ "props", new ExecutorBuffer("props", new List<string>() { "CSProps" }, new ComputeBuffer(VoxelUtils.VOLUME, BlittableProp.size, ComputeBufferType.Structured)) },
-                //{ "props_counter", new ExecutorBufferCounter("props_counter", new List<string>() { "CSProps" }, 1) },
             };
 
             if (readback) {
-                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(130 * 130 * 130, Voxel.size, ComputeBufferType.Structured)));
+                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(132 * 132 * 132, Voxel.size, ComputeBufferType.Structured)));
             } else {
                 textures.Add("voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt), -1));
             }
