@@ -52,7 +52,7 @@ namespace jedjoud.VoxelTerrain {
         public BitField32 neighbourMask;
         public BitField32 highLodMask;
         public BitField32 lowLodMask;
-        public VoxelStitch stitch;
+        public VoxelSkirt skirt;
 
         // Initialize hte chunk with completely new native arrays (during pooled chunk creation)
         public void InitChunk() {
@@ -81,7 +81,6 @@ namespace jedjoud.VoxelTerrain {
             if (Selection.activeGameObject != gameObject)
                 return;
 
-            float s = node.size / 64f;
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
                 int3 offset = (int3)_offset - 1;
@@ -147,7 +146,6 @@ namespace jedjoud.VoxelTerrain {
 
         public void Dispose() {
             voxels.Dispose();
-            stitch?.Dispose();
         }
     }
 }

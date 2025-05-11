@@ -135,6 +135,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // we CAN do quad stuff on the v=0 boundary as long as we're doing it parallel to the face boundary
                 if (math.any(position < (1 - quadForwardDirection[i])))
                     continue;
+                
 
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {
                     CheckEdge(position, i);

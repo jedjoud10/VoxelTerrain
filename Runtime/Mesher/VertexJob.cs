@@ -10,40 +10,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct VertexJob : IJobParallelFor {
         public bool blocky;
 
-        // Positions of the first vertex in edges
-        [ReadOnly]
-        static readonly uint3[] edgePositions0 = new uint3[] {
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 1),
-            new uint3(1, 0, 1),
-            new uint3(1, 1, 1),
-            new uint3(0, 1, 1),
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0),
-        };
-
-        // Positions of the second vertex in edges
-        [ReadOnly]
-        static readonly uint3[] edgePositions1 = new uint3[] {
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 1),
-            new uint3(1, 1, 1),
-            new uint3(0, 1, 1),
-            new uint3(0, 0, 1),
-            new uint3(0, 0, 1),
-            new uint3(1, 0, 1),
-            new uint3(1, 1, 1),
-            new uint3(0, 1, 1),
-        };
-
         // Voxel native array
         [ReadOnly]
         public NativeArray<Voxel> voxels;
@@ -103,8 +69,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // Continue if the edge isn't inside
                 if (((code >> edge) & 1) == 0) continue;
 
-                uint3 startOffset = edgePositions0[edge];
-                uint3 endOffset = edgePositions1[edge];
+                uint3 startOffset = VoxelUtils.EDGE_POSITIONS_0[edge];
+                uint3 endOffset = VoxelUtils.EDGE_POSITIONS_1[edge];
 
                 int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);

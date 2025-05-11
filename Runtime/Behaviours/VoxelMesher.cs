@@ -40,14 +40,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public event OnMeshingComplete onMeshingComplete;
         internal Queue<MeshingRequest> queuedMeshingRequests;
         internal HashSet<MeshingRequest> meshingRequests;
-        internal List<VoxelStitch> pendingStitchRequests;
 
         // Initialize the voxel mesher
         public override void CallerStart() {
             handlers = new List<MeshJobHandler>(meshJobsPerTick);
             queuedMeshingRequests = new Queue<MeshingRequest>();
             meshingRequests = new HashSet<MeshingRequest>();
-            pendingStitchRequests = new List<VoxelStitch>();
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 handlers.Add(new MeshJobHandler(this));
@@ -101,15 +99,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         GameObject stitchGo = Instantiate(stitchingPrefab, chunk.transform);
                         stitchGo.transform.localPosition = Vector3.zero;
                         stitchGo.transform.localScale = Vector3.one;
-                        chunk.stitch = stitchGo.GetComponent<VoxelStitch>();
-                        chunk.stitch.Init(chunk);
+                        chunk.skirt = stitchGo.GetComponent<VoxelSkirt>();
+                        chunk.skirt.source = chunk;
 
                         // Create a mesh for this chunk (no stitching involved)
                         // We do need to keep some boundary data for *upcomging* stitching though
                         Profiler.BeginSample("Begin Mesh Job");
                         BeginJob(handlers[i], job);
                         Profiler.EndSample();
-
                         /*
                         VoxelChunk src = job.chunk;
                         VoxelStitch stitch = src.stitch;
@@ -207,21 +204,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     }
                 }
             }
-
-            // Check the stitching request and wait until all the required neighbours have had their mesh generated
-            for (int i = pendingStitchRequests.Count - 1; i >= 0; i--) {
-                VoxelStitch stitch = pendingStitchRequests[i];
-
-                /*
-                // When we can, create do the awesome pawsome stitching!!
-                if (stitch.CanStitch()) {
-                    unsafe {
-                        stitch.DoTheStitchingThing(useFallback);
-                    }
-                    pendingStitchRequests.RemoveAt(i);
-                }
-                */
-            }
         }
 
         private void BeginJob(MeshJobHandler handler, MeshingRequest request) {
@@ -235,7 +217,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private void FinishJob(MeshJobHandler handler) {
             if (handler.request.chunk != null) {
                 VoxelChunk chunk = handler.request.chunk;
-                VoxelMesh stats = handler.Complete(chunk.sharedMesh);
+                VoxelMesh stats = handler.Complete(chunk.sharedMesh, chunk.skirt);
                 chunk.voxelMaterialsLookup = stats.VoxelMaterialsLookup;
                 chunk.triangleOffsetLocalMaterials = stats.TriangleOffsetLocalMaterials;
                 chunk.state = VoxelChunk.ChunkState.Done;
@@ -261,7 +243,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             foreach (MeshJobHandler handler in handlers) {
                 VoxelChunk chunk = handler.request.chunk;
 
-                handler.Complete(new Mesh());
+                handler.Complete(null, null);
                 handler.Dispose();
             }
         }

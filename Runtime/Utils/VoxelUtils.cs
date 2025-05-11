@@ -10,6 +10,7 @@ namespace jedjoud.VoxelTerrain {
         // "logical" size of the chunks; how many voxels they store in one axis
         public const int SIZE = 66;
         public const int VOLUME = SIZE * SIZE * SIZE;
+        public const int MAX_MATERIAL_COUNT = 256;
 
         // Offsets used for octree generation
         // Also mortonated!!!
@@ -33,6 +34,38 @@ namespace jedjoud.VoxelTerrain {
         // 1,0,1 => 5
         // 0,1,1 => 6
         // 1,1,1 => 7
+
+        // Positions of the first vertex in edges
+        public static readonly uint3[] EDGE_POSITIONS_0 = new uint3[] {
+            new uint3(0, 0, 0),
+            new uint3(1, 0, 0),
+            new uint3(1, 1, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 0, 1),
+            new uint3(1, 0, 1),
+            new uint3(1, 1, 1),
+            new uint3(0, 1, 1),
+            new uint3(0, 0, 0),
+            new uint3(1, 0, 0),
+            new uint3(1, 1, 0),
+            new uint3(0, 1, 0),
+        };
+
+        // Positions of the second vertex in edges
+        public  static readonly uint3[] EDGE_POSITIONS_1 = new uint3[] {
+            new uint3(1, 0, 0),
+            new uint3(1, 1, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 0, 0),
+            new uint3(1, 0, 1),
+            new uint3(1, 1, 1),
+            new uint3(0, 1, 1),
+            new uint3(0, 0, 1),
+            new uint3(0, 0, 1),
+            new uint3(1, 0, 1),
+            new uint3(1, 1, 1),
+            new uint3(0, 1, 1),
+        };
 
 
         // Stolen from https://gist.github.com/dwilliamson/c041e3454a713e58baf6e4f8e5fffecd

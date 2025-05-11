@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             base.OnInspectorGUI();
 
             VoxelChunk src = (VoxelChunk)target;
-            VoxelStitch stitch = src.stitch;
+            VoxelSkirt stitch = src.skirt;
             EditorGUI.indentLevel--;
         }
     }
