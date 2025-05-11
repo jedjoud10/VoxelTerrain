@@ -15,16 +15,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public class VoxelSkirt : MonoBehaviour {
         public Vector3[] debugSkirtVertices = null;
         public int[] debugSkirtQuads = null;
+        public int[] debugSkirtIndices = null;
         public VoxelChunk source;
 
-        public void Complete(NativeArray<float3> vertices, NativeArray<int> indices, int vertexCount, int quadCount) {
+        public void Complete(NativeArray<float3> vertices, NativeArray<int> quads, NativeArray<int> indices, int vertexCount, int quadCount) {
             MeshFilter filter = GetComponent<MeshFilter>();
             Mesh mesh = new Mesh();
             mesh.vertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
-            mesh.triangles = indices.GetSubArray(0, quadCount * 6).ToArray();
+            mesh.triangles = quads.GetSubArray(0, quadCount * 6).ToArray();
             debugSkirtVertices = mesh.vertices;
             debugSkirtQuads = mesh.triangles;
             filter.mesh = mesh;
+            
+            debugSkirtIndices = indices.ToArray();
+            debugSkirtQuads = quads.GetSubArray(0, quadCount * 6).ToArray();
+            debugSkirtVertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
+
         }
 
         private void OnDrawGizmosSelected() {
@@ -37,12 +43,28 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return v * s + (Vector3)source.node.position;
             }
 
-
-            if (debugSkirtQuads != null) {
+            /*
+            if (debugSkirtVertices != null) {
                 foreach (var v in debugSkirtVertices) {
                     Gizmos.DrawSphere(v * s + (Vector3)source.node.position, 0.3f);
                 }
+            }
+            */
 
+            if (debugSkirtIndices != null) {
+                foreach (var i in debugSkirtIndices) {
+                    if (i != int.MaxValue) {
+                        if (i >= debugSkirtVertices.Length || i < 0) {
+                            Debug.LogWarning(i);
+                            continue;
+                        }
+
+                        Gizmos.DrawSphere(Fetch(i), 0.3f);
+                    }
+                }
+            }
+
+            if (debugSkirtQuads != null) {
                 for (var i = 0; i < debugSkirtQuads.Length - 3; i += 3) {
                     int a, b, c;
                     a = debugSkirtQuads[i];

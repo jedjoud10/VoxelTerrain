@@ -8,10 +8,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct SkirtVertexJob : IJobParallelFor {
         public bool blocky;
-
-        // -X, -Y, -Z, X, Y, Z
-        public int faceIndex;
-        
+                
         // whole source chunk voxels
         [ReadOnly]
         public NativeArray<Voxel> voxels;
@@ -20,6 +17,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // first 66*66 vertices are from the border of the chunk (already generated)
         // next 66*66 vertices are the ones we generate in this job here
         [WriteOnly]
+        [NativeDisableParallelForRestriction]
         public NativeArray<int> skirtVertexIndices;
 
         [WriteOnly]
@@ -31,25 +29,36 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Unsafe.NativeCounter.Concurrent skirtVertexCounter;
 
         // Positions of the first vertex in edges
-        public static readonly uint3[] EDGE_POSITIONS_0_CUSTOM = new uint3[] {
-            new uint3(0, 0, 0),
-            new uint3(0, 0, 1),
-            new uint3(0, 1, 1),
-            new uint3(0, 1, 0),
+        public static readonly uint2[] EDGE_POSITIONS_0_CUSTOM = new uint2[] {
+            new uint2(0, 0),
+            new uint2(0, 1),
+            new uint2(1, 1),
+            new uint2(1, 0),
         };
 
         // Positions of the second vertex in edges
-        public static readonly uint3[] EDGE_POSITIONS_1_CUSTOM = new uint3[] {
-            new uint3(0, 0, 1),
-            new uint3(0, 1, 1),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 0),
+        public static readonly uint2[] EDGE_POSITIONS_1_CUSTOM = new uint2[] {
+            new uint2(0, 1),
+            new uint2(1, 1),
+            new uint2(1, 0),
+            new uint2(0, 0),
         };
 
+        const int FACE = VoxelUtils.SIZE * VoxelUtils.SIZE;
+
         public void Execute(int index) {
-            uint2 flatten = VoxelUtils.IndexToPos2D(index, VoxelUtils.SIZE);
-            uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten, 0);
-            skirtVertexIndices[index] = int.MaxValue;
+            int face = index / FACE;
+            int direction = face % 3;
+            bool negative = face < 3;
+            
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+
+            int localIndex = index % FACE;
+            int indexIndex = localIndex + FACE + 2 * face * FACE;
+
+            uint2 flatten = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
+            uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten, direction, missing);
+            skirtVertexIndices[indexIndex] = int.MaxValue;
 
             if (math.any(flatten > VoxelUtils.SIZE - 2))
                 return;
@@ -61,8 +70,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int count = 0;
             half average = (half)0f;
             for (int edge = 0; edge < 4; edge++) {
-                uint3 startOffset = EDGE_POSITIONS_0_CUSTOM[edge];
-                uint3 endOffset = EDGE_POSITIONS_1_CUSTOM[edge];
+                uint2 startOffset2D = EDGE_POSITIONS_0_CUSTOM[edge];
+                uint2 endOffset2D = EDGE_POSITIONS_1_CUSTOM[edge];
+                uint3 startOffset = SkirtUtils.UnflattenFromFaceRelative(startOffset2D, direction, (uint)(negative ? 0 : 1));
+                uint3 endOffset = SkirtUtils.UnflattenFromFaceRelative(endOffset2D, direction, (uint)(negative ? 0 : 1));
+
 
                 int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
@@ -101,12 +113,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int vertexIndex = skirtVertexCounter.Increment();
             
             // we can use the skirt vertex counter directly since we offset it BEFORE we run this job
-            skirtVertexIndices[index] = vertexIndex;
+            skirtVertexIndices[indexIndex] = vertexIndex;
 
             float3 offset = 0f;
 
             if (force && count == 0) {
-                offset = new float3(-0.5f, 0f, 0f);
+                offset = 0f;
+
+                if (negative) {
+                    offset[face % 3] = -0.5f;
+                } else {
+                    offset[face % 3] = 0.5f;
+                }
             } else {
                 offset = (vertex / (float)count);
             }

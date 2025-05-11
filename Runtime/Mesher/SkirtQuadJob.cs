@@ -7,9 +7,6 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct SkirtQuadJob : IJobParallelFor {
-        // -X, -Y, -Z, X, Y, Z
-        public int faceIndex;
-        
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
@@ -55,30 +52,32 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Fetch vertex index for a specific position
         // If it goes out of the chunk bounds, assume it is a skirt vertex's position we're trying to fetch
-        int FetchIndex(int3 position) {
+        int FetchIndex(int3 position, int face) {
             int lookupOffset = 0;
             uint3 fetchingPosition = int.MaxValue;
-            if (math.any(position < 0 | position > VoxelUtils.SIZE-1)) {
+            if (math.any(position < 0 | position > VoxelUtils.SIZE-2)) {
                 // skirt index
                 fetchingPosition = (uint3)math.clamp(position, 0, VoxelUtils.SIZE - 2);
-                lookupOffset = VoxelUtils.SIZE * VoxelUtils.SIZE;
+                lookupOffset = FACE;
             } else {
                 // copied boundary index
                 fetchingPosition = (uint3)position;
                 lookupOffset = 0;
             }
 
-            uint2 flattened = SkirtUtils.FlattenToFaceRelative((uint3)fetchingPosition, 0);
+
+            int direction = face % 3;
+            uint2 flattened = SkirtUtils.FlattenToFaceRelative((uint3)fetchingPosition, direction);
             int lookup = VoxelUtils.PosToIndex2D(flattened, VoxelUtils.SIZE);
 
-            return lookup + lookupOffset;
+            return skirtVertexIndices[lookup + lookupOffset + 2 * FACE * face];
         }
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
-        void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool force) {
+        void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool force, bool negative, int face) {
             uint3 forward = quadForwardDirection[index];
 
-            bool flip = false;
+            bool flip = !negative;
             if (!force) {
                 int baseIndex = VoxelUtils.PosToIndex(unflattened, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(unflattened + forward, VoxelUtils.SIZE);
@@ -95,20 +94,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int3 offset = (int3)(unflattened + forward - math.uint3(1));
 
             if (force) {
-                offset[index] -= 1;
+                if (negative) {
+                    offset[index] -= 1;
+                } else {
+                    offset[index] += 1;
+                }
             }
 
-            // Fetch the indices of the vertex positions
-            int index0 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4]);
-            int index1 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 1]);
-            int index2 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 2]);
-            int index3 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 3]);
-
-            // Fetch the actual indices of the vertices
-            int vertex0 = skirtVertexIndices[index0];
-            int vertex1 = skirtVertexIndices[index1];
-            int vertex2 = skirtVertexIndices[index2];
-            int vertex3 = skirtVertexIndices[index3];
+            int vertex0 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4], face);
+            int vertex1 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 1], face);
+            int vertex2 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 2], face);
+            int vertex3 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 3], face);
 
             // Don't make a quad if the vertices are invalid
             if ((vertex0 | vertex1 | vertex2 | vertex3) == int.MaxValue)
@@ -127,16 +123,25 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtIndices[triIndex + (flip ? 5 : 3)] = vertex0;
         }
 
-        public void Execute(int index) {
-            uint2 flattened = VoxelUtils.IndexToPos2D(index, VoxelUtils.SIZE);
-            uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, 0);
+        const int FACE = VoxelUtils.SIZE * VoxelUtils.SIZE;
 
-            if (math.any(position > VoxelUtils.SIZE - 2))
+        public void Execute(int index) {
+            int face = index / FACE;
+            int direction = face % 3;
+            bool negative = face < 3;
+            int localIndex = index % FACE;
+
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 1);
+
+            uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
+            uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
+
+            if (math.any(flattened > VoxelUtils.SIZE - 2))
                 return;
 
-            CheckEdge(flattened, position, 1, false);
-            CheckEdge(flattened, position, 2, false);
-            CheckEdge(flattened, position, 0, true);
+            CheckEdge(flattened, position, 0, direction == 0, negative, face);
+            CheckEdge(flattened, position, 1, direction == 1, negative, face);
+            CheckEdge(flattened, position, 2, direction == 2, negative, face);
         }
     }
 }
