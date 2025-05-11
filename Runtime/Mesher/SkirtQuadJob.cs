@@ -55,9 +55,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         int FetchIndex(int3 position, int face) {
             int lookupOffset = 0;
             uint3 fetchingPosition = int.MaxValue;
-            if (math.any(position < 0 | position > VoxelUtils.SIZE-2)) {
+            if (math.any(position < 0 | position > VoxelUtils.SIZE-3)) {
                 // skirt index
-                fetchingPosition = (uint3)math.clamp(position, 0, VoxelUtils.SIZE - 2);
+                fetchingPosition = (uint3)math.clamp(position, 0, VoxelUtils.SIZE - 3);
                 lookupOffset = FACE;
             } else {
                 // copied boundary index
@@ -131,7 +131,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool negative = face < 3;
             int localIndex = index % FACE;
 
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 1);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
 
             uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
             uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);

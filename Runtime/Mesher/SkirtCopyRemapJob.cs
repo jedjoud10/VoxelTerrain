@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // -X, -Y, -Z, X, Y, Z
             for (int f = 0; f < 6; f++) {
-                uint missing = f < 3 ? 0 : ((uint)VoxelUtils.SIZE - 2);
+                uint missing = f < 3 ? 0 : ((uint)VoxelUtils.SIZE - 3);
                 int faceElementOffset = 2 * f * VoxelUtils.SIZE * VoxelUtils.SIZE;
 
                 for (int i = 0; i < VoxelUtils.SIZE * VoxelUtils.SIZE; i++) {

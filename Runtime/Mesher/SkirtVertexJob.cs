@@ -46,12 +46,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         const int FACE = VoxelUtils.SIZE * VoxelUtils.SIZE;
 
+        public float threshold;
+
         public void Execute(int index) {
             int face = index / FACE;
             int direction = face % 3;
             bool negative = face < 3;
             
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 3);
 
             int localIndex = index % FACE;
             int indexIndex = localIndex + FACE + 2 * face * FACE;
@@ -59,6 +61,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint2 flatten = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
             uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten, direction, missing);
             skirtVertexIndices[indexIndex] = int.MaxValue;
+
+            if (math.any(position > VoxelUtils.SIZE - 3))
+                return;
 
             if (math.any(flatten > VoxelUtils.SIZE - 2))
                 return;
@@ -104,7 +109,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // forcefully create the vertex 
             average = (half)(average / (half)(8f));
-            bool force = average > -10f && average < 0f;
+            bool force = average > -threshold && average < 0f;
             
             if (count == 0 && !force) {
                 return;

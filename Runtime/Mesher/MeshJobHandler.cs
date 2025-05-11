@@ -56,10 +56,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         const int VOL = VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE;
         const int FACE = VoxelUtils.SIZE * VoxelUtils.SIZE;
         private bool blocky;
+        private float skirtsDensityThreshold;
 
         internal MeshJobHandler(VoxelMesher mesher) {
             this.mesher = mesher;
             this.blocky = mesher.useBlocky;
+            this.skirtsDensityThreshold = mesher.skirtsDensityThreshold;
 
 
             // Native buffers for mesh data
@@ -233,6 +235,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 skirtVertexCounter = skirtVertexCounter,
                 blocky = blocky,
                 voxels = voxels,
+                threshold = skirtsDensityThreshold,
             };
 
             // Create skirt quads

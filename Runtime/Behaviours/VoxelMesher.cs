@@ -31,6 +31,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public float aoMinDotNormal = 0.0f;
         public float aoGlobalSpread = 0.5f;
         public float aoStrength = 1.0f;
+        public float skirtsDensityThreshold = -10;
 
         // List of persistently allocated mesh data
         internal List<MeshJobHandler> handlers;
