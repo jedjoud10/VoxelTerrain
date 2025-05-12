@@ -25,7 +25,21 @@ namespace jedjoud.VoxelTerrain {
             // never should happen
             throw new Exception();
         }
-        
+
+        public static int2 FlattenToFaceRelative(int3 position, int dir) {
+
+            if (dir == 0) {
+                return position.yz;
+            } else if (dir == 1) {
+                return position.xz;
+            } else if (dir == 2) {
+                return position.xy;
+            }
+
+            // never should happen
+            throw new Exception();
+        }
+
         // Unflatten a 2D face local position into 3D using a direction
         // Also fill up the missing coordinate with a specific value
         // dir order = X,Y,Z
@@ -247,7 +261,6 @@ namespace jedjoud.VoxelTerrain {
 
             // means that there are more than 2 duplicate verts, not possible?
             if (math.countbits(dupeType) > 1) {
-                Debug.Log("0");
                 return false;
             }
 

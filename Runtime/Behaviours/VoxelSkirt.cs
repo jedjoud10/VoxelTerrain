@@ -35,6 +35,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         }
 
+        public int faceIndex;
         public uint2 debugIndex;
 
         private void OnDrawGizmosSelected() {
@@ -56,7 +57,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             */
 
             int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
-            int temp = debugSkirtIndices[indexu + VoxelUtils.SIZE* VoxelUtils.SIZE];
+            int temp = debugSkirtIndices[indexu + VoxelUtils.SIZE*VoxelUtils.SIZE + faceIndex*VoxelUtils.SIZE*VoxelUtils.SIZE*2];
 
             Gizmos.color = Color.green;
             if (temp != int.MaxValue) {
@@ -73,7 +74,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 foreach (var i in debugSkirtIndices) {
                     if (i != int.MaxValue) {
                         if (i >= debugSkirtVertices.Length || i < 0) {
-                            Debug.LogWarning(i);
+                            //Debug.LogWarning(i);
                             continue;
                         }
 

@@ -269,8 +269,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (math.all(request.chunk.node.position == new float3(0f, 0f, 256f))) {
                 JobHandle skirtIndexResetJobHandle = skirtIndexReset.Schedule(FACE * 2 * 6, 2048);
                 JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(JobHandle.CombineDependencies(vertexJobHandle, skirtIndexResetJobHandle));
-                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(FACE * 1, 20480, JobHandle.CombineDependencies(skirtCopyJobHandle, skirtIndexResetJobHandle));
-                skirtQuadJobHandle = skirtQuadJob.Schedule(FACE * 1, 20480, skirtVertexJobHandle);
+                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(FACE * 6, 20480, JobHandle.CombineDependencies(skirtCopyJobHandle, skirtIndexResetJobHandle));
+                skirtQuadJobHandle = skirtQuadJob.Schedule(FACE * 6, 20480, skirtVertexJobHandle);
             }
             
 

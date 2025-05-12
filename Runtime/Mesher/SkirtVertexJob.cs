@@ -50,8 +50,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int face = index / FACE;
             int direction = face % 3;
             bool negative = face < 3;
-            
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 3);
+
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
 
             int localIndex = index % FACE;
             int indexIndex = localIndex + FACE + 2 * face * FACE;
@@ -65,6 +65,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             if (math.any(flatten == 0 | flatten == (VoxelUtils.SIZE - 1))) {
                 if ((math.all(flatten == 0 | flatten == (VoxelUtils.SIZE - 1)))) {
+                    /*
                     // what the fuck?
                     bool2 positiveMask = flatten == (VoxelUtils.SIZE - 1);
                     uint3 faceOffset = (uint3)SkirtUtils.UnflattenFromFaceRelative(math.select((uint)0, 1, positiveMask), direction);
@@ -75,6 +76,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     int vertexIndex = skirtVertexCounter.Increment();
                     skirtVertexIndices[indexIndex] = vertexIndex;
                     skirtVertices[vertexIndex] = (float3)position - (float3)faceOffset;
+                    */
                 } else {
                     // special "edge" case, run surface nets in 1D only
                     SurfaceNets1D(indexIndex, direction, negative, position, flatten);
@@ -164,14 +166,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool2 negativeMask = flatten == 0;
             bool2 local = negativeMask | positiveMask;
 
+            // we need to offset all the skirt vertices by 1 since we need to reserve a space for the edge scenarios
+            uint3 faceOffset = (uint3)SkirtUtils.UnflattenFromFaceRelative(math.select((uint)0, 1, positiveMask), faceDirection);
+
             int edgeDirection = SkirtUtils.GetEdgeDirFaceRelative(local, faceDirection);
             float3 vertex = float3.zero;
             bool spawn = false;
             half average = (half)0f;
 
             uint3 endOffset = forwardDirections[edgeDirection];
-            int startIndex = VoxelUtils.PosToIndex(position - endOffset, VoxelUtils.SIZE);
-            int endIndex = VoxelUtils.PosToIndex(position, VoxelUtils.SIZE);
+            int startIndex = VoxelUtils.PosToIndex(position - endOffset - faceOffset, VoxelUtils.SIZE);
+            int endIndex = VoxelUtils.PosToIndex(position - faceOffset, VoxelUtils.SIZE);
 
             Voxel startVoxel = voxels[startIndex];
             Voxel endVoxel = voxels[endIndex];
@@ -211,7 +216,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
             */
 
-            //offset -= faceOffset;
+            offset -= faceOffset;
 
             skirtVertices[vertexIndex] = offset + position;
         }
