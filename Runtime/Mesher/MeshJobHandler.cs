@@ -58,6 +58,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private bool blocky;
         private float skirtsDensityThreshold;
 
+        public NativeList<float3> debugData;
+
         internal MeshJobHandler(VoxelMesher mesher) {
             this.mesher = mesher;
             this.blocky = mesher.useBlocky;
@@ -77,6 +79,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             enabled = new NativeArray<byte>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             quadCounters = new NativeMultiCounter(materialCount, Allocator.Persistent);
             counter = new NativeCounter(Allocator.Persistent);
+
+            debugData = new NativeList<float3>(1000, Allocator.Persistent);
 
             // Native buffers for skirt mesh data
             // First FACE values contain the copied data from the chunk boundary
@@ -108,7 +112,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Begin the vertex + quad job that will generate the mesh
         internal JobHandle BeginJob(JobHandle dependency) {
-
+            debugData.Clear();
             float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
             quadCounters.Reset();
             skirtQuadCounter.Count = 0;
@@ -233,7 +237,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 skirtVertexIndices = skirtVertexIndices,
                 skirtVertices = skirtVertices,
                 skirtVertexCounter = skirtVertexCounter,
-                blocky = blocky,
                 voxels = voxels,
                 threshold = skirtsDensityThreshold,
             };
@@ -244,6 +247,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 skirtVertexIndices = skirtVertexIndices,
                 skirtQuadCounter = skirtQuadCounter,
                 voxels = voxels,
+                debugData = debugData.AsParallelWriter(),
             };
 
             // Material job and indexer job
@@ -260,10 +264,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle aoJobHandle = aoJob.Schedule(VOL, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
 
             // Copy boundary skirt vertices and start creating skirts
-            JobHandle skirtIndexResetJobHandle = skirtIndexReset.Schedule(FACE * 2 * 6, 2048);
-            JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(JobHandle.CombineDependencies(vertexJobHandle, skirtIndexResetJobHandle));
-            JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(FACE * 6, 2048, JobHandle.CombineDependencies(skirtCopyJobHandle, skirtIndexResetJobHandle));
-            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(FACE * 6, 2048, skirtVertexJobHandle);
+            JobHandle skirtQuadJobHandle = default;
+
+            if (math.all(request.chunk.node.position == new float3(0f, 0f, 256f))) {
+                JobHandle skirtIndexResetJobHandle = skirtIndexReset.Schedule(FACE * 2 * 6, 2048);
+                JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(JobHandle.CombineDependencies(vertexJobHandle, skirtIndexResetJobHandle));
+                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(FACE * 1, 20480, JobHandle.CombineDependencies(skirtCopyJobHandle, skirtIndexResetJobHandle));
+                skirtQuadJobHandle = skirtQuadJob.Schedule(FACE * 1, 20480, skirtVertexJobHandle);
+            }
+            
 
             // Start the quad job
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
@@ -290,7 +299,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return default;
             }
 
-            skirt.Complete(skirtVertices, skirtIndices, skirtVertexIndices, skirtVertexCounter.Count, skirtQuadCounter.Count);
+            skirt.Complete(skirtVertices, skirtIndices, skirtVertexIndices, skirtVertexCounter.Count, skirtQuadCounter.Count, debugData);
 
             Free = true;
 
@@ -398,6 +407,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtVertexIndices.Dispose();
             skirtVertexCounter.Dispose();
             skirtQuadCounter.Dispose();
+            debugData.Dispose();
         }
     }
 

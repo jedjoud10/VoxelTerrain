@@ -42,32 +42,64 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
 
-        /*
-        // Convert a 3D direction to a 2D plane relative direction
-        public static int ConvertDir3Dto2D(int dir, int faceNormal) {
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        public static void DebugCheckOnlyOneBitMask(bool2 mask) {
+            if (mask.x == mask.y) {
+                throw new System.Exception(
+                    $"There should only be one bool set in the bool2 mask");
+            }
+        }
 
+        // Get the direction of an edge within a face relative space
+        // Converts 2D direction to 3D basically
+        public static int GetEdgeDirFaceRelative(bool2 mask, int faceNormal) {
+            // No two bools can be set, otherwise that means that this is a CORNER
+            DebugCheckOnlyOneBitMask(mask);
+
+            // Need to pick the "other" value that isn't at a boundary
+            mask = !mask;
+
+            // X AXIS
             if (faceNormal == 0) {
-                if (dir == 1) {
-                    return 0;
-                } else if (dir == 2) {
+
+                if (mask.x) {
+                    // Y
                     return 1;
+                } else if (mask.y) {
+                    // Z
+                    return 2;
                 }
+
+            // Y AXIS
             } else if (faceNormal == 1) {
-                if (dir == 0) {
+                if (mask.x) {
+                    // X
                     return 0;
-                } else if (dir == 2) {
-                    return 1;
+                } else if (mask.y) {
+                    // Z
+                    return 2;
                 }
+
+            // Z AXIS
             } else if (faceNormal == 2) {
-                if (dir == 0) {
+                if (mask.x) {
+                    // X
                     return 0;
-                } else if (dir == 1) {
+                } else if (mask.y) {
+                    // Y
                     return 1;
                 }
             }
 
             // never should happen
             throw new Exception();
+        }
+
+        /*
+        // Convert a 3D direction to a 2D plane relative direction
+        public static int ConvertDir3Dto2D(int dir, int faceNormal) {
+
+
         }
 
 
@@ -173,5 +205,99 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
         */
+
+        static readonly int3[] DEDUPE_TRIS_THING = new int3[] {
+            new int3(0, 2, 3), // x/y, discard y
+            new int3(0, 1, 3), // x/z, discard z
+            new int3(0, 1, 2), // x/w, discard w
+            new int3(0, 1, 3), // y/z, discard z
+            new int3(0, 1, 2), // y/w, discard w
+            new int3(0, 1, 2), // z/w, discard w
+        };
+
+        static readonly int3[] IGNORE_SPECIFIC_VALUE_TRI = new int3[] {
+            new int3(1, 2, 3), // discard x
+            new int3(0, 2, 3), // discard y
+            new int3(0, 1, 3), // discard z
+            new int3(0, 1, 2), // discard w
+        };
+
+        static int CountTrue(bool3 b3) {
+            return math.countbits(math.bitmask(new bool4(b3, false)));
+        }
+
+        static int CountTrue(bool4 b4) {
+            return math.countbits(math.bitmask(b4));
+        }
+
+        static int FindTrueIndex(bool4 b4) {
+            return math.tzcnt(math.bitmask(b4));
+        }
+
+        // Create quads / triangles based on the given vertex index data in the "v" parameter
+        public static bool AddQuadsOrTris(bool flip, int4 v, ref NativeCounter.Concurrent triangleCounter, ref NativeArray<int> indices) {
+            // Ts gpt-ed kek
+            int dupeType = 0;
+            dupeType |= math.select(0, 1, v.x == v.y);
+            dupeType |= math.select(0, 2, v.x == v.z);
+            dupeType |= math.select(0, 4, v.x == v.w);
+            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
+            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
+            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
+
+            // means that there are more than 2 duplicate verts, not possible?
+            if (math.countbits(dupeType) > 1) {
+                Debug.Log("0");
+                return false;
+            }
+
+            // If there's only a SINGLE invalid index, then considering it to an extra duplicate one (and create a triangle for the valid ones instead)
+            bool4 b4 = v == int.MaxValue;
+            if (CountTrue(b4) == 1) {
+                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[FindTrueIndex(b4)];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+                int triIndex = triangleCounter.Add(1) * 3;
+                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                indices[triIndex + 1] = uniques[1];
+                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
+                return true;
+            }
+
+            if (dupeType == 0) {
+                if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
+                    return false;
+                }
+
+                int triIndex = triangleCounter.Add(2) * 3;
+
+                // Set the first tri
+                indices[triIndex + (flip ? 0 : 2)] = v.x;
+                indices[triIndex + 1] = v.y;
+                indices[triIndex + (flip ? 2 : 0)] = v.z;
+
+                // Set the second tri
+                indices[triIndex + (flip ? 3 : 5)] = v.z;
+                indices[triIndex + 4] = v.w;
+                indices[triIndex + (flip ? 5 : 3)] = v.x;
+            } else {
+                int config = math.tzcnt(dupeType);
+                int3 remapper = DEDUPE_TRIS_THING[config];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+
+                // Don't make a tri if the vertices are invalid
+                Debug.Log(uniques);
+                if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
+                    Debug.Log("2");
+                    return false;
+                }
+
+                int triIndex = triangleCounter.Add(1) * 3;
+                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                indices[triIndex + 1] = uniques[1];
+                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
+            }
+
+            return true;
+        }
     }
 }

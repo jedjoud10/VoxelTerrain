@@ -7,6 +7,8 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct SkirtQuadJob : IJobParallelFor {
+        public NativeList<float3>.ParallelWriter debugData;
+
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
@@ -55,14 +57,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
         int FetchIndex(int3 position, int face) {
             int lookupOffset = 0;
             uint3 fetchingPosition = int.MaxValue;
-            if (math.any(position < 0 | position > VoxelUtils.SIZE-3)) {
+            Debug.Log($"what?: {position}");
+            if (math.any(position < 0 | position > VoxelUtils.SIZE-1)) {
                 // skirt index
-                fetchingPosition = (uint3)math.clamp(position, 0, VoxelUtils.SIZE - 3);
+                //debugData.AddNoResize((float3)position + 1);
+                fetchingPosition = (uint3)math.clamp(position + 1, 0, VoxelUtils.SIZE - 1);
+                Debug.Log($"SKIRT fetchingPosition={fetchingPosition}");
                 lookupOffset = FACE;
             } else {
                 // copied boundary index
                 fetchingPosition = (uint3)position;
                 lookupOffset = 0;
+                Debug.Log($"BOUNDARY fetchingPosition={fetchingPosition}");
             }
 
 
@@ -70,7 +76,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint2 flattened = SkirtUtils.FlattenToFaceRelative((uint3)fetchingPosition, direction);
             int lookup = VoxelUtils.PosToIndex2D(flattened, VoxelUtils.SIZE);
 
-            return skirtVertexIndices[lookup + lookupOffset + 2 * FACE * face];
+            int res = skirtVertexIndices[lookup + lookupOffset + 2 * FACE * face];
+            Debug.Log($"RES: {res}");
+            return res;
         }
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
@@ -88,10 +96,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (startVoxel.density > 0f == endVoxel.density > 0f)
                     return;
 
+
+
                 flip = (endVoxel.density > 0.0);
             }
 
+
             int3 offset = (int3)(unflattened + forward - math.uint3(1));
+            //debugData.AddNoResize((float3)offset);
 
             if (force) {
                 if (negative) {
@@ -101,26 +113,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
+            Debug.Log("BIG THINGS HAPPENING!!!");
             int vertex0 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4], face);
             int vertex1 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 1], face);
             int vertex2 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 2], face);
             int vertex3 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 3], face);
-
-            // Don't make a quad if the vertices are invalid
-            if ((vertex0 | vertex1 | vertex2 | vertex3) == int.MaxValue)
-                return;
-
-
-            // Set the first tri
-            int triIndex = skirtQuadCounter.Increment() * 6;
-            skirtIndices[triIndex + (flip ? 0 : 2)] = vertex0;
-            skirtIndices[triIndex + 1] = vertex1;
-            skirtIndices[triIndex + (flip ? 2 : 0)] = vertex2;
-
-            // Set the second tri
-            skirtIndices[triIndex + (flip ? 3 : 5)] = vertex2;
-            skirtIndices[triIndex + 4] = vertex3;
-            skirtIndices[triIndex + (flip ? 5 : 3)] = vertex0;
+            int4 v = new int4(vertex0, vertex1, vertex2, vertex3);
+            if (SkirtUtils.AddQuadsOrTris(flip, v, ref skirtQuadCounter, ref skirtIndices)) {
+            } else {
+                
+            }
         }
 
         const int FACE = VoxelUtils.SIZE * VoxelUtils.SIZE;
@@ -136,12 +138,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
             uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
 
-            if (math.any(flattened > VoxelUtils.SIZE - 2))
+            if (math.any(flattened > VoxelUtils.SIZE - 2)) {
                 return;
+            }
 
-            CheckEdge(flattened, position, 0, direction == 0, negative, face);
-            CheckEdge(flattened, position, 1, direction == 1, negative, face);
-            CheckEdge(flattened, position, 2, direction == 2, negative, face);
+            //CheckEdge(flattened, position, 0, direction == 0, negative, face);
+            if (position.y < VoxelUtils.SIZE - 1)
+                CheckEdge(flattened, position, 1, direction == 1, negative, face);
+
+            if (position.z < VoxelUtils.SIZE - 1)
+                CheckEdge(flattened, position, 2, direction == 2, negative, face);
         }
     }
 }

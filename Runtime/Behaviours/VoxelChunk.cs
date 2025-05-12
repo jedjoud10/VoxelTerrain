@@ -77,6 +77,8 @@ namespace jedjoud.VoxelTerrain {
             return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
         }
 
+        public bool debugVoxelData;
+
         public void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
                 return;
@@ -98,6 +100,19 @@ namespace jedjoud.VoxelTerrain {
                 if (highLodMask.IsSet(j)) {
                     Gizmos.color = Color.yellow;
                     Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+            }
+
+            if (debugVoxelData) {
+                float s = node.size / 64f;
+                for (var i = 0; i < 66 * 66 * 66; i++) {
+                    uint3 _pos = VoxelUtils.IndexToPos(i, 66);
+                    float d1 = voxels[i].density;
+
+                    if (d1 > -4 && d1 < 5) {
+                        Gizmos.color = d1 > 0f ? Color.yellow : Color.magenta;
+                        Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
+                    }
                 }
             }
 

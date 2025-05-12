@@ -14,24 +14,28 @@ using UnityEditor;
 namespace jedjoud.VoxelTerrain.Meshing {
     public class VoxelSkirt : MonoBehaviour {
         public Vector3[] debugSkirtVertices = null;
+        public Vector3[] debugData = null;
         public int[] debugSkirtQuads = null;
         public int[] debugSkirtIndices = null;
         public VoxelChunk source;
 
-        public void Complete(NativeArray<float3> vertices, NativeArray<int> quads, NativeArray<int> indices, int vertexCount, int quadCount) {
+        public void Complete(NativeArray<float3> vertices, NativeArray<int> quads, NativeArray<int> indices, int vertexCount, int quadCount, NativeList<float3> data) {
             MeshFilter filter = GetComponent<MeshFilter>();
             Mesh mesh = new Mesh();
             mesh.vertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
-            mesh.triangles = quads.GetSubArray(0, quadCount * 6).ToArray();
+            mesh.triangles = quads.GetSubArray(0, quadCount * 3).ToArray();
             debugSkirtVertices = mesh.vertices;
             debugSkirtQuads = mesh.triangles;
             filter.mesh = mesh;
             
             debugSkirtIndices = indices.ToArray();
-            debugSkirtQuads = quads.GetSubArray(0, quadCount * 6).ToArray();
+            debugSkirtQuads = quads.GetSubArray(0, quadCount * 3).ToArray();
             debugSkirtVertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
+            debugData = data.AsArray().Reinterpret<Vector3>().ToArray();
 
         }
+
+        public uint2 debugIndex;
 
         private void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
@@ -50,6 +54,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
             */
+
+            int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
+            int temp = debugSkirtIndices[indexu + VoxelUtils.SIZE* VoxelUtils.SIZE];
+
+            Gizmos.color = Color.green;
+            if (temp != int.MaxValue) {
+                Gizmos.DrawSphere(debugSkirtVertices[temp] * s + (Vector3)source.node.position, 0.8f);
+            }
+
+            
+            Gizmos.color = Color.white;
+            foreach (Vector3 b in debugData) {
+                Gizmos.DrawWireSphere(b * s + (Vector3)source.node.position, 0.4f);
+            }
 
             if (debugSkirtIndices != null) {
                 foreach (var i in debugSkirtIndices) {
