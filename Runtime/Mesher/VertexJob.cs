@@ -84,7 +84,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 // Create a vertex on the line of the edge
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
-                vertex += math.lerp(startOffset, endOffset, value) - math.float3(0.5);
+                vertex += math.lerp(startOffset, endOffset, value);
                 normal += -math.up();
 
                 if (blocky)
@@ -105,11 +105,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Output vertex in object space
             float3 offset = (vertex / (float)count);
             float3 outputVertex = (offset) + position;
-
-            // Whatever you FUCKING DO do NOT change the 0.5f offset
-            // It is required to place the vertex INSIDE the cube of 8 voxel data points.
-            // Just work with it lil bro
-            vertices[vertexIndex] = outputVertex * voxelScale + 0.5f;
+            vertices[vertexIndex] = outputVertex * voxelScale;
 
             // Calculate per vertex normals and apply it
             normal = -math.normalizesafe(normal, new float3(0, 1, 0));

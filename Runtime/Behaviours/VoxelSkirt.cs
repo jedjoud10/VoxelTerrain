@@ -19,24 +19,26 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public int[] debugSkirtIndices = null;
         public VoxelChunk source;
 
-        public void Complete(NativeArray<float3> vertices, NativeArray<int> quads, NativeArray<int> indices, int vertexCount, int quadCount, NativeList<float3> data) {
+        public void Complete(NativeArray<float3> vertices, NativeArray<int> quads, NativeArray<int> indices, int vertexCount, int triCount, NativeList<float3> data) {
             MeshFilter filter = GetComponent<MeshFilter>();
             Mesh mesh = new Mesh();
             mesh.vertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
-            mesh.triangles = quads.GetSubArray(0, quadCount * 3).ToArray();
+            mesh.triangles = quads.GetSubArray(0, triCount * 3).ToArray();
             debugSkirtVertices = mesh.vertices;
             debugSkirtQuads = mesh.triangles;
             filter.mesh = mesh;
             
             debugSkirtIndices = indices.ToArray();
-            debugSkirtQuads = quads.GetSubArray(0, quadCount * 3).ToArray();
+            debugSkirtQuads = quads.GetSubArray(0, triCount * 3).ToArray();
             debugSkirtVertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
             debugData = data.AsArray().Reinterpret<Vector3>().ToArray();
+            Debug.Log($"T: {triCount}, V: {vertexCount}");
 
         }
 
         public int faceIndex;
         public uint2 debugIndex;
+        public bool fetchFromOg;
 
         private void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
@@ -56,8 +58,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
             */
 
+            int WHATTHEFUCK = fetchFromOg ? 0 : VoxelUtils.SIZE * VoxelUtils.SIZE;
             int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
-            int temp = debugSkirtIndices[indexu + VoxelUtils.SIZE*VoxelUtils.SIZE + faceIndex*VoxelUtils.SIZE*VoxelUtils.SIZE*2];
+            int temp = debugSkirtIndices[indexu + WHATTHEFUCK + faceIndex*VoxelUtils.SIZE*VoxelUtils.SIZE*2];
 
             Gizmos.color = Color.green;
             if (temp != int.MaxValue) {
