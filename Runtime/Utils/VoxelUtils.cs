@@ -8,8 +8,11 @@ namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
         // "logical" size of the chunks; how many voxels they store in one axis
-        public const int SIZE = 66;
+        public const int SIZE = 65;
+        public const int FACE = SIZE * SIZE;
         public const int VOLUME = SIZE * SIZE * SIZE;
+        public const int SKIRT_SIZE = 66;
+        public const int SKIRT_FACE = SKIRT_SIZE * SKIRT_SIZE;
         public const int MAX_MATERIAL_COUNT = 256;
 
         // Offsets used for octree generation

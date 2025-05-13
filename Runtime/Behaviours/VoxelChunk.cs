@@ -105,8 +105,8 @@ namespace jedjoud.VoxelTerrain {
 
             if (debugVoxelData) {
                 float s = node.size / 64f;
-                for (var i = 0; i < 66 * 66 * 66; i++) {
-                    uint3 _pos = VoxelUtils.IndexToPos(i, 66);
+                for (var i = 0; i < VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE; i++) {
+                    uint3 _pos = VoxelUtils.IndexToPos(i, VoxelUtils.SIZE);
                     float d1 = voxels[i].density;
 
                     if (d1 > -4 && d1 < 5) {

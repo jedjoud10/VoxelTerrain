@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
         public NativeList<OctreeNode> nodesList;
-        public NativeList<OctreeOmnidirectionalNeighbourData> omniDirectionalNeighbourDataList;
+        public NativeList<BitField32> neighbourMasksList;
         private NativeCounter neighboursIndicesCounter;
         public NativeArray<int> neighbourIndices;
 
@@ -36,7 +36,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         public override void CallerStart() {
             nodesList = new NativeList<OctreeNode>(Allocator.Persistent);
-            omniDirectionalNeighbourDataList = new NativeList<OctreeOmnidirectionalNeighbourData>(Allocator.Persistent);
+            neighbourMasksList = new NativeList<BitField32>(Allocator.Persistent);
 
             // TODO: change this heuristic for a more tighter fit
             // currently calculates worst worst case (which is actually impossible but wtv)
@@ -67,6 +67,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         private void Compute() {
             neighboursIndicesCounter.Count = 0;
             nodesList.Clear();
+            neighbourMasksList.Clear();
             newNodesSet.Clear();
             addedNodes.Clear();
             removedNodes.Clear();
@@ -84,14 +85,12 @@ namespace jedjoud.VoxelTerrain.Octree {
                 maxDepth = maxDepth,
                 nodes = nodesList,
                 target = target.data,
-                omniDirectionalNeighbourData = omniDirectionalNeighbourDataList,
+                neighbourMasks = neighbourMasksList,
             };
 
             NeighbourJob neighbourJob = new NeighbourJob {
                 nodes = nodesList,
-                neighbourIndices = neighbourIndices,
-                counter = neighboursIndicesCounter,
-                omnidirectionalNeighbourData = omniDirectionalNeighbourDataList.AsDeferredJobArray(),
+                neighbourMasks = neighbourMasksList.AsDeferredJobArray(),
             };
 
             ToHashSetJob toHashSetJob = new ToHashSetJob {
@@ -140,7 +139,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             pending.Dispose();
             nodesList.Dispose();
             neighbourIndices.Dispose();
-            omniDirectionalNeighbourDataList.Dispose();
+            neighbourMasksList.Dispose();
             neighboursIndicesCounter.Dispose();
         }
 

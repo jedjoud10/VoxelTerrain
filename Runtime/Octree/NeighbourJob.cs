@@ -14,14 +14,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public NativeList<OctreeNode> nodes;
 
         [WriteOnly]
-        [NativeDisableParallelForRestriction]
-        public NativeArray<int> neighbourIndices;
-
-        public NativeCounter.Concurrent counter;
-
-        [WriteOnly]
-        [NativeDisableParallelForRestriction]
-        public NativeArray<OctreeOmnidirectionalNeighbourData> omnidirectionalNeighbourData;
+        public NativeArray<BitField32> neighbourMasks;
 
         public static readonly int3[] DIRECTIONS = new int3[] {
             new int3(-1, 0, 0),
@@ -101,18 +94,22 @@ namespace jedjoud.VoxelTerrain.Octree {
             return MinMaxAABB.CreateFromCenterAndHalfExtents(point, 0.5f);
         }
 
-        private void TraverseAndCollect(MinMaxAABB bounds, ref SpanBackedStack<ushort> pending, ref SpanBackedStack<ushort> neighbours, int omniDirIndex, int ogDepth) {
+        private bool CheckIfNeighbourIsSameLod(MinMaxAABB bounds, ref SpanBackedStack<ushort> pending, int ogDepth) {
             pending.Clear();
-            neighbours.Clear();
             pending.Enqueue(0);
 
+            BitField32 mask = new BitField32(0);
             while (pending.TryDequeue(out ushort index)) {
                 OctreeNode node = nodes[index];
                 for (int c = 0; c < 8; c++) {
                     OctreeNode child = nodes[node.childBaseIndex + c];
                     if (child.Bounds.Overlaps(bounds)) {
                         if (child.childBaseIndex == -1) {
-                            neighbours.Enqueue((ushort)child.index);
+                            if (ogDepth == child.depth) {
+                                return true;
+                            } else {
+                                return false;
+                            }
                         } else {
                             pending.Enqueue((ushort)child.index);
                         }
@@ -120,6 +117,9 @@ namespace jedjoud.VoxelTerrain.Octree {
                 }
             }
 
+            return false;
+
+            /*
             if (neighbours.Length == 0) {
                 return;
             } else if (neighbours.Length == 1) {
@@ -162,7 +162,10 @@ namespace jedjoud.VoxelTerrain.Octree {
             } else {
                 Debug.LogError($"should not happen, {neighbours.Length}");
             }
+            */
         }
+
+
 
         public void Execute(int index) {
             // We should never modify this one...
@@ -179,20 +182,18 @@ namespace jedjoud.VoxelTerrain.Octree {
             Span<ushort> pendingNodesBacking = stackalloc ushort[50];
             SpanBackedStack<ushort> pending = SpanBackedStack<ushort>.New(pendingNodesBacking);
 
-            Span<ushort> neighboursBacking = stackalloc ushort[4];
-            SpanBackedStack<ushort> neighbours = SpanBackedStack<ushort>.New(neighboursBacking);
-
             MinMaxAABB bounds = original.Bounds;
             float3 min = bounds.Min;
             float3 max = bounds.Max;
 
+            BitField32 mask = new BitField32(0);
+
             // planes only. 
-            int omniDirBaseIndex = original.neighbourDataBaseIndex;
             for (int i = 0; i < 6; i++) {
-                // convert to 0-26 index for the omni directional data
-                int omniDirOffsetIndex = VoxelUtils.PosToIndex((uint3)(DIRECTIONS[i] + 1), 3);
+                int bitMaskIndex = VoxelUtils.PosToIndex((uint3)(DIRECTIONS[i] + 1), 3);
                 MinMaxAABB plane = CreatePlane(min, max, i);
-                TraverseAndCollect(plane, ref pending, ref neighbours, omniDirOffsetIndex + omniDirBaseIndex, original.depth);
+                bool set = CheckIfNeighbourIsSameLod(plane, ref pending, original.depth);
+                mask.SetBits(bitMaskIndex, set);
             }
 
             // edges only. 
@@ -212,19 +213,24 @@ namespace jedjoud.VoxelTerrain.Octree {
                         offset.xy = mortoned;
                     }
 
-                    int omniDirOffsetIndex = VoxelUtils.PosToIndex(offset, 3);
+                    int bitMaskIndex = VoxelUtils.PosToIndex(offset, 3);
                     MinMaxAABB edge = CreateEdge(min, max, i, l);
-                    TraverseAndCollect(edge, ref pending, ref neighbours, omniDirOffsetIndex + omniDirBaseIndex, original.depth);
+                    bool set = CheckIfNeighbourIsSameLod(edge, ref pending, original.depth);
+                    mask.SetBits(bitMaskIndex, set);
                 }
             }
 
             // corners only
             for (int i = 0; i < 8; i++) {
                 uint3 mortoned = VoxelUtils.IndexToPos(i, 2) * 2;
-                int omniDirOffsetIndex = VoxelUtils.PosToIndex(mortoned, 3);
                 MinMaxAABB corner = CreateCorner(min, max, i);
-                TraverseAndCollect(corner, ref pending, ref neighbours, omniDirOffsetIndex + omniDirBaseIndex, original.depth);
+
+                int bitMaskIndex = VoxelUtils.PosToIndex(mortoned, 3);
+                bool set = CheckIfNeighbourIsSameLod(corner, ref pending, original.depth);
+                mask.SetBits(bitMaskIndex, set);
             }
+
+            //neighbourMasks[original.index] = mask;
         }
     }
 }

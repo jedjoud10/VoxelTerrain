@@ -464,7 +464,44 @@ MonoBehaviour:
       y: 0
       z: 0
     radius: 1.4
---- !u!84 &703546209
+--- !u!84 &736752066
+RenderTexture:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  m_ImageContentsHash:
+    serializedVersion: 2
+    Hash: 00000000000000000000000000000000
+  m_IsAlphaChannelOptional: 0
+  serializedVersion: 6
+  m_Width: 128
+  m_Height: 128
+  m_AntiAliasing: 1
+  m_MipCount: -1
+  m_DepthStencilFormat: 0
+  m_ColorFormat: 37
+  m_MipMap: 0
+  m_GenerateMips: 0
+  m_SRGB: 0
+  m_UseDynamicScale: 0
+  m_UseDynamicScaleExplicit: 0
+  m_BindMS: 0
+  m_EnableCompatibleFormat: 1
+  m_EnableRandomWrite: 1
+  m_TextureSettings:
+    serializedVersion: 2
+    m_FilterMode: 2
+    m_Aniso: 1
+    m_MipBias: 0
+    m_WrapU: 1
+    m_WrapV: 1
+    m_WrapW: 1
+  m_Dimension: 3
+  m_VolumeDepth: 128
+  m_ShadowSamplingMode: 2
+--- !u!84 &1389817261
 RenderTexture:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -547,7 +584,7 @@ PrefabInstance:
       objectReference: {fileID: 664809946}
     - target: {fileID: 968421930435571029, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: maxDepth
-      value: 2
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 968421930435571029, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: drawGizmos
@@ -559,7 +596,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: hash
-      value: 624684920
+      value: -1993986927
       objectReference: {fileID: 0}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: shader
@@ -568,7 +605,7 @@ PrefabInstance:
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: debugTex
       value: 
-      objectReference: {fileID: 703546209}
+      objectReference: {fileID: 736752066}
     - target: {fileID: 2659349426322332056, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -607,7 +644,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: amplitude.value
-      value: 10
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: testRandomness.x
@@ -664,6 +701,10 @@ PrefabInstance:
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: useFallback
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
+      propertyPath: useSkirting
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5281816153287127206, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: useStitching

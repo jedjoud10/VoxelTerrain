@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public int meshJobsPerTick = 1;
         public bool useBlocky;
         public bool useFallback;
-        public bool useStitching;
+        public bool useSkirting;
         public float aoGlobalOffset = 1f;
         public float aoMinDotNormal = 0.0f;
         public float aoGlobalSpread = 0.5f;

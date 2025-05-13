@@ -46,7 +46,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
             indices[index] = int.MaxValue;
 
-            if (math.any(position > VoxelUtils.SIZE - 3))
+            if (math.any(position > VoxelUtils.SIZE - 2))
                 return;
 
             float3 vertex = float3.zero;

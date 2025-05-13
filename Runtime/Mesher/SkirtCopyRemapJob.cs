@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct SkirtCopyRemapJob : IJob {
         [WriteOnly]
-        public NativeArray<int> skirtIndices;
+        public NativeArray<int> skirtVertexIndicesCopied;
 
         [WriteOnly]
         public NativeArray<float3> skirtVertices;
@@ -28,10 +28,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // -X, -Y, -Z, X, Y, Z
             for (int f = 0; f < 6; f++) {
-                uint missing = f < 3 ? 0 : ((uint)VoxelUtils.SIZE - 3);
-                int faceElementOffset = 2 * f * VoxelUtils.SIZE * VoxelUtils.SIZE;
+                uint missing = f < 3 ? 0 : ((uint)VoxelUtils.SIZE - 2);
+                int faceElementOffset = f * VoxelUtils.FACE;
 
-                for (int i = 0; i < VoxelUtils.SIZE * VoxelUtils.SIZE; i++) {
+                for (int i = 0; i < VoxelUtils.FACE; i++) {
                     uint2 flattened = VoxelUtils.IndexToPos2D(i, VoxelUtils.SIZE);
                     uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, f % 3, missing);
                     int src = VoxelUtils.PosToIndex(position, VoxelUtils.SIZE);
@@ -39,11 +39,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                     if (srcIndex != int.MaxValue) {
                         skirtVertices[boundaryVertexCount] = vertices[srcIndex];
-                        skirtIndices[i + faceElementOffset] = boundaryVertexCount;
+                        skirtVertexIndicesCopied[i + faceElementOffset] = boundaryVertexCount;
                         boundaryVertexCount++;
                     } else {
                         skirtVertices[i + faceElementOffset] = 0f;
-                        skirtIndices[i + faceElementOffset] = int.MaxValue;
+                        skirtVertexIndicesCopied[i + faceElementOffset] = int.MaxValue;
                     }
                 }
             }            

@@ -16,7 +16,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // next 66*66 vertices are the ones we generate in this job here
         [WriteOnly]
         [NativeDisableParallelForRestriction]
-        public NativeArray<int> skirtVertexIndices;
+        public NativeArray<int> skirtVertexIndicesGenerated;
 
         [WriteOnly]
         [NativeDisableParallelForRestriction]
@@ -42,8 +42,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new uint2(0, 0),
         };
 
-        const int FACE = VoxelUtils.SIZE * VoxelUtils.SIZE;
-
         public float threshold;
 
         struct VertexToSpawn {
@@ -56,24 +54,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         public void Execute(int index) {
-            int face = index / FACE;
+            int face = index / VoxelUtils.SKIRT_FACE;
             int direction = face % 3;
             bool negative = face < 3;
 
 
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 3);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
 
-            int localIndex = index % FACE;
-            int indexIndex = localIndex + FACE + 2 * face * FACE;
+            int localIndex = index % VoxelUtils.SKIRT_FACE;
+            int indexIndex = localIndex + face * VoxelUtils.SKIRT_FACE;
 
-            skirtVertexIndices[indexIndex] = int.MaxValue;
+            skirtVertexIndicesGenerated[indexIndex] = int.MaxValue;
 
-            uint2 flatten = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
-
-            if (math.any(flatten > VoxelUtils.SIZE - 1)) {
-                return;
-            }
-            
+            uint2 flatten = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SKIRT_SIZE);
             uint3 unoffsetted = SkirtUtils.UnflattenFromFaceRelative(flatten, direction, missing);
 
             // vertex that we will spawn for this iteration!!!
@@ -83,8 +76,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool4 minMaxMask = new bool4(false);
             minMaxMask.x = flatten.x == 0;
             minMaxMask.y = flatten.y == 0;
-            minMaxMask.z = flatten.x == (VoxelUtils.SIZE - 1);
-            minMaxMask.w = flatten.y == (VoxelUtils.SIZE - 1);
+            minMaxMask.z = flatten.x == (VoxelUtils.SKIRT_SIZE - 1);
+            minMaxMask.w = flatten.y == (VoxelUtils.SKIRT_SIZE - 1);
 
             int count = SkirtUtils.CountTrue(minMaxMask);
             // if corner case, then only 2 of the above are true
@@ -92,11 +85,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             if (count == 2) {
                 // corner case!!!
+                vertex = default;
+                /*
                 // TODO: I know this is bad but wtv...
                 vertex = new VertexToSpawn {
                     offset = 0.5f,
                     shouldSpawn = true,
                 };
+                */
             } else if (count == 1) {
                 // edge case!!!
                 vertex = SurfaceNets1D(flatten, minMaxMask, negative, direction);
@@ -109,7 +105,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Actually spawn the vertex if needed
             if (vertex.shouldSpawn) {
                 int vertexIndex = skirtVertexCounter.Increment();
-                skirtVertexIndices[indexIndex] = vertexIndex;
+                skirtVertexIndicesGenerated[indexIndex] = vertexIndex;
 
                 if (vertex.useWorldPosition) {
                     skirtVertices[vertexIndex] = vertex.worldPosition + vertex.offset;
@@ -178,8 +174,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool2 mask = new bool2(minMaxMask.x || minMaxMask.z, minMaxMask.y || minMaxMask.w);
             int edgeDir = SkirtUtils.GetEdgeDirFaceRelative(mask, faceNormalDir);
 
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
-            flatten = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 1);
+            flatten = math.clamp(flatten, 0, VoxelUtils.SIZE - 1);
             float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten, faceNormalDir, missing);
             //worldPos[edgeDir] -= 0.5f;
 

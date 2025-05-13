@@ -16,10 +16,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Vector3[] debugSkirtVertices = null;
         public Vector3[] debugData = null;
         public int[] debugSkirtQuads = null;
-        public int[] debugSkirtIndices = null;
+        public int[] debugSkirtIndicesGenerated = null;
+        public int[] debugSkirtIndicesCopied = null;
         public VoxelChunk source;
 
-        public void Complete(NativeArray<float3> vertices, NativeArray<int> quads, NativeArray<int> indices, int vertexCount, int triCount, NativeList<float3> data) {
+        public void Complete(NativeArray<float3> vertices, NativeArray<int> quads, NativeArray<int> generated, NativeArray<int> copied, int vertexCount, int triCount, NativeList<float3> data) {
             MeshFilter filter = GetComponent<MeshFilter>();
             Mesh mesh = new Mesh();
             mesh.vertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
@@ -27,8 +28,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             debugSkirtVertices = mesh.vertices;
             debugSkirtQuads = mesh.triangles;
             filter.mesh = mesh;
-            
-            debugSkirtIndices = indices.ToArray();
+
+            debugSkirtIndicesGenerated = generated.ToArray();
+            debugSkirtIndicesCopied = copied.ToArray();
             debugSkirtQuads = quads.GetSubArray(0, triCount * 3).ToArray();
             debugSkirtVertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
             debugData = data.AsArray().Reinterpret<Vector3>().ToArray();
@@ -57,33 +59,59 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
             */
 
-            int WHATTHEFUCK = fetchFromOg ? 0 : VoxelUtils.SIZE * VoxelUtils.SIZE;
-            int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
-            int temp = debugSkirtIndices[indexu + WHATTHEFUCK + faceIndex*VoxelUtils.SIZE*VoxelUtils.SIZE*2];
+            if (fetchFromOg) {
+                int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
+                int temp = debugSkirtIndicesCopied[indexu + faceIndex * VoxelUtils.SIZE * VoxelUtils.SIZE];
 
-            Gizmos.color = Color.green;
-            if (temp != int.MaxValue) {
-                Gizmos.DrawSphere(debugSkirtVertices[temp] * s + (Vector3)source.node.position, 0.8f);
+                Gizmos.color = Color.green;
+                if (temp != int.MaxValue) {
+                    Gizmos.DrawSphere(debugSkirtVertices[temp] * s + (Vector3)source.node.position, 0.8f);
+                }
+            } else {
+                int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SKIRT_SIZE);
+                int temp = debugSkirtIndicesGenerated[indexu + faceIndex * VoxelUtils.SKIRT_FACE];
+
+                Gizmos.color = Color.green;
+                if (temp != int.MaxValue) {
+                    Gizmos.DrawSphere(debugSkirtVertices[temp] * s + (Vector3)source.node.position, 0.8f);
+                }
             }
 
-            
-            Gizmos.color = Color.white;
+                /*
+                int WHATTHEFUCK = fetchFromOg ? 0 : VoxelUtils.SIZE * VoxelUtils.SIZE;
+                int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
+                int temp = debugSkirtIndices[indexu + WHATTHEFUCK + faceIndex*VoxelUtils.SIZE*VoxelUtils.SIZE*2];
+
+                Gizmos.color = Color.green;
+                if (temp != int.MaxValue) {
+                    Gizmos.DrawSphere(debugSkirtVertices[temp] * s + (Vector3)source.node.position, 0.8f);
+                }
+                */
+
+
+                Gizmos.color = Color.white;
             foreach (Vector3 b in debugData) {
                 Gizmos.DrawWireSphere(b * s + (Vector3)source.node.position, 0.4f);
             }
 
-            if (debugSkirtIndices != null) {
-                foreach (var i in debugSkirtIndices) {
-                    if (i != int.MaxValue) {
-                        if (i >= debugSkirtVertices.Length || i < 0) {
-                            //Debug.LogWarning(i);
-                            continue;
-                        }
-
+            Gizmos.color = Color.red;
+            if (debugSkirtIndicesCopied != null) {
+                foreach (var i in debugSkirtIndicesCopied) {
+                    if (i != int.MaxValue && i < debugSkirtVertices.Length) {
                         Gizmos.DrawSphere(Fetch(i), 0.3f);
                     }
                 }
             }
+
+            Gizmos.color = Color.green;
+            if (debugSkirtIndicesGenerated != null) {
+                foreach (var i in debugSkirtIndicesGenerated) {
+                    if (i != int.MaxValue && i < debugSkirtVertices.Length) {
+                        Gizmos.DrawSphere(Fetch(i), 0.3f);
+                    }
+                }
+            }
+
 
             if (debugSkirtQuads != null) {
                 for (var i = 0; i < debugSkirtQuads.Length - 3; i += 3) {

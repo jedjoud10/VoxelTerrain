@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Mathematics.Geometry;
 using UnityEngine;
@@ -21,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public int index;
         public int parentIndex;
         public int childBaseIndex;
-        public int neighbourDataBaseIndex;
+        public BitField32 sameLodNeighbours;
 
         public float3 Center => math.float3(position) + math.float3(size) / 2.0F;
         public MinMaxAABB Bounds => new MinMaxAABB(position, position + size);

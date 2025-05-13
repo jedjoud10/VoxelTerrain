@@ -79,7 +79,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
 
             if (readback) {
-                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(132 * 132 * 132, Voxel.size, ComputeBufferType.Structured)));
+                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(VoxelUtils.VOLUME * 8, Voxel.size, ComputeBufferType.Structured)));
             } else {
                 textures.Add("voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt), -1));
             }

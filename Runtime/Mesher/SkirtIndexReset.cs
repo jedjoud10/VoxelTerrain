@@ -8,9 +8,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct SkirtIndexReset : IJobParallelFor {
         [WriteOnly]
-        public NativeArray<int> skirtVertexIndices;
+        public NativeArray<int> indices;
         public void Execute(int index) {
-            skirtVertexIndices[index] = int.MaxValue;
+            indices[index] = int.MaxValue;
         }
     }
 }
