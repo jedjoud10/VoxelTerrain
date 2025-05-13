@@ -235,8 +235,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             SkirtCopyRemapJob skirtCopyJob = new SkirtCopyRemapJob {
                 skirtVertexIndicesCopied = skirtVertexIndicesCopied,
                 skirtVertices = skirtVertices,
-                indices = indices,
-                vertices = vertices,
+                sourceVertexIndices = indices,
+                sourceVertices = vertices,
                 skirtVertexCounter = skirtVertexCounter,
             };
 
@@ -283,31 +283,30 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle skirtJobHandle = default;
 
             if (mesher.useSkirting) {
+                // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
                 JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, dependency);
 
+                // Not really needed but just in case. just resets vertex indices (sets them to int.MaxValue)
                 JobHandle resetCopiedIndicesHandle = skirtIndexResetCopied.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE);
                 JobHandle resetGeneratedIndicesHandle = skirtIndexResetGenerated.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE);
 
-                JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(JobHandle.CombineDependencies(vertexJobHandle, resetCopiedIndicesHandle, closestSurfaceJobHandle));
+                // Copies vertices from the boundary in the source mesh to our skirt vertices. also sets proper indices in the skirtVertexIndicesCopied array
+                JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(JobHandle.CombineDependencies(vertexJobHandle, resetCopiedIndicesHandle));
 
-                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, resetGeneratedIndicesHandle));
+                // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
+                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, resetGeneratedIndicesHandle, closestSurfaceJobHandle));
+
+                // Creates quad based on the copied vertices and skirt-generated vertices
                 JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, skirtVertexJobHandle);
-                //skirtJobHandle = skirtQuadJobHandle;
-                //skirtJobHandle = JobHandle.CombineDependencies(skirtVertexJobHandle);
                 skirtJobHandle = skirtQuadJobHandle;
             }
 
-            // Start the quad job
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
             JobHandle quadJobHandle = quadJob.Schedule(VOL, BATCH_SIZE, merged);
 
-            // Start the sum job 
             JobHandle sumJobHandle = sumJob.Schedule(quadJobHandle);
-
-            // Start the copy job
             JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, sumJobHandle);
 
-            // Combine the jobs at the end
             JobHandle mainDependencies = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, aoJobHandle);
             finalJobHandle = JobHandle.CombineDependencies(mainDependencies, skirtJobHandle);
 

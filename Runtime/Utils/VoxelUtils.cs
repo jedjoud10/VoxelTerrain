@@ -70,6 +70,31 @@ namespace jedjoud.VoxelTerrain {
             new uint3(0, 1, 1),
         };
 
+        // Forward direction of each quad
+        public static readonly uint3[] FORWARD_DIRECTION = new uint3[] {
+            new uint3(1, 0, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 0, 1),
+        };
+
+        // Quad vertices offsets based on direction
+        public static readonly uint3[] PERPENDICULAR_OFFSETS = new uint3[12] {
+            new uint3(0, 0, 0),
+            new uint3(0, 1, 0),
+            new uint3(0, 1, 1),
+            new uint3(0, 0, 1),
+
+            new uint3(0, 0, 0),
+            new uint3(0, 0, 1),
+            new uint3(1, 0, 1),
+            new uint3(1, 0, 0),
+
+            new uint3(0, 0, 0),
+            new uint3(1, 0, 0),
+            new uint3(1, 1, 0),
+            new uint3(0, 1, 0)
+        };
+
 
         // Stolen from https://gist.github.com/dwilliamson/c041e3454a713e58baf6e4f8e5fffecd
         public static readonly ushort[] EdgeMasks = new ushort[] {

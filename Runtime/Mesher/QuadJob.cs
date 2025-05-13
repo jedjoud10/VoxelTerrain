@@ -21,35 +21,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<int> triangles;
 
-        // Forward direction of each quad
-        [ReadOnly]
-        static readonly uint3[] quadForwardDirection = new uint3[3]
-        {
-            new uint3(1, 0, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 1),
-        };
-
-        // Quad vertices offsets based on direction
-        [ReadOnly]
-        static readonly uint3[] quadPerpendicularOffsets = new uint3[12]
-        {
-            new uint3(0, 0, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 1, 1),
-            new uint3(0, 0, 1),
-
-            new uint3(0, 0, 0),
-            new uint3(0, 0, 1),
-            new uint3(1, 0, 1),
-            new uint3(1, 0, 0),
-
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0)
-        };
-
         // Bit shift used to check for edges
         [ReadOnly]
         static readonly int[] shifts = new int[3]
@@ -75,7 +46,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint3 basePosition, int index) {
-            uint3 forward = quadForwardDirection[index];
+            uint3 forward = VoxelUtils.FORWARD_DIRECTION[index];
 
             int baseIndex = VoxelUtils.PosToIndex(basePosition, VoxelUtils.SIZE);
             int endIndex = VoxelUtils.PosToIndex(basePosition + forward, VoxelUtils.SIZE);
@@ -89,10 +60,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
-            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4], VoxelUtils.SIZE);
-            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1], VoxelUtils.SIZE);
-            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2], VoxelUtils.SIZE);
-            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3], VoxelUtils.SIZE);
+            int index0 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4], VoxelUtils.SIZE);
+            int index1 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 1], VoxelUtils.SIZE);
+            int index2 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 2], VoxelUtils.SIZE);
+            int index3 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 3], VoxelUtils.SIZE);
 
             // Fetch the actual indices of the vertices
             int vertex0 = vertexIndices[index0];
@@ -133,7 +104,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             for (int i = 0; i < 3; i++) {
                 // we CAN do quad stuff on the v=0 boundary as long as we're doing it parallel to the face boundary
-                if (math.any(position < (1 - quadForwardDirection[i])))
+                if (math.any(position < (1 - VoxelUtils.FORWARD_DIRECTION[i])))
                     continue;
                 
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {

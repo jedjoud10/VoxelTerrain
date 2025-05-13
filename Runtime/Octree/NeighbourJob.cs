@@ -230,7 +230,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                 mask.SetBits(bitMaskIndex, set);
             }
 
-            //neighbourMasks[original.index] = mask;
+            neighbourMasks[original.index] = mask;
         }
     }
 }

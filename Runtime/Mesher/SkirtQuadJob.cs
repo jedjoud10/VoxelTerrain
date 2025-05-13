@@ -24,33 +24,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public Unsafe.NativeCounter.Concurrent skirtQuadCounter;
 
-        [ReadOnly]
-        static readonly uint3[] quadForwardDirection = new uint3[3]
-        {
-            new uint3(1, 0, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 1),
-        };
-
-        [ReadOnly]
-        static readonly uint3[] quadPerpendicularOffsets = new uint3[12]
-        {
-            new uint3(0, 0, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 1, 1),
-            new uint3(0, 0, 1),
-
-            new uint3(0, 0, 0),
-            new uint3(0, 0, 1),
-            new uint3(1, 0, 1),
-            new uint3(1, 0, 0),
-
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0)
-        };
-
         // Fetch vertex index for a specific position
         // If it goes out of the chunk bounds, assume it is a skirt vertex's position we're trying to fetch
         int FetchIndex(int3 position, int face) {
@@ -80,7 +53,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool negative, bool force, int face) {
-            uint3 forward = quadForwardDirection[index];
+            uint3 forward = VoxelUtils.FORWARD_DIRECTION[index];
 
             bool flip = !negative;
 
@@ -92,7 +65,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Voxel startVoxel = voxels[baseIndex];
                 Voxel endVoxel = voxels[endIndex];
 
-                if (startVoxel.density > 0f == endVoxel.density > 0f)
+                if (startVoxel.density >= 0f == endVoxel.density >= 0f)
                     return;
 
                 flip = (endVoxel.density > 0.0);
@@ -100,7 +73,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             int3 offset = (int3)((int3)unflattened + (int3)forward - math.int3(1));
             
-            // to help the fetcher a bit lol
+            // to help the fetcher a bit lol (I honestly don't know why I need this but I do... whatever)
             if (force) {
                 if (negative) {
                     offset[index] -= 1;
@@ -112,7 +85,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // load the vertex indices inside this vector
             int4 v = int.MaxValue;
             for (int i = 0; i < 4; i++) {
-                v[i] = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + i], face);
+                v[i] = FetchIndex(offset + (int3)VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + i], face);
             }
 
             // there are some cases where this generates more tris than necessary, but that's better than not generating enough tris

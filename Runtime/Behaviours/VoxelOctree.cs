@@ -74,6 +74,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             OctreeNode root = OctreeNode.RootNode(maxDepth, 64 * terrain.voxelSizeFactor);
             nodesList.Add(root);
+            neighbourMasksList.Add(new BitField32(0));
             pending.Clear();
             pending.Enqueue(root);
 

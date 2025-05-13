@@ -16,10 +16,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> skirtVertices;
 
         [ReadOnly]
-        public NativeArray<int> indices;
+        public NativeArray<int> sourceVertexIndices;
 
         [ReadOnly]
-        public NativeArray<float3> vertices;
+        public NativeArray<float3> sourceVertices;
 
         public NativeCounter skirtVertexCounter;
 
@@ -27,28 +27,32 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int boundaryVertexCount = 0;
 
             // -X, -Y, -Z, X, Y, Z
-            for (int f = 0; f < 6; f++) {
-                uint missing = f < 3 ? 0 : ((uint)VoxelUtils.SIZE - 2);
-                int faceElementOffset = f * VoxelUtils.FACE;
+            for (int face = 0; face < 6; face++) {
+                uint missing = face < 3 ? 0 : ((uint)VoxelUtils.SIZE - 2);
+                int faceElementOffset = face * VoxelUtils.FACE;
 
+                // Loop through the face in 2D and copy the vertices from the boundary in 3D
                 for (int i = 0; i < VoxelUtils.FACE; i++) {
                     uint2 flattened = VoxelUtils.IndexToPos2D(i, VoxelUtils.SIZE);
-                    uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, f % 3, missing);
+                    uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, face % 3, missing);
                     int src = VoxelUtils.PosToIndex(position, VoxelUtils.SIZE);
-                    int srcIndex = indices[src];
+                    int srcIndex = sourceVertexIndices[src];
 
                     if (srcIndex != int.MaxValue) {
-                        skirtVertices[boundaryVertexCount] = vertices[srcIndex];
+                        // Valid boundary vertex, copy it
+                        skirtVertices[boundaryVertexCount] = sourceVertices[srcIndex];
                         skirtVertexIndicesCopied[i + faceElementOffset] = boundaryVertexCount;
                         boundaryVertexCount++;
                     } else {
+                        // Invalid boundary vertex, propagate invalid index (int.MaxValue)
                         skirtVertices[i + faceElementOffset] = 0f;
                         skirtVertexIndicesCopied[i + faceElementOffset] = int.MaxValue;
                     }
                 }
             }            
-
-            // start at an offset for the new skirt verts
+            
+            // The next job (which is SkirtVertexJob) will need to generate new vertices,
+            // so we must update the counter so that the indices are contiguous
             skirtVertexCounter.Count = boundaryVertexCount;
         }
     }

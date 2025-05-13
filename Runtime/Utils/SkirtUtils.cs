@@ -311,7 +311,7 @@ namespace jedjoud.VoxelTerrain {
             dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
             dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
 
-            // means that there are more than 2 duplicate verts, not possible?
+            // Means that there are more than 2 duplicate verts, not possible?
             if (math.countbits(dupeType) > 1) {
                 return false;
             }
@@ -349,10 +349,7 @@ namespace jedjoud.VoxelTerrain {
                 int3 remapper = DEDUPE_TRIS_THING[config];
                 int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
 
-                // Don't make a tri if the vertices are invalid
-                //Debug.Log(uniques);
                 if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
-                    //Debug.Log("2");
                     return false;
                 }
 
