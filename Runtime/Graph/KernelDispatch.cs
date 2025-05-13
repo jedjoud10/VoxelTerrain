@@ -41,10 +41,6 @@ if (any(id >= (uint)size)) {
 }
 
 float3 position = ConvertIntoWorldPosition(id);
-
-#ifdef _ASYNC_READBACK_OCTAL
-position = (float3)(floor(position + 0.5));   
-#endif
 ";
         }
 

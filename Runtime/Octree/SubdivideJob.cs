@@ -28,18 +28,18 @@ namespace jedjoud.VoxelTerrain.Octree {
                 bool subdivide = math.distance(node.Center, clamped) < target.radius * node.size;
 
                 if (subdivide && node.depth < maxDepth) {
-                    Subdivide(node, true);
+                    Subdivide(node);
                 }
             }
         }
 
-        private void Subdivide(OctreeNode node, bool enqueue) {
+        private void Subdivide(OctreeNode node) {
             node.childBaseIndex = nodes.Length;
 
             for (int i = 0; i < 8; i++) {
-                float3 offset = math.float3(VoxelUtils.OCTREE_CHILD_OFFSETS[i]);
+                int3 offset = VoxelUtils.OCTREE_CHILD_OFFSETS[i];
                 OctreeNode child = new OctreeNode {
-                    position = offset * (node.size / 2.0F) + node.position,
+                    position = offset * (node.size / 2) + node.position,
                     depth = node.depth + 1,
                     size = node.size / 2,
                     parentIndex = node.index,
@@ -47,10 +47,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                     childBaseIndex = -1,
                 };
 
-                if (enqueue) {
-                    pending.Enqueue(child);
-                }
-
+                pending.Enqueue(child);
                 nodes.Add(child);
                 neighbourMasks.Add(new BitField32(0));
             }

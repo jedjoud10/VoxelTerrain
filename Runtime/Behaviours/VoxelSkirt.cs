@@ -45,19 +45,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (Selection.activeGameObject != gameObject)
                 return;
 
+            /*
             float s = source.node.size / 64f;
             Vector3 Fetch(int index) {
                 Vector3 v = debugSkirtVertices[index];
-                return v * s + (Vector3)source.node.position;
+                return v * s + (Vector3)(float3)source.node.position;
             }
-
-            /*
-            if (debugSkirtVertices != null) {
-                foreach (var v in debugSkirtVertices) {
-                    Gizmos.DrawSphere(v * s + (Vector3)source.node.position, 0.3f);
-                }
-            }
-            */
 
             if (fetchFromOg) {
                 int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
@@ -77,19 +70,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-                /*
-                int WHATTHEFUCK = fetchFromOg ? 0 : VoxelUtils.SIZE * VoxelUtils.SIZE;
-                int indexu = VoxelUtils.PosToIndex2D(debugIndex, VoxelUtils.SIZE);
-                int temp = debugSkirtIndices[indexu + WHATTHEFUCK + faceIndex*VoxelUtils.SIZE*VoxelUtils.SIZE*2];
-
-                Gizmos.color = Color.green;
-                if (temp != int.MaxValue) {
-                    Gizmos.DrawSphere(debugSkirtVertices[temp] * s + (Vector3)source.node.position, 0.8f);
-                }
-                */
-
-
-                Gizmos.color = Color.white;
+            Gizmos.color = Color.white;
             foreach (Vector3 b in debugData) {
                 Gizmos.DrawWireSphere(b * s + (Vector3)source.node.position, 0.4f);
             }
@@ -111,7 +92,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     }
                 }
             }
-
 
             if (debugSkirtQuads != null) {
                 for (var i = 0; i < debugSkirtQuads.Length - 3; i += 3) {
@@ -135,6 +115,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     Gizmos.DrawLine(Fetch(c), Fetch(a));
                 }
             }
+            */
         }
     }
 }

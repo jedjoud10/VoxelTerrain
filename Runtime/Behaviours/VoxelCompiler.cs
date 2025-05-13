@@ -52,7 +52,16 @@ namespace jedjoud.VoxelTerrain.Generation {
             var visualizer = GetComponent<VoxelPreview>();
             if (visualizer != null && visualizer.isActiveAndEnabled) {
                 var exec = GetComponent<VoxelExecutor>();
-                exec.ExecuteShader(visualizer.size, voxelsDispatchIndex, visualizer.offset, visualizer.scale, null, true);
+
+                VoxelExecutor.EditorPreviewParameters parameters = new VoxelExecutor.EditorPreviewParameters() {
+                    newSize = visualizer.size,
+                    previewScale = visualizer.scale,
+                    previewOffset = visualizer.offset,
+                    dispatchIndex = this.voxelsDispatchIndex,
+                    updateInjected = true,
+                };
+
+                exec.ExecuteShader(parameters);
                 RenderTexture voxels = (RenderTexture)exec.textures["voxels"];
                 debugTex = voxels;
                 visualizer.Meshify(voxels);

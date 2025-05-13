@@ -1,6 +1,7 @@
 using jedjoud.VoxelTerrain.Props;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -66,7 +67,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         private void CreateResources(int size, bool readback) {
             DisposeResources();
 
-            posScaleOctalBuffer = new ComputeBuffer(8, sizeof(float) * 4, ComputeBufferType.Structured);
+            posScaleOctalBuffer = new ComputeBuffer(8, sizeof(int) * 4, ComputeBufferType.Structured);
             negPosOctalCountersBuffer = new ComputeBuffer(8, sizeof(int), ComputeBufferType.Structured);
 
             // Creates dictionary with the default voxel graph textures (density + custom data)
@@ -91,15 +92,44 @@ namespace jedjoud.VoxelTerrain.Generation {
             // TODO: do the same custom texture stuff but with buffers instead!!
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PosScaleOctalData {
+            public Vector3 position;
+            public float scale;
+        }
 
-        public void ExecuteShader(int newSize, int dispatchIndex, Vector3 offset, Vector3 scale, Vector4[] posScaleOctals = null, bool updateInjected = true) {
+        // If only we could have enums with values, rust style
+        // :(
+        public abstract class ExecutionParameters {
+            public int newSize = -1;
+            public int dispatchIndex = -1;
+            public bool updateInjected = true;
+        }
+        public class EditorPreviewParameters: ExecutionParameters {
+            public Vector3 previewOffset;
+            public Vector3 previewScale;
+        }
+        public class ReadbackParameters: ExecutionParameters {
+            public PosScaleOctalData[] posScaleOctals;
+        }
+
+        public void ExecuteShader(ExecutionParameters parameters) {
+            if (parameters == null) {
+                Debug.LogWarning("Given parameters are null");
+                return;
+            }
+
+            int newSize = parameters.newSize;
+            int dispatchIndex = parameters.dispatchIndex;
+            bool updateInjected = parameters.updateInjected;
+
             if (compiler.ctx == null) {
                 compiler.ParsedTranspilation();
             }
 
             if (newSize != setSize || textures == null || buffers == null) {
                 setSize = newSize;
-                CreateResources(newSize, posScaleOctals != null);
+                CreateResources(newSize, parameters is ReadbackParameters);
             }
 
             CommandBuffer commands = new CommandBuffer();
@@ -108,23 +138,23 @@ namespace jedjoud.VoxelTerrain.Generation {
             ComputeShader shader = compiler.shader;
             
             LocalKeyword keyword = shader.keywordSpace.FindKeyword("_ASYNC_READBACK_OCTAL");
-            if (posScaleOctals != null && posScaleOctals.Length == 8) {
+            if (parameters is ReadbackParameters readback) {
                 commands.EnableKeyword(shader, keyword);
                 
-                commands.SetBufferData(posScaleOctalBuffer, posScaleOctals);
+                commands.SetBufferData(posScaleOctalBuffer, readback.posScaleOctals);
                 commands.SetComputeBufferParam(shader, dispatchIndex, "pos_scale_octals", posScaleOctalBuffer);
 
                 commands.SetBufferData(negPosOctalCountersBuffer, new int[8]);
                 commands.SetComputeBufferParam(shader, dispatchIndex, "neg_pos_octal_counters", negPosOctalCountersBuffer);
-            } else {
+            } else if (parameters is EditorPreviewParameters editor) {
                 commands.DisableKeyword(shader, keyword);
+                commands.SetComputeVectorParam(shader, "previewOffset", editor.previewOffset);
+                commands.SetComputeVectorParam(shader, "previewScale", editor.previewScale);
             }
 
             commands.SetComputeIntParam(shader, "size", newSize);
             commands.SetComputeIntParams(shader, "permuationSeed", new int[] { permutationSeed.x, permutationSeed.y, permutationSeed.z });
             commands.SetComputeIntParams(shader, "moduloSeed", new int[] { moduloSeed.x, moduloSeed.y, moduloSeed.z });
-            commands.SetComputeVectorParam(shader, "offset", offset);
-            commands.SetComputeVectorParam(shader, "scale", scale);
 
             if (updateInjected) {
                 compiler.ctx.injector.UpdateInjected(commands, shader, textures);

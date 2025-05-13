@@ -54,31 +54,27 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
-        public const int BATCH_SIZE = 64 * 64 * 32;
-        const int VOL = VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE;
-        private bool blocky;
-        private float skirtsDensityThreshold;
 
         public NativeList<float3> debugData;
 
+        const int BATCH_SIZE = 64 * 64 * 32;
+        const int VOL = VoxelUtils.VOLUME;
+        const int MATS = VoxelUtils.MAX_MATERIAL_COUNT;
+
         internal MeshJobHandler(VoxelMesher mesher) {
             this.mesher = mesher;
-            this.blocky = mesher.useBlocky;
-            this.skirtsDensityThreshold = mesher.skirtsDensityThreshold;
-
 
             // Native buffers for mesh data
-            int materialCount = VoxelUtils.MAX_MATERIAL_COUNT;
             voxels = new NativeArray<Voxel>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             vertices = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             normals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             uvs = new NativeArray<float2>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             tempTriangles = new NativeArray<int>(VOL * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             permTriangles = new NativeArray<int>(VOL * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            voxelCounters = new NativeMultiCounter(materialCount, Allocator.Persistent);
+            voxelCounters = new NativeMultiCounter(MATS, Allocator.Persistent);
             indices = new NativeArray<int>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             enabled = new NativeArray<byte>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            quadCounters = new NativeMultiCounter(materialCount, Allocator.Persistent);
+            quadCounters = new NativeMultiCounter(MATS, Allocator.Persistent);
             counter = new NativeCounter(Allocator.Persistent);
 
             debugData = new NativeList<float3>(1000, Allocator.Persistent);
@@ -96,9 +92,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtWithinThreshold = new NativeArray<bool>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             // Native buffer for handling multiple materials
-            materialHashMap = new NativeParallelHashMap<byte, int>(materialCount, Allocator.Persistent);
-            materialHashSet = new NativeParallelHashSet<byte>(materialCount, Allocator.Persistent);
-            materialSegmentOffsets = new NativeArray<int>(materialCount, Allocator.Persistent);
+            materialHashMap = new NativeParallelHashMap<byte, int>(MATS, Allocator.Persistent);
+            materialHashSet = new NativeParallelHashSet<byte>(MATS, Allocator.Persistent);
+            materialSegmentOffsets = new NativeArray<int>(MATS, Allocator.Persistent);
             materialCounter = new NativeCounter(Allocator.Persistent);
 
             VertexAttributeDescriptor positionDesc = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
@@ -170,7 +166,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uvs = uvs,
                 counter = counter,
                 voxelScale = voxelSizeFactor,
-                blocky = blocky,
             };
 
             // Calculate vertex ambient occlusion 
@@ -223,14 +218,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 counters = quadCounters,
             };
 
-            SkirtIndexReset skirtIndexResetCopied = new SkirtIndexReset {
-                indices = skirtVertexIndicesCopied,
-            };
-
-            SkirtIndexReset skirtIndexResetGenerated = new SkirtIndexReset {
-                indices = skirtVertexIndicesGenerated,
-            };
-
             // Create a copy job that will copy boundary vertices and indices to the skirts' face values
             SkirtCopyRemapJob skirtCopyJob = new SkirtCopyRemapJob {
                 skirtVertexIndicesCopied = skirtVertexIndicesCopied,
@@ -253,7 +240,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 withinThreshold = skirtWithinThreshold,
                 skirtVertexCounter = skirtVertexCounter,
                 voxels = voxels,
-                threshold = skirtsDensityThreshold,
+                voxelScale = voxelSizeFactor,
             };
 
             // Create skirt quads
@@ -286,15 +273,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
                 JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, dependency);
 
-                // Not really needed but just in case. just resets vertex indices (sets them to int.MaxValue)
-                JobHandle resetCopiedIndicesHandle = skirtIndexResetCopied.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE);
-                JobHandle resetGeneratedIndicesHandle = skirtIndexResetGenerated.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE);
-
                 // Copies vertices from the boundary in the source mesh to our skirt vertices. also sets proper indices in the skirtVertexIndicesCopied array
-                JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(JobHandle.CombineDependencies(vertexJobHandle, resetCopiedIndicesHandle));
+                JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(vertexJobHandle);
 
                 // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
-                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, resetGeneratedIndicesHandle, closestSurfaceJobHandle));
+                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
 
                 // Creates quad based on the copied vertices and skirt-generated vertices
                 JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, skirtVertexJobHandle);

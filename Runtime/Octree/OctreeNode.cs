@@ -10,15 +10,14 @@ namespace jedjoud.VoxelTerrain.Octree {
             parentIndex = -1,
             index = -1,
             depth = -1,
-            position = float3.zero,
+            position = int3.zero,
             size = 0,
             childBaseIndex = -1,
         };
 
-        // TODO: maybe compress this type? make it take a smaller memory footprint...
-        public float3 position;
+        public int3 position;
         public int depth;
-        public float size;
+        public int size;
         public int index;
         public int parentIndex;
         public int childBaseIndex;
@@ -28,8 +27,8 @@ namespace jedjoud.VoxelTerrain.Octree {
         public MinMaxAABB Bounds => new MinMaxAABB(position, position + size);
 
 
-        public static OctreeNode RootNode(int maxDepth, float chunkSize) {
-            float size = (math.pow(2.0F, (float)(maxDepth))) * chunkSize;
+        public static OctreeNode RootNode(int maxDepth, int chunkSize) {
+            int size = (int)(math.pow(2.0F, maxDepth)) * chunkSize;
             OctreeNode node = new OctreeNode();
             node.position = -math.int3(size / 2);
             node.depth = 0;

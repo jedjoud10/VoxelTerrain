@@ -24,15 +24,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
-        public bool useBlocky;
-        public bool useFallback;
         public bool useSkirting;
         public float aoGlobalOffset = 1f;
         public float aoMinDotNormal = 0.0f;
         public float aoGlobalSpread = 0.5f;
         public float aoStrength = 1.0f;
-        public float skirtsDensityThreshold = -10;
-
+        
         // List of persistently allocated mesh data
         internal List<MeshJobHandler> handlers;
 

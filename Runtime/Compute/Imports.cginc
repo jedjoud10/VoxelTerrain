@@ -7,9 +7,6 @@ static const int LOGICAL_SIZE = 65;
 int3 permuationSeed;
 int3 moduloSeed;
 
-float3 scale;
-float3 offset;
-
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/SDF.cginc"
@@ -20,6 +17,8 @@ float3 offset;
 RWStructuredBuffer<uint> voxels;
 #else
 RWTexture3D<uint> voxels_write;
+float3 previewScale;
+float3 previewOffset;
 #endif
 
 //RWStructuredBuffer<BlittableProp> props;
@@ -32,23 +31,20 @@ RWStructuredBuffer<int> neg_pos_octal_counters;
 StructuredBuffer<float4> pos_scale_octals;
 #endif
 
+#ifdef _ASYNC_READBACK_OCTAL
 float3 ConvertIntoWorldPosition(uint3 id) {
-    #ifdef _ASYNC_READBACK_OCTAL
         uint3 zero_to_one = id / LOGICAL_SIZE;
         int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
 
         float4 pos_scale = pos_scale_octals[chunk_index];
-        return ((float3)id % LOGICAL_SIZE) * pos_scale.w + pos_scale.xyz;
-    #else
-        return ((float3)id * scale) + offset;
-    #endif
+        return (float3)((int3)(id % LOGICAL_SIZE) * pos_scale.w) + pos_scale.xyz;
 }
+#else
+float3 ConvertIntoWorldPosition(uint3 id) {
+    return ((float3)id * previewScale) + previewOffset;
+}
+#endif
 
-/*
-float3 ConvertFromWorldPosition(float3 worldPos) {
-    return  (worldPos / scale) - offset;
-}
-*/
 
 int CalcIdIndex(uint3 id) {
     #ifdef _ASYNC_READBACK_OCTAL

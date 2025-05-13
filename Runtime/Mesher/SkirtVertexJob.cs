@@ -12,8 +12,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<bool> withinThreshold;
 
-
-        // indices for the skirt vertices 
         [WriteOnly]
         [NativeDisableParallelForRestriction]
         public NativeArray<int> skirtVertexIndicesGenerated;
@@ -23,6 +21,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> skirtVertices;
 
         public Unsafe.NativeCounter.Concurrent skirtVertexCounter;
+
+        public float voxelScale;
 
         public static readonly uint2[] EDGE_POSITIONS_0_CUSTOM = new uint2[] {
             new uint2(0, 0),
@@ -38,9 +38,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new uint2(0, 0),
         };
 
-        
-        public float threshold;
-
         struct VertexToSpawn {
             // within the cell!!!
             public float3 offset;
@@ -48,19 +45,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             public bool useWorldPosition;
             public float3 worldPosition;
+            public bool forced;
         }
 
         public void Execute(int index) {
             int face = index / VoxelUtils.SKIRT_FACE;
             int direction = face % 3;
             bool negative = face < 3;
-
-
             uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
-
             int localIndex = index % VoxelUtils.SKIRT_FACE;
             int indexIndex = localIndex + face * VoxelUtils.SKIRT_FACE;
 
+            // hold up I'm resetted
             skirtVertexIndicesGenerated[indexIndex] = int.MaxValue;
 
             uint2 flatten = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SKIRT_SIZE);
@@ -105,9 +101,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 skirtVertexIndicesGenerated[indexIndex] = vertexIndex;
 
                 if (vertex.useWorldPosition) {
-                    skirtVertices[vertexIndex] = vertex.worldPosition + vertex.offset;
+                    skirtVertices[vertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
                 } else {
-                    skirtVertices[vertexIndex] = (float3)unoffsetted + vertex.offset;
+                    skirtVertices[vertexIndex] = ((float3)unoffsetted + vertex.offset) * voxelScale;
                 }
             }
         }
@@ -153,7 +149,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     float3 middle2D = SkirtUtils.UnflattenFromFaceRelative(-0.5f, faceDir, negative ? 0 : 1);
                     return new VertexToSpawn {
                         offset = middle2D,
-                        shouldSpawn = true
+                        shouldSpawn = true,
+                        forced = true,
                     };
                 } else {
                     return default;
@@ -165,13 +162,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 shouldSpawn = true
             };
         }
-
-        static readonly uint3[] forwardDirections = new uint3[3]
-        {
-            new uint3(1, 0, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 1),
-        };
 
         private VertexToSpawn SurfaceNets1D(uint2 flatten, bool4 minMaxMask, bool negative, int face) {
             int faceDir = face % 3;
@@ -187,7 +177,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool force = false;
             bool spawn = false;
 
-            uint3 endOffset = forwardDirections[edgeDir];
+            uint3 endOffset = VoxelUtils.FORWARD_DIRECTION[edgeDir];
             uint3 unoffsetted = SkirtUtils.UnflattenFromFaceRelative(flatten, faceDir, missing);
             int startIndex = VoxelUtils.PosToIndex(unoffsetted - endOffset, VoxelUtils.SIZE);
             int endIndex = VoxelUtils.PosToIndex(unoffsetted, VoxelUtils.SIZE);
@@ -195,8 +185,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Voxel startVoxel = voxels[startIndex];
             Voxel endVoxel = voxels[endIndex];
 
-            uint2 startPosition2D = flatten;
-            uint2 endPosition2D = SkirtUtils.FlattenToFaceRelative(endOffset, faceDir);
+            uint2 startPosition2D = flatten - SkirtUtils.FlattenToFaceRelative(endOffset, faceDir);
+            uint2 endPosition2D = flatten;
             int withinThresholdFaceIndex = VoxelUtils.FACE * face;
             force |= withinThreshold[VoxelUtils.PosToIndex2D(startPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
             force |= withinThreshold[VoxelUtils.PosToIndex2D(endPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
@@ -221,6 +211,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         offset = -(float3)(endOffset) * 0.5f,
                         shouldSpawn = true,
                         useWorldPosition = true,
+                        forced = true,
                     };
                 } else {
                     return default;

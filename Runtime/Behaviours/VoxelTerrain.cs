@@ -95,7 +95,7 @@ namespace jedjoud.VoxelTerrain {
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
-            voxelSizeFactor = 1F / Mathf.Pow(2F, voxelSizeReduction);
+            voxelSizeFactor = 1F / (1 << voxelSizeReduction);
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
             mesher = GetComponent<Meshing.VoxelMesher>();
@@ -123,7 +123,7 @@ namespace jedjoud.VoxelTerrain {
 
                     float size = item.size / (voxelSizeFactor * 64f);
                     obj.GetComponent<MeshRenderer>().enabled = false;
-                    obj.transform.position = item.position;
+                    obj.transform.position = math.float3(item.position);
                     obj.transform.localScale = new Vector3(size, size, size);
 
                     chunk.ResetChunk(item);

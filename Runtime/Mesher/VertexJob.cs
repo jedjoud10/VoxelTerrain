@@ -8,8 +8,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // Surface mesh job that will generate the isosurface mesh vertices
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct VertexJob : IJobParallelFor {
-        public bool blocky;
-
         // Voxel native array
         [ReadOnly]
         public NativeArray<Voxel> voxels;
@@ -39,7 +37,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Vertex Counter
         public Unsafe.NativeCounter.Concurrent counter;
-        [ReadOnly] public float voxelScale;
+        public float voxelScale;
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
@@ -86,16 +84,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
                 vertex += math.lerp(startOffset, endOffset, value);
                 normal += -math.up();
-
-                if (blocky)
-                    break;
                 //normal += math.lerp(startNormal, endNormal, value);
-            }
-
-            if (count >= 1 && blocky) {
-                count = 1;
-                vertex = 0f;
-                normal = -math.up();
             }
 
             // Must be offset by vec3(1, 1, 1)
@@ -104,7 +93,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Output vertex in object space
             float3 offset = (vertex / (float)count);
-            float3 outputVertex = (offset) + position;
+            float3 outputVertex = offset + position;
             vertices[vertexIndex] = outputVertex * voxelScale;
 
             // Calculate per vertex normals and apply it

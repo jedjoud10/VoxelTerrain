@@ -114,7 +114,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 // we have chunks!!!
                 // tries to batch em up, but even if we don't have 8 it'll still work
                 if (queued.Count > 0) {
-                    Vector4[] posScaleOctals = new Vector4[8];
+                    VoxelExecutor.PosScaleOctalData[] posScaleOctals = new VoxelExecutor.PosScaleOctalData[8];
 
                     // I hope the GPU has no issue doing async NPOT texture readback...
                     readback.free = false;
@@ -124,17 +124,27 @@ namespace jedjoud.VoxelTerrain.Generation {
                     for (int j = 0; j < 8; j++) {
                         if (queued.TryDequeue(out VoxelChunk chunk)) {
                             readback.chunks.Add(chunk);
-                            Vector3 pos = chunk.node.position;
+                            Vector3 pos = (float3)chunk.node.position;
                             float scale = chunk.node.size / 64f;
-                            Vector4 packed = new Vector4(pos.x, pos.y, pos.z, scale);
-                            posScaleOctals[j] = packed;
+                            
+                            posScaleOctals[j] = new VoxelExecutor.PosScaleOctalData {
+                                scale = scale,
+                                position = pos
+                            };
                             chunk.state = VoxelChunk.ChunkState.VoxelReadback;
                         }
                         
                     }
 
                     // Size*2 since we are using octal generation!
-                    terrain.executor.ExecuteShader(VoxelUtils.SIZE * 2, terrain.compiler.voxelsDispatchIndex, Vector3.zero, Vector3.zero, posScaleOctals, true);
+                    VoxelExecutor.ReadbackParameters parameters = new VoxelExecutor.ReadbackParameters() {
+                        newSize = VoxelUtils.SIZE * 2,
+                        posScaleOctals = posScaleOctals,
+                        dispatchIndex = terrain.compiler.voxelsDispatchIndex,
+                        updateInjected = true,
+                    };
+
+                    terrain.executor.ExecuteShader(parameters);
 
                     // Request GPU data into the native array we allocated at the start
                     // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
