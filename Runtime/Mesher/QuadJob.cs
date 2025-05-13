@@ -136,7 +136,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (math.any(position < (1 - quadForwardDirection[i])))
                     continue;
                 
-
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {
                     CheckEdge(position, i);
                 }

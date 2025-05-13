@@ -56,6 +56,19 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
 
+        public static float3 UnflattenFromFaceRelative(float2 relative, int dir, float missing = 0) {
+            if (dir == 0) {
+                return new float3(missing, relative.x, relative.y);
+            } else if (dir == 1) {
+                return new float3(relative.x, missing, relative.y);
+            } else if (dir == 2) {
+                return new float3(relative.x, relative.y, missing);
+            }
+
+            // never should happen
+            throw new Exception();
+        }
+
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         public static void DebugCheckOnlyOneBitMask(bool2 mask) {
             if (CountTrue(mask) != 1) {
@@ -324,9 +337,9 @@ namespace jedjoud.VoxelTerrain {
                 int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
 
                 // Don't make a tri if the vertices are invalid
-                Debug.Log(uniques);
+                //Debug.Log(uniques);
                 if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
-                    Debug.Log("2");
+                    //Debug.Log("2");
                     return false;
                 }
 

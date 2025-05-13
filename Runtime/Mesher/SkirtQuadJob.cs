@@ -64,39 +64,49 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             if (other < 0 || other > VoxelUtils.SIZE-3) {
                 flattened += 1;
-                Debug.Log($"SKIRT flattened={flattened}");
+                //Debug.Log($"SKIRT flattened={flattened}");
                 lookupOffset = FACE;
             } else {
                 lookupOffset = 0;
-                Debug.Log($"BOUNDARY flattened={flattened}");
+                //Debug.Log($"BOUNDARY flattened={flattened}");
             }
 
             flattened = math.clamp(flattened, 0, VoxelUtils.SIZE);
             int lookup = VoxelUtils.PosToIndex2D((uint2)flattened, VoxelUtils.SIZE);
             int res = skirtVertexIndices[lookup + lookupOffset + 2 * FACE * face];
-            Debug.Log($"RES: {res}");
+            //Debug.Log($"RES: {res}");
             return res;
         }
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
-        void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool negative, int face) {
+        void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool negative, bool force, int face) {
             uint3 forward = quadForwardDirection[index];
 
-            int baseIndex = VoxelUtils.PosToIndex(unflattened, VoxelUtils.SIZE);
-            int endIndex = VoxelUtils.PosToIndex(unflattened + forward, VoxelUtils.SIZE);
+            bool flip = !negative;
 
-            Voxel startVoxel = voxels[baseIndex];
-            Voxel endVoxel = voxels[endIndex];
+            if (!force) {
+                int baseIndex = VoxelUtils.PosToIndex(unflattened, VoxelUtils.SIZE);
+                int endIndex = VoxelUtils.PosToIndex(unflattened + forward, VoxelUtils.SIZE);
 
-            if (startVoxel.density > 0f == endVoxel.density > 0f)
-                return;
+                Voxel startVoxel = voxels[baseIndex];
+                Voxel endVoxel = voxels[endIndex];
 
-            bool flip = (endVoxel.density > 0.0);
+                if (startVoxel.density > 0f == endVoxel.density > 0f)
+                    return;
 
+                flip = (endVoxel.density > 0.0);
+            }
 
             int3 offset = (int3)((int3)unflattened + (int3)forward - math.int3(1));
+
+            if (force) {
+                if (negative) {
+                    offset[index] -= 1;
+                }
+            }
+
             //debugData.AddNoResize((float3)offset);
-            Debug.Log("BIG THINGS HAPPENING!!!");
+            //Debug.Log("BIG THINGS HAPPENING!!!");
             int vertex0 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4], face);
             int vertex1 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 1], face);
             int vertex2 = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 2], face);
@@ -129,9 +139,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
 
             
-            CheckEdge(flattened, position, 0, negative, face);
-            CheckEdge(flattened, position, 1, negative, face);
-            CheckEdge(flattened, position, 2, negative, face);
+            CheckEdge(flattened, position, 0, negative, direction == 0, face);
+            CheckEdge(flattened, position, 1, negative, direction == 1, face);
+            CheckEdge(flattened, position, 2, negative, direction == 2, face);
         }
     }
 }

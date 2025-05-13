@@ -85,13 +85,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
             minMaxMask.y = flatten.y == 0;
             minMaxMask.z = flatten.x == (VoxelUtils.SIZE - 1);
             minMaxMask.w = flatten.y == (VoxelUtils.SIZE - 1);
+
             int count = SkirtUtils.CountTrue(minMaxMask);
             // if corner case, then only 2 of the above are true
             // if edge case, then only 1 of the above is true
 
             if (count == 2) {
                 // corner case!!!
-                return;
+                // TODO: I know this is bad but wtv...
+                vertex = new VertexToSpawn {
+                    offset = 0.5f,
+                    shouldSpawn = true,
+                };
             } else if (count == 1) {
                 // edge case!!!
                 vertex = SurfaceNets1D(flatten, minMaxMask, negative, direction);
@@ -116,6 +121,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         private VertexToSpawn SurfaceNets2D(int direction, bool negative, uint3 position, uint3 unoffsetted) {
             float3 vertex = float3.zero;
+            float average = 0f;
 
             int count = 0;
             for (int edge = 0; edge < 4; edge++) {
@@ -131,6 +137,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Voxel startVoxel = voxels[startIndex];
                 Voxel endVoxel = voxels[endIndex];
 
+                average += startVoxel.density;
+                average += endVoxel.density;
+
                 if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
                     count++;
                     float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
@@ -138,8 +147,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            if (count == 0)
-                return default;
+            average /= 8f;
+
+            if (count == 0) {
+                if (average > -threshold && average < 0) {
+                    float3 middle2D = SkirtUtils.UnflattenFromFaceRelative(-0.5f, direction, negative ? 0 : 1);
+                    return new VertexToSpawn {
+                        offset = middle2D,
+                        shouldSpawn = true
+                    };
+                } else {
+                    return default;
+                }
+            }
 
             return new VertexToSpawn {
                 offset = (vertex / (float)count) - SkirtUtils.UnflattenFromFaceRelative(new uint2(1), direction),
@@ -164,6 +184,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             //worldPos[edgeDir] -= 0.5f;
 
             float3 vertex = float3.zero;
+            float average = 0f;
             bool spawn = false;
 
             uint3 endOffset = forwardDirections[edgeDir];
@@ -174,18 +195,35 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Voxel startVoxel = voxels[startIndex];
             Voxel endVoxel = voxels[endIndex];
 
+            average += startVoxel.density;
+            average += endVoxel.density;
+            average /= 2f;
+
             if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
                 spawn = true;
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
                 vertex += math.lerp(-(float3)(endOffset), 0, value);
             }
 
-            return new VertexToSpawn {
-                worldPosition = worldPos,
-                offset = vertex,
-                shouldSpawn = spawn,
-                useWorldPosition = true,
-            };
+            if (spawn) {
+                return new VertexToSpawn {
+                    worldPosition = worldPos,
+                    offset = vertex,
+                    shouldSpawn = spawn,
+                    useWorldPosition = true,
+                };
+            } else {
+                if (average > -threshold && average < 0) {
+                    return new VertexToSpawn {
+                        worldPosition = worldPos,
+                        offset = -(float3)(endOffset) * 0.5f,
+                        shouldSpawn = true,
+                        useWorldPosition = true,
+                    };
+                } else {
+                    return default;
+                }
+            }
         }
 
 
