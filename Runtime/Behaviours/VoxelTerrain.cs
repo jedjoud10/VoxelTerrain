@@ -10,7 +10,10 @@ namespace jedjoud.VoxelTerrain {
     // compressed iron sheet be like: "hold up... I'm flattened"
     public class VoxelTerrain : MonoBehaviour {
         [Header("Tick System")]
+        [Min(1)]
         public int ticksPerSecond = 128;
+
+        [Min(1)]
         public int maxTicksPerFrame = 3;
         private float tickDelta;
         private float accumulator;
@@ -80,11 +83,26 @@ namespace jedjoud.VoxelTerrain {
         public delegate void OnCompleted();
         public event OnCompleted onComplete;
 
-        private int pendingChunks;
         private bool complete;
         private List<GameObject> unusedPooledChunks;
 
+        private List<GameObject> pendingChunksToHide;
+        private List<GameObject> pendingChunksToShow;
+
+        private int pendingValidChunks;
+        private bool waitingForSwap;
+
+
         public void Start() {
+            pendingChunksToShow = new List<GameObject>();
+            pendingChunksToHide = new List<GameObject>();
+
+            if (ticksPerSecond < 0 | maxTicksPerFrame < 0) {
+                Debug.Log("bro is trying too hard");
+                ticksPerSecond = 64;
+                maxTicksPerFrame = 1;
+            }
+
             if (materials.Count == 0) {
                 throw new System.Exception("Need at least 1 voxel material to be set");
             }
@@ -93,11 +111,11 @@ namespace jedjoud.VoxelTerrain {
             disposed = false;
             chunks = new Dictionary<OctreeNode, VoxelChunk>();
             unusedPooledChunks = new List<GameObject>();
-
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
             voxelSizeFactor = 1F / (1 << voxelSizeReduction);
+            waitingForSwap = false;
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
             mesher = GetComponent<Meshing.VoxelMesher>();
@@ -110,17 +128,20 @@ namespace jedjoud.VoxelTerrain {
             octree = GetComponent<Octree.VoxelOctree>();
 
             octree.onOctreeChanged += (ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all) => {
+                pendingChunksToShow.Clear();
+                pendingChunksToHide.Clear();
+
                 foreach (var item in removed) {
                     if (chunks.ContainsKey(item)) {
-                        PoolChunk(chunks[item].gameObject);
+                        pendingChunksToHide.Add(chunks[item].gameObject);
                         chunks.Remove(item);
                     }
                 }
-
-
+                                
                 foreach (var item in added) {
                     if (item.childBaseIndex != -1)
                         continue;
+
                     GameObject obj = FetchChunk();
                     VoxelChunk chunk = obj.GetComponent<VoxelChunk>();
 
@@ -132,9 +153,12 @@ namespace jedjoud.VoxelTerrain {
                     chunk.ResetChunk(item);
                     chunks.Add(item, chunk);
 
-                    // Begin the voxel pipeline by generating the voxels for this chunk
                     readback.GenerateVoxels(chunk);
+                    pendingValidChunks++;
                 }
+
+                waitingForSwap = true;
+                octree.continuousCheck = false;
             };
 
             readback.onReadback += (VoxelChunk chunk, bool skipped) => {
@@ -142,6 +166,7 @@ namespace jedjoud.VoxelTerrain {
                 if (skipped) {
                     chunk.state = VoxelChunk.ChunkState.Done;
                     chunk.gameObject.SetActive(false);
+                    pendingValidChunks--;
                 } else {
                     chunk.state = VoxelChunk.ChunkState.Temp;
                     mesher.GenerateMesh(chunk, false);
@@ -151,8 +176,9 @@ namespace jedjoud.VoxelTerrain {
             mesher.onMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => {
                 if (mesh.VertexCount > 0 && mesh.TriangleCount > 0) {
                     collisions.GenerateCollisions(chunk, mesh);
-                    chunk.gameObject.SetActive(true);
+                    pendingChunksToShow.Add(chunk.gameObject);
                 }
+                pendingValidChunks--;
             };
 
             /*
@@ -186,8 +212,23 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public void Update() {
-            accumulator += Time.deltaTime;
+            if (waitingForSwap && pendingValidChunks == 0) {
+                foreach (var item in pendingChunksToHide) {
+                    PoolChunk(item.gameObject);
+                }
 
+                foreach (var item in pendingChunksToShow) {
+                    item.gameObject.SetActive(true);
+                }
+
+                waitingForSwap = false;
+                octree.continuousCheck = true;
+
+                pendingChunksToShow.Clear();
+                pendingChunksToHide.Clear();
+            }
+
+            accumulator += Time.deltaTime;
 
             int i = 0;
             while (accumulator >= tickDelta) {
@@ -218,12 +259,7 @@ namespace jedjoud.VoxelTerrain {
                 collisions.CallerTick();
                 Profiler.EndSample();
 
-                if (complete && pendingChunks == 0) {
-                    complete = false;
-                    onComplete?.Invoke();
-                }
-
-                if (i >= maxTicksPerFrame) {
+                if (i > maxTicksPerFrame) {
                     accumulator = 0;
                     break;
                 }
@@ -284,6 +320,8 @@ namespace jedjoud.VoxelTerrain {
                 chunk.GetComponent<MeshCollider>().sharedMesh = null;
                 chunk.GetComponent<MeshFilter>().sharedMesh = null;
             }
+
+            chunk.SetActive(false);
 
             return chunk;
         }

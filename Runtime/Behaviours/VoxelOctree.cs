@@ -32,6 +32,8 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         private JobHandle handle;
 
+        public bool continuousCheck = true;
+
         public override void CallerStart() {
             nodesList = new NativeList<OctreeNode>(Allocator.Persistent);
             neighbourMasksList = new NativeList<BitField32>(Allocator.Persistent);
@@ -43,6 +45,8 @@ namespace jedjoud.VoxelTerrain.Octree {
             removedNodes = new NativeList<OctreeNode>(Allocator.Persistent);
             pending = new NativeQueue<OctreeNode>(Allocator.Persistent);
             handle = default;
+
+            continuousCheck = true;
 
             if (target == null) {
                 Debug.LogWarning("OctreeLoader not set...");
@@ -111,10 +115,11 @@ namespace jedjoud.VoxelTerrain.Octree {
             JobHandle swapJobHandle = swapJob.Schedule(temp);
             handle = JobHandle.CombineDependencies(swapJobHandle, neighbourJobHandle);
             handle.Complete();
+            continuousCheck = true;
         }
 
         public override void CallerTick() {
-            if (terrain.mesher.meshingRequests.Count == 0 && terrain.readback.queued.Count == 0) {
+            if (terrain.mesher.meshingRequests.Count == 0 && terrain.readback.queued.Count == 0 && continuousCheck) {
                 Compute();
 
                 if (addedNodes.Length > 0 || removedNodes.Length > 0) {

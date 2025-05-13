@@ -5,6 +5,7 @@ using Unity.Mathematics.Geometry;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Octree {
+    [Serializable]
     public struct OctreeNode: IEquatable<OctreeNode> {
         public static OctreeNode Invalid = new OctreeNode {
             parentIndex = -1,
