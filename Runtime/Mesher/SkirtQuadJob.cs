@@ -71,6 +71,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Debug.Log($"BOUNDARY flattened={flattened}");
             }
 
+            flattened = math.clamp(flattened, 0, VoxelUtils.SIZE);
             int lookup = VoxelUtils.PosToIndex2D((uint2)flattened, VoxelUtils.SIZE);
             int res = skirtVertexIndices[lookup + lookupOffset + 2 * FACE * face];
             Debug.Log($"RES: {res}");
@@ -122,15 +123,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
             uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
 
-            if (math.any(flattened > VoxelUtils.SIZE - 2 | flattened < 1)) {
+            if (math.any(flattened > VoxelUtils.SIZE - 2 | flattened < 0)) {
                 return;
             }
 
 
             
-            //CheckEdge(flattened, position, 0, negative, face);
+            CheckEdge(flattened, position, 0, negative, face);
             CheckEdge(flattened, position, 1, negative, face);
-            //CheckEdge(flattened, position, 2, negative, face);
+            CheckEdge(flattened, position, 2, negative, face);
         }
     }
 }

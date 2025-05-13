@@ -50,12 +50,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // within the cell!!!
             public float3 offset;
             public bool shouldSpawn;
+
+            public bool useWorldPosition;
+            public float3 worldPosition;
         }
 
         public void Execute(int index) {
             int face = index / FACE;
             int direction = face % 3;
             bool negative = face < 3;
+
 
             uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 3);
 
@@ -70,26 +74,30 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
             }
             
-            // add an offset to take care of the edge/corner scenarios
-            uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten - 1, direction, missing);
             uint3 unoffsetted = SkirtUtils.UnflattenFromFaceRelative(flatten, direction, missing);
 
             // vertex that we will spawn for this iteration!!!
             VertexToSpawn vertex = default;
 
-            if (math.all(flatten == 0 | flatten >= (VoxelUtils.SIZE - 1))) {
-                /*
+            // mask to check if we're dealing with an edge case or corner case
+            bool4 minMaxMask = new bool4(false);
+            minMaxMask.x = flatten.x == 0;
+            minMaxMask.y = flatten.y == 0;
+            minMaxMask.z = flatten.x == (VoxelUtils.SIZE - 1);
+            minMaxMask.w = flatten.y == (VoxelUtils.SIZE - 1);
+            int count = SkirtUtils.CountTrue(minMaxMask);
+            // if corner case, then only 2 of the above are true
+            // if edge case, then only 1 of the above is true
+
+            if (count == 2) {
                 // corner case!!!
-                vertex = new VertexToSpawn {
-                    offset = 0.5f,
-                    shouldSpawn = true,
-                };
-                */
-            } else if (math.any(flatten == 0 | flatten >= (VoxelUtils.SIZE - 1))) {
+                return;
+            } else if (count == 1) {
                 // edge case!!!
-                vertex = SurfaceNets1D(direction, negative, position, unoffsetted, flatten);
+                vertex = SurfaceNets1D(flatten, minMaxMask, negative, direction, unoffsetted);
             } else {
                 // normal face case!!!
+                uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten - 1, direction, missing);
                 vertex = SurfaceNets2D(direction, negative, position, unoffsetted);
             }
 
@@ -98,7 +106,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int vertexIndex = skirtVertexCounter.Increment();
                 skirtVertexIndices[indexIndex] = vertexIndex;
 
-                skirtVertices[vertexIndex] = (float3)unoffsetted + vertex.offset;
+                if (vertex.useWorldPosition) {
+                    skirtVertices[vertexIndex] = vertex.worldPosition;
+                } else {
+                    skirtVertices[vertexIndex] = (float3)unoffsetted + vertex.offset;
+                }
             }
         }
 
@@ -135,15 +147,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
         }
 
-        private VertexToSpawn SurfaceNets1D(int direction, bool negative, uint3 position, uint3 unoffsetted, uint2 flatten) {
-            bool2 positiveMask = flatten == (VoxelUtils.SIZE - 1);
-            bool2 negativeMask = flatten == 0;
+        private VertexToSpawn SurfaceNets1D(uint2 flattened, bool4 minMaxMask, bool negative, int faceNormalDir, uint3 aowo) {
+            bool2 mask = new bool2(minMaxMask.x || minMaxMask.z, minMaxMask.y || minMaxMask.w);
+            int edgeDir = SkirtUtils.GetEdgeDirFaceRelative(mask, faceNormalDir);
 
-
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+            flattened = math.clamp(flattened, 0, VoxelUtils.SIZE - 2);
+            float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flattened, faceNormalDir, missing);
+            worldPos[edgeDir] -= 0.5f;
 
             return new VertexToSpawn {
-                offset = 0f,
-                shouldSpawn = true
+                worldPosition = worldPos,
+                //worldPosition = (float3)aowo,
+                shouldSpawn = true,
+                useWorldPosition = true,
             };
         }
 
