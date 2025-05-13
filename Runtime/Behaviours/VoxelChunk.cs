@@ -70,6 +70,7 @@ namespace jedjoud.VoxelTerrain {
             skipped = false;
             state = ChunkState.Idle;
             gameObject.name = item.position.ToString();
+            skirt.ResetSkirt();
         }
 
         // Check if the chunk has valid uniform voxel data

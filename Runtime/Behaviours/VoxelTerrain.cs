@@ -19,6 +19,7 @@ namespace jedjoud.VoxelTerrain {
 
         [Header("General")]
         public GameObject chunkPrefab;
+        public GameObject stitchingPrefab;
         public List<VoxelMaterial> materials;
 
         [Range(0, 4)]
@@ -27,6 +28,7 @@ namespace jedjoud.VoxelTerrain {
 
         [Header("Debug")]
         public bool drawGizmos;
+        public bool debugGUI;
 
         public Dictionary<OctreeNode, VoxelChunk> chunks;
 
@@ -111,6 +113,7 @@ namespace jedjoud.VoxelTerrain {
                 foreach (var item in removed) {
                     if (chunks.ContainsKey(item)) {
                         PoolChunk(chunks[item].gameObject);
+                        chunks.Remove(item);
                     }
                 }
 
@@ -134,9 +137,24 @@ namespace jedjoud.VoxelTerrain {
                 }
             };
 
-            readback.onReadback += (VoxelChunk chunk) => {
-                mesher.GenerateMesh(chunk, false);
+            readback.onReadback += (VoxelChunk chunk, bool skipped) => {
+                chunk.skipped = skipped;
+                if (skipped) {
+                    chunk.state = VoxelChunk.ChunkState.Done;
+                    chunk.gameObject.SetActive(false);
+                } else {
+                    chunk.state = VoxelChunk.ChunkState.Temp;
+                    mesher.GenerateMesh(chunk, false);
+                }
             };
+
+            mesher.onMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => {
+                if (mesh.VertexCount > 0 && mesh.TriangleCount > 0) {
+                    collisions.GenerateCollisions(chunk, mesh);
+                    chunk.gameObject.SetActive(true);
+                }
+            };
+
             /*
             spawner.onChunkSpawned += (VoxelChunk chunk) => {
                 readback.GenerateVoxels(chunk);
@@ -146,7 +164,6 @@ namespace jedjoud.VoxelTerrain {
 
 
 
-            mesher.onMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => collisions.GenerateCollisions(chunk, mesh);
 
             collisions.onCollisionBakingComplete += (VoxelChunk chunk) => {
                 pendingChunks--;
@@ -255,6 +272,12 @@ namespace jedjoud.VoxelTerrain {
                 VoxelChunk component = chunk.GetComponent<VoxelChunk>();
                 component.InitChunk();
                 component.sharedMesh = mesh;
+
+                GameObject stitchGo = Instantiate(stitchingPrefab, chunk.transform);
+                stitchGo.transform.localPosition = Vector3.zero;
+                stitchGo.transform.localScale = Vector3.one;
+                component.skirt = stitchGo.GetComponent<Meshing.VoxelSkirt>();
+                component.skirt.source = component;
             } else {
                 chunk = unusedPooledChunks[unusedPooledChunks.Count - 1];
                 unusedPooledChunks.RemoveAt(unusedPooledChunks.Count - 1);
@@ -262,7 +285,6 @@ namespace jedjoud.VoxelTerrain {
                 chunk.GetComponent<MeshFilter>().sharedMesh = null;
             }
 
-            chunk.SetActive(true);
             return chunk;
         }
 
@@ -313,6 +335,55 @@ namespace jedjoud.VoxelTerrain {
                     Gizmos.color = color;
                     Gizmos.DrawWireCube(bounds.center, bounds.size);
                 }
+            }
+        }
+
+        // Used for debugging the amount of jobs remaining
+        void OnGUI() {
+            var offset = 0;
+            void Label(string text) {
+                GUI.Label(new Rect(0, offset, 300, 30), text);
+                offset += 15;
+            }
+
+            if (debugGUI) {
+                GUI.Box(new Rect(0, 0, 300, 345), "");
+                Label($"# of chunks pending GPU voxel data: {readback.queued.Count}");
+                Label($"# of pending mesh jobs: {mesher.queuedMeshingRequests.Count}");
+                Label($"# of total chunk game objects: {chunks.Count}");
+                Label($"# of unused pooled chunk game objects: {unusedPooledChunks.Count}");
+
+                /*
+                Label($"# of pending GPU async readback jobs: {readback.pendingVoxelGenerationChunks.Count}");
+                Label($"# of pending mesh jobs: {VoxelMesher.pendingMeshJobs.Count}");
+                Label($"# of pending mesh baking jobs: {VoxelCollisions.ongoingBakeJobs.Count}");
+                Label($"# of pending voxel segments jobs: {VoxelSegments.pendingSegments.Count}");
+                Label($"# of pooled chunk game objects: {pooledChunkGameObjects.Count}");
+                Label($"# of pooled native voxel arrays: {pooledVoxelChunkContainers.Count}");
+
+                int usedVoxelArrays = Chunks.Where(x => x.Value.container is UniqueVoxelChunkContainer).Count();
+                Label($"# of free native voxel arrays (voxel generator): {VoxelGenerator.freeVoxelNativeArrays.Cast<bool>().Where(x => x).Count()}");
+                Label($"# of used native voxel arrays: {usedVoxelArrays}");
+                Label($"# of chunks to make visible: {toMakeVisible.Count}");
+                Label($"# of enabled chunks: {Chunks.Where(x => x.Value.gameObject.activeSelf).Count()}");
+                Label($"# of enabled and meshed chunks: {Chunks.Where(x => (x.Value.gameObject.activeSelf && x.Value.sharedMesh.subMeshCount > 0)).Count()}");
+                Label($"# of chunks to remove: {toRemoveChunk.Count}");
+                Label($"# of world edits: {VoxelEdits.worldEditRegistry.TryGetAll<IDynamicEdit>().Count}");
+                Label($"# of pending voxel edits: {VoxelEdits.tempVoxelEdits.Count}");
+                int mul = Voxel.size * VoxelUtils.Volume;
+                int bytes = pooledVoxelChunkContainers.Count * mul;
+                int kbs = bytes / 1024;
+                Label($"KBs of pooled native voxel arrays: {kbs}");
+                bytes = usedVoxelArrays * mul;
+                int kbs2 = bytes / 1024;
+                Label($"KBs of used native voxel arrays: {kbs2}");
+                Label($"KBs of total native voxel arrays: {kbs + kbs2}");
+                Label("Generator free: " + VoxelGenerator.Free);
+                Label("Mesher free: " + VoxelMesher.Free);
+                Label("Octree free: " + VoxelOctree.Free);
+                Label("Edits free: " + VoxelEdits.Free);
+                Label("Props free: " + VoxelProps.Free);
+                */
             }
         }
     }

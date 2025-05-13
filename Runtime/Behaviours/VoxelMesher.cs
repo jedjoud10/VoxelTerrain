@@ -13,8 +13,6 @@ using Unity.Collections.LowLevel.Unsafe;
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
     public class VoxelMesher : VoxelBehaviour {
-        public GameObject stitchingPrefab;
-
         internal struct MeshingRequest {
             public VoxelChunk chunk;
             public bool collisions;
@@ -91,14 +89,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (handlers[i].Free) {
                     if (queuedMeshingRequests.TryDequeue(out MeshingRequest job)) {
                         meshingRequests.Remove(job);
-
-                        // Always create a stitching mesh no matter what
-                        VoxelChunk chunk = job.chunk;
-                        GameObject stitchGo = Instantiate(stitchingPrefab, chunk.transform);
-                        stitchGo.transform.localPosition = Vector3.zero;
-                        stitchGo.transform.localScale = Vector3.one;
-                        chunk.skirt = stitchGo.GetComponent<VoxelSkirt>();
-                        chunk.skirt.source = chunk;
 
                         // Create a mesh for this chunk (no stitching involved)
                         // We do need to keep some boundary data for *upcomging* stitching though

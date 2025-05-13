@@ -18,8 +18,6 @@ namespace jedjoud.VoxelTerrain.Octree {
         private NativeHashSet<OctreeNode> newNodesSet;
         public NativeList<OctreeNode> nodesList;
         public NativeList<BitField32> neighbourMasksList;
-        private NativeCounter neighboursIndicesCounter;
-        public NativeArray<int> neighbourIndices;
 
 
         // only used from inside the job. for some reason, jobs can't dipose of native queues inside of them
@@ -38,12 +36,6 @@ namespace jedjoud.VoxelTerrain.Octree {
             nodesList = new NativeList<OctreeNode>(Allocator.Persistent);
             neighbourMasksList = new NativeList<BitField32>(Allocator.Persistent);
 
-            // TODO: change this heuristic for a more tighter fit
-            // currently calculates worst worst case (which is actually impossible but wtv)
-            int worst = 56 * (int)math.pow(8f, (float)maxDepth);
-            neighbourIndices = new NativeArray<int>(worst, Allocator.Persistent);
-            neighboursIndicesCounter = new NativeCounter(Allocator.Persistent);
-
             oldNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             newNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
 
@@ -56,16 +48,9 @@ namespace jedjoud.VoxelTerrain.Octree {
                 Debug.LogWarning("OctreeLoader not set...");
                 return;
             }
-
-            Compute();
-
-            if (addedNodes.Length > 0 || removedNodes.Length > 0) {
-                onOctreeChanged?.Invoke(ref addedNodes, ref removedNodes, ref nodesList);
-            }
         }
 
         private void Compute() {
-            neighboursIndicesCounter.Count = 0;
             nodesList.Clear();
             neighbourMasksList.Clear();
             newNodesSet.Clear();
@@ -129,7 +114,13 @@ namespace jedjoud.VoxelTerrain.Octree {
         }
 
         public override void CallerTick() {
+            if (terrain.mesher.meshingRequests.Count == 0 && terrain.readback.queued.Count == 0) {
+                Compute();
 
+                if (addedNodes.Length > 0 || removedNodes.Length > 0) {
+                    onOctreeChanged?.Invoke(ref addedNodes, ref removedNodes, ref nodesList);
+                }
+            }
         }
 
         public override void CallerDispose() {
@@ -139,9 +130,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             removedNodes.Dispose();
             pending.Dispose();
             nodesList.Dispose();
-            neighbourIndices.Dispose();
             neighbourMasksList.Dispose();
-            neighboursIndicesCounter.Dispose();
         }
 
         private void OnDrawGizmos() {

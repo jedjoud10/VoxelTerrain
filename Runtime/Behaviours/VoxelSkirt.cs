@@ -35,6 +35,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             debugSkirtVertices = vertices.Reinterpret<Vector3>().GetSubArray(0, vertexCount).ToArray();
             debugData = data.AsArray().Reinterpret<Vector3>().ToArray();
             //Debug.Log($"T: {triCount}, V: {vertexCount}");
+
+            MeshRenderer renderer = GetComponent<MeshRenderer>();
+            renderer.enabled = true;
+        }
+
+        public void ResetSkirt() {
+            MeshRenderer renderer = GetComponent<MeshRenderer>();
+            renderer.enabled = false;
         }
 
         public int faceIndex;

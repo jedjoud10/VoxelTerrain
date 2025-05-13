@@ -14,11 +14,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int asyncReadbackPerTick = 1;
 
         private OngoingVoxelReadback[] readbacks;
-        private Queue<VoxelChunk> queued;
+        public Queue<VoxelChunk> queued;
         private HashSet<VoxelChunk> pending;
 
         public bool skipEmptyChunks;
-        public delegate void OnReadback(VoxelChunk chunk);
+        public delegate void OnReadback(VoxelChunk chunk, bool skipped);
         public event OnReadback onReadback;
 
         // Currently ongoing async readback request
@@ -95,13 +95,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                         int max = VoxelUtils.VOLUME;
                         pending.Remove(chunk);
-                        if ((count == max || count == -max) && skipEmptyChunks) {
-                            chunk.state = VoxelChunk.ChunkState.Done;
-                            chunk.skipped = true;
-                        } else {
-                            chunk.state = VoxelChunk.ChunkState.Temp;
-                            onReadback?.Invoke(chunk);
-                        }
+                        onReadback?.Invoke(chunk, (count == max || count == -max) && skipEmptyChunks);
                     }
 
                     readback.Reset();
