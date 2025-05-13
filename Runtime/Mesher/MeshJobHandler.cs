@@ -266,7 +266,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Copy boundary skirt vertices and start creating skirts
             JobHandle skirtQuadJobHandle = default;
 
-            if (math.all(request.chunk.node.position == new float3(0f, 0f, 256f))) {
+            if (math.all(request.chunk.node.position == new float3(0f, 0f, 256f)) || true) {
                 JobHandle skirtIndexResetJobHandle = skirtIndexReset.Schedule(FACE * 2 * 6, 2048);
                 JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(JobHandle.CombineDependencies(vertexJobHandle, skirtIndexResetJobHandle));
                 JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(FACE * 6, 20480, JobHandle.CombineDependencies(skirtCopyJobHandle, skirtIndexResetJobHandle));

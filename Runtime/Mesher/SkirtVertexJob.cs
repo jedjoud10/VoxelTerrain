@@ -94,7 +94,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
             } else if (count == 1) {
                 // edge case!!!
-                vertex = SurfaceNets1D(flatten, minMaxMask, negative, direction, unoffsetted);
+                vertex = SurfaceNets1D(flatten, minMaxMask, negative, direction);
             } else {
                 // normal face case!!!
                 uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten - 1, direction, missing);
@@ -107,7 +107,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 skirtVertexIndices[indexIndex] = vertexIndex;
 
                 if (vertex.useWorldPosition) {
-                    skirtVertices[vertexIndex] = vertex.worldPosition;
+                    skirtVertices[vertexIndex] = vertex.worldPosition + vertex.offset;
                 } else {
                     skirtVertices[vertexIndex] = (float3)unoffsetted + vertex.offset;
                 }
@@ -147,29 +147,48 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
         }
 
-        private VertexToSpawn SurfaceNets1D(uint2 flattened, bool4 minMaxMask, bool negative, int faceNormalDir, uint3 aowo) {
-            bool2 mask = new bool2(minMaxMask.x || minMaxMask.z, minMaxMask.y || minMaxMask.w);
-            int edgeDir = SkirtUtils.GetEdgeDirFaceRelative(mask, faceNormalDir);
-
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
-            flattened = math.clamp(flattened, 0, VoxelUtils.SIZE - 2);
-            float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flattened, faceNormalDir, missing);
-            worldPos[edgeDir] -= 0.5f;
-
-            return new VertexToSpawn {
-                worldPosition = worldPos,
-                //worldPosition = (float3)aowo,
-                shouldSpawn = true,
-                useWorldPosition = true,
-            };
-        }
-
         static readonly uint3[] forwardDirections = new uint3[3]
         {
             new uint3(1, 0, 0),
             new uint3(0, 1, 0),
             new uint3(0, 0, 1),
         };
+
+        private VertexToSpawn SurfaceNets1D(uint2 flatten, bool4 minMaxMask, bool negative, int faceNormalDir) {
+            bool2 mask = new bool2(minMaxMask.x || minMaxMask.z, minMaxMask.y || minMaxMask.w);
+            int edgeDir = SkirtUtils.GetEdgeDirFaceRelative(mask, faceNormalDir);
+
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+            flatten = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
+            float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten, faceNormalDir, missing);
+            //worldPos[edgeDir] -= 0.5f;
+
+            float3 vertex = float3.zero;
+            bool spawn = false;
+
+            uint3 endOffset = forwardDirections[edgeDir];
+            uint3 unoffsetted = SkirtUtils.UnflattenFromFaceRelative(flatten, faceNormalDir, missing);
+            int startIndex = VoxelUtils.PosToIndex(unoffsetted - endOffset, VoxelUtils.SIZE);
+            int endIndex = VoxelUtils.PosToIndex(unoffsetted, VoxelUtils.SIZE);
+
+            Voxel startVoxel = voxels[startIndex];
+            Voxel endVoxel = voxels[endIndex];
+
+            if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
+                spawn = true;
+                float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
+                vertex += math.lerp(-(float3)(endOffset), 0, value);
+            }
+
+            return new VertexToSpawn {
+                worldPosition = worldPos,
+                offset = vertex,
+                shouldSpawn = spawn,
+                useWorldPosition = true,
+            };
+        }
+
+
 
         /*
         private void SurfaceNets1D(int indexIndex, int faceDirection, bool negative, uint3 position, uint2 flatten) {
