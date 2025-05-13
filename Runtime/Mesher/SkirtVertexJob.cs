@@ -7,26 +7,23 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct SkirtVertexJob : IJobParallelFor {                
-        // whole source chunk voxels
         [ReadOnly]
         public NativeArray<Voxel> voxels;
+        [ReadOnly]
+        public NativeArray<bool> withinThreshold;
+
 
         // indices for the skirt vertices 
-        // first 66*66 vertices are from the border of the chunk (already generated)
-        // next 66*66 vertices are the ones we generate in this job here
         [WriteOnly]
         [NativeDisableParallelForRestriction]
         public NativeArray<int> skirtVertexIndicesGenerated;
 
         [WriteOnly]
         [NativeDisableParallelForRestriction]
-        // first 66*66 vertices are from the border of the chunk (already generated)
-        // next 66*66 vertices are the ones we generate in this job here
         public NativeArray<float3> skirtVertices;
 
         public Unsafe.NativeCounter.Concurrent skirtVertexCounter;
 
-        // Positions of the first vertex in edges
         public static readonly uint2[] EDGE_POSITIONS_0_CUSTOM = new uint2[] {
             new uint2(0, 0),
             new uint2(0, 1),
@@ -34,7 +31,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new uint2(1, 0),
         };
 
-        // Positions of the second vertex in edges
         public static readonly uint2[] EDGE_POSITIONS_1_CUSTOM = new uint2[] {
             new uint2(0, 1),
             new uint2(1, 1),
@@ -42,6 +38,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new uint2(0, 0),
         };
 
+        
         public float threshold;
 
         struct VertexToSpawn {
@@ -95,11 +92,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 */
             } else if (count == 1) {
                 // edge case!!!
-                vertex = SurfaceNets1D(flatten, minMaxMask, negative, direction);
+                vertex = SurfaceNets1D(flatten, minMaxMask, negative, face);
             } else {
                 // normal face case!!!
                 uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten - 1, direction, missing);
-                vertex = SurfaceNets2D(direction, negative, position, unoffsetted);
+                vertex = SurfaceNets2D(face, negative, position);
             }
 
             // Actually spawn the vertex if needed
@@ -115,16 +112,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-        private VertexToSpawn SurfaceNets2D(int direction, bool negative, uint3 position, uint3 unoffsetted) {
+        private VertexToSpawn SurfaceNets2D(int face, bool negative, uint3 position) {
+            int faceDir = face % 3;
+            
             float3 vertex = float3.zero;
-            float average = 0f;
+            bool force = false;
+
+            uint2 flat = SkirtUtils.FlattenToFaceRelative(position, faceDir);
 
             int count = 0;
             for (int edge = 0; edge < 4; edge++) {
                 uint2 startOffset2D = EDGE_POSITIONS_0_CUSTOM[edge];
                 uint2 endOffset2D = EDGE_POSITIONS_1_CUSTOM[edge];
-                uint3 startOffset = SkirtUtils.UnflattenFromFaceRelative(startOffset2D, direction, (uint)(negative ? 0 : 1));
-                uint3 endOffset = SkirtUtils.UnflattenFromFaceRelative(endOffset2D, direction, (uint)(negative ? 0 : 1));
+
+                uint3 startOffset = SkirtUtils.UnflattenFromFaceRelative(startOffset2D, faceDir, (uint)(negative ? 0 : 1));
+                uint3 endOffset = SkirtUtils.UnflattenFromFaceRelative(endOffset2D, faceDir, (uint)(negative ? 0 : 1));
 
 
                 int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
@@ -133,8 +135,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Voxel startVoxel = voxels[startIndex];
                 Voxel endVoxel = voxels[endIndex];
 
-                average += startVoxel.density;
-                average += endVoxel.density;
+                uint2 startPosition2D = startOffset2D + flat;
+                uint2 endPosition2D = endOffset2D + flat;
+                int withinThresholdFaceIndex = VoxelUtils.FACE * face;
+                force |= withinThreshold[VoxelUtils.PosToIndex2D(startPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
+                force |= withinThreshold[VoxelUtils.PosToIndex2D(endPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
 
                 if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
                     count++;
@@ -143,11 +148,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            average /= 8f;
-
             if (count == 0) {
-                if (average > -threshold && average < 0) {
-                    float3 middle2D = SkirtUtils.UnflattenFromFaceRelative(-0.5f, direction, negative ? 0 : 1);
+                if (force) {
+                    float3 middle2D = SkirtUtils.UnflattenFromFaceRelative(-0.5f, faceDir, negative ? 0 : 1);
                     return new VertexToSpawn {
                         offset = middle2D,
                         shouldSpawn = true
@@ -158,7 +161,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             return new VertexToSpawn {
-                offset = (vertex / (float)count) - SkirtUtils.UnflattenFromFaceRelative(new uint2(1), direction),
+                offset = (vertex / (float)count) - SkirtUtils.UnflattenFromFaceRelative(new uint2(1), faceDir),
                 shouldSpawn = true
             };
         }
@@ -170,30 +173,33 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new uint3(0, 0, 1),
         };
 
-        private VertexToSpawn SurfaceNets1D(uint2 flatten, bool4 minMaxMask, bool negative, int faceNormalDir) {
+        private VertexToSpawn SurfaceNets1D(uint2 flatten, bool4 minMaxMask, bool negative, int face) {
+            int faceDir = face % 3;
+
             bool2 mask = new bool2(minMaxMask.x || minMaxMask.z, minMaxMask.y || minMaxMask.w);
-            int edgeDir = SkirtUtils.GetEdgeDirFaceRelative(mask, faceNormalDir);
+            int edgeDir = SkirtUtils.GetEdgeDirFaceRelative(mask, faceDir);
 
             uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 1);
             flatten = math.clamp(flatten, 0, VoxelUtils.SIZE - 1);
-            float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten, faceNormalDir, missing);
-            //worldPos[edgeDir] -= 0.5f;
+            float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten, faceDir, missing);
 
             float3 vertex = float3.zero;
-            float average = 0f;
+            bool force = false;
             bool spawn = false;
 
             uint3 endOffset = forwardDirections[edgeDir];
-            uint3 unoffsetted = SkirtUtils.UnflattenFromFaceRelative(flatten, faceNormalDir, missing);
+            uint3 unoffsetted = SkirtUtils.UnflattenFromFaceRelative(flatten, faceDir, missing);
             int startIndex = VoxelUtils.PosToIndex(unoffsetted - endOffset, VoxelUtils.SIZE);
             int endIndex = VoxelUtils.PosToIndex(unoffsetted, VoxelUtils.SIZE);
 
             Voxel startVoxel = voxels[startIndex];
             Voxel endVoxel = voxels[endIndex];
 
-            average += startVoxel.density;
-            average += endVoxel.density;
-            average /= 2f;
+            uint2 startPosition2D = flatten;
+            uint2 endPosition2D = SkirtUtils.FlattenToFaceRelative(endOffset, faceDir);
+            int withinThresholdFaceIndex = VoxelUtils.FACE * face;
+            force |= withinThreshold[VoxelUtils.PosToIndex2D(startPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
+            force |= withinThreshold[VoxelUtils.PosToIndex2D(endPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
 
             if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
                 spawn = true;
@@ -209,7 +215,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     useWorldPosition = true,
                 };
             } else {
-                if (average > -threshold && average < 0) {
+                if (force) {
                     return new VertexToSpawn {
                         worldPosition = worldPos,
                         offset = -(float3)(endOffset) * 0.5f,
@@ -221,69 +227,5 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
         }
-
-
-
-        /*
-        private void SurfaceNets1D(int indexIndex, int faceDirection, bool negative, uint3 position, uint2 flatten) {
-            // special "corner" case, don't even run surface nets, just put it at the corner
-            // I'll be on the safe side and just place the corner even if we don't need one there
-            // we can always run a vertex clean-up job at the very end to get rid of unused vertices
-            int vertexIndex = skirtVertexCounter.Increment();
-            skirtVertexIndices[indexIndex] = vertexIndex;
-            skirtVertices[vertexIndex] = (float3)position;
-            /*
-            bool2 positiveMask = flatten == (VoxelUtils.SIZE - 1);
-            bool2 negativeMask = flatten == 0;
-            bool2 local = negativeMask | positiveMask;
-
-            //uint3 faceOffset = (uint3)SkirtUtils.UnflattenFromFaceRelative(new uint2(1, 1), faceDirection);
-            // we need to offset all the skirt vertices by 1 since we need to reserve a space for the edge scenarios
-            //uint3 faceOffset = (uint3)SkirtUtils.UnflattenFromFaceRelative(math.select((uint)1, 0, positiveMask), faceDirection);
-
-            int edgeDirection = SkirtUtils.GetEdgeDirFaceRelative(local, faceDirection);
-            float3 vertex = float3.zero;
-            bool spawn = false;
-            half average = (half)0f;
-
-            uint3 endOffset = forwardDirections[edgeDirection];
-            int startIndex = VoxelUtils.PosToIndex(position - endOffset, VoxelUtils.SIZE);
-            int endIndex = VoxelUtils.PosToIndex(position, VoxelUtils.SIZE);
-
-            Voxel startVoxel = voxels[startIndex];
-            Voxel endVoxel = voxels[endIndex];
-
-            average += startVoxel.density;
-            average += endVoxel.density;
-
-            if (startVoxel.density > 0 ^ endVoxel.density > 0) {
-                spawn = true;
-                float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
-                vertex += math.lerp(-(float3)(endOffset), 0, value);
-            }
-
-            // forcefully create the vertex based on density threshold
-            average = (half)(average / (half)(2f));
-            bool force = average > -threshold && average < 0f;
-            if (!spawn && !force) {
-                return;
-            }
-
-            int vertexIndex = skirtVertexCounter.Increment();
-
-            skirtVertexIndices[indexIndex] = vertexIndex;
-
-            float3 offset = 0f;
-            if (force && !spawn) {
-                //offset[edgeDirection] = -0.5f;
-            } else {
-                offset = vertex;
-            }
-                        
-            //offset -= faceOffset;
-
-            skirtVertices[vertexIndex] = offset + position;
-        }
-        */
     }
 }

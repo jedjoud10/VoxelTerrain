@@ -69,6 +69,19 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
 
+        public static int3 UnflattenFromFaceRelative(int2 relative, int dir, int missing = 0) {
+            if (dir == 0) {
+                return new int3(missing, relative.x, relative.y);
+            } else if (dir == 1) {
+                return new int3(relative.x, missing, relative.y);
+            } else if (dir == 2) {
+                return new int3(relative.x, relative.y, missing);
+            }
+
+            // never should happen
+            throw new Exception();
+        }
+
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         public static void DebugCheckOnlyOneBitMask(bool2 mask) {
             if (CountTrue(mask) != 1) {
@@ -288,7 +301,7 @@ namespace jedjoud.VoxelTerrain {
         }
 
         // Create quads / triangles based on the given vertex index data in the "v" parameter
-        public static bool AddQuadsOrTris(bool flip, int4 v, ref NativeCounter.Concurrent triangleCounter, ref NativeArray<int> indices) {
+        public static bool TryAddQuadsOrTris(bool flip, int4 v, ref NativeCounter.Concurrent triangleCounter, ref NativeArray<int> indices) {
             // Ts gpt-ed kek
             int dupeType = 0;
             dupeType |= math.select(0, 1, v.x == v.y);

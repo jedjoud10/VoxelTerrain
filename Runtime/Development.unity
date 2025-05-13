@@ -501,7 +501,7 @@ RenderTexture:
   m_Dimension: 3
   m_VolumeDepth: 128
   m_ShadowSamplingMode: 2
---- !u!84 &1389817261
+--- !u!84 &851956137
 RenderTexture:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -644,7 +644,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: amplitude.value
-      value: 0
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 3475662089056963851, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: testRandomness.x

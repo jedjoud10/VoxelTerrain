@@ -111,35 +111,27 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // load the vertex indices inside this vector
             int4 v = int.MaxValue;
-            v[0] = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4], face);
-            v[1] = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 1], face);
-            v[2] = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 2], face);
-            v[3] = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + 3], face);
-            /*
             for (int i = 0; i < 4; i++) {
                 v[i] = FetchIndex(offset + (int3)quadPerpendicularOffsets[index * 4 + i], face);
             }
-            */
 
             // there are some cases where this generates more tris than necessary, but that's better than not generating enough tris
             // for that reason I will stick to using uniform SN for between chunks of the same resolution
-            SkirtUtils.AddQuadsOrTris(flip, v, ref skirtQuadCounter, ref skirtIndices);
+            SkirtUtils.TryAddQuadsOrTris(flip, v, ref skirtQuadCounter, ref skirtIndices);
         }
 
         public void Execute(int index) {
-            int face = index / VoxelUtils.SKIRT_FACE;
+            // we run the job for VoxelUtils.FACE since quad jobs always miss the last 2/1 voxels (due to missing indices)
+            // fine for us though...
+            int face = index / VoxelUtils.FACE;
             int direction = face % 3;
             bool negative = face < 3;
-
-            int localIndex = index % VoxelUtils.SKIRT_FACE;
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE-1);
+            int localIndex = index % VoxelUtils.FACE;
             
-            uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SKIRT_SIZE);
+            // convert from 2D position to 3D using missing value
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE-1);
+            uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
             uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
-
-            // or you could run the job at VoxelUtils.SIZE instead of 
-            if (math.any(flattened > VoxelUtils.SIZE - 1))
-                return;
 
             for (int i = 0; i < 3; i++) {
                 bool force = direction == i;
