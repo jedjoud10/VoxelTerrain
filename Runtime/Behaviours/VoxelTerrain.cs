@@ -24,6 +24,7 @@ namespace jedjoud.VoxelTerrain {
         public GameObject chunkPrefab;
         public GameObject stitchingPrefab;
         public List<VoxelMaterial> materials;
+        public float ditherTransitionTime = 0.2f;
 
         [Range(0, 4)]
         public int voxelSizeReduction;
@@ -91,6 +92,8 @@ namespace jedjoud.VoxelTerrain {
 
         private int pendingValidChunks;
         private bool waitingForSwap;
+        private bool ditherTransition;
+        private float transitionBeginTime;
 
 
         public void Start() {
@@ -159,6 +162,7 @@ namespace jedjoud.VoxelTerrain {
 
                 waitingForSwap = true;
                 octree.continuousCheck = false;
+                ditherTransition = false;
             };
 
             readback.onReadback += (VoxelChunk chunk, bool skipped) => {
@@ -211,22 +215,54 @@ namespace jedjoud.VoxelTerrain {
             octree.CallerStart();
         }
 
+        private void SetTransitionDither(float ditherIn) {
+            foreach (var item in pendingChunksToShow) {
+                item.GetComponent<VoxelChunk>().SetDither(ditherIn);
+            }
+
+            foreach (var item in pendingChunksToHide) {
+                item.GetComponent<VoxelChunk>().SetDither(-ditherIn);
+            }
+        }
+
         public void Update() {
-            if (waitingForSwap && pendingValidChunks == 0) {
-                foreach (var item in pendingChunksToHide) {
-                    PoolChunk(item.gameObject);
-                }
+            if (waitingForSwap && pendingValidChunks == 0 && !ditherTransition) {
+                transitionBeginTime = Time.unscaledTime;
+                ditherTransition = true;
 
                 foreach (var item in pendingChunksToShow) {
-                    item.gameObject.SetActive(true);
+                    item.SetActive(true);
                 }
 
-                waitingForSwap = false;
-                octree.continuousCheck = true;
-
-                pendingChunksToShow.Clear();
-                pendingChunksToHide.Clear();
+                SetTransitionDither(-1);
             }
+
+            if (ditherTransition) {
+                float diff = (Time.unscaledTime - transitionBeginTime) / ditherTransitionTime;
+                //Debug.Log($"diff: {diff}");
+
+
+                if (diff < 1) {
+                    SetTransitionDither(diff);
+                } else {
+                    SetTransitionDither(1f);
+
+                    foreach (var item in pendingChunksToHide) {
+                        PoolChunk(item.gameObject);
+                    }
+
+                    waitingForSwap = false;
+                    octree.continuousCheck = true;
+
+                    pendingChunksToShow.Clear();
+                    pendingChunksToHide.Clear();
+
+                    transitionBeginTime = 0f;
+                    ditherTransition = false;
+                }
+            }
+
+
 
             accumulator += Time.deltaTime;
 

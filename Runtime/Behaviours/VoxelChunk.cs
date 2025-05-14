@@ -73,6 +73,13 @@ namespace jedjoud.VoxelTerrain {
             skirt.ResetSkirt();
         }
 
+        // TODO: supposedly this doesn't work with SRP batcher
+        // :(
+        public void SetDither(float dither) {
+            GetComponent<MeshRenderer>().material.SetFloat("_ChunkLodDither", dither);
+            skirt.GetComponent<MeshRenderer>().material.SetFloat("_ChunkLodDither", dither);
+        }
+
         // Check if the chunk has valid uniform voxel data
         public bool HasVoxelData() {
             return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
