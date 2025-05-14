@@ -2,7 +2,6 @@ using System;
 using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Mathematics.Geometry;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Octree {
     [Serializable]

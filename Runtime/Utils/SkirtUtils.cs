@@ -1,12 +1,7 @@
 using System;
-using System.Runtime.CompilerServices;
-using Codice.Client.BaseCommands.WkStatus.Printers;
-using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     public static class SkirtUtils {

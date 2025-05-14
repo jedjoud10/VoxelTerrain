@@ -226,17 +226,6 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public void Update() {
-            if (waitingForSwap && pendingValidChunks == 0 && !ditherTransition) {
-                transitionBeginTime = Time.unscaledTime;
-                ditherTransition = true;
-
-                foreach (var item in pendingChunksToShow) {
-                    item.SetActive(true);
-                }
-
-                SetTransitionDither(-1);
-            }
-
             if (ditherTransition) {
                 float diff = (Time.unscaledTime - transitionBeginTime) / ditherTransitionTime;
                 //Debug.Log($"diff: {diff}");
@@ -262,7 +251,16 @@ namespace jedjoud.VoxelTerrain {
                 }
             }
 
+            if (waitingForSwap && pendingValidChunks == 0 && !ditherTransition) {
+                transitionBeginTime = Time.unscaledTime;
+                ditherTransition = true;
 
+                foreach (var item in pendingChunksToShow) {
+                    item.SetActive(true);
+                }
+
+                SetTransitionDither(-1);
+            }
 
             accumulator += Time.deltaTime;
 

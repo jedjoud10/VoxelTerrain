@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using Unity.Jobs;
 using UnityEngine;
-using System.Linq;
 using Unity.Collections;
 using Unity.Mathematics;
-using UnityEngine.Profiling;
-using jedjoud.VoxelTerrain.Octree;
-using Unity.Collections.LowLevel.Unsafe;
-using jedjoud.VoxelTerrain.Unsafe;
 using UnityEditor;
 
 namespace jedjoud.VoxelTerrain.Meshing {
@@ -49,6 +41,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public uint2 debugIndex;
         public bool fetchFromOg;
 
+#if UNITY_EDITOR
         private void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
                 return;
@@ -125,5 +118,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
             */
         }
+#endif
     }
 }

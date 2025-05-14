@@ -1,8 +1,6 @@
-using jedjoud.VoxelTerrain.Props;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;

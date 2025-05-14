@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace jedjoud.VoxelTerrain.Generation {
     // TODO: fixme. pls fixme... please... just impl some parent-child classes.. plpplsplsplspsllpslp
     public class KernelOutput {

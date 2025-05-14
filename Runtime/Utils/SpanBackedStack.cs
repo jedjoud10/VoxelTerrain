@@ -1,6 +1,4 @@
 using System;
-using jedjoud.VoxelTerrain.Props;
-using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
     public ref struct SpanBackedStack<T> where T: unmanaged {

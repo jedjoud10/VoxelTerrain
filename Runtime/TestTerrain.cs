@@ -1,4 +1,3 @@
-using jedjoud.VoxelTerrain.Props;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -11,6 +10,10 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         // Noise parameter for the simplex 2D noise
         public Inject<float> scale;
         public Inject<float> amplitude;
+        public Inject<float> voronoiScale;
+        public Inject<float> voronoiAmplitude;
+        public Inject<float> verticalRidgesScale;
+        public Inject<float> verticalRidgesAmplitude;
         public Inject<float2> others;
 
         [Range(1, 10)]
@@ -31,9 +34,13 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var second = ((Variable<float2>)others).Swizzle<float>("y");
 
             Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, first, second);
+            var amogus = fractal.Evaluate(xz);
+
+            var voronoi = new Voronoi(voronoiScale, voronoiAmplitude).Evaluate(projected);
+            amogus = Sdf.Union(voronoi, amogus);
 
             output = new AllOutputs();
-            output.density = y + fractal.Evaluate(xz);
+            output.density = y + amogus;
             output.material = 0;
         }
     }

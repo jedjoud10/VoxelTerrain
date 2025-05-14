@@ -6,7 +6,6 @@ using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Collections.LowLevel.Unsafe;
 using System;
-using jedjoud.VoxelTerrain.Octree;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoxelReadback : VoxelBehaviour {

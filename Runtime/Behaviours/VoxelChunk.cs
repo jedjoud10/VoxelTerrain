@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
-using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Collections;
-using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Mathematics.Geometry;
 using UnityEditor;
@@ -87,6 +83,7 @@ namespace jedjoud.VoxelTerrain {
 
         public bool debugVoxelData;
 
+#if UNITY_EDITOR
         public void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
                 return;
@@ -128,7 +125,8 @@ namespace jedjoud.VoxelTerrain {
             MinMaxAABB bounds = node.Bounds;
             Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
         }
-            
+#endif
+
         // Get the AABB world bounds of this chunk
         public Bounds GetBounds() {
             return bounds;

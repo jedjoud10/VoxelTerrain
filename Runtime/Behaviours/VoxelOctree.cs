@@ -1,10 +1,5 @@
-using System.Linq;
-using Codice.Client.BaseCommands;
-using Codice.Client.BaseCommands.BranchExplorer;
-using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Collections;
 using Unity.Jobs;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Octree {
