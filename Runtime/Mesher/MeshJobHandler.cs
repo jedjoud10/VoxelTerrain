@@ -14,6 +14,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Copy of the voxel data that we will use for meshing
         public NativeArray<Voxel> voxels;
 
+        // Normals that are calculated based on the inputted voxels
+        // Normals on the boundary are set to zero, since we can't use finite diffs at the boundary
+        public NativeArray<float3> voxelNormals;
+
         // Native buffers for mesh data
         public NativeArray<float3> vertices;
         public NativeArray<float3> normals;
@@ -56,15 +60,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public NativeList<float3> debugData;
 
-        const int BATCH_SIZE = 64 * 64 * 16;
+        const int BATCH_SIZE = 64 * 64 * 32;
         const int VOL = VoxelUtils.VOLUME;
         const int MATS = VoxelUtils.MAX_MATERIAL_COUNT;
 
         internal MeshJobHandler(VoxelMesher mesher) {
             this.mesher = mesher;
 
-            // Native buffers for mesh data
+            // Native buffers for copied voxel data and generated normal data
             voxels = new NativeArray<Voxel>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            voxelNormals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
+            // Native buffers for mesh data
             vertices = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             normals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             uvs = new NativeArray<float2>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -135,6 +142,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
+            // Normalize my shi dawg
+            NormalsJob normalsJob = new NormalsJob {
+                normals = voxelNormals,
+                voxels = voxels,
+            };
+
             // Handles fetching MC corners for the SN edges
             CornerJob cornerJob = new CornerJob {
                 voxels = voxels,
@@ -161,6 +174,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             VertexJob vertexJob = new VertexJob {
                 enabled = enabled,
                 voxels = voxels,
+                voxelNormals = voxelNormals,
                 indices = indices,
                 vertices = vertices,
                 normals = normals,
@@ -254,6 +268,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 debugData = debugData.AsParallelWriter(),
             };
 
+            // Voxel finite-diffed normals job
+            JobHandle normalsJobHandle = normalsJob.Schedule(VOL, BATCH_SIZE, dependency);
+
             // Material job and indexer job
             JobHandle materialJobHandle = materialJob.Schedule(VOL, BATCH_SIZE, dependency);
             JobHandle materialIndexerJobHandle = materialIndexerJob.Schedule(materialJobHandle);
@@ -262,10 +279,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle cornerJobHandle = cornerJob.Schedule(VOL, BATCH_SIZE, dependency);
 
             // Start the vertex job
-            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
+            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency, normalsJobHandle);
             JobHandle vertexJobHandle = vertexJob.Schedule(VOL, BATCH_SIZE, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-            JobHandle aoJobHandle = aoJob.Schedule(VOL, BATCH_SIZE / 32, vertexJobHandle);
+            JobHandle aoJobHandle = aoJob.Schedule(VOL, BATCH_SIZE / 16, vertexJobHandle);
 
             // Copy boundary skirt vertices and start creating skirts
             JobHandle skirtJobHandle = default;
@@ -281,7 +298,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
 
                 // Creates quad based on the copied vertices and skirt-generated vertices
-                JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, skirtVertexJobHandle);
+                JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule((VoxelUtils.SIZE - 2) * (VoxelUtils.SIZE - 2) * 6, BATCH_SIZE, skirtVertexJobHandle);
                 skirtJobHandle = skirtQuadJobHandle;
             }
 
@@ -416,6 +433,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtQuadCounter.Dispose();
             skirtWithinThreshold.Dispose();
             debugData.Dispose();
+            voxelNormals.Dispose();
         }
     }
 

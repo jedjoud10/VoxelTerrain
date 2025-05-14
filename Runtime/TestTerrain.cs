@@ -10,6 +10,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         // Noise parameter for the simplex 2D noise
         public Inject<float> scale;
         public Inject<float> amplitude;
+        public Inject<float> offset;
         public Inject<float> voronoiScale;
         public Inject<float> voronoiAmplitude;
         public Inject<float> warperScale;
@@ -34,7 +35,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var second = ((Variable<float2>)others).Swizzle<float>("y");
 
             Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, first, second);
-            var amogus = fractal.Evaluate(xz);
+            var amogus = fractal.Evaluate(xz) + offset;
 
             Warper<float3> warper = new Warper<float3>(new Simplex(warperScale, warperAmplitude));
 

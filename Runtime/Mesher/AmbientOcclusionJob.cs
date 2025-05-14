@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
@@ -32,9 +33,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute(int startIndex, int count) {
             if (startIndex >= counter.Count)
                 return;
+            int endIndex = math.min(startIndex + count, counter.Count);
 
-            for (int index = startIndex; index < count; index++) {
+            for (int index = startIndex; index < endIndex; index++) {
                 float3 vertex = vertices[index] / voxelScale;
+
                 float3 normal = normals[index];
 
                 int sum = 0;

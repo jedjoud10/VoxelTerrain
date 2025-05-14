@@ -31,7 +31,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int other = position[direction];
 
             // checks if we are dealing with a skirt vertex or a copied vertex in a particular direction
-            if (other < 0 || other > VoxelUtils.SIZE-2) {
+            if (other < 0 || other > VoxelUtils.SIZE-4) {
                 // since the skirt generated vertices have 2 padding vertices (for edges), we need to add an offset 
                 flattened += 1;
                 flattened = math.clamp(flattened, 0, VoxelUtils.SKIRT_SIZE);

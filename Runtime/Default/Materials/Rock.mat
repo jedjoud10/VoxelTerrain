@@ -97,9 +97,10 @@ Material:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
     - _AlphaToMask: 0
-    - _Blend: 10
+    - _Blend: 30
     - _BlendModePreserveSpecular: 1
     - _BumpScale: 1
+    - _ChunkLodDither: 0
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
     - _Cull: 2
@@ -118,13 +119,13 @@ Material:
     - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _Smoothness: 2
+    - _Smoothness: 1.8
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
-    - _Tile: 0.2
+    - _Tile: 0.05
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:

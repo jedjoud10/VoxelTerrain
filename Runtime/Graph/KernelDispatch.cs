@@ -56,14 +56,4 @@ voxels_write[id] = {output.setter};
 ";
         }
     }
-
-    public class NormalDiffKernelDispatch : KernelDispatch {
-        public override string CreateKernel(TreeContext ctx) {
-            return $@"
-#pragma kernel CSNormalDiff
-[numthreads(8, 8, 8)]
-void CSNormalDiff(uint3 id : SV_DispatchThreadID) {{
-}}";
-        }
-    }
 }

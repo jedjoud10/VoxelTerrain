@@ -2,14 +2,17 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Surface mesh job that will generate the isosurface mesh vertices
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct VertexJob : IJobParallelFor {
-        // Voxel native array
         [ReadOnly]
         public NativeArray<Voxel> voxels;
+
+        [ReadOnly]
+        public NativeArray<float3> voxelNormals;
 
         // Used for fast traversal
         [ReadOnly]
@@ -43,7 +46,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
             indices[index] = int.MaxValue;
 
-            if (math.any(position > VoxelUtils.SIZE - 2))
+            if (math.any(position > VoxelUtils.SIZE - 3))
                 return;
 
             float3 vertex = float3.zero;
@@ -72,8 +75,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
 
-                //float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
-                //float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
+                float3 startNormal = voxelNormals[startIndex];
+                float3 endNormal = voxelNormals[endIndex];
 
                 // Get the Voxels of the edge
                 Voxel startVoxel = voxels[startIndex];
@@ -82,8 +85,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // Create a vertex on the line of the edge
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
                 vertex += math.lerp(startOffset, endOffset, value);
-                normal += -math.up();
-                //normal += math.lerp(startNormal, endNormal, value);
+                normal += math.lerp(startNormal, endNormal, value);
+                //normal += -math.up();
             }
 
             // Must be offset by vec3(1, 1, 1)
@@ -95,9 +98,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float3 outputVertex = offset + position;
             vertices[vertexIndex] = outputVertex * voxelScale;
 
-            // Calculate per vertex normals and apply it
-            normal = -math.normalizesafe(normal, new float3(0, 1, 0));
-            normals[vertexIndex] = normal;
+            // Apply other vertex attribute data
+            normals[vertexIndex] = math.normalizesafe(normal, math.up());
             uvs[vertexIndex] = new float2(0.0f, 0.0f);
         }
     }

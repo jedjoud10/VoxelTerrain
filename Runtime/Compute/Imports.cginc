@@ -1,8 +1,8 @@
-// Size is actually 130, since it's double of 65!!! (octal stuff + padding voxel)
+// Size is actually 132, since it's double of 66!!! (octal stuff + normal padding + padding voxel)
 // Unless we are running a preview, and in which case the size can be anything!!!
 int size;
 
-static const int LOGICAL_SIZE = 65;
+static const int LOGICAL_SIZE = 66;
 
 int3 permuationSeed;
 int3 moduloSeed;

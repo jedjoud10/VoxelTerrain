@@ -126,6 +126,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                     VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
                                     all &= neighbour.HasVoxelData();
                                     neighbours[j] = neighbour.voxels;
+                                } else {
+                                    all = false;
+                                    return;
                                 }
                             }
                         }

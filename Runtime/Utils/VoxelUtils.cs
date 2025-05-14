@@ -2,16 +2,23 @@ using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
         // "logical" size of the chunks; how many voxels they store in one axis
-        public const int SIZE = 65;
+        // technically this only needs to be 65 for skirts to work, but we also need normals to work so this must be 66
+        // but since we also want to avoid sampling from neighbouring chunks for general SN meshing we need to make this 67 to account for the very last vertex
+        public const int SIZE = 66;
         public const int FACE = SIZE * SIZE;
         public const int VOLUME = SIZE * SIZE * SIZE;
+
+        // skirts will still spawn on the v=64 boundary though, we just need to add a 2 unit padding to handle literal 2D edge cases
         public const int SKIRT_SIZE = 66;
         public const int SKIRT_FACE = SKIRT_SIZE * SKIRT_SIZE;
+
+
         public const int MAX_MATERIAL_COUNT = 256;
 
         // Offsets used for octree generation
@@ -132,6 +139,14 @@ namespace jedjoud.VoxelTerrain {
         };
 
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckBounds(int3 coordinates, int size) {
+            if (math.cmax(coordinates) >= size || math.cmin(coordinates) < 0) {
+                throw new System.OverflowException(
+                    $"An element of coordinates {coordinates} is larger than the maximum {size - 1} or less than the minimum 0 (size={size})");
+            }
+        }
+
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         static void DebugCheckBounds(uint3 coordinates, int size) {
             if (math.cmax(coordinates) >= size) {
                 throw new System.OverflowException(
@@ -225,16 +240,18 @@ namespace jedjoud.VoxelTerrain {
         // Solely used for AO, since that needs to fetch data from all the neighbours
         public static Voxel FetchVoxelNeighbours(int3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
             // remap -1,1 to 0,2
-            position += new int3(SIZE);
-            int3 chunkPosition = position / SIZE;
+            position += new int3(64);
+            int3 chunkPosition = position / 64;
             int chunkIndex = PosToIndex((uint3)chunkPosition, 3);
-            int voxelIndex = PosToIndex((uint3)Mod(position, SIZE), SIZE);
+            int voxelIndex = PosToIndex((uint3)Mod(position, 64), SIZE);
 
             unsafe {
                 Voxel* ptr = neighbours[chunkIndex];
 
                 if (chunkIndex == 13) {
                     ptr = (Voxel*)voxels.GetUnsafeReadOnlyPtr<Voxel>();
+                } else {
+                    return Voxel.Empty;
                 }
 
                 if (ptr != null) {
@@ -264,9 +281,13 @@ namespace jedjoud.VoxelTerrain {
         // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool CheckPosition(int3 position, BitField32 mask) {
-            int3 temp1 = position + SIZE;
+            int3 temp1 = position + 64;
+
+            DebugCheckBounds(temp1, 64 * 3);
+
             int3 chunkPosition = temp1 / SIZE;
 
+            //Debug.Log(chunkPosition);
             int index1 = PosToIndex((uint3)chunkPosition, 3);
 
             return mask.IsSet(index1);
@@ -280,7 +301,7 @@ namespace jedjoud.VoxelTerrain {
             float d000 = FetchVoxelNeighbours(voxPos, ref voxels, ref neighbours).density;
             float d100 = FetchVoxelNeighbours(voxPos + math.int3(1, 0, 0), ref voxels, ref neighbours).density;
             float d010 = FetchVoxelNeighbours(voxPos + math.int3(0, 1, 0), ref voxels, ref neighbours).density;
-            float d110 = FetchVoxelNeighbours(voxPos + math.int3(0, 0, 1), ref voxels, ref neighbours).density;
+            float d110 = FetchVoxelNeighbours(voxPos + math.int3(1, 1, 0), ref voxels, ref neighbours).density;
 
             float d001 = FetchVoxelNeighbours(voxPos + math.int3(0, 0, 1), ref voxels, ref neighbours).density;
             float d101 = FetchVoxelNeighbours(voxPos + math.int3(1, 0, 1), ref voxels, ref neighbours).density;
