@@ -1,12 +1,11 @@
-// Size is actually 128, since it's double of 64!!! (octal stuff)
+// Size is actually 130, since it's double of 65!!! (octal stuff + padding voxel)
+// Unless we are running a preview, and in which case the size can be anything!!!
 int size;
-int morton;
+
+static const int LOGICAL_SIZE = 65;
 
 int3 permuationSeed;
 int3 moduloSeed;
-
-float3 scale;
-float3 offset;
 
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises.cginc"
@@ -14,49 +13,55 @@ float3 offset;
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Other.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 
-
+#ifdef _ASYNC_READBACK_OCTAL
+RWStructuredBuffer<uint> voxels;
+#else
 RWTexture3D<uint> voxels_write;
-RWStructuredBuffer<BlittableProp> props;
-RWStructuredBuffer<int> props_counter;
-RWStructuredBuffer<int> pos_neg_counter;
+float3 previewScale;
+float3 previewOffset;
+#endif
+
+//RWStructuredBuffer<BlittableProp> props;
+//RWStructuredBuffer<int> props_counter;
 
 
-float3 ConvertIntoWorldPosition(float3 tahini) {
-    //return  (tahini + offset) * scale;
-    //return (tahini - 1.5f) * scale + offset;
-    return (tahini * scale) + offset;
+#ifdef _ASYNC_READBACK_OCTAL
+// why the FUCK does CBUFFER not work :sob: :skull:
+RWStructuredBuffer<int> neg_pos_octal_counters;
+StructuredBuffer<float4> pos_scale_octals;
+#endif
+
+#ifdef _ASYNC_READBACK_OCTAL
+float3 ConvertIntoWorldPosition(uint3 id) {
+        uint3 zero_to_one = id / LOGICAL_SIZE;
+        int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
+
+        float4 pos_scale = pos_scale_octals[chunk_index];
+        return (float3)((int3)(id % LOGICAL_SIZE) * pos_scale.w) + pos_scale.xyz;
+}
+#else
+float3 ConvertIntoWorldPosition(uint3 id) {
+    return ((float3)id * previewScale) + previewOffset;
+}
+#endif
+
+
+int CalcIdIndex(uint3 id) {
+    #ifdef _ASYNC_READBACK_OCTAL
+        uint3 zero_to_one = id / LOGICAL_SIZE;
+        int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
+        uint3 local_id = id % LOGICAL_SIZE;
+
+        return local_id.x + local_id.z * LOGICAL_SIZE + local_id.y * LOGICAL_SIZE*LOGICAL_SIZE + chunk_index * LOGICAL_SIZE*LOGICAL_SIZE*LOGICAL_SIZE;
+    #else
+        return id.x + id.z * size + id.y * size * size;
+    #endif
 }
 
-float3 ConvertFromWorldPosition(float3 worldPos) {
-    return  (worldPos / scale) - offset;
+#ifdef _ASYNC_READBACK_OCTAL
+void CheckVoxelSign(uint3 id, float value) {
+    uint3 zero_to_one = id / LOGICAL_SIZE;
+    int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
+    InterlockedAdd(neg_pos_octal_counters[chunk_index], value >= 0.0 ? 1 : -1);
 }
-
-// Morton encoding from
-// Stolen from https://github.com/johnsietsma/InfPoints/blob/master/com.infpoints/Runtime/Morton.cs
-uint part1By2_32(uint x)
-{
-    x &= 0x3FF;  // x = ---- ---- ---- ---- ---- --98 7654 3210
-    x = (x ^ (x << 16)) & 0xFF0000FF;  // x = ---- --98 ---- ---- ---- ---- 7654 3210
-    x = (x ^ (x << 8)) & 0x300F00F;  // x = ---- --98 ---- ---- 7654 ---- ---- 3210
-    x = (x ^ (x << 4)) & 0x30C30C3;  // x = ---- --98 ---- 76-- --54 ---- 32-- --10
-    x = (x ^ (x << 2)) & 0x9249249;  // x = ---- 9--8 --7- -6-- 5--4 --3- -2-- 1--0
-    return x;
-}
-
-uint encodeMorton32(uint3 coordinate)
-{
-    return (part1By2_32(coordinate.z) << 2) + (part1By2_32(coordinate.y) << 1) + part1By2_32(coordinate.x);
-}
-
-// taken from the voxels utils class
-uint3 indexToPos(uint index)
-{
-    // N(ABC) -> N(A) x N(BC)
-    uint y = index / (size * size);   // x in N(A)
-    uint w = index % (size * size);  // w in N(BC)
-
-    // N(BC) -> N(B) x N(C)
-    uint z = w / size;// y in N(B)
-    uint x = w % size;        // z in N(C)
-    return uint3(x, y, z);
-}
+#endif

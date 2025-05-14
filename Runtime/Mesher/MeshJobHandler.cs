@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -5,6 +6,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
+using jedjoud.VoxelTerrain.Unsafe;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Contains the allocation data for a single job
@@ -19,25 +21,32 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float2> uvs;
         public NativeArray<int> tempTriangles;
         public NativeArray<int> permTriangles;
-
-        public UnsafePtrList<Voxel> allNeighbourPtrs;
-        public UnsafePtrList<Voxel> positiveNeighbourPtrs;
-
-        // Native buffer for mesh generation data
+        public UnsafePtrList<Voxel> neighbourPtrs;
         public NativeArray<int> indices;
         public NativeArray<byte> enabled;
-        public Unsafe.NativeMultiCounter countersQuad;
-        public Unsafe.NativeCounter counter;
-        public Unsafe.NativeMultiCounter voxelCounters;
+        public NativeMultiCounter quadCounters;
+        public NativeCounter counter;
+        public NativeMultiCounter voxelCounters;
+
+        // Native buffers for skirt mesh data
+        // Only for the face that faces the negative x direction for now
+        public NativeArray<float3> skirtVertices;
+        public NativeArray<bool> skirtWithinThreshold;
+        public NativeArray<int> skirtVertexIndicesCopied;
+        public NativeArray<int> skirtVertexIndicesGenerated;
+        public NativeArray<int> skirtIndices;
+        public NativeCounter skirtVertexCounter;
+        public NativeCounter skirtQuadCounter;
 
         // Native buffer for handling multiple materials
         public NativeParallelHashMap<byte, int> materialHashMap;
         public NativeParallelHashSet<byte> materialHashSet;
         public NativeArray<int> materialSegmentOffsets;
-        public Unsafe.NativeCounter materialCounter;
+        public NativeCounter materialCounter;
+
+        // Other misc stuff
         public JobHandle finalJobHandle;
-        public VoxelChunk chunk;
-        public PendingMeshJob request;
+        public VoxelMesher.MeshingRequest request;
         public long startingTick;
         public NativeArray<uint> buckets;
         public NativeArray<float3> bounds;
@@ -45,32 +54,48 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
-        public const int INNER_LOOP_BATCH_COUNT = 128;
+
+        public NativeList<float3> debugData;
+
+        const int BATCH_SIZE = 64 * 64 * 32;
+        const int VOL = VoxelUtils.VOLUME;
+        const int MATS = VoxelUtils.MAX_MATERIAL_COUNT;
 
         internal MeshJobHandler(VoxelMesher mesher) {
             this.mesher = mesher;
 
             // Native buffers for mesh data
-            int materialCount = VoxelUtils.MAX_MATERIAL_COUNT;
-            voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            vertices = new NativeArray<float3>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            normals = new NativeArray<float3>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            uvs = new NativeArray<float2>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            tempTriangles = new NativeArray<int>(VoxelUtils.VOLUME_BIG * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            permTriangles = new NativeArray<int>(VoxelUtils.VOLUME_BIG * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            voxelCounters = new Unsafe.NativeMultiCounter(materialCount, Allocator.Persistent);
+            voxels = new NativeArray<Voxel>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            vertices = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            normals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            uvs = new NativeArray<float2>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            tempTriangles = new NativeArray<int>(VOL * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            permTriangles = new NativeArray<int>(VOL * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            voxelCounters = new NativeMultiCounter(MATS, Allocator.Persistent);
+            indices = new NativeArray<int>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            enabled = new NativeArray<byte>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            quadCounters = new NativeMultiCounter(MATS, Allocator.Persistent);
+            counter = new NativeCounter(Allocator.Persistent);
 
-            // Native buffer for mesh generation data
-            indices = new NativeArray<int>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            enabled = new NativeArray<byte>(VoxelUtils.VOLUME_BIG, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            countersQuad = new Unsafe.NativeMultiCounter(materialCount, Allocator.Persistent);
-            counter = new Unsafe.NativeCounter(Allocator.Persistent);
+            debugData = new NativeList<float3>(1000, Allocator.Persistent);
+
+            // Native buffers for skirt mesh data
+            skirtVertices = new NativeArray<float3>(VoxelUtils.SKIRT_FACE * 2 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            
+            // Dedicated vertex index lookup buffers for the copied vertices from the boundary and generated skirted vertices
+            skirtVertexIndicesCopied = new NativeArray<int>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            skirtVertexIndicesGenerated = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
+            skirtIndices = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 2 * 6 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            skirtVertexCounter = new NativeCounter(Allocator.Persistent);
+            skirtQuadCounter = new NativeCounter(Allocator.Persistent);
+            skirtWithinThreshold = new NativeArray<bool>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             // Native buffer for handling multiple materials
-            materialHashMap = new NativeParallelHashMap<byte, int>(materialCount, Allocator.Persistent);
-            materialHashSet = new NativeParallelHashSet<byte>(materialCount, Allocator.Persistent);
-            materialSegmentOffsets = new NativeArray<int>(materialCount, Allocator.Persistent);
-            materialCounter = new Unsafe.NativeCounter(Allocator.Persistent);
+            materialHashMap = new NativeParallelHashMap<byte, int>(MATS, Allocator.Persistent);
+            materialHashSet = new NativeParallelHashSet<byte>(MATS, Allocator.Persistent);
+            materialSegmentOffsets = new NativeArray<int>(MATS, Allocator.Persistent);
+            materialCounter = new NativeCounter(Allocator.Persistent);
 
             VertexAttributeDescriptor positionDesc = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
             VertexAttributeDescriptor normalDesc = new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3, 1);
@@ -78,11 +103,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             vertexAttributeDescriptors = new NativeArray<VertexAttributeDescriptor>(new VertexAttributeDescriptor[] { positionDesc, normalDesc, uvDesc }, Allocator.Persistent);
 
             // We can't discard 0,0,0 since we start at -1,-1,-1, which kinda makes remapping hard. Wtv
-            allNeighbourPtrs = new UnsafePtrList<Voxel>(27, Allocator.Persistent);
-
-            // We CAN discard 0,0,0 (index=0) since we start there! so the first index now is the neighbour in the x direction
-            // DOES NOT INCLUDE SELF!!!
-            positiveNeighbourPtrs = new UnsafePtrList<Voxel>(7, Allocator.Persistent);
+            neighbourPtrs = new UnsafePtrList<Voxel>(27, Allocator.Persistent);
 
             buckets = new NativeArray<uint>(8, Allocator.Persistent);
             bounds = new NativeArray<float3>(2, Allocator.Persistent);
@@ -90,9 +111,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool Free { get; private set; } = true;
 
         // Begin the vertex + quad job that will generate the mesh
-        internal JobHandle BeginJob(JobHandle dependency, NativeArray<Voxel>[] allNeighbours, NativeArray<Voxel>[] positiveNeighbours, bool3 negativeNeighbourMask, bool3 positiveNeighbourMask) {
+        internal JobHandle BeginJob(JobHandle dependency) {
+            debugData.Clear();
             float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
-            countersQuad.Reset();
+            quadCounters.Reset();
+            skirtQuadCounter.Count = 0;
+            skirtVertexCounter.Count = 0;
             counter.Count = 0;
             materialCounter.Count = 0;
             materialHashSet.Clear();
@@ -101,23 +125,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bounds[1] = new float3(0.0);
             Free = false;
 
+            BitField32 mask = new BitField32(uint.MinValue);
+            mask.SetBits(13, true);
             unsafe {
-                allNeighbourPtrs.Clear();
-                foreach (NativeArray<Voxel> v in allNeighbours) {
-                    if (v.IsCreated) {
-                        allNeighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
-                    } else {
-                        allNeighbourPtrs.Add(System.IntPtr.Zero);
-                    }
-                }
-
-                positiveNeighbourPtrs.Clear();
-                foreach (NativeArray<Voxel> v in positiveNeighbours) {
-                    if (v.IsCreated) {
-                        positiveNeighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
-                    } else {
-                        positiveNeighbourPtrs.Add(System.IntPtr.Zero);
-                    }
+                neighbourPtrs.Clear();
+                for (int i = 0; i < 27; i++) {
+                    neighbourPtrs.Add(System.IntPtr.Zero);
                 }
             }
 
@@ -125,16 +138,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             CornerJob cornerJob = new CornerJob {
                 voxels = voxels,
                 enabled = enabled,
-                positiveNeighbourPtr = positiveNeighbourPtrs,
-                positiveNeighbourMask = positiveNeighbourMask,
             };
 
             // Welcome back material job!
             MaterialJob materialJob = new MaterialJob {
                 voxels = voxels,
-                positiveNeighbourPtr = positiveNeighbourPtrs,
                 buckets = buckets,
-                positiveNeighbourMask = positiveNeighbourMask,
+                neighbours = neighbourPtrs,
+                neighbourMask = mask,
             };
 
             // Hello little material indexer
@@ -154,26 +165,23 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 normals = normals,
                 uvs = uvs,
                 counter = counter,
-                positiveNeighbourPtr = positiveNeighbourPtrs,
                 voxelScale = voxelSizeFactor,
-                positiveNeighbourMask = positiveNeighbourMask,
             };
 
             // Calculate vertex ambient occlusion 
             AmbientOcclusionJob aoJob = new AmbientOcclusionJob {
-                allNeighbourPtr = allNeighbourPtrs,
                 counter = counter,
                 normals = normals,
                 uvs = uvs,
                 vertices = vertices,
                 voxels = voxels,
-                negativeNeighbourMask = negativeNeighbourMask,
-                positiveNeighbourMask = positiveNeighbourMask,
                 globalOffset = mesher.aoGlobalOffset,
                 globalSpread = mesher.aoGlobalSpread,
                 minDotNormal = mesher.aoMinDotNormal,
                 strength = mesher.aoStrength,
                 voxelScale = voxelSizeFactor,
+                neighbours = neighbourPtrs,
+                neighbourMask = mask,
             };
 
             // Calculate the AABB for the chunk using another job
@@ -188,19 +196,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 enabled = enabled,
                 voxels = voxels,
                 vertexIndices = indices,
-                counters = countersQuad,
-                positiveNeighbourPtr = positiveNeighbourPtrs,
+                counters = quadCounters,
                 triangles = tempTriangles,
                 materialHashMap = materialHashMap.AsReadOnly(),
                 materialCounter = materialCounter,
-                positiveNeighbourMask = positiveNeighbourMask,
             };
 
             // Create sum job to calculate offsets for each material type 
             SumJob sumJob = new SumJob {
                 materialCounter = materialCounter,
                 materialSegmentOffsets = materialSegmentOffsets,
-                countersQuad = countersQuad
+                countersQuad = quadCounters
             };
 
             // Create a copy job that will copy temp memory to perm memory
@@ -209,43 +215,97 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 tempTriangles = tempTriangles,
                 permTriangles = permTriangles,
                 materialCounter = materialCounter,
-                counters = countersQuad,
+                counters = quadCounters,
+            };
+
+            // Create a copy job that will copy boundary vertices and indices to the skirts' face values
+            SkirtCopyRemapJob skirtCopyJob = new SkirtCopyRemapJob {
+                skirtVertexIndicesCopied = skirtVertexIndicesCopied,
+                skirtVertices = skirtVertices,
+                sourceVertexIndices = indices,
+                sourceVertices = vertices,
+                skirtVertexCounter = skirtVertexCounter,
+            };
+
+            // Job that acts like an SDF generator, checks if certain positions are within a certain distance from a surface (for forced skirt generation)
+            SkirtClosestSurfaceJob skirtClosestSurfaceThresholdJob = new SkirtClosestSurfaceJob {
+                voxels = voxels,
+                withinThreshold = skirtWithinThreshold,
+            };
+
+            // Create the skirt vertices in one of the chunk's face
+            SkirtVertexJob skirtVertexJob = new SkirtVertexJob {
+                skirtVertexIndicesGenerated = skirtVertexIndicesGenerated,
+                skirtVertices = skirtVertices,
+                withinThreshold = skirtWithinThreshold,
+                skirtVertexCounter = skirtVertexCounter,
+                voxels = voxels,
+                voxelScale = voxelSizeFactor,
+            };
+
+            // Create skirt quads
+            SkirtQuadJob skirtQuadJob = new SkirtQuadJob {
+                skirtIndices = skirtIndices,
+                skirtVertexIndicesCopied = skirtVertexIndicesCopied,
+                skirtVertexIndicesGenerated = skirtVertexIndicesGenerated,
+                skirtQuadCounter = skirtQuadCounter,
+                voxels = voxels,
+                debugData = debugData.AsParallelWriter(),
             };
 
             // Material job and indexer job
-            JobHandle materialJobHandle = materialJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * 8 * INNER_LOOP_BATCH_COUNT, dependency);
+            JobHandle materialJobHandle = materialJob.Schedule(VOL, 8 * BATCH_SIZE, dependency);
             JobHandle materialIndexerJobHandle = materialIndexerJob.Schedule(materialJobHandle);
-
+            
             // Start the corner job and material job
-            JobHandle cornerJobHandle = cornerJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, 4 * BATCH_SIZE, dependency);
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
-            JobHandle vertexJobHandle = vertexJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, vertexDep);
+            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, 4 * BATCH_SIZE, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-            JobHandle aoJobHandle = aoJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, vertexJobHandle);
+            JobHandle aoJobHandle = aoJob.Schedule(VOL, 4 * BATCH_SIZE, vertexJobHandle);
 
-            // Start the quad job
+            // Copy boundary skirt vertices and start creating skirts
+            JobHandle skirtJobHandle = default;
+
+            if (mesher.useSkirting) {
+                // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
+                JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, dependency);
+
+                // Copies vertices from the boundary in the source mesh to our skirt vertices. also sets proper indices in the skirtVertexIndicesCopied array
+                JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(vertexJobHandle);
+
+                // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
+                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
+
+                // Creates quad based on the copied vertices and skirt-generated vertices
+                JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, skirtVertexJobHandle);
+                skirtJobHandle = skirtQuadJobHandle;
+            }
+
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, materialIndexerJobHandle);
-            JobHandle quadJobHandle = quadJob.Schedule(VoxelUtils.VOLUME_BIG, 2048 * INNER_LOOP_BATCH_COUNT, merged);
+            JobHandle quadJobHandle = quadJob.Schedule(VOL, BATCH_SIZE, merged);
 
-            // Start the sum job 
             JobHandle sumJobHandle = sumJob.Schedule(quadJobHandle);
-
-            // Start the copy job
             JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, sumJobHandle);
 
-            finalJobHandle = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, aoJobHandle);
+            JobHandle mainDependencies = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, aoJobHandle);
+            finalJobHandle = JobHandle.CombineDependencies(mainDependencies, skirtJobHandle);
+
             return finalJobHandle;
         }
 
         // Complete the jobs and return a mesh
-        internal VoxelMesh Complete(Mesh mesh) {
-            if (voxels == null || chunk == null) {
+        internal VoxelMesh Complete(Mesh mesh, VoxelSkirt skirt) {
+            finalJobHandle.Complete();
+
+            if (voxels == null || request.chunk == null || mesh == null || skirt == null) {
                 return default;
             }
 
-            finalJobHandle.Complete();
+            skirt.Complete(skirtVertices, skirtIndices, skirtVertexIndicesGenerated, skirtVertexIndicesCopied, skirtVertexCounter.Count, skirtQuadCounter.Count, debugData);
+
             Free = true;
 
             // Get the max number of materials we generated for this mesh
@@ -259,13 +319,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Count the number of indices we will have in maximum (all material indices combined)
             for (int i = 0; i < maxMaterials; i++) {
-                maxIndices += countersQuad[i] * 6;
+                maxIndices += quadCounters[i] * 6;
             }
 
             // Set mesh shared vertices
             mesh.Clear();
-
-            
 
             // TODO: batch this
             Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(1);
@@ -280,7 +338,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 maxMaterials = maxMaterials,
                 maxVertices = maxVertices,
                 maxIndices = maxIndices,
-                counters = countersQuad,
+                counters = quadCounters,
                 materialSegmentOffsets = materialSegmentOffsets,
                 data = data,
             };
@@ -305,7 +363,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Set mesh submeshes
             for (int i = 0; i < maxMaterials; i++) {
-                int countIndices = countersQuad[i] * 6;
+                int countIndices = quadCounters[i] * 6;
                 int segmentOffset = materialSegmentOffsets[i];
 
                 if (countIndices > 0) {
@@ -316,7 +374,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            chunk = null;
             return new VoxelMesh {
                 VoxelMaterialsLookup = lookup,
                 TriangleOffsetLocalMaterials = lookup2,
@@ -338,7 +395,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             normals.Dispose();
             uvs.Dispose();
             counter.Dispose();
-            countersQuad.Dispose();
+            quadCounters.Dispose();
             tempTriangles.Dispose();
             permTriangles.Dispose();
             materialCounter.Dispose();
@@ -348,10 +405,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             vertexAttributeDescriptors.Dispose();
             enabled.Dispose();
             voxelCounters.Dispose();
-            positiveNeighbourPtrs.Dispose();
-            allNeighbourPtrs.Dispose();
+            neighbourPtrs.Dispose();
             buckets.Dispose();
             bounds.Dispose();
+            skirtVertices.Dispose();
+            skirtVertexIndicesCopied.Dispose();
+            skirtVertexIndicesGenerated.Dispose();
+            skirtVertexCounter.Dispose();
+            skirtQuadCounter.Dispose();
+            skirtWithinThreshold.Dispose();
+            debugData.Dispose();
         }
     }
 
@@ -373,7 +436,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeSlice<int> permTriangles;
         [ReadOnly]
-        public Unsafe.NativeMultiCounter counters;
+        public NativeMultiCounter counters;
         [ReadOnly]
         public NativeArray<int> materialSegmentOffsets;
 

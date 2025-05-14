@@ -9,8 +9,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct AmbientOcclusionJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
-        [ReadOnly]
-        public UnsafePtrList<Voxel> allNeighbourPtr;
         [WriteOnly]
         public NativeArray<float2> uvs;
         [ReadOnly]
@@ -20,9 +18,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public Unsafe.NativeCounter counter;
         [ReadOnly]
-        public bool3 positiveNeighbourMask;
+        public UnsafePtrList<Voxel> neighbours;
         [ReadOnly]
-        public bool3 negativeNeighbourMask;
+        public BitField32 neighbourMask;
 
         public float globalOffset;
         public float minDotNormal;
@@ -32,6 +30,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         const int SIZE = 2;
 
         public void Execute(int index) {
+            /*
             if (index >= counter.Count)
                 return;
 
@@ -39,16 +38,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float3 normal = normals[index];
 
             int sum = 0;
-            int total = 0;
-            /*
-            int3 position = (int3)math.floor(vertex);
-            if (VoxelUtils.CheckPositionAllNeighbours(position, negativeNeighbourMask, positiveNeighbourMask)) {
-                Voxel voxel = VoxelUtils.FetchVoxelWithAllNeighbours(position, ref voxels, ref allNeighbourPtr);
-                factor = math.sin(voxel.density) * 0.5f + 0.5f;
-            }
-            */
-
-            
+            int total = 0;            
 
             for (int x = -SIZE; x <= SIZE; x++) {
                 for (int y = -SIZE; y <= SIZE; y++) {
@@ -68,11 +58,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         float3 position = vertex + offset + globalOffset;
                         int3 floored = (int3)math.floor(position);
 
-                        bool valid = VoxelUtils.CheckPositionAllNeighbours(floored, negativeNeighbourMask, positiveNeighbourMask);
-                        bool valid2 = VoxelUtils.CheckPositionAllNeighbours(floored + 1, negativeNeighbourMask, positiveNeighbourMask);
-
-                        if (valid && valid2) {
-                            half density = VoxelUtils.SampleDensityInterpolated(position, ref voxels, ref allNeighbourPtr);
+                        if (VoxelUtils.CheckCubicVoxelPosition(floored, neighbourMask)) {
+                            half density = VoxelUtils.SampleDensityInterpolated(position, ref voxels, ref neighbours);
                             if (density < 0.0) {
                                 sum++;
                             }
@@ -82,25 +69,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             float factor = math.clamp((float)sum / (float)total, 0f, 1f);
-            
-
-            /*
-            float3 position = vertex + normal * 4.0f + globalOffset;
-            int3 floored = (int3)math.floor(position);
-            bool valid = VoxelUtils.CheckPositionAllNeighbours(floored, negativeNeighbourMask, positiveNeighbourMask);
-            bool valid2 = VoxelUtils.CheckPositionAllNeighbours(floored + 1, negativeNeighbourMask, positiveNeighbourMask);
-
-            float factor = 0.0f;
-            if (valid && valid2) {
-                half density = VoxelUtils.SampleDensityInterpolated(position, ref voxels, ref allNeighbourPtr);
-
-                if (density < 0f) {
-                    factor = 1.0f;
-                }
-            }
-            */
-
             uvs[index] = new float2(1 - factor * strength, 0.0f);
+            */
+            uvs[index] = new float2(1, 0.0f);
         }
     }
 }

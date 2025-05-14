@@ -5,11 +5,11 @@ using Unity.Jobs;
 
 namespace jedjoud.VoxelTerrain {
     [BurstCompile(CompileSynchronously = true, Debug = true)]
-    public struct AsyncMemCpy : IJob {
+    public struct AsyncMemCpy<T> : IJob where T: unmanaged {
         [ReadOnly]
-        public NativeArray<Voxel> src;
+        public NativeArray<T> src;
         [WriteOnly]
-        public NativeArray<Voxel> dst;
+        public NativeArray<T> dst;
         public void Execute() {
             dst.CopyFrom(src);
         }
@@ -21,8 +21,9 @@ namespace jedjoud.VoxelTerrain {
         public uint* src;
         [NativeDisableUnsafePtrRestriction]
         public uint* dst;
+        public int byteSize;
         public void Execute() {
-            UnsafeUtility.MemCpy(dst, src, VoxelUtils.VOLUME * Voxel.size);
+            UnsafeUtility.MemCpy(dst, src, byteSize);
         }
     }
 }

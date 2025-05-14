@@ -30,7 +30,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         [HideInInspector]
         public int propsDispatchIndex;
-
+        public RenderTexture debugTex;
         public ComputeShader shader;
 
         // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
@@ -52,8 +52,18 @@ namespace jedjoud.VoxelTerrain.Generation {
             var visualizer = GetComponent<VoxelPreview>();
             if (visualizer != null && visualizer.isActiveAndEnabled) {
                 var exec = GetComponent<VoxelExecutor>();
-                exec.ExecuteShader(visualizer.size, 0, visualizer.offset, visualizer.scale, false, true);
+
+                VoxelExecutor.EditorPreviewParameters parameters = new VoxelExecutor.EditorPreviewParameters() {
+                    newSize = visualizer.size,
+                    previewScale = visualizer.scale,
+                    previewOffset = visualizer.offset,
+                    dispatchIndex = this.voxelsDispatchIndex,
+                    updateInjected = true,
+                };
+
+                exec.ExecuteShader(parameters);
                 RenderTexture voxels = (RenderTexture)exec.textures["voxels"];
+                debugTex = voxels;
                 visualizer.Meshify(voxels);
             }
 #endif
@@ -162,10 +172,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 new TreeScope(0),
 
                 // Prop generation scope
-                new TreeScope(0),
+                //new TreeScope(0),
             };
             voxelsDispatchIndex = 0;
-            propsDispatchIndex = 1;
+            propsDispatchIndex = -1;
 
             // Create the external inputs that we use inside the function scope
             Variable<float3> position = new NoOp<float3>();
@@ -180,7 +190,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             AllInputs inputs = new AllInputs() { position = position, id = id };
             graph.Execute(inputs, out AllOutputs outputs);
             ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
-            ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
+            //ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
             ScopeArgument materialArgument = new ScopeArgument("material", VariableType.StrictType.Int, outputs.material, true);
 
             ctx.currentScope = 0;
@@ -192,7 +202,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             outputs.density.Handle(ctx);
             outputs.material.Handle(ctx);
 
-
+            /*
             ctx.currentScope = 1;
             ctx.Add(position, "position");
             ctx.scopes[1].name = "Props";
@@ -200,26 +210,22 @@ namespace jedjoud.VoxelTerrain.Generation {
                 tempPos, tempId, propArgument
             };
             outputs.prop.Handle(ctx);
+            */
 
 
             // Voxel kernel dispatcher
-            ctx.dispatches.Add(new KernelDispatch {
+            ctx.dispatches.Add(new VoxelKernelDispatch {
                 name = $"CSVoxel",
                 depth = 0,
-                sizeReductionPower = 0,
-                threeDimensions = true,
                 scopeName = "Voxel",
-                frac = 1.0f,
                 scopeIndex = 0,
-                mortonate = true,
-                numThreads = new Vector3Int(8, 8, 8),
-                remappedCoords = "id.xyz",
-                writeCoords = "xyz",
                 outputs = new KernelOutput[] {
-                    new KernelOutput { setter = "packVoxelData(voxel, material)", outputTextureName = "voxels" },
+                    //new KernelOutput { setter = "packVoxelData(voxel, material)", outputTextureName = "voxels" },
+                    new KernelOutput { setter = "packVoxelData(voxel, material)", outputBufferName = "voxels", buffer = true }
                 }
             });
 
+            /*
             // Prop kernel dispatcher
             ctx.dispatches.Add(new KernelDispatch {
                 name = $"CSProps",
@@ -237,6 +243,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     new KernelOutput { setter = "prop", outputBufferName = "props", buffer = true }
                 }
             });
+            */
 
             ctx.dispatches.Sort((KernelDispatch a, KernelDispatch b) => { return b.depth.CompareTo(a.depth); });
         }
@@ -249,11 +256,16 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             List<string> lines = new List<string>();
+
+            // Add the octal async readback pragma
+            lines.Add("#pragma multi_compile __ _ASYNC_READBACK_OCTAL\n");
+
             lines.AddRange(ctx.Properties);
+
 
             // Include all includes kek. Look in the file for more.
             lines.Add("#include \"Packages/com.jedjoud.voxelterrain/Runtime/Compute/Imports.cginc\"");
-            var temp = ctx.dispatches.AsEnumerable().Select(x => x.ConvertToKernelString(ctx)).ToList();
+            var temp = ctx.dispatches.AsEnumerable().Select(x => x.CreateKernel(ctx)).ToList();
 
             // Sort the scopes based on their depth
             // We want the scopes that don't require other scopes to be defined at the top, and scopes that require scopes to be defined at the bottom

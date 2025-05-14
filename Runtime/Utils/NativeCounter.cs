@@ -114,6 +114,14 @@ namespace jedjoud.VoxelTerrain.Unsafe {
                 return concurrent;
             }
 
+            public int Add(int value) {
+                // Add still needs to check for write permissions
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
+#endif
+                return Interlocked.Add(ref *m_Counter, value) - value;
+            }
+
             public int Increment() {
                 // Increment still needs to check for write permissions
 #if ENABLE_UNITY_COLLECTIONS_CHECKS

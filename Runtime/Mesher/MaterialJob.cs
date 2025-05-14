@@ -13,10 +13,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<Voxel> voxels;
 
         [ReadOnly]
-        public UnsafePtrList<Voxel> positiveNeighbourPtr;
+        public UnsafePtrList<Voxel> neighbours;
 
         [ReadOnly]
-        public bool3 positiveNeighbourMask;
+        public BitField32 neighbourMask;
 
         // 8 uints that are used for atomic ors
         public NativeArray<uint> buckets;
@@ -36,13 +36,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // TODO: make this faster. I still feel like 5ms is too slow for this shit
+        // I most definitely caved in for the micro optimizations kek. I need to rework the whole CPU side mesher jobs...
         public unsafe void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
-
-            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
-                return;
-            
-            Voxel voxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(VoxelUtils.PosToIndexMorton(position), ref voxels, ref positiveNeighbourPtr);
+            Voxel voxel = voxels[index];
             byte material = voxel.material;
 
             int bucketIndex = material / 32;

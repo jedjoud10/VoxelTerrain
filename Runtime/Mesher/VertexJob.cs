@@ -8,46 +8,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // Surface mesh job that will generate the isosurface mesh vertices
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
     public struct VertexJob : IJobParallelFor {
-        // Positions of the first vertex in edges
-        [ReadOnly]
-        static readonly uint3[] edgePositions0 = new uint3[] {
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 1),
-            new uint3(1, 0, 1),
-            new uint3(1, 1, 1),
-            new uint3(0, 1, 1),
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0),
-        };
-
-        // Positions of the second vertex in edges
-        [ReadOnly]
-        static readonly uint3[] edgePositions1 = new uint3[] {
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 1),
-            new uint3(1, 1, 1),
-            new uint3(0, 1, 1),
-            new uint3(0, 0, 1),
-            new uint3(0, 0, 1),
-            new uint3(1, 0, 1),
-            new uint3(1, 1, 1),
-            new uint3(0, 1, 1),
-        };
-
         // Voxel native array
         [ReadOnly]
         public NativeArray<Voxel> voxels;
-
-        [ReadOnly]
-        public UnsafePtrList<Voxel> positiveNeighbourPtr;
 
         // Used for fast traversal
         [ReadOnly]
@@ -56,9 +19,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Contains 3D data of the indices of the vertices
         [WriteOnly]
         public NativeArray<int> indices;
-
-        [ReadOnly]
-        public bool3 positiveNeighbourMask;
 
         // Vertices that we generated
         [WriteOnly]
@@ -77,14 +37,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Vertex Counter
         public Unsafe.NativeCounter.Concurrent counter;
-        [ReadOnly] public float voxelScale;
+        public float voxelScale;
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
             indices[index] = int.MaxValue;
 
-            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
+            if (math.any(position > VoxelUtils.SIZE - 2))
                 return;
 
             float3 vertex = float3.zero;
@@ -107,23 +67,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // Continue if the edge isn't inside
                 if (((code >> edge) & 1) == 0) continue;
 
-                uint3 startOffset = edgePositions0[edge];
-                uint3 endOffset = edgePositions1[edge];
+                uint3 startOffset = VoxelUtils.EDGE_POSITIONS_0[edge];
+                uint3 endOffset = VoxelUtils.EDGE_POSITIONS_1[edge];
 
-                int startIndex = VoxelUtils.PosToIndexMorton(startOffset + position);
-                int endIndex = VoxelUtils.PosToIndexMorton(endOffset + position);
+                int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
+                int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
 
-                float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref positiveNeighbourPtr);
-                float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref positiveNeighbourPtr);
+                //float3 startNormal = VoxelUtils.SampleGridNormal(startOffset + position, ref voxels, ref neighbours);
+                //float3 endNormal = VoxelUtils.SampleGridNormal(endOffset + position, ref voxels, ref neighbours);
 
                 // Get the Voxels of the edge
-                Voxel startVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(startIndex, ref voxels, ref positiveNeighbourPtr);
-                Voxel endVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(endIndex, ref voxels, ref positiveNeighbourPtr);
+                Voxel startVoxel = voxels[startIndex];
+                Voxel endVoxel = voxels[endIndex];
 
                 // Create a vertex on the line of the edge
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
-                vertex += math.lerp(startOffset, endOffset, value) - math.float3(0.5);
-                normal += math.lerp(startNormal, endNormal, value);
+                vertex += math.lerp(startOffset, endOffset, value);
+                normal += -math.up();
+                //normal += math.lerp(startNormal, endNormal, value);
             }
 
             // Must be offset by vec3(1, 1, 1)
@@ -132,7 +93,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Output vertex in object space
             float3 offset = (vertex / (float)count);
-            float3 outputVertex = (offset - 1.0F) + position;
+            float3 outputVertex = offset + position;
             vertices[vertexIndex] = outputVertex * voxelScale;
 
             // Calculate per vertex normals and apply it

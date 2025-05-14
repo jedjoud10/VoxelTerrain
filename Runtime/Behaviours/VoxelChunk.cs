@@ -1,8 +1,16 @@
+using System;
+using System.Collections.Generic;
+using jedjoud.VoxelTerrain.Meshing;
+using jedjoud.VoxelTerrain.Octree;
+using jedjoud.VoxelTerrain.Unsafe;
 using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+using Unity.Mathematics.Geometry;
+using UnityEditor;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
-    // Script added to all game objects that represent a chunk
     public partial class VoxelChunk : MonoBehaviour {
         public enum ChunkState {
             // Just spawned in
@@ -25,16 +33,14 @@ namespace jedjoud.VoxelTerrain {
             Done,
         }
 
-        [HideInInspector]
         public NativeArray<Voxel> voxels;
 
-        // Chunk position relative to the map origin
-        public Vector3Int chunkPosition;
-
-        // Current state of the chunk
+        public OctreeNode node;
         public ChunkState state;
 
-        // Shared generated mesh
+        // if we skipped meshing the chunk
+        public bool skipped;
+
         [HideInInspector]
         public Mesh sharedMesh;
         [HideInInspector]
@@ -43,13 +49,79 @@ namespace jedjoud.VoxelTerrain {
         public (byte, int)[] triangleOffsetLocalMaterials;
         [HideInInspector]
         public Bounds bounds;
+        public BitField32 neighbourMask;
+        public BitField32 highLodMask;
+        public BitField32 lowLodMask;
+        public VoxelSkirt skirt;
 
-        // Check if the chunk has valid voxel data 
-        public bool HasVoxelData() {
-            return voxels.IsCreated && state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp;
+        // Initialize hte chunk with completely new native arrays (during pooled chunk creation)
+        public void InitChunk() {
+            // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
+            // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
+            //NativeArray<Voxel> allocated = FetchVoxelsContainer();
+            voxels = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         }
 
+        // Reset the chunk so we can use it to represent a new octree node (don't allocate new native arrays)
+        public void ResetChunk(OctreeNode item) {
+            node = item;
+            voxelMaterialsLookup = null;
+            triangleOffsetLocalMaterials = null;
+            skipped = false;
+            state = ChunkState.Idle;
+            gameObject.name = item.position.ToString();
+            skirt.ResetSkirt();
+        }
 
+        // Check if the chunk has valid uniform voxel data
+        public bool HasVoxelData() {
+            return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
+        }
+
+        public bool debugVoxelData;
+
+        public void OnDrawGizmosSelected() {
+            if (Selection.activeGameObject != gameObject)
+                return;
+
+            for (int j = 0; j < 27; j++) {
+                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                int3 offset = (int3)_offset - 1;
+
+                if (neighbourMask.IsSet(j)) {
+                    Gizmos.color = Color.white;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+
+                if (lowLodMask.IsSet(j)) {
+                    Gizmos.color = Color.cyan;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+
+                if (highLodMask.IsSet(j)) {
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
+                }
+            }
+
+            if (debugVoxelData) {
+                float s = node.size / 64f;
+                for (var i = 0; i < VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE; i++) {
+                    uint3 _pos = VoxelUtils.IndexToPos(i, VoxelUtils.SIZE);
+                    float d1 = voxels[i].density;
+
+                    if (d1 > -4 && d1 < 5) {
+                        Gizmos.color = d1 > 0f ? Color.yellow : Color.magenta;
+                        Gizmos.DrawSphere((float3)_pos * s + node.position, 0.05f);
+                    }
+                }
+            }
+
+            Gizmos.color = Color.white;
+            MinMaxAABB bounds = node.Bounds;
+            Gizmos.DrawWireCube(bounds.Center, bounds.Extents);
+        }
+            
         // Get the AABB world bounds of this chunk
         public Bounds GetBounds() {
             return bounds;
@@ -86,6 +158,10 @@ namespace jedjoud.VoxelTerrain {
 
             material = byte.MaxValue;
             return false;
+        }
+
+        public void Dispose() {
+            voxels.Dispose();
         }
     }
 }

@@ -28,6 +28,8 @@ namespace jedjoud.VoxelTerrain.Edits {
             // Make a list of all the chunks that could possibly be affected by the edit (using AABB checks)
             int affected = 0;
             List<VoxelChunk> chunks = new List<VoxelChunk>();
+            throw new NotImplementedException();
+            /*
             foreach (var (key, chunk) in terrain.totalChunks) {
                 var voxelChunk = chunk.GetComponent<VoxelChunk>();
 
@@ -36,6 +38,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                     chunks.Add(voxelChunk);
                 }
             }
+            */
 
             results.affectedChunks = affected;
             NativeArray<JobHandle> handles = new NativeArray<JobHandle>(affected, Allocator.Temp);

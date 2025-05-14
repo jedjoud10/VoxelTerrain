@@ -91,7 +91,7 @@ float3 normalMaxx(uint3 id) {
 
 [numthreads(8, 8, 8)]
 void CSVertex(uint3 id : SV_DispatchThreadID) {
-    if (any(id == (uint)size)) {
+    if (any(id >= (uint)size)) {
         return;
     }
 
@@ -118,7 +118,6 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
                 break;
             } else {
                 float unlerped = invLerp(firstDensity, secondDensity, 0.0);
-                unlerped = 0.5;
                 sum += lerp(float3(first), float3(second), unlerped);
                 normalSum += lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped);
                 colorSum += lerp(firstColor, secondColor, unlerped);
@@ -133,7 +132,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         //normals[oldValue] = 1.0;
         normals[oldValue] = length(normalSum) < 0.1 ? 1.0 : normalize(-normalSum);
         colors[oldValue] = materialId ? (colorSum / float(count)) : 1.0;
-        vertexIds[id+1] = oldValue;   
+        vertexIds[id] = oldValue;   
     }
 }
 
@@ -153,7 +152,7 @@ void CSQuad(uint3 id : SV_DispatchThreadID) {
 
             bool valid = true;
             for (int j = 0; j < 4; j++) {
-                check[j] = vertexIds[id + test[i] + offsets[j + i * 4]];
+                check[j] = vertexIds[id + test[i] + offsets[j + i * 4] - 1];
             
                 if (check[j] <= 0) {
                     valid = false;

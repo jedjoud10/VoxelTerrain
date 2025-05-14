@@ -20,6 +20,8 @@ namespace jedjoud.VoxelTerrain.Edits {
         public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters);
 
         public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters) where T : struct, IVoxelEdit {
+            throw new System.NotImplementedException();
+            /*
             VoxelEditJob<T> job = new VoxelEditJob<T> {
                 offset = offset,
                 edit = edit,
@@ -27,7 +29,8 @@ namespace jedjoud.VoxelTerrain.Edits {
                 voxelScale = VoxelTerrain.Instance.voxelSizeFactor,
                 counters = counters,
             };
-            return job.Schedule(VoxelUtils.VOLUME, VoxelUtils.VOLUME / 4);
+            return job.Schedule(65*65*65, 4096);
+            */
         }
     }
 }

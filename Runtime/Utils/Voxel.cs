@@ -20,7 +20,7 @@ namespace jedjoud.VoxelTerrain {
         public readonly static Voxel Empty = new Voxel {
             density = half.zero,
             material = byte.MaxValue,
-            _padding = 0,
+            _padding = 0
         };
     }
 }

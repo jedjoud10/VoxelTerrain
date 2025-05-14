@@ -35,6 +35,7 @@ namespace jedjoud.VoxelTerrain.Props {
             frameIdTempData = new Dictionary<int, OngoingPropReadback>();
         }
 
+        /*
         public void GenerateProps(VoxelChunk chunk) {
             if (!spawnProps)
                 return;
@@ -44,16 +45,18 @@ namespace jedjoud.VoxelTerrain.Props {
             queuedChunks.Enqueue((position, chunk));
             pendingChunks.Add(position);
         }
+        */
 
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {
+            /*
             if (queuedChunks.TryDequeue(out var temp)) {
                 (Vector3Int position, VoxelChunk chunk) = temp;
                 pendingChunks.Remove(position);
 
-                Vector3 offset = ((Vector3)position * VoxelUtils.SIZE * terrain.voxelSizeFactor);
+                Vector3 offset = ((Vector3)position * 64f * terrain.voxelSizeFactor);
                 float scale = terrain.voxelSizeFactor;
-                terrain.executor.ExecuteShader(VoxelUtils.SIZE, terrain.compiler.propsDispatchIndex, offset, Vector3.one * scale, true, true);
+                terrain.executor.ExecuteShader(64, terrain.compiler.propsDispatchIndex, offset, Vector3.one * scale, true, true);
                 int frame = Time.frameCount;
 
 
@@ -73,7 +76,7 @@ namespace jedjoud.VoxelTerrain.Props {
                 AsyncGPUReadback.Request(
                     terrain.executor.buffers["props"],
                     delegate (AsyncGPUReadbackRequest asyncRequest) {
-                        NativeArray<BlittableProp> data = new NativeArray<BlittableProp>(VoxelUtils.VOLUME, Allocator.Persistent);
+                        NativeArray<BlittableProp> data = new NativeArray<BlittableProp>(64*64*64, Allocator.Persistent);
                         data.CopyFrom(asyncRequest.GetData<BlittableProp>());
                         readback.data = data;
                         readback.dataSet = true;
@@ -82,6 +85,7 @@ namespace jedjoud.VoxelTerrain.Props {
             }
 
             Handle();
+            */
         }
 
         private void Handle() {

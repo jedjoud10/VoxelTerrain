@@ -1,13 +1,19 @@
 using System.Collections.Generic;
+using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Profiling;
 using static jedjoud.VoxelTerrain.VoxelChunk;
 
 namespace jedjoud.VoxelTerrain {
+    // compressed iron sheet be like: "hold up... I'm flattened"
     public class VoxelTerrain : MonoBehaviour {
         [Header("Tick System")]
+        [Min(1)]
         public int ticksPerSecond = 128;
+
+        [Min(1)]
         public int maxTicksPerFrame = 3;
         private float tickDelta;
         private float accumulator;
@@ -16,6 +22,7 @@ namespace jedjoud.VoxelTerrain {
 
         [Header("General")]
         public GameObject chunkPrefab;
+        public GameObject stitchingPrefab;
         public List<VoxelMaterial> materials;
 
         [Range(0, 4)]
@@ -24,9 +31,10 @@ namespace jedjoud.VoxelTerrain {
 
         [Header("Debug")]
         public bool drawGizmos;
+        public bool debugGUI;
 
-        [HideInInspector]
-        public Dictionary<Vector3Int, GameObject> totalChunks;
+        public Dictionary<OctreeNode, VoxelChunk> chunks;
+
         public static VoxelTerrain Instance {
             get {
                 VoxelTerrain[] terrains = Object.FindObjectsByType<VoxelTerrain>(FindObjectsSortMode.None);
@@ -46,13 +54,13 @@ namespace jedjoud.VoxelTerrain {
         public Meshing.VoxelCollisions collisions;
 
         [HideInInspector]
-        public VoxelGridSpawner spawner;
-
-        [HideInInspector]
         public Meshing.VoxelMesher mesher;
 
         [HideInInspector]
         public Generation.VoxelGraph graph;
+
+        [HideInInspector]
+        public Octree.VoxelOctree octree;
 
         [HideInInspector]
         public Generation.VoxelCompiler compiler;
@@ -74,24 +82,42 @@ namespace jedjoud.VoxelTerrain {
 
         public delegate void OnCompleted();
         public event OnCompleted onComplete;
-        private int pendingChunks;
+
         private bool complete;
+        private List<GameObject> unusedPooledChunks;
+
+        private List<GameObject> pendingChunksToHide;
+        private List<GameObject> pendingChunksToShow;
+
+        private int pendingValidChunks;
+        private bool waitingForSwap;
+
 
         public void Start() {
+            pendingChunksToShow = new List<GameObject>();
+            pendingChunksToHide = new List<GameObject>();
+
+            if (ticksPerSecond < 0 | maxTicksPerFrame < 0) {
+                Debug.Log("bro is trying too hard");
+                ticksPerSecond = 64;
+                maxTicksPerFrame = 1;
+            }
+
             if (materials.Count == 0) {
                 throw new System.Exception("Need at least 1 voxel material to be set");
             }
 
             complete = false;
             disposed = false;
-            totalChunks = new Dictionary<Vector3Int, GameObject>();
+            chunks = new Dictionary<OctreeNode, VoxelChunk>();
+            unusedPooledChunks = new List<GameObject>();
             tickDelta = 1 / (float)ticksPerSecond;
 
             onInit?.Invoke();
-            voxelSizeFactor = 1F / Mathf.Pow(2F, voxelSizeReduction);
+            voxelSizeFactor = 1F / (1 << voxelSizeReduction);
+            waitingForSwap = false;
 
             collisions = GetComponent<Meshing.VoxelCollisions>();
-            spawner = GetComponent<VoxelGridSpawner>();
             mesher = GetComponent<Meshing.VoxelMesher>();
             graph = GetComponent<Generation.VoxelGraph>();
             compiler = GetComponent<Generation.VoxelCompiler>();
@@ -99,23 +125,71 @@ namespace jedjoud.VoxelTerrain {
             readback = GetComponent<Generation.VoxelReadback>();
             edits = GetComponent<Edits.VoxelEdits>();
             props = GetComponent<Props.VoxelProps>();
+            octree = GetComponent<Octree.VoxelOctree>();
 
+            octree.onOctreeChanged += (ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all) => {
+                pendingChunksToShow.Clear();
+                pendingChunksToHide.Clear();
+
+                foreach (var item in removed) {
+                    if (chunks.ContainsKey(item)) {
+                        pendingChunksToHide.Add(chunks[item].gameObject);
+                        chunks.Remove(item);
+                    }
+                }
+                                
+                foreach (var item in added) {
+                    if (item.childBaseIndex != -1)
+                        continue;
+
+                    GameObject obj = FetchChunk();
+                    VoxelChunk chunk = obj.GetComponent<VoxelChunk>();
+
+                    float size = item.size / (voxelSizeFactor * 64f);
+                    obj.GetComponent<MeshRenderer>().enabled = false;
+                    obj.transform.position = math.float3(item.position);
+                    obj.transform.localScale = new Vector3(size, size, size);
+
+                    chunk.ResetChunk(item);
+                    chunks.Add(item, chunk);
+
+                    readback.GenerateVoxels(chunk);
+                    pendingValidChunks++;
+                }
+
+                waitingForSwap = true;
+                octree.continuousCheck = false;
+            };
+
+            readback.onReadback += (VoxelChunk chunk, bool skipped) => {
+                chunk.skipped = skipped;
+                if (skipped) {
+                    chunk.state = VoxelChunk.ChunkState.Done;
+                    chunk.gameObject.SetActive(false);
+                    pendingValidChunks--;
+                } else {
+                    chunk.state = VoxelChunk.ChunkState.Temp;
+                    mesher.GenerateMesh(chunk, false);
+                }
+            };
+
+            mesher.onMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => {
+                if (mesh.VertexCount > 0 && mesh.TriangleCount > 0) {
+                    collisions.GenerateCollisions(chunk, mesh);
+                    pendingChunksToShow.Add(chunk.gameObject);
+                }
+                pendingValidChunks--;
+            };
+
+            /*
             spawner.onChunkSpawned += (VoxelChunk chunk) => {
                 readback.GenerateVoxels(chunk);
                 props.GenerateProps(chunk);
                 pendingChunks++;
             };
 
-            readback.onReadbackSuccessful += (VoxelChunk chunk, bool empty) => {
-                if (empty) {
-                    pendingChunks--;
-                    complete = true;
-                } else {
-                    mesher.GenerateMesh(chunk, false);
-                }
-            };
 
-            mesher.onVoxelMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => collisions.GenerateCollisions(chunk, mesh);
+
 
             collisions.onCollisionBakingComplete += (VoxelChunk chunk) => {
                 pendingChunks--;
@@ -124,17 +198,8 @@ namespace jedjoud.VoxelTerrain {
 
             onComplete += () => {
                 Debug.Log("Terrain generation finished!");
-                /*
-                edits.ApplyVoxelEdit(new jedjoud.VoxelTerrain.Edits.SphereVoxelEdit {
-                    strength = 100,
-                    center = new Unity.Mathematics.float3(10, 10, 10),
-                    material = 0,
-                    paintOnly = false,
-                    radius = 10f,
-                    writeMaterial = true,
-                }, false);
-                */
             };
+            */
 
             mesher.CallerStart();
             collisions.CallerStart();
@@ -143,17 +208,36 @@ namespace jedjoud.VoxelTerrain {
             props.CallerStart();
             edits.CallerStart();
             readback.CallerStart();
-            spawner.CallerStart();
+            octree.CallerStart();
         }
 
         public void Update() {
-            accumulator += Time.deltaTime;
+            if (waitingForSwap && pendingValidChunks == 0) {
+                foreach (var item in pendingChunksToHide) {
+                    PoolChunk(item.gameObject);
+                }
 
+                foreach (var item in pendingChunksToShow) {
+                    item.gameObject.SetActive(true);
+                }
+
+                waitingForSwap = false;
+                octree.continuousCheck = true;
+
+                pendingChunksToShow.Clear();
+                pendingChunksToHide.Clear();
+            }
+
+            accumulator += Time.deltaTime;
 
             int i = 0;
             while (accumulator >= tickDelta) {
                 accumulator -= tickDelta;
                 i++;
+
+                Profiler.BeginSample("Octree");
+                octree.CallerTick();
+                Profiler.EndSample();
 
                 Profiler.BeginSample("Readback");
                 readback.CallerTick();
@@ -175,12 +259,7 @@ namespace jedjoud.VoxelTerrain {
                 collisions.CallerTick();
                 Profiler.EndSample();
 
-                if (complete && pendingChunks == 0) {
-                    complete = false;
-                    onComplete?.Invoke();
-                }
-
-                if (i >= maxTicksPerFrame) {
+                if (i > maxTicksPerFrame) {
                     accumulator = 0;
                     break;
                 }
@@ -208,39 +287,66 @@ namespace jedjoud.VoxelTerrain {
             readback.CallerDispose();
             edits.CallerDispose();
             props.CallerDispose();
+            octree.CallerDispose();
 
-            foreach (var (key, value) in totalChunks) {
-                VoxelChunk voxelChunk = value.GetComponent<VoxelChunk>();
-                voxelChunk.voxels.Dispose();
+            foreach (var (node, chunk) in chunks) {
+                chunk.Dispose();
+            }
+
+            foreach (var go in unusedPooledChunks) {
+                go.GetComponent<VoxelChunk>().Dispose();
             }
         }
 
-        // Instantiates a new chunk and returns it
-        public VoxelChunk FetchChunk(Vector3Int chunkPosition, float scale) {
-            VoxelChunk chunk;
+        private GameObject FetchChunk() {
+            GameObject chunk;
 
-            GameObject obj = Instantiate(chunkPrefab, transform);
-            obj.name = $"Voxel Chunk";
+            if (unusedPooledChunks.Count == 0) {
+                chunk = Instantiate(chunkPrefab, transform);
+                chunk.name = $"Voxel Chunk";
+                Mesh mesh = new Mesh();
+                VoxelChunk component = chunk.GetComponent<VoxelChunk>();
+                component.InitChunk();
+                component.sharedMesh = mesh;
 
-            Mesh mesh = new Mesh();
-            chunk = obj.GetComponent<VoxelChunk>();
-            chunk.sharedMesh = mesh;
+                GameObject stitchGo = Instantiate(stitchingPrefab, chunk.transform);
+                stitchGo.transform.localPosition = Vector3.zero;
+                stitchGo.transform.localScale = Vector3.one;
+                component.skirt = stitchGo.GetComponent<Meshing.VoxelSkirt>();
+                component.skirt.source = component;
+            } else {
+                chunk = unusedPooledChunks[unusedPooledChunks.Count - 1];
+                unusedPooledChunks.RemoveAt(unusedPooledChunks.Count - 1);
+                chunk.GetComponent<MeshCollider>().sharedMesh = null;
+                chunk.GetComponent<MeshFilter>().sharedMesh = null;
+            }
 
-            GameObject chunkGameObject = chunk.gameObject;
-            chunkGameObject.transform.position = (Vector3)chunkPosition * VoxelUtils.SIZE * voxelSizeFactor;
-            chunkGameObject.transform.localScale = scale * Vector3.one;
-            chunk.chunkPosition = chunkPosition;
-            chunk.voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent);
-            totalChunks.Add(chunkPosition, chunkGameObject);
+            chunk.SetActive(false);
+
             return chunk;
         }
 
+        private void PoolChunk(GameObject chunk) {
+            chunk.SetActive(false);
+            unusedPooledChunks.Add(chunk);
+        }
+
+
         private void OnDrawGizmosSelected() {
-            if (totalChunks != null && drawGizmos) {
-                foreach (var (key, go) in totalChunks) {
+            if (chunks != null && drawGizmos) {
+                foreach (var (key, go) in chunks) {
                     VoxelChunk chunk = go.GetComponent<VoxelChunk>();
                     
                     Bounds bounds = chunk.GetBounds();
+
+                    if (bounds == default) {
+                        bounds = new Bounds() {
+                            center = chunk.node.Center,
+                            extents = Vector3.one * 10.0f,
+                        };
+                    }
+
+
                     Color color = Color.white;
 
                     switch (chunk.state) {
@@ -267,6 +373,55 @@ namespace jedjoud.VoxelTerrain {
                     Gizmos.color = color;
                     Gizmos.DrawWireCube(bounds.center, bounds.size);
                 }
+            }
+        }
+
+        // Used for debugging the amount of jobs remaining
+        void OnGUI() {
+            var offset = 0;
+            void Label(string text) {
+                GUI.Label(new Rect(0, offset, 300, 30), text);
+                offset += 15;
+            }
+
+            if (debugGUI) {
+                GUI.Box(new Rect(0, 0, 300, 345), "");
+                Label($"# of chunks pending GPU voxel data: {readback.queued.Count}");
+                Label($"# of pending mesh jobs: {mesher.queuedMeshingRequests.Count}");
+                Label($"# of total chunk game objects: {chunks.Count}");
+                Label($"# of unused pooled chunk game objects: {unusedPooledChunks.Count}");
+
+                /*
+                Label($"# of pending GPU async readback jobs: {readback.pendingVoxelGenerationChunks.Count}");
+                Label($"# of pending mesh jobs: {VoxelMesher.pendingMeshJobs.Count}");
+                Label($"# of pending mesh baking jobs: {VoxelCollisions.ongoingBakeJobs.Count}");
+                Label($"# of pending voxel segments jobs: {VoxelSegments.pendingSegments.Count}");
+                Label($"# of pooled chunk game objects: {pooledChunkGameObjects.Count}");
+                Label($"# of pooled native voxel arrays: {pooledVoxelChunkContainers.Count}");
+
+                int usedVoxelArrays = Chunks.Where(x => x.Value.container is UniqueVoxelChunkContainer).Count();
+                Label($"# of free native voxel arrays (voxel generator): {VoxelGenerator.freeVoxelNativeArrays.Cast<bool>().Where(x => x).Count()}");
+                Label($"# of used native voxel arrays: {usedVoxelArrays}");
+                Label($"# of chunks to make visible: {toMakeVisible.Count}");
+                Label($"# of enabled chunks: {Chunks.Where(x => x.Value.gameObject.activeSelf).Count()}");
+                Label($"# of enabled and meshed chunks: {Chunks.Where(x => (x.Value.gameObject.activeSelf && x.Value.sharedMesh.subMeshCount > 0)).Count()}");
+                Label($"# of chunks to remove: {toRemoveChunk.Count}");
+                Label($"# of world edits: {VoxelEdits.worldEditRegistry.TryGetAll<IDynamicEdit>().Count}");
+                Label($"# of pending voxel edits: {VoxelEdits.tempVoxelEdits.Count}");
+                int mul = Voxel.size * VoxelUtils.Volume;
+                int bytes = pooledVoxelChunkContainers.Count * mul;
+                int kbs = bytes / 1024;
+                Label($"KBs of pooled native voxel arrays: {kbs}");
+                bytes = usedVoxelArrays * mul;
+                int kbs2 = bytes / 1024;
+                Label($"KBs of used native voxel arrays: {kbs2}");
+                Label($"KBs of total native voxel arrays: {kbs + kbs2}");
+                Label("Generator free: " + VoxelGenerator.Free);
+                Label("Mesher free: " + VoxelMesher.Free);
+                Label("Octree free: " + VoxelOctree.Free);
+                Label("Edits free: " + VoxelEdits.Free);
+                Label("Props free: " + VoxelProps.Free);
+                */
             }
         }
     }

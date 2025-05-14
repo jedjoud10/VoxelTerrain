@@ -6,59 +6,52 @@ using System.Linq;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine.Profiling;
+using jedjoud.VoxelTerrain.Octree;
+using System.IO;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
     public class VoxelMesher : VoxelBehaviour {
+        internal struct MeshingRequest {
+            public VoxelChunk chunk;
+            public bool collisions;
+            public int maxTicks;
+            public Action<VoxelChunk> callback;
+        }
+
         [Range(1, 8)]
         public int meshJobsPerTick = 1;
-
+        public bool useSkirting;
         public float aoGlobalOffset = 1f;
         public float aoMinDotNormal = 0.0f;
         public float aoGlobalSpread = 0.5f;
         public float aoStrength = 1.0f;
-
+        
         // List of persistently allocated mesh data
         internal List<MeshJobHandler> handlers;
 
         // Called when a chunk finishes generating its voxel data
-        public delegate void OnVoxelMeshingComplete(VoxelChunk chunk, VoxelMesh mesh);
-        public event OnVoxelMeshingComplete onVoxelMeshingComplete;
-        internal Queue<PendingMeshJob> queuedJob;
-        internal HashSet<PendingMeshJob> pendingJobs;
+        public delegate void OnMeshingComplete(VoxelChunk chunk, VoxelMesh mesh);
+        public event OnMeshingComplete onMeshingComplete;
+        internal Queue<MeshingRequest> queuedMeshingRequests;
+        internal HashSet<MeshingRequest> meshingRequests;
 
         // Initialize the voxel mesher
         public override void CallerStart() {
             handlers = new List<MeshJobHandler>(meshJobsPerTick);
-            queuedJob = new Queue<PendingMeshJob>();
-            pendingJobs = new HashSet<PendingMeshJob>();
+            queuedMeshingRequests = new Queue<MeshingRequest>();
+            meshingRequests = new HashSet<MeshingRequest>();
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 handlers.Add(new MeshJobHandler(this));
             }
-
-            /*
-            // Used to calculate the lookup table for morton -> non-morton neighbour lookup
-            for (int i = 0; i < 27; i++) {
-                uint3 morton = VoxelUtils.IndexToPosMorton(i);
-                uint3 normal = VoxelUtils.IndexToPos(i, 3);
-                int mapped = VoxelUtils.PosToIndex(morton, 3);
-
-                if ()
-                Debug.Log($"i={i}, morton={morton}, normal={normal}, mapped={mapped}");
-            }
-            */
-
-            /*
-            int3 amogus = new int3(VoxelUtils.SIZE + 4) / VoxelUtils.SIZE;
-            Debug.Log(amogus);
-            */
         }
 
         // Begin generating the mesh data using the given chunk and voxel container
         public void GenerateMesh(VoxelChunk chunk, bool immediate, Action<VoxelChunk> completed = null) {
             chunk.state = VoxelChunk.ChunkState.Meshing;
-            var job = new PendingMeshJob {
+            var job = new MeshingRequest {
                 chunk = chunk,
                 collisions = true,
                 maxTicks = 5,
@@ -66,152 +59,169 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             if (immediate) {
-                Debug.LogWarning("impl neighbour fetching here too pls");
-                /*
-                FinishJob(handlers[0]);
-                BeginJob(handlers[0], job);
-                FinishJob(handlers[0]);
-                return;
-                */
+                throw new NotImplementedException();
             }
 
-            if (pendingJobs.Contains(job))
+            if (meshingRequests.Contains(job))
                 return;
 
-            queuedJob.Enqueue(job);
-            pendingJobs.Add(job);
+            queuedMeshingRequests.Enqueue(job);
+            meshingRequests.Add(job);
             return;
         }
 
         public override void CallerTick() {
             foreach (var handler in handlers) {
-                //  || (tick - handler.startingTick) > handler.request.maxTicks)
-                if (handler.finalJobHandle.IsCompleted && !handler.Free) {
-                    Profiler.BeginSample("Finish Mesh Jobs");
-                    FinishJob(handler);
-                    Profiler.EndSample();
-                    //Debug.Log($"Job finished in {tick - handler.startingTick} ticks");
+                // do NOT forget this check!
+                if (handler.request.chunk != null) {
+                    VoxelChunk chunk = handler.request.chunk;
+                    
+                    //  || (tick - handler.startingTick) > handler.request.maxTicks)
+                    if (handler.finalJobHandle.IsCompleted && !handler.Free) {
+                        Profiler.BeginSample("Finish Mesh Jobs");
+                        FinishJob(handler);
+                        Profiler.EndSample();
+                    }
                 }
             }
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 if (handlers[i].Free) {
-                    // Check if the chunk has valid neighbours
-                    if (queuedJob.TryPeek(out PendingMeshJob job)) {
-                        Vector3Int pos = job.chunk.chunkPosition;
+                    if (queuedMeshingRequests.TryDequeue(out MeshingRequest job)) {
+                        meshingRequests.Remove(job);
 
-                        // Solely used for AO! We don't use these in the normal scenarios
-                        NativeArray<Voxel>[] allNeighbours = new NativeArray<Voxel>[27];
+                        // Create a mesh for this chunk (no stitching involved)
+                        // We do need to keep some boundary data for *upcomging* stitching though
+                        Profiler.BeginSample("Begin Mesh Job");
+                        BeginJob(handlers[i], job);
+                        Profiler.EndSample();
+                        /*
+                        VoxelChunk src = job.chunk;
+                        VoxelStitch stitch = src.stitch;
 
-                        // Used for meshing, since we only care about the neighbours in the positive directions
-                        NativeArray<Voxel>[] positiveNeighbours = new NativeArray<Voxel>[7];
+                        // All of the chunk neighbours of the same LOD in the 3 axii
+                        // This contains one more chunk ptr that is always set to null (the one at index 13)
+                        // since that one represent the source chunk (this)
+                        int[] sameLodNeighbours = new int[27];
+                        BitField32 sameLodMask = new BitField32(0);
 
+                        // All of the chunk neighbours of a higher LOD in the 3 axii
+                        // This contains one more chunk ptr that is always set to null (the one at index 13)
+                        // since that one represent the source chunk (this)
+                        int[] highLodNeighbours = new int[27];
+                        BitField32 highLodMask = new BitField32(0);
 
-                        // Create a bitset that tells us what neighbouring chunks that we can use for meshing
-                        // In some cases (when the source chunk is at the edge of the map) we don't have access to all the neighbouring chunks
-                        // This bitset lets the job system know that when we try to fetch voxel values outside of the map
-                        bool3 negativeMask = true;
-                        bool3 positiveMask = true;
+                        // All of the chunk neighbours of a lower LOD in the 3 axii
+                        // This contains one more chunk ptr that is always set to null (the one at index 13)
+                        // since that one represent the source chunk (this)
+                        // Since we assume a 2:1 ratio, we will at most have 4 neighbours of a lower LOD in any planes (2 in any edge)
+                        int[][] lowLodNeighbours = new int[27][];
+                        BitField32 lowLodMask = new BitField32(0);
 
-                        // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
-                        bool all = true;
+                        // Get the neighbour indices from the octree
+                        int omniDirBaseIndex = src.node.neighbourDataBaseIndex;
+                        NativeSlice<OctreeOmnidirectionalNeighbourData> slice = terrain.octree.omniDirectionalNeighbourDataList.AsArray().Slice(omniDirBaseIndex, 27);
+
                         for (int j = 0; j < 27; j++) {
-                            uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+                            sameLodNeighbours[j] = -1;
+                            highLodNeighbours[j] = -1;
+                            lowLodNeighbours[j] = null;
 
-                            // Since we need this to be between -1 and 1
+                            uint3 _offset = VoxelUtils.IndexToPos(j, 3);
                             int3 offset = (int3)_offset - 1;
 
-                            // Skip self since that's the source chunk that we alr have data for in the jobs
+                            // Skip self since that's the source chunk
                             if (math.all(offset == int3.zero)) {
                                 continue;
                             }
 
-                            allNeighbours[j] = new NativeArray<Voxel>();
-                            if (terrain.totalChunks.TryGetValue(pos + new Vector3Int(offset.x, offset.y, offset.z), out var chunk)) {
-                                VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
-                                all &= neighbour.HasVoxelData();
-                                allNeighbours[j] = neighbour.voxels;
+                            // If no valid octree neighbour, skip
+                            OctreeOmnidirectionalNeighbourData omni = slice[j];
+                            if (!omni.IsValid())
+                                continue;
 
-                                // Encode the positive neighbours in the specific array that will use some morton shit to speed up lookup
-                                if (math.all(offset >= int3.zero)) {
-                                    int encodedIndex = VoxelUtils.PosToIndexMorton((uint3)offset);
-                                    positiveNeighbours[encodedIndex-1] = neighbour.voxels;
-                                }
-                            } else {
-                                if (math.all(offset == math.int3(1, 0, 0))) {
-                                    positiveMask.x = false;
-                                }
+                            // There are multiple case scenario (same lod, diff lod {high, low})
+                            int baseIndex = omni.baseIndex;
+                            switch (omni.mode) {
+                                case OctreeOmnidirectionalNeighbourData.Mode.SameLod:
+                                    sameLodMask.SetBits(j, true);
+                                    sameLodNeighbours[j] = baseIndex;
+                                    break;
+                                case OctreeOmnidirectionalNeighbourData.Mode.HigherLod:
+                                    highLodMask.SetBits(j, true);
+                                    highLodNeighbours[j] = baseIndex;
+                                    break;
+                                case OctreeOmnidirectionalNeighbourData.Mode.LowerLod:
+                                    lowLodMask.SetBits(j, true);
+                                    bool3 bool3 = offset == 1 | offset == -1;
+                                    int bitmask = math.bitmask(new bool4(bool3, false));
+                                    int bitsSet = math.countbits(bitmask);
+                                    int multiNeighbourCount = 0;
 
-                                if (math.all(offset == math.int3(0, 1, 0))) {
-                                    positiveMask.y = false;
-                                }
+                                    if (bitsSet == 1) {
+                                        multiNeighbourCount = 4;
+                                    } else if (bitsSet == 2) {
+                                        multiNeighbourCount = 2;
+                                    } else if (bitsSet == 3) {
+                                        // custom corner case, index is stored in the struct instead of the array
+                                        lowLodNeighbours[j] = new int[1];
+                                        lowLodNeighbours[j][0] = baseIndex;
+                                        break;
+                                    } else {
+                                        throw new Exception("wut");
+                                    }
 
-                                if (math.all(offset == math.int3(0, 0, 1))) {
-                                    positiveMask.z = false;
-                                }
+                                    // mmm I love indirection...
+                                    lowLodNeighbours[j] = new int[multiNeighbourCount];
+                                    for (int c = 0; c < multiNeighbourCount; c++) {
+                                        int index = omni.baseIndex + c;
+                                        lowLodNeighbours[j][c] = terrain.octree.neighbourIndices[index];
+                                    }
 
-                                if (math.all(offset == math.int3(-1, 0, 0))) {
-                                    negativeMask.x = false;
-                                }
-
-                                if (math.all(offset == math.int3(0, -1, 0))) {
-                                    negativeMask.y = false;
-                                }
-
-                                if (math.all(offset == math.int3(0, 0, -1))) {
-                                    negativeMask.z = false;
-                                }
+                                    break;
                             }
                         }
 
-                        // Only begin meshing if we have the correct neighbours
-                        if (all) {
-                            if (queuedJob.TryDequeue(out PendingMeshJob request)) {
-                                pendingJobs.Remove(request);
-                                Profiler.BeginSample("Begin Mesh Jobs");
-                                BeginJob(handlers[i], request, allNeighbours, positiveNeighbours, negativeMask, positiveMask);
-                                Profiler.EndSample();
-                            }
-                        } else {
-                            // We can be smart and move this chunk back to the end of the queue
-                            // This allows the next free mesh job handler to peek at the next element, not this one again
-                            if (queuedJob.TryDequeue(out PendingMeshJob request)) {
-                                queuedJob.Enqueue(request);
-                            }
+                        src.neighbourMask = sameLodMask;
+                        src.highLodMask = highLodMask;
+                        src.lowLodMask = lowLodMask;
+                        
+                        if (useStitching) {
                         }
+                        */
                     }
                 }
             }
         }
 
-        private void BeginJob(MeshJobHandler handler, PendingMeshJob request, NativeArray<Voxel>[] allNeighbours, NativeArray<Voxel>[] positiveNeighbours, bool3 negativeMask, bool3 positiveMask) {
-            handler.chunk = request.chunk;
+        private void BeginJob(MeshJobHandler handler, MeshingRequest request) {
             handler.request = request;
             handler.startingTick = tick;
 
-            var copy = new AsyncMemCpy { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
-            handler.BeginJob(copy, allNeighbours, positiveNeighbours, negativeMask, positiveMask);
+            var copy = new AsyncMemCpy<Voxel> { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
+            handler.BeginJob(copy);
         }
 
         private void FinishJob(MeshJobHandler handler) {
-            if (handler.chunk != null) {
-                VoxelChunk chunk = handler.chunk;
-                VoxelMesh stats = handler.Complete(chunk.sharedMesh);
+            if (handler.request.chunk != null) {
+                VoxelChunk chunk = handler.request.chunk;
+                VoxelMesh stats = handler.Complete(chunk.sharedMesh, chunk.skirt);
                 chunk.voxelMaterialsLookup = stats.VoxelMaterialsLookup;
                 chunk.triangleOffsetLocalMaterials = stats.TriangleOffsetLocalMaterials;
                 chunk.state = VoxelChunk.ChunkState.Done;
 
-                onVoxelMeshingComplete?.Invoke(chunk, stats);
-                handler.request.callback?.Invoke(handler.chunk);
+                onMeshingComplete?.Invoke(chunk, stats);
+                handler.request.callback?.Invoke(chunk);
 
                 chunk.GetComponent<MeshFilter>().sharedMesh = chunk.sharedMesh;
                 var renderer = chunk.GetComponent<MeshRenderer>();
-
+                renderer.enabled = true;
                 renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
+                float scalingFactor = chunk.node.size / (64f * terrain.voxelSizeFactor);
                 chunk.bounds = new Bounds {
-                    min = chunk.transform.position + stats.Bounds.min,
-                    max = chunk.transform.position + stats.Bounds.max,
+                    min = chunk.transform.position + stats.Bounds.min * scalingFactor,
+                    max = chunk.transform.position + stats.Bounds.max * scalingFactor,
                 };
                 renderer.bounds = chunk.bounds;
             }
@@ -219,10 +229,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public override void CallerDispose() {
             foreach (MeshJobHandler handler in handlers) {
-                handler.Complete(new Mesh());
+                VoxelChunk chunk = handler.request.chunk;
+
+                handler.Complete(null, null);
                 handler.Dispose();
             }
         }
     }
-
 }

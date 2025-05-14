@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Unsafe.NativeCounter materialCounter;
 
         public unsafe void Execute() {
-            for (int i = 0; i < 256; i++) {
+            for (int i = 0; i < VoxelUtils.MAX_MATERIAL_COUNT; i++) {
                 int bucketIndex = i / 32;
                 int bitIndex = i % 32;
 
@@ -18,7 +18,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (((bucket >> bitIndex) & 1) == 1) {
                     int cnt = materialCounter.Count;
                     materialCounter.Increment();
-                    materialHashMap.Add((byte)i, cnt);
+                    materialHashMap.Add((byte)i, cnt);  
                 }
             }
         }

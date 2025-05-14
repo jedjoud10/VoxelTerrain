@@ -21,45 +21,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<int> triangles;
 
-        // Forward direction of each quad
-        [ReadOnly]
-        static readonly uint3[] quadForwardDirection = new uint3[3]
-        {
-            new uint3(1, 0, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 0, 1),
-        };
-
-        // Quad vertices offsets based on direction
-        [ReadOnly]
-        static readonly uint3[] quadPerpendicularOffsets = new uint3[12]
-        {
-            new uint3(0, 0, 0),
-            new uint3(0, 1, 0),
-            new uint3(0, 1, 1),
-            new uint3(0, 0, 1),
-
-            new uint3(0, 0, 0),
-            new uint3(0, 0, 1),
-            new uint3(1, 0, 1),
-            new uint3(1, 0, 0),
-
-            new uint3(0, 0, 0),
-            new uint3(1, 0, 0),
-            new uint3(1, 1, 0),
-            new uint3(0, 1, 0)
-        };
-
         // Bit shift used to check for edges
         [ReadOnly]
         static readonly int[] shifts = new int[3]
         {
             0, 3, 8
         };
-
-        [ReadOnly]
-        public UnsafePtrList<Voxel> positiveNeighbourPtr;
-
+        
         // Used for fast traversal
         [ReadOnly]
         public NativeArray<byte> enabled;
@@ -76,33 +44,26 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeParallelHashMap<byte, int>.ReadOnly materialHashMap;
 
-        [ReadOnly]
-        public bool3 positiveNeighbourMask;
-
         // Check and edge and check if we must generate a quad in it's forward facing direction
-        void CheckEdge(uint3 basePosition, int index, bool skirts, bool skirtsForceDir) {
-            uint3 forward = quadForwardDirection[index];
+        void CheckEdge(uint3 basePosition, int index) {
+            uint3 forward = VoxelUtils.FORWARD_DIRECTION[index];
 
-            int baseIndex = VoxelUtils.PosToIndexMorton(basePosition);
-            int endIndex = VoxelUtils.PosToIndexMorton(basePosition + forward);
+            int baseIndex = VoxelUtils.PosToIndex(basePosition, VoxelUtils.SIZE);
+            int endIndex = VoxelUtils.PosToIndex(basePosition + forward, VoxelUtils.SIZE);
 
-            Voxel startVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(baseIndex, ref voxels, ref positiveNeighbourPtr);
-            Voxel endVoxel = VoxelUtils.FetchVoxelWithPositiveNeighbours(endIndex, ref voxels, ref positiveNeighbourPtr);
+            Voxel startVoxel = voxels[baseIndex];
+            Voxel endVoxel = voxels[endIndex];
 
-            bool flip = (endVoxel.density >= 0.0);
-
-            // Force direction if we are skirting
-            if (skirts)
-                flip = skirtsForceDir;
+            bool flip = (endVoxel.density > 0.0);
 
             byte material = flip ? startVoxel.material : endVoxel.material;
             uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
-            int index0 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4], VoxelUtils.SIZE + 1);
-            int index1 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 1], VoxelUtils.SIZE + 1);
-            int index2 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 2], VoxelUtils.SIZE + 1);
-            int index3 = VoxelUtils.PosToIndex(offset + quadPerpendicularOffsets[index * 4 + 3], VoxelUtils.SIZE + 1);
+            int index0 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4], VoxelUtils.SIZE);
+            int index1 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 1], VoxelUtils.SIZE);
+            int index2 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 2], VoxelUtils.SIZE);
+            int index3 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 3], VoxelUtils.SIZE);
 
             // Fetch the actual indices of the vertices
             int vertex0 = vertexIndices[index0];
@@ -133,20 +94,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
-            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE + 1);
+            uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
 
-            if (math.any(position < math.uint3(1)))
-                return;
-
-            if (!VoxelUtils.CheckPositionPositiveNeighbours(position, positiveNeighbourMask))
+            if (math.any(position > VoxelUtils.SIZE-2))
                 return;
 
             // Allows us to save two voxel fetches (very important)
             ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];
 
             for (int i = 0; i < 3; i++) {
+                // we CAN do quad stuff on the v=0 boundary as long as we're doing it parallel to the face boundary
+                if (math.any(position < (1 - VoxelUtils.FORWARD_DIRECTION[i])))
+                    continue;
+                
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {
-                    CheckEdge(position, i, false, false);
+                    CheckEdge(position, i);
                 }
             }
         }

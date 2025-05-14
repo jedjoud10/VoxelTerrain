@@ -22,6 +22,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public bool useHeightSimplification;
         public bool flatshaded;
         public int size = 64;
+        private int initSize = -1;
 
         public Vector3 scale = Vector3.one;
         public Vector3 offset;
@@ -34,10 +35,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (indexBuffer != null && indexBuffer.IsValid())
                 return;
 
-            indexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, size * size * size * 6, sizeof(int));
-            vertexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, size * size * size, sizeof(float) * 3);
-            normalsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, size * size * size, sizeof(float) * 3);
-            colorsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, size * size * size, sizeof(float) * 3);
+            initSize = size;
+            int volume = initSize * initSize * initSize;
+            indexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, volume * 6, sizeof(int));
+            vertexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, volume, sizeof(float) * 3);
+            normalsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, volume, sizeof(float) * 3);
+            colorsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, volume, sizeof(float) * 3);
             commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, GraphicsBuffer.IndirectDrawIndexedArgs.size);
             atomicCounters = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 2, sizeof(uint));
 
@@ -51,8 +54,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { defaultArgs });
 
-            tempVertexTexture = TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
-            maxHeightAtomic = TextureUtils.Create2DRenderTexture(size, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
+            tempVertexTexture = TextureUtils.Create3DRenderTexture(initSize, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
+            maxHeightAtomic = TextureUtils.Create2DRenderTexture(initSize, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
         }
 
         private void OnDisable() {
@@ -65,6 +68,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
 
         public void DisposeBuffers() {
+            initSize = -1;
             if (indexBuffer != null && indexBuffer.IsValid()) {
                 indexBuffer.Dispose();
                 vertexBuffer.Dispose();
@@ -78,6 +82,10 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public void Meshify(RenderTexture voxels) {
+            if (initSize == -1 || voxels.width > initSize) {
+                InitializeForSize();
+            }
+
             if (useHeightSimplification) {
                 ExecuteHeightMapMesher(voxels, -1, Vector3Int.zero);
             } else {

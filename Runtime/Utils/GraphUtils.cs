@@ -99,6 +99,12 @@ namespace jedjoud.VoxelTerrain {
                     uint3 temp5 = (uint3)val;
                     cmds.SetComputeIntParams(shader, id, (int)temp5.x, (int)temp5.y, (int)temp5.z);
                     break;
+                case VariableType.StrictType.Bool:
+                    cmds.SetComputeIntParam(shader, id, (bool)val ? 1 : 0);
+                    break;
+                default:
+                    Debug.LogWarning($"SetComputeShaderObj given invalid type: {type.strict}");
+                    break;
             }
         }
 
