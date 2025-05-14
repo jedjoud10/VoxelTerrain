@@ -56,7 +56,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public NativeList<float3> debugData;
 
-        const int BATCH_SIZE = 64 * 64 * 32;
+        const int BATCH_SIZE = 64 * 64 * 16;
         const int VOL = VoxelUtils.VOLUME;
         const int MATS = VoxelUtils.MAX_MATERIAL_COUNT;
 
@@ -110,7 +110,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public bool Free { get; private set; } = true;
 
         // Begin the vertex + quad job that will generate the mesh
-        internal JobHandle BeginJob(JobHandle dependency) {
+        internal JobHandle BeginJob(JobHandle dependency, NativeArray<Voxel>[] neighboursArray, BitField32 mask) {
             debugData.Clear();
             float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
             quadCounters.Reset();
@@ -124,12 +124,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bounds[1] = new float3(0.0);
             Free = false;
 
-            BitField32 mask = new BitField32(uint.MinValue);
-            mask.SetBits(13, true);
             unsafe {
                 neighbourPtrs.Clear();
-                for (int i = 0; i < 27; i++) {
-                    neighbourPtrs.Add(System.IntPtr.Zero);
+                foreach (NativeArray<Voxel> v in neighboursArray) {
+                    if (v.IsCreated) {
+                        neighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
+                    } else {
+                        neighbourPtrs.Add(System.IntPtr.Zero);
+                    }
                 }
             }
 
@@ -253,17 +255,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Material job and indexer job
-            JobHandle materialJobHandle = materialJob.Schedule(VOL, 8 * BATCH_SIZE, dependency);
+            JobHandle materialJobHandle = materialJob.Schedule(VOL, BATCH_SIZE, dependency);
             JobHandle materialIndexerJobHandle = materialIndexerJob.Schedule(materialJobHandle);
             
             // Start the corner job and material job
-            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, 4 * BATCH_SIZE, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, BATCH_SIZE, dependency);
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
-            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, 4 * BATCH_SIZE, vertexDep);
+            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, BATCH_SIZE, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-            JobHandle aoJobHandle = aoJob.Schedule(VOL, 4 * BATCH_SIZE, vertexJobHandle);
+            JobHandle aoJobHandle = aoJob.Schedule(VOL, BATCH_SIZE / 32, vertexJobHandle);
 
             // Copy boundary skirt vertices and start creating skirts
             JobHandle skirtJobHandle = default;

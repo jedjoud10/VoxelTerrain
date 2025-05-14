@@ -130,7 +130,7 @@ namespace jedjoud.VoxelTerrain {
             props = GetComponent<Props.VoxelProps>();
             octree = GetComponent<Octree.VoxelOctree>();
 
-            octree.onOctreeChanged += (ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all) => {
+            octree.onOctreeChanged += (ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all, ref NativeList<BitField32> neighbourMasks) => {
                 pendingChunksToShow.Clear();
                 pendingChunksToHide.Clear();
 
@@ -147,21 +147,24 @@ namespace jedjoud.VoxelTerrain {
 
                     GameObject obj = FetchChunk();
                     VoxelChunk chunk = obj.GetComponent<VoxelChunk>();
-
-                    float size = item.size / (voxelSizeFactor * 64f);
-                    obj.GetComponent<MeshRenderer>().enabled = false;
-                    obj.transform.position = math.float3(item.position);
-                    obj.transform.localScale = new Vector3(size, size, size);
-
-                    chunk.ResetChunk(item);
+                    chunk.ResetChunk(item, voxelSizeFactor, neighbourMasks[item.index]);
                     chunks.Add(item, chunk);
 
                     readback.GenerateVoxels(chunk);
                     pendingValidChunks++;
                 }
 
+                foreach (var item in all) {
+                    if (item.childBaseIndex != -1)
+                        continue;
+
+                    if (neighbourMasks[item.index].Value != chunks[item].neighbourMask.Value) {
+                        // remesh with or without neighbour data
+                        chunks[item].neighbourMask = neighbourMasks[item.index];
+                    }
+                }
+
                 waitingForSwap = true;
-                octree.continuousCheck = false;
                 ditherTransition = false;
             };
 
@@ -179,7 +182,8 @@ namespace jedjoud.VoxelTerrain {
 
             mesher.onMeshingComplete += (VoxelChunk chunk, Meshing.VoxelMesh mesh) => {
                 if (mesh.VertexCount > 0 && mesh.TriangleCount > 0) {
-                    collisions.GenerateCollisions(chunk, mesh);
+                    if (chunk.node.depth == octree.maxDepth)
+                        collisions.GenerateCollisions(chunk, mesh);
                     pendingChunksToShow.Add(chunk.gameObject);
                 }
                 pendingValidChunks--;
@@ -225,11 +229,9 @@ namespace jedjoud.VoxelTerrain {
             }
         }
 
-        public void Update() {
+        private void HandleDitherTransition() {
             if (ditherTransition) {
                 float diff = (Time.unscaledTime - transitionBeginTime) / ditherTransitionTime;
-                //Debug.Log($"diff: {diff}");
-
 
                 if (diff < 1) {
                     SetTransitionDither(diff);
@@ -261,6 +263,10 @@ namespace jedjoud.VoxelTerrain {
 
                 SetTransitionDither(-1);
             }
+        }
+
+        public void Update() {
+            HandleDitherTransition();
 
             accumulator += Time.deltaTime;
 
@@ -413,13 +419,14 @@ namespace jedjoud.VoxelTerrain {
         // Used for debugging the amount of jobs remaining
         void OnGUI() {
             var offset = 0;
+
+            GUI.contentColor = Color.black;
             void Label(string text) {
                 GUI.Label(new Rect(0, offset, 300, 30), text);
                 offset += 15;
             }
 
             if (debugGUI) {
-                GUI.Box(new Rect(0, 0, 300, 345), "");
                 Label($"# of chunks pending GPU voxel data: {readback.queued.Count}");
                 Label($"# of pending mesh jobs: {mesher.queuedMeshingRequests.Count}");
                 Label($"# of total chunk game objects: {chunks.Count}");

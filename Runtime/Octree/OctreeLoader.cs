@@ -7,8 +7,6 @@ namespace jedjoud.VoxelTerrain.Octree {
         // Should be a struct so we can send it to the Unity Jobs easily
         [Serializable]
         public struct Target {
-            public bool generateCollisions;
-
             [HideInInspector]
             public float3 center;
 

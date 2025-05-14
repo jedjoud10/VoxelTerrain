@@ -4,6 +4,9 @@ using Unity.Jobs;
 using UnityEngine;
 using System.Linq;
 using UnityEngine.Profiling;
+using Unity.Collections;
+using jedjoud.VoxelTerrain.Octree;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
@@ -82,119 +85,77 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             for (int i = 0; i < meshJobsPerTick; i++) {
                 if (handlers[i].Free) {
-                    if (queuedMeshingRequests.TryDequeue(out MeshingRequest job)) {
-                        meshingRequests.Remove(job);
+                    if (queuedMeshingRequests.TryPeek(out MeshingRequest job)) {
 
-                        // Create a mesh for this chunk (no stitching involved)
-                        // We do need to keep some boundary data for *upcomging* stitching though
-                        Profiler.BeginSample("Begin Mesh Job");
-                        BeginJob(handlers[i], job);
-                        Profiler.EndSample();
-                        /*
-                        VoxelChunk src = job.chunk;
-                        VoxelStitch stitch = src.stitch;
-
-                        // All of the chunk neighbours of the same LOD in the 3 axii
+                        // All of the chunk neighbours in the 3 axii
                         // This contains one more chunk ptr that is always set to null (the one at index 13)
                         // since that one represent the source chunk (this)
-                        int[] sameLodNeighbours = new int[27];
-                        BitField32 sameLodMask = new BitField32(0);
+                        NativeArray<Voxel>[] neighbours = new NativeArray<Voxel>[27];
+                        OctreeNode self = job.chunk.node;
+                        BitField32 mask = job.chunk.neighbourMask;
 
-                        // All of the chunk neighbours of a higher LOD in the 3 axii
-                        // This contains one more chunk ptr that is always set to null (the one at index 13)
-                        // since that one represent the source chunk (this)
-                        int[] highLodNeighbours = new int[27];
-                        BitField32 highLodMask = new BitField32(0);
-
-                        // All of the chunk neighbours of a lower LOD in the 3 axii
-                        // This contains one more chunk ptr that is always set to null (the one at index 13)
-                        // since that one represent the source chunk (this)
-                        // Since we assume a 2:1 ratio, we will at most have 4 neighbours of a lower LOD in any planes (2 in any edge)
-                        int[][] lowLodNeighbours = new int[27][];
-                        BitField32 lowLodMask = new BitField32(0);
-
-                        // Get the neighbour indices from the octree
-                        int omniDirBaseIndex = src.node.neighbourDataBaseIndex;
-                        NativeSlice<OctreeOmnidirectionalNeighbourData> slice = terrain.octree.omniDirectionalNeighbourDataList.AsArray().Slice(omniDirBaseIndex, 27);
-
+                        // Loop over all the neighbouring chunks, starting from the one at -1,-1,-1
+                        bool all = true;
                         for (int j = 0; j < 27; j++) {
-                            sameLodNeighbours[j] = -1;
-                            highLodNeighbours[j] = -1;
-                            lowLodNeighbours[j] = null;
-
+                            neighbours[j] = new NativeArray<Voxel>();
                             uint3 _offset = VoxelUtils.IndexToPos(j, 3);
+
+                            // Since we need this to be between -1 and 1
                             int3 offset = (int3)_offset - 1;
 
-                            // Skip self since that's the source chunk
+                            // Skip self since that's the source chunk that we alr have data for in the jobs
                             if (math.all(offset == int3.zero)) {
                                 continue;
                             }
 
-                            // If no valid octree neighbour, skip
-                            OctreeOmnidirectionalNeighbourData omni = slice[j];
-                            if (!omni.IsValid())
-                                continue;
+                            // We can 'create' the neighbour node (since we know it's a leaf node and at the same depth as the current node)
+                            if (mask.IsSet(j)) {
+                                OctreeNode neighbourNode = new OctreeNode {
+                                    size = self.size,
+                                    childBaseIndex = -1,
+                                    depth = self.depth,
+                                    
+                                    // doesn't matter since we don't consider this in the hash/equality check!!!
+                                    index = -1,
+                                    parentIndex = -1,
 
-                            // There are multiple case scenario (same lod, diff lod {high, low})
-                            int baseIndex = omni.baseIndex;
-                            switch (omni.mode) {
-                                case OctreeOmnidirectionalNeighbourData.Mode.SameLod:
-                                    sameLodMask.SetBits(j, true);
-                                    sameLodNeighbours[j] = baseIndex;
-                                    break;
-                                case OctreeOmnidirectionalNeighbourData.Mode.HigherLod:
-                                    highLodMask.SetBits(j, true);
-                                    highLodNeighbours[j] = baseIndex;
-                                    break;
-                                case OctreeOmnidirectionalNeighbourData.Mode.LowerLod:
-                                    lowLodMask.SetBits(j, true);
-                                    bool3 bool3 = offset == 1 | offset == -1;
-                                    int bitmask = math.bitmask(new bool4(bool3, false));
-                                    int bitsSet = math.countbits(bitmask);
-                                    int multiNeighbourCount = 0;
+                                    position = self.position + offset * self.size,
+                                };
 
-                                    if (bitsSet == 1) {
-                                        multiNeighbourCount = 4;
-                                    } else if (bitsSet == 2) {
-                                        multiNeighbourCount = 2;
-                                    } else if (bitsSet == 3) {
-                                        // custom corner case, index is stored in the struct instead of the array
-                                        lowLodNeighbours[j] = new int[1];
-                                        lowLodNeighbours[j][0] = baseIndex;
-                                        break;
-                                    } else {
-                                        throw new Exception("wut");
-                                    }
-
-                                    // mmm I love indirection...
-                                    lowLodNeighbours[j] = new int[multiNeighbourCount];
-                                    for (int c = 0; c < multiNeighbourCount; c++) {
-                                        int index = omni.baseIndex + c;
-                                        lowLodNeighbours[j][c] = terrain.octree.neighbourIndices[index];
-                                    }
-
-                                    break;
+                                if (terrain.chunks.TryGetValue(neighbourNode, out var chunk)) {
+                                    VoxelChunk neighbour = chunk.GetComponent<VoxelChunk>();
+                                    all &= neighbour.HasVoxelData();
+                                    neighbours[j] = neighbour.voxels;
+                                }
                             }
                         }
 
-                        src.neighbourMask = sameLodMask;
-                        src.highLodMask = highLodMask;
-                        src.lowLodMask = lowLodMask;
-                        
-                        if (useStitching) {
+                        // Only begin meshing if we have the correct neighbours
+                        if (all) {
+                            if (queuedMeshingRequests.TryDequeue(out MeshingRequest request)) {
+                                meshingRequests.Remove(request);
+                                Profiler.BeginSample("Begin Mesh Jobs");
+                                BeginJob(handlers[i], request, neighbours, mask);
+                                Profiler.EndSample();
+                            }
+                        } else {
+                            // We can be smart and move this chunk back to the end of the queue
+                            // This allows the next free mesh job handler to peek at the next element, not this one again
+                            if (queuedMeshingRequests.TryDequeue(out MeshingRequest request)) {
+                                queuedMeshingRequests.Enqueue(request);
+                            }
                         }
-                        */
                     }
                 }
             }
         }
 
-        private void BeginJob(MeshJobHandler handler, MeshingRequest request) {
+        private void BeginJob(MeshJobHandler handler, MeshingRequest request, NativeArray<Voxel>[] neighbours, BitField32 mask) {
             handler.request = request;
             handler.startingTick = tick;
 
             var copy = new AsyncMemCpy<Voxel> { src = request.chunk.voxels, dst = handler.voxels }.Schedule();
-            handler.BeginJob(copy);
+            handler.BeginJob(copy, neighbours, mask);
         }
 
         private void FinishJob(MeshJobHandler handler) {

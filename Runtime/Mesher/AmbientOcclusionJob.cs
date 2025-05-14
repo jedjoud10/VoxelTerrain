@@ -6,7 +6,7 @@ using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
-    public struct AmbientOcclusionJob : IJobParallelFor {
+    public struct AmbientOcclusionJob : IJobParallelForBatch {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
         [WriteOnly]
@@ -29,49 +29,49 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public float voxelScale;
         const int SIZE = 2;
 
-        public void Execute(int index) {
-            /*
-            if (index >= counter.Count)
+        public void Execute(int startIndex, int count) {
+            if (startIndex >= counter.Count)
                 return;
 
-            float3 vertex = vertices[index] / voxelScale;
-            float3 normal = normals[index];
+            for (int index = startIndex; index < count; index++) {
+                float3 vertex = vertices[index] / voxelScale;
+                float3 normal = normals[index];
 
-            int sum = 0;
-            int total = 0;            
+                int sum = 0;
+                int total = 0;
 
-            for (int x = -SIZE; x <= SIZE; x++) {
-                for (int y = -SIZE; y <= SIZE; y++) {
-                    for (int z = -SIZE; z <= SIZE; z++) {
-                        float3 offset = new float3(x, y, z) * globalSpread;
+                for (int x = -SIZE; x <= SIZE; x++) {
+                    for (int y = -SIZE; y <= SIZE; y++) {
+                        for (int z = -SIZE; z <= SIZE; z++) {
+                            float3 offset = new float3(x, y, z) * globalSpread;
 
-                        if (math.all(offset == 0f)) {
-                            continue;
-                        }
+                            if (math.all(offset == 0f)) {
+                                continue;
+                            }
 
-                        if (math.dot(math.normalize(offset), normal) > minDotNormal) {
-                            total++;
-                        } else {
-                            continue;
-                        }
+                            if (math.dot(math.normalize(offset), normal) > minDotNormal) {
+                                total++;
+                            } else {
+                                continue;
+                            }
 
-                        float3 position = vertex + offset + globalOffset;
-                        int3 floored = (int3)math.floor(position);
+                            float3 position = vertex + offset + globalOffset;
+                            int3 floored = (int3)math.floor(position);
 
-                        if (VoxelUtils.CheckCubicVoxelPosition(floored, neighbourMask)) {
-                            half density = VoxelUtils.SampleDensityInterpolated(position, ref voxels, ref neighbours);
-                            if (density < 0.0) {
-                                sum++;
+                            if (VoxelUtils.CheckCubicVoxelPosition(floored, neighbourMask)) {
+                                half density = VoxelUtils.SampleDensityInterpolated(position, ref voxels, ref neighbours);
+                                if (density < 0.0) {
+                                    sum++;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            float factor = math.clamp((float)sum / (float)total, 0f, 1f);
-            uvs[index] = new float2(1 - factor * strength, 0.0f);
-            */
-            uvs[index] = new float2(1, 0.0f);
+                float factor = math.clamp((float)sum / (float)total, 0f, 1f);
+                uvs[index] = new float2(1 - factor * strength, 0.0f);
+                //uvs[index] = new float2(1, 0.0f);
+            }
         }
     }
 }

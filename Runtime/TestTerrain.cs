@@ -12,8 +12,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> amplitude;
         public Inject<float> voronoiScale;
         public Inject<float> voronoiAmplitude;
-        public Inject<float> verticalRidgesScale;
-        public Inject<float> verticalRidgesAmplitude;
+        public Inject<float> warperScale;
+        public Inject<float> warperAmplitude;
         public Inject<float2> others;
 
         [Range(1, 10)]
@@ -36,7 +36,9 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, first, second);
             var amogus = fractal.Evaluate(xz);
 
-            var voronoi = new Voronoi(voronoiScale, voronoiAmplitude).Evaluate(projected);
+            Warper<float3> warper = new Warper<float3>(new Simplex(warperScale, warperAmplitude));
+
+            var voronoi = new Voronoi(voronoiScale, voronoiAmplitude).Evaluate(warper.Warpinate(projected)); 
             amogus = Sdf.Union(voronoi, amogus);
 
             output = new AllOutputs();

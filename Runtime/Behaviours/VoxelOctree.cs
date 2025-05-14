@@ -11,8 +11,8 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
-        public NativeList<OctreeNode> nodesList;
-        public NativeList<BitField32> neighbourMasksList;
+        private NativeList<OctreeNode> nodesList;
+        private NativeList<BitField32> neighbourMasksList;
 
 
         // only used from inside the job. for some reason, jobs can't dipose of native queues inside of them
@@ -22,10 +22,10 @@ namespace jedjoud.VoxelTerrain.Octree {
         private NativeList<OctreeNode> addedNodes;
         private NativeList<OctreeNode> removedNodes;
 
-        public delegate void OnOctreeChanged(ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all);
+        public delegate void OnOctreeChanged(ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all, ref NativeList<BitField32> neighbourMasks);
         public event OnOctreeChanged onOctreeChanged;
 
-        private JobHandle handle;
+        private JobHandle? handle;
 
         public bool continuousCheck = true;
 
@@ -39,7 +39,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             addedNodes = new NativeList<OctreeNode>(Allocator.Persistent);
             removedNodes = new NativeList<OctreeNode>(Allocator.Persistent);
             pending = new NativeQueue<OctreeNode>(Allocator.Persistent);
-            handle = default;
+            handle = null;
 
             continuousCheck = true;
 
@@ -49,7 +49,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             }
         }
 
-        private void Compute() {
+        private void BeginJob() {
             nodesList.Clear();
             neighbourMasksList.Clear();
             newNodesSet.Clear();
@@ -102,6 +102,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             JobHandle subdivideJobHandle = job.Schedule();
             JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(nodesList, 128, subdivideJobHandle);
+
             JobHandle setJobHandle = toHashSetJob.Schedule(neighbourJobHandle);
             JobHandle addedJobHandle = addedDiffJob.Schedule(setJobHandle);
             JobHandle removedJobHandle = removedDiffJob.Schedule(setJobHandle);
@@ -109,21 +110,31 @@ namespace jedjoud.VoxelTerrain.Octree {
             JobHandle temp = JobHandle.CombineDependencies(addedJobHandle, removedJobHandle);
             JobHandle swapJobHandle = swapJob.Schedule(temp);
             handle = JobHandle.CombineDependencies(swapJobHandle, neighbourJobHandle);
-            handle.Complete();
-            continuousCheck = true;
         }
 
         public override void CallerTick() {
             if (terrain.mesher.meshingRequests.Count == 0 && terrain.readback.queued.Count == 0 && continuousCheck) {
-                Compute();
+                if (handle.HasValue) {
+                    if (handle.Value.IsCompleted) {
+                        handle.Value.Complete();
+                        handle = null;
 
-                if (addedNodes.Length > 0 || removedNodes.Length > 0) {
-                    onOctreeChanged?.Invoke(ref addedNodes, ref removedNodes, ref nodesList);
+                        if (addedNodes.Length > 0 || removedNodes.Length > 0) {
+                            continuousCheck = false;
+                            onOctreeChanged?.Invoke(ref addedNodes, ref removedNodes, ref nodesList, ref neighbourMasksList);
+                        } else {
+                            continuousCheck = true;
+                        }
+                    }
+                } else {
+                    BeginJob();
                 }
             }
         }
 
         public override void CallerDispose() {
+            handle?.Complete();
+            
             oldNodesSet.Dispose();
             newNodesSet.Dispose();
             addedNodes.Dispose();

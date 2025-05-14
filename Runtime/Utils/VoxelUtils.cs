@@ -220,10 +220,60 @@ namespace jedjoud.VoxelTerrain {
             return (uint3)math.select(r, r + size, r < 0);
         }
 
+
+        // Fetch the Voxels with neighbour data fallback, but consider ALL 26 neighbours, not just the ones in the positive axii
+        // Solely used for AO, since that needs to fetch data from all the neighbours
+        public static Voxel FetchVoxelNeighbours(int3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
+            // remap -1,1 to 0,2
+            position += new int3(SIZE);
+            int3 chunkPosition = position / SIZE;
+            int chunkIndex = PosToIndex((uint3)chunkPosition, 3);
+            int voxelIndex = PosToIndex((uint3)Mod(position, SIZE), SIZE);
+
+            unsafe {
+                Voxel* ptr = neighbours[chunkIndex];
+
+                if (chunkIndex == 13) {
+                    ptr = (Voxel*)voxels.GetUnsafeReadOnlyPtr<Voxel>();
+                }
+
+                if (ptr != null) {
+                    Voxel* offset = (ptr + voxelIndex);
+                    return *offset;
+                } else {
+                    //Debug.Log("Not good");
+                    //Debug.Log($"{chunkIndex}, {position}, {voxelIndex}");
+                    return Voxel.Empty;
+                }
+            }
+        }
+
+        // Check if a 2x2x2 region starting from a specific voxel is accessible
+        // Required for vertex job, corner job, quad job. Yk, meshing stuff
+        // TODO: PLEASE IMPROVE PERFORMANCE THIS IS HORRID. There's definitely a smarter way to tackle this lol
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckCubicVoxelPosition(int3 position, BitField32 mask) {
+            bool all = true;
+            for (int i = 0; i < 8; i++) {
+                all &= CheckPosition(position + (int3)IndexToPos(i, 2), mask);
+            }
+            return all;
+        }
+
+        // Checks if the given GLOBAL position (could be negative) is valid with the given neighbours
+        // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckPosition(int3 position, BitField32 mask) {
+            int3 temp1 = position + SIZE;
+            int3 chunkPosition = temp1 / SIZE;
+
+            int index1 = PosToIndex((uint3)chunkPosition, 3);
+
+            return mask.IsSet(index1);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static half SampleDensityInterpolated(float3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
-            return (half)0f;
-            /*
             float3 frac = math.frac(position);
             int3 voxPos = (int3)math.floor(position);
 
@@ -248,7 +298,6 @@ namespace jedjoud.VoxelTerrain {
             float mixed6 = math.lerp(mixed4, mixed5, frac.y);
 
             return (half)mixed6;
-            */
         }
     }
 }

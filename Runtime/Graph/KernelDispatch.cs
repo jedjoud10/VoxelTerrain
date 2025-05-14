@@ -16,7 +16,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public virtual string InjectBeforeScopeInit(TreeContext ctx) => "";
         public virtual string InjectAfterScopeCalls(TreeContext ctx) => "";
-        public string CreateKernel(TreeContext ctx) {
+        public virtual string CreateKernel(TreeContext ctx) {
             TreeScope scope = ctx.scopes[scopeIndex];
             return $@"
 #pragma kernel CS{scopeName}
@@ -54,6 +54,16 @@ CheckVoxelSign(id, voxel);
 voxels_write[id] = {output.setter};
 #endif
 ";
+        }
+    }
+
+    public class NormalDiffKernelDispatch : KernelDispatch {
+        public override string CreateKernel(TreeContext ctx) {
+            return $@"
+#pragma kernel CSNormalDiff
+[numthreads(8, 8, 8)]
+void CSNormalDiff(uint3 id : SV_DispatchThreadID) {{
+}}";
         }
     }
 }

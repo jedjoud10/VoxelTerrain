@@ -46,31 +46,35 @@ namespace jedjoud.VoxelTerrain {
         [HideInInspector]
         public Bounds bounds;
         public BitField32 neighbourMask;
-        public BitField32 highLodMask;
-        public BitField32 lowLodMask;
         public VoxelSkirt skirt;
 
         // Initialize hte chunk with completely new native arrays (during pooled chunk creation)
         public void InitChunk() {
             // TODO: Figure out a way to avoid generating voxel containers for chunks that aren't the closest to the player
-            // We must keep the chunks loaded in for a bit though, since we need to do some shit with neighbour stitching which requires chunks to have their neighbours voxel data (only at the chunk boundaries though)
             //NativeArray<Voxel> allocated = FetchVoxelsContainer();
+
             voxels = new NativeArray<Voxel>(VoxelUtils.SIZE * VoxelUtils.SIZE * VoxelUtils.SIZE, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         }
 
         // Reset the chunk so we can use it to represent a new octree node (don't allocate new native arrays)
-        public void ResetChunk(OctreeNode item) {
+        public void ResetChunk(OctreeNode item, float voxelSizeFactor, BitField32 neighbourMask) {
+            float size = item.size / (voxelSizeFactor * 64f);
+            gameObject.GetComponent<MeshRenderer>().enabled = false;
+            gameObject.transform.position = math.float3(item.position);
+            gameObject.transform.localScale = new Vector3(size, size, size);
+            gameObject.name = item.position.ToString();
+
             node = item;
             voxelMaterialsLookup = null;
             triangleOffsetLocalMaterials = null;
             skipped = false;
             state = ChunkState.Idle;
-            gameObject.name = item.position.ToString();
             skirt.ResetSkirt();
+
+            this.neighbourMask = neighbourMask;
         }
 
-        // TODO: supposedly this doesn't work with SRP batcher
-        // :(
+        // I suspect this is really really slow but wtv
         public void SetDither(float dither) {
             GetComponent<MeshRenderer>().material.SetFloat("_ChunkLodDither", dither);
             skirt.GetComponent<MeshRenderer>().material.SetFloat("_ChunkLodDither", dither);
@@ -94,16 +98,6 @@ namespace jedjoud.VoxelTerrain {
 
                 if (neighbourMask.IsSet(j)) {
                     Gizmos.color = Color.white;
-                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
-                }
-
-                if (lowLodMask.IsSet(j)) {
-                    Gizmos.color = Color.cyan;
-                    Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
-                }
-
-                if (highLodMask.IsSet(j)) {
-                    Gizmos.color = Color.yellow;
                     Gizmos.DrawSphere((float3)offset * node.size + node.Center, 5f);
                 }
             }
