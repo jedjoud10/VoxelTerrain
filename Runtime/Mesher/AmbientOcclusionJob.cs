@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<float3> vertices;
         [ReadOnly]
-        public Unsafe.NativeCounter counter;
+        public NativeCounter counter;
         [ReadOnly]
         public UnsafePtrList<Voxel> neighbours;
         [ReadOnly]

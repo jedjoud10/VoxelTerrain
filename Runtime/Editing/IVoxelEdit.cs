@@ -17,9 +17,9 @@ namespace jedjoud.VoxelTerrain.Edits {
         public Bounds GetBounds();
 
         // MUST CALL THE "ApplyGeneric" function because we can't hide away generics
-        public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters);
+        public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, NativeMultiCounter counters);
 
-        public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters) where T : struct, IVoxelEdit {
+        public static JobHandle ApplyGeneric<T>(T edit, float3 offset, NativeArray<Voxel> voxels, NativeMultiCounter counters) where T : struct, IVoxelEdit {
             throw new System.NotImplementedException();
             /*
             VoxelEditJob<T> job = new VoxelEditJob<T> {

@@ -525,7 +525,7 @@ PrefabInstance:
       objectReference: {fileID: 664809946}
     - target: {fileID: 968421930435571029, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: maxDepth
-      value: 8
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 968421930435571029, guid: 82a4cf1f03a5827428a45efc70738c15, type: 3}
       propertyPath: drawGizmos

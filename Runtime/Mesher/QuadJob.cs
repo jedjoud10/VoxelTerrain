@@ -33,11 +33,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Quad Counter for each material
         [WriteOnly]
-        public Unsafe.NativeMultiCounter.Concurrent counters;
+        public NativeMultiCounter.Concurrent counters;
 
         // Material counter to keep track of divido
         [ReadOnly]
-        public Unsafe.NativeCounter materialCounter;
+        public NativeCounter materialCounter;
 
         // HashMap that converts the material index to submesh index
         [ReadOnly]

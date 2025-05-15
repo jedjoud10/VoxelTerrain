@@ -38,7 +38,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float2> uvs;
 
         // Vertex Counter
-        public Unsafe.NativeCounter.Concurrent counter;
+        public NativeCounter.Concurrent counter;
         public float voxelScale;
 
         // Excuted for each cell within the grid

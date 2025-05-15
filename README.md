@@ -1,5 +1,5 @@
 # New Features Features:
-- Async Compute Queue Support (DX12 only, didn't test Vulkan). Used to work fine before octree system, now is very buggy. Need to fix.
+- Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues . 
 - Octal Chunk Async Readback (instead of doing readback for a single chunk, do it for 8 chunks, the GPU can handle that much)
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
   - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices

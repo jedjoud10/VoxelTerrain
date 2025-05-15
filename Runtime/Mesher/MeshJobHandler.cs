@@ -5,7 +5,6 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
-using jedjoud.VoxelTerrain.Unsafe;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Contains the allocation data for a single job
@@ -357,7 +356,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return default;
             }
 
-            skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexIndicesGenerated, skirtVertexIndicesCopied, skirtVertexCounter.Count, skirtQuadCounter.Count, debugData);
+            skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexCounter.Count, skirtQuadCounter.Count);
 
             Free = true;
 

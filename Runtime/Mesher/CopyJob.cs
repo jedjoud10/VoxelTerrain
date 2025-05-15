@@ -21,11 +21,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Quad Counter for each material
         [ReadOnly]
-        public Unsafe.NativeMultiCounter counters;
+        public NativeMultiCounter counters;
 
         // Global material counter
         [ReadOnly]
-        public Unsafe.NativeCounter materialCounter;
+        public NativeCounter materialCounter;
 
         public void Execute(int index) {
             if (materialCounter.Count == 0 || index >= materialCounter.Count)

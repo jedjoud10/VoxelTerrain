@@ -9,7 +9,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<float3> vertices;
         [ReadOnly]
-        public Unsafe.NativeCounter counter;
+        public NativeCounter counter;
         public NativeArray<float3> bounds;
 
         public void Execute() {

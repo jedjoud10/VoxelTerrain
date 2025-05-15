@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain.Edits {
         [ReadOnly] public float strength;
         [ReadOnly] public float radius;
 
-        public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, Unsafe.NativeMultiCounter counters) {
+        public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels, NativeMultiCounter counters) {
             return IVoxelEdit.ApplyGeneric(this, offset, voxels, counters);
         }
 

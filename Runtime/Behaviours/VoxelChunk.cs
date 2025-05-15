@@ -85,13 +85,12 @@ namespace jedjoud.VoxelTerrain {
             return voxels.IsCreated && (state == ChunkState.Done || state == ChunkState.Meshing || state == ChunkState.Temp);
         }
 
-        public bool debugVoxelData;
-
 #if UNITY_EDITOR
         public void OnDrawGizmosSelected() {
             if (Selection.activeGameObject != gameObject)
                 return;
 
+            /*
             for (int j = 0; j < 27; j++) {
                 uint3 _offset = VoxelUtils.IndexToPos(j, 3);
                 int3 offset = (int3)_offset - 1;
@@ -114,6 +113,7 @@ namespace jedjoud.VoxelTerrain {
                     }
                 }
             }
+            */
 
             Gizmos.color = Color.white;
             MinMaxAABB bounds = node.Bounds;

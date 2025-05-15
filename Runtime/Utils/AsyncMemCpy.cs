@@ -18,9 +18,9 @@ namespace jedjoud.VoxelTerrain {
     [BurstCompile(CompileSynchronously = true, Debug = true)]
     public unsafe struct UnsafeAsyncMemCpy : IJob {
         [NativeDisableUnsafePtrRestriction]
-        public uint* src;
+        public void* src;
         [NativeDisableUnsafePtrRestriction]
-        public uint* dst;
+        public void* dst;
         public int byteSize;
         public void Execute() {
             UnsafeUtility.MemCpy(dst, src, byteSize);

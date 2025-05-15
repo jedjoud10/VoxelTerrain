@@ -133,21 +133,7 @@ namespace jedjoud.VoxelTerrain {
             octree.onOctreeChanged += (ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all, ref NativeList<BitField32> neighbourMasks) => {
                 pendingChunksToShow.Clear();
                 pendingChunksToHide.Clear();
-                /*
-                foreach (var item in all) {
-                    if (item.childBaseIndex != -1)
-                        continue;
 
-                    if (neighbourMasks[item.index].Value != chunks[item].neighbourMask.Value) {
-                        chunks[item].neighbourMask = neighbourMasks[item.index];
-
-                        if (chunks[item].node.depth == octree.maxDepth) {
-                            mesher.GenerateMesh(chunks[item], false);
-                            pendingValidChunks++;
-                        }
-                    }
-                }
-                */
                 foreach (var item in removed) {
                     if (chunks.ContainsKey(item)) {
                         pendingChunksToHide.Add(chunks[item].gameObject);
@@ -188,6 +174,7 @@ namespace jedjoud.VoxelTerrain {
                 if (mesh.VertexCount > 0 && mesh.TriangleCount > 0) {
                     if (chunk.node.depth == octree.maxDepth)
                         collisions.GenerateCollisions(chunk, mesh);
+
                     pendingChunksToShow.Add(chunk.gameObject);
                 }
 

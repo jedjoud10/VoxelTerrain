@@ -10,10 +10,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<int> materialSegmentOffsets;
 
         [ReadOnly]
-        public Unsafe.NativeMultiCounter countersQuad;
+        public NativeMultiCounter countersQuad;
 
         [ReadOnly]
-        public Unsafe.NativeCounter materialCounter;
+        public NativeCounter materialCounter;
 
         public void Execute() {
             for (int index = 0; index < materialCounter.Count; index++) {

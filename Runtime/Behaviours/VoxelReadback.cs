@@ -9,10 +9,7 @@ using System;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoxelReadback : VoxelBehaviour {
-        [Range(1, 8)]
-        public int asyncReadbackPerTick = 1;
-
-        private OngoingVoxelReadback[] readbacks;
+        private OngoingVoxelReadback readback;
         public Queue<VoxelChunk> queued;
         private HashSet<VoxelChunk> pending;
 
@@ -60,10 +57,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public override void CallerStart() {
             queued = new Queue<VoxelChunk>();
             pending = new HashSet<VoxelChunk>();
-            readbacks = new OngoingVoxelReadback[asyncReadbackPerTick];
-            for (int i = 0; i < asyncReadbackPerTick; i++) {
-                readbacks[i] = new OngoingVoxelReadback();
-            }
+            readback = new OngoingVoxelReadback();
         }
 
         // Add the given chunk inside the queue for voxel generation
@@ -79,126 +73,120 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         // Get the latest chunk in the queue and generate voxel data for it
         public override void CallerTick() {
-            for (int i = 0; i < asyncReadbackPerTick; i++) {
-                OngoingVoxelReadback readback = readbacks[i];
+            if (readback.pendingCopies.HasValue && readback.pendingCopies.Value.IsCompleted && readback.countersFetched && readback.voxelsFetched) {
+                readback.pendingCopies.Value.Complete();
+                
+                // Since we now fetch n+2 voxels (66^3) we can actually use the pos/neg optimizations
+                // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
+                // heheheha....
+                for (int j = 0; j < readback.chunks.Count; j++) {
+                    int count = readback.counters[j];
+                    VoxelChunk chunk = readback.chunks[j];
 
-                if (readback.pendingCopies.HasValue && readback.pendingCopies.Value.IsCompleted && readback.countersFetched && readback.voxelsFetched) {
-                    readback.pendingCopies.Value.Complete();
-                    
-                    // Since we now fetch n+2 voxels (66^3) we can actually use the pos/neg optimizations
-                    // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
-                    // heheheha....
-                    for (int j = 0; j < readback.chunks.Count; j++) {
-                        int count = readback.counters[j];
-                        VoxelChunk chunk = readback.chunks[j];
-
-                        int max = VoxelUtils.VOLUME;
-                        pending.Remove(chunk);
-                        onReadback?.Invoke(chunk, (count == max || count == -max) && skipEmptyChunks);
-                    }
-
-                    readback.Reset();
+                    int max = VoxelUtils.VOLUME;
+                    pending.Remove(chunk);
+                    onReadback?.Invoke(chunk, (count == max || count == -max) && skipEmptyChunks);
                 }
 
-                if (!readback.free) {
-                    continue;
-                }
+                readback.Reset();
+            }
 
-                // we have chunks!!!
-                // tries to batch em up, but even if we don't have 8 it'll still work
-                if (queued.Count > 0) {
-                    VoxelExecutor.PosScaleOctalData[] posScaleOctals = new VoxelExecutor.PosScaleOctalData[8];
+            // we have chunks!!!
+            // tries to batch em up, but even if we don't have 8 it'll still work
+            if (queued.Count > 0 && readback.free) {
+                VoxelExecutor.PosScaleOctalData[] posScaleOctals = new VoxelExecutor.PosScaleOctalData[8];
 
-                    // I hope the GPU has no issue doing async NPOT texture readback...
-                    readback.free = false;
+                // I hope the GPU has no issue doing async NPOT texture readback...
+                readback.free = false;
 
-                    // Change chunk states, since we are now waiting for voxel readback
-                    readback.chunks.Clear();
-                    for (int j = 0; j < 8; j++) {
-                        if (queued.TryDequeue(out VoxelChunk chunk)) {
-                            readback.chunks.Add(chunk);
-                            Vector3 pos = (float3)chunk.node.position;
-                            float scale = chunk.node.size / 64f;
-                            
-                            posScaleOctals[j] = new VoxelExecutor.PosScaleOctalData {
-                                scale = scale,
-                                position = pos
-                            };
-                            chunk.state = VoxelChunk.ChunkState.VoxelReadback;
-                        }
+                // Change chunk states, since we are now waiting for voxel readback
+                readback.chunks.Clear();
+                for (int j = 0; j < 8; j++) {
+                    if (queued.TryDequeue(out VoxelChunk chunk)) {
+                        readback.chunks.Add(chunk);
+                        Vector3 pos = (float3)chunk.node.position;
+                        float scale = chunk.node.size / 64f;
                         
+                        posScaleOctals[j] = new VoxelExecutor.PosScaleOctalData {
+                            scale = scale,
+                            position = pos
+                        };
+                        chunk.state = VoxelChunk.ChunkState.VoxelReadback;
                     }
+                }
 
-                    // Size*2 since we are using octal generation!
-                    VoxelExecutor.ReadbackParameters parameters = new VoxelExecutor.ReadbackParameters() {
-                        newSize = VoxelUtils.SIZE * 2,
-                        posScaleOctals = posScaleOctals,
-                        dispatchIndex = terrain.compiler.voxelsDispatchIndex,
-                        updateInjected = true,
-                    };
+                // Size*2 since we are using octal generation!
+                VoxelExecutor.ReadbackParameters parameters = new VoxelExecutor.ReadbackParameters() {
+                    newSize = VoxelUtils.SIZE * 2,
+                    posScaleOctals = posScaleOctals,
+                    dispatchIndex = terrain.compiler.voxelsDispatchIndex,
+                    updateInjected = true,
+                };
 
-                    terrain.executor.ExecuteShader(parameters);
+                GraphicsFence fence = terrain.executor.ExecuteShader(parameters);
+                CommandBuffer cmds = new CommandBuffer();
+                cmds.name = "Async Readback";
+                cmds.WaitOnAsyncGraphicsFence(fence, SynchronisationStageFlags.ComputeProcessing);
 
-                    // Request GPU data into the native array we allocated at the start
-                    // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
-                    // This avoids waiting on the memory copies and can spread them out on many threads
-                    NativeArray<uint> voxelData = readback.data;
-                    AsyncGPUReadback.RequestIntoNativeArray(
-                        ref voxelData,
-                        terrain.executor.buffers["voxels"],
-                        delegate (AsyncGPUReadbackRequest asyncRequest) {
-                            unsafe {
-                                if (disposed) {
-                                    return;
-                                }
-
-                                // We have to do this to stop unity from complaining about using the data...
-                                // fuck you...
-                                uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(readback.data);
-
-                                // Start doing the memcpy asynchronously...
-                                for (int j = 0; j < readback.chunks.Count; j++) {
-                                    VoxelChunk chunk = readback.chunks[j];
-
-                                    // Since we are using a buffer where the data for chunks is contiguous
-                                    // we can just do parallel copies from the source buffer at the appropriate offset
-                                    uint* src = pointer + (VoxelUtils.VOLUME * j);
-
-                                    uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
-                                    readback.copies[j] = new UnsafeAsyncMemCpy {
-                                        src = src,
-                                        dst = dst,
-                                        byteSize = Voxel.size * VoxelUtils.VOLUME,
-                                    }.Schedule();
-                                }
-                                
-                                readback.pendingCopies = JobHandle.CombineDependencies(readback.copies.Slice(0, readback.chunks.Count));
-                                readback.voxelsFetched = true;
-                            }
-                        }
-                    );
-
-                    NativeArray<int> counters = readback.counters;
-                    AsyncGPUReadback.RequestIntoNativeArray(
-                        ref counters,
-                        terrain.executor.negPosOctalCountersBuffer,
-                        delegate (AsyncGPUReadbackRequest asyncRequest) {
+                // Request GPU data into the native array we allocated at the start
+                // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
+                // This avoids waiting on the memory copies and can spread them out on many threads
+                NativeArray<uint> voxelData = readback.data;
+                cmds.RequestAsyncReadbackIntoNativeArray(
+                    ref voxelData,
+                    terrain.executor.buffers["voxels"],
+                    delegate (AsyncGPUReadbackRequest asyncRequest) {
+                        unsafe {
                             if (disposed) {
                                 return;
                             }
 
-                            readback.countersFetched = true;
+                            // We have to do this to stop unity from complaining about using the data...
+                            // fuck you...
+                            uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(readback.data);
+
+                            // Start doing the memcpy asynchronously...
+                            for (int j = 0; j < readback.chunks.Count; j++) {
+                                VoxelChunk chunk = readback.chunks[j];
+
+                                // Since we are using a buffer where the data for chunks is contiguous
+                                // we can just do parallel copies from the source buffer at the appropriate offset
+                                uint* src = pointer + (VoxelUtils.VOLUME * j);
+
+                                uint* dst = (uint*)chunk.voxels.GetUnsafePtr();
+                                readback.copies[j] = new UnsafeAsyncMemCpy {
+                                    src = (void*)src,
+                                    dst = (void*)dst,
+                                    byteSize = Voxel.size * VoxelUtils.VOLUME,
+                                }.Schedule();
+                            }
+                            
+                            readback.pendingCopies = JobHandle.CombineDependencies(readback.copies.Slice(0, readback.chunks.Count));
+                            readback.voxelsFetched = true;
                         }
-                    );
-                }
+                    }
+                );
+
+                NativeArray<int> counters = readback.counters;
+                cmds.RequestAsyncReadbackIntoNativeArray(
+                    ref counters,
+                    terrain.executor.negPosOctalCountersBuffer,
+                    delegate (AsyncGPUReadbackRequest asyncRequest) {
+                        if (disposed) {
+                            return;
+                        }
+
+                        readback.countersFetched = true;
+                    }
+                );
+
+                Graphics.ExecuteCommandBuffer(cmds);
             }
         }
 
         public override void CallerDispose() {
             AsyncGPUReadback.WaitAllRequests();
-            foreach (var item in readbacks) {
-                item.Dispose();
-            }
+            readback.Dispose();
         }
     }
 }

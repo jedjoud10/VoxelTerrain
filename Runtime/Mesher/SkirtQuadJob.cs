@@ -21,7 +21,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<int> skirtIndices;
 
-        public Unsafe.NativeCounter.Concurrent skirtQuadCounter;
+        public NativeCounter.Concurrent skirtQuadCounter;
 
         // Fetch vertex index for a specific position
         // If it goes out of the chunk bounds, assume it is a skirt vertex's position we're trying to fetch

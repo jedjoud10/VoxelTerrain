@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain.Edits {
         public T edit;
         public NativeArray<Voxel> voxels;
 
-        public Unsafe.NativeMultiCounter.Concurrent counters;
+        public NativeMultiCounter.Concurrent counters;
 
         public void Execute(int index) {
             /*

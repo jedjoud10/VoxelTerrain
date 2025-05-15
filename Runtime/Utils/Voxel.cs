@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Unity.Collections;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
@@ -22,5 +23,23 @@ namespace jedjoud.VoxelTerrain {
             material = byte.MaxValue,
             _padding = 0
         };
+    }
+
+    // SoA type representation for the voxel data
+    public struct VoxelData {
+        public NativeArray<half> densities;
+        public NativeArray<byte> material;
+
+        public static VoxelData Init() {
+            return new VoxelData {
+                densities = new NativeArray<half>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
+                material = new NativeArray<byte>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
+            };
+        }
+
+        public void Dispose() {
+            densities.Dispose();
+            material.Dispose();
+        }
     }
 }

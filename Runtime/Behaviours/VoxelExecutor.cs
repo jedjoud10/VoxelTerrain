@@ -111,10 +111,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             public PosScaleOctalData[] posScaleOctals;
         }
 
-        public void ExecuteShader(ExecutionParameters parameters) {
+        public GraphicsFence ExecuteShader(ExecutionParameters parameters) {
             if (parameters == null) {
-                Debug.LogWarning("Given parameters are null");
-                return;
+                throw new ArgumentNullException("Exec. Parameters are not set");
             }
 
             int newSize = parameters.newSize;
@@ -191,8 +190,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             // This works! Only in the builds, but async compute queue is being utilized!!!
-            //Graphics.ExecuteCommandBuffer(commands);
-            Graphics.ExecuteCommandBufferAsync(commands, UnityEngine.Rendering.ComputeQueueType.Default);
+            // If the target arch doesn't support async compute this will just revert to the normal queue
+            GraphicsFence fence = commands.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
+            Graphics.ExecuteCommandBufferAsync(commands, UnityEngine.Rendering.ComputeQueueType.Background);
+            return fence;
         }
 
         private void ComputeSecondarySeeds() {

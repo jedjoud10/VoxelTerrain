@@ -27,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<float2> skirtUvs;
 
-        public Unsafe.NativeCounter.Concurrent skirtVertexCounter;
+        public NativeCounter.Concurrent skirtVertexCounter;
 
         public float voxelScale;
 

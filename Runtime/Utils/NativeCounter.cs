@@ -8,7 +8,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
 
-namespace jedjoud.VoxelTerrain.Unsafe {
+namespace jedjoud.VoxelTerrain {
     [StructLayout(LayoutKind.Sequential)]
     [NativeContainer]
     unsafe public struct NativeCounter {
@@ -129,15 +129,6 @@ namespace jedjoud.VoxelTerrain.Unsafe {
 #endif
                 // The actual increment is implemented with an atomic since it can be incremented by multiple threads at the same time
                 return Interlocked.Increment(ref *m_Counter) - 1;
-            }
-
-            public int Decrement() {
-                // Increment still needs to check for write permissions
-#if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
-#endif
-                // The actual decrement is implemented with an atomic since it can be decremented by multiple threads at the same time
-                return Interlocked.Decrement(ref *m_Counter) - 1;
             }
         }
     }

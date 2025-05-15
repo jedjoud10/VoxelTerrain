@@ -21,7 +21,7 @@ namespace jedjoud.VoxelTerrain.Edits {
             Bounds editBounds = edit.GetBounds();
             editBounds.Expand(expandAmount);
 
-            List<Unsafe.NativeMultiCounter> counters = new List<Unsafe.NativeMultiCounter>();
+            List<NativeMultiCounter> counters = new List<NativeMultiCounter>();
 
             VoxelEditResults results = new VoxelEditResults() { counters = counters, finishedChunksCount = 0 };
 
@@ -45,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             // Start the edit jobs all at once, and they will execute in parallel to each other...
             for (int i = 0; i < chunks.Count; i++) {
-                var counter = new Unsafe.NativeMultiCounter(VoxelUtils.MAX_MATERIAL_COUNT, Allocator.Persistent);
+                var counter = new NativeMultiCounter(VoxelUtils.MAX_MATERIAL_COUNT, Allocator.Persistent);
                 counters.Add(counter);
                 VoxelChunk chunk = chunks[i];
 
@@ -77,7 +77,7 @@ namespace jedjoud.VoxelTerrain.Edits {
     }
 
     public class VoxelEditResults {
-        internal List<Unsafe.NativeMultiCounter> counters;
+        internal List<NativeMultiCounter> counters;
         internal int finishedChunksCount;
         internal int affectedChunks;
 

@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct MaterialIndexerJob : IJob {
         public NativeArray<uint> buckets;
         public NativeParallelHashMap<byte, int> materialHashMap;
-        public Unsafe.NativeCounter materialCounter;
+        public NativeCounter materialCounter;
 
         public unsafe void Execute() {
             for (int i = 0; i < VoxelUtils.MAX_MATERIAL_COUNT; i++) {

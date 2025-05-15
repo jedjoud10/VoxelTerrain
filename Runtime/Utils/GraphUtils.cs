@@ -1,4 +1,3 @@
-//using System.Diagnostics;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -134,10 +133,6 @@ namespace jedjoud.VoxelTerrain {
                 default:
                     throw new System.Exception();
             }
-        }
-
-        internal static Variable<T> CreateStruct<T>(params (string, object)[] values) {
-            return null;
         }
     }
 }
