@@ -11,14 +11,26 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> scale;
         public Inject<float> amplitude;
         public Inject<float> offset;
+
+        public Inject<float3> detailScale;
+        public Inject<float> detailAmplitude;
+        public Inject<float> detailProbability;
+        public Inject<float> detailOffset;
+        public Inject<float> detailSmooth;
+        
         public Inject<float> voronoiScale;
         public Inject<float> voronoiAmplitude;
         public Inject<float> warperScale;
         public Inject<float> warperAmplitude;
         public Inject<float2> others;
+        public Inject<float3> warpScale;
+        public Inject<float3> warpAmplitude;
 
         [Range(1, 10)]
         public int octaves;
+
+        [Range(1, 10)]
+        public int detailOctaves;
 
         public override void Execute(AllInputs input, out AllOutputs output) {
             // Project the position using the main transformation
@@ -31,15 +43,18 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var xz = projected.Swizzle<float2>("xz");
 
             Simplex simplex = new Simplex(scale, amplitude);
+            Simplex simplex2 = new Simplex(1f, detailAmplitude);
+
             var first = ((Variable<float2>)others).Swizzle<float>("x");
             var second = ((Variable<float2>)others).Swizzle<float>("y");
 
             Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, first, second);
-            var amogus = fractal.Evaluate(xz) + offset;
+            Cellular<float3> detail = Cellular<float3>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability);
+            var amogus = Sdf.Union(fractal.Evaluate(xz) + offset, detail.Tile(detailScale * projected) * detailAmplitude + detailOffset, detailSmooth);
 
-            Warper<float3> warper = new Warper<float3>(new Simplex(warperScale, warperAmplitude));
+            Warper<float3> warper = new Warper<float3>(new Simplex(warperScale, warperAmplitude), warpScale, warpAmplitude);
 
-            var voronoi = new Voronoi(voronoiScale, voronoiAmplitude).Evaluate(warper.Warpinate(projected)); 
+            var voronoi = new Fractal<float3>(new Voronoi(voronoiScale, voronoiAmplitude), FractalMode.Sum, 4, 1.6f, 0.3f).Evaluate(warper.Warpinate(projected)); 
             amogus = Sdf.Union(voronoi, amogus);
 
             output = new AllOutputs();

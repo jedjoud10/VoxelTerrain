@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d81d5058a671344980d20203ea4d381, type: 3}
-  m_Name: Stitch Debug
+  m_Name: Debug
   m_EditorClassIdentifier: 
-  material: {fileID: 2100000, guid: 8e1b9264f2e8c154e85ff6a4a0ea0d64, type: 2}
+  material: {fileID: 2100000, guid: d1a7730841d5b014b96d73af497ead44, type: 2}
   dynamicFriction: 0.3
   staticFriction: 0.3
   bounce: 0

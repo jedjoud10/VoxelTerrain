@@ -23,6 +23,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public BitField32 neighbourMask;
 
+        public bool doSomething;
+
         public float globalOffset;
         public float minDotNormal;
         public float globalSpread;
@@ -36,6 +38,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int endIndex = math.min(startIndex + count, counter.Count);
 
             for (int index = startIndex; index < endIndex; index++) {
+                if (!doSomething) {
+                    uvs[index] = new float2(1, 0.0f);
+                    continue;
+                }
+
                 float3 vertex = vertices[index] / voxelScale;
 
                 float3 normal = normals[index];
@@ -73,7 +80,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 float factor = math.clamp((float)sum / (float)total, 0f, 1f);
                 uvs[index] = new float2(1 - factor * strength, 0.0f);
-                //uvs[index] = new float2(1, 0.0f);
             }
         }
     }

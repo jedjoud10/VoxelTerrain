@@ -31,7 +31,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int other = position[direction];
 
             // checks if we are dealing with a skirt vertex or a copied vertex in a particular direction
-            if (other < 0 || other > VoxelUtils.SIZE-4) {
+            if (other < 0 || other > VoxelUtils.SIZE-3) {
                 // since the skirt generated vertices have 2 padding vertices (for edges), we need to add an offset 
                 flattened += 1;
                 flattened = math.clamp(flattened, 0, VoxelUtils.SKIRT_SIZE);
@@ -101,9 +101,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int localIndex = index % VoxelUtils.FACE;
             
             // convert from 2D position to 3D using missing value
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE-1);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE-2);
             uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
             uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
+
+            if (math.any(flattened > VoxelUtils.SKIRT_SIZE - 2)) {
+                return;
+            }
 
             for (int i = 0; i < 3; i++) {
                 bool force = direction == i;
@@ -112,7 +116,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // for example, if we are at the positive x boundary, you must NOT check the edge that goes in the x direction (would result in out of bound fetches)
                 // makes sense, since you well never generate quads in that direction anyways (impossible to have an edge crossing in the 3rd dimension that is missing from a 2D plane spanned by the other 2 basis vectors)
                 // (unless it's a forced quad, and in which case we don't care since we don't read voxel data anyways!!!)
-                if (position[i] > VoxelUtils.SIZE - 2 && !force)
+                if (position[i] > VoxelUtils.SIZE - 3 && !force)
                     continue;
                 
                 CheckEdge(flattened, position, i, negative, force, face);      

@@ -250,8 +250,6 @@ namespace jedjoud.VoxelTerrain {
 
                 if (chunkIndex == 13) {
                     ptr = (Voxel*)voxels.GetUnsafeReadOnlyPtr<Voxel>();
-                } else {
-                    return Voxel.Empty;
                 }
 
                 if (ptr != null) {

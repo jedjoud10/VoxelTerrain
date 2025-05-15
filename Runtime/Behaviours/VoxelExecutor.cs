@@ -191,8 +191,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             // This works! Only in the builds, but async compute queue is being utilized!!!
-            Graphics.ExecuteCommandBuffer(commands);
-            //Graphics.ExecuteCommandBufferAsync(commands, UnityEngine.Rendering.ComputeQueueType.Default);
+            //Graphics.ExecuteCommandBuffer(commands);
+            Graphics.ExecuteCommandBufferAsync(commands, UnityEngine.Rendering.ComputeQueueType.Default);
         }
 
         private void ComputeSecondarySeeds() {

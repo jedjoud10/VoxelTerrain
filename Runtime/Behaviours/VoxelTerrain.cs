@@ -89,7 +89,7 @@ namespace jedjoud.VoxelTerrain {
 
         private List<GameObject> pendingChunksToHide;
         private List<GameObject> pendingChunksToShow;
-
+        
         private int pendingValidChunks;
         private bool waitingForSwap;
         private bool ditherTransition;
@@ -133,7 +133,21 @@ namespace jedjoud.VoxelTerrain {
             octree.onOctreeChanged += (ref NativeList<OctreeNode> added, ref NativeList<OctreeNode> removed, ref NativeList<OctreeNode> all, ref NativeList<BitField32> neighbourMasks) => {
                 pendingChunksToShow.Clear();
                 pendingChunksToHide.Clear();
+                /*
+                foreach (var item in all) {
+                    if (item.childBaseIndex != -1)
+                        continue;
 
+                    if (neighbourMasks[item.index].Value != chunks[item].neighbourMask.Value) {
+                        chunks[item].neighbourMask = neighbourMasks[item.index];
+
+                        if (chunks[item].node.depth == octree.maxDepth) {
+                            mesher.GenerateMesh(chunks[item], false);
+                            pendingValidChunks++;
+                        }
+                    }
+                }
+                */
                 foreach (var item in removed) {
                     if (chunks.ContainsKey(item)) {
                         pendingChunksToHide.Add(chunks[item].gameObject);
@@ -152,16 +166,6 @@ namespace jedjoud.VoxelTerrain {
 
                     readback.GenerateVoxels(chunk);
                     pendingValidChunks++;
-                }
-
-                foreach (var item in all) {
-                    if (item.childBaseIndex != -1)
-                        continue;
-
-                    if (neighbourMasks[item.index].Value != chunks[item].neighbourMask.Value) {
-                        // remesh with or without neighbour data
-                        chunks[item].neighbourMask = neighbourMasks[item.index];
-                    }
                 }
 
                 waitingForSwap = true;
@@ -186,6 +190,7 @@ namespace jedjoud.VoxelTerrain {
                         collisions.GenerateCollisions(chunk, mesh);
                     pendingChunksToShow.Add(chunk.gameObject);
                 }
+
                 pendingValidChunks--;
             };
 

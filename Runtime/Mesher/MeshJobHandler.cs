@@ -34,6 +34,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Native buffers for skirt mesh data
         // Only for the face that faces the negative x direction for now
         public NativeArray<float3> skirtVertices;
+        public NativeArray<float3> skirtNormals;
+        public NativeArray<float2> skirtUvs;
         public NativeArray<bool> skirtWithinThreshold;
         public NativeArray<int> skirtVertexIndicesCopied;
         public NativeArray<int> skirtVertexIndicesGenerated;
@@ -87,7 +89,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Native buffers for skirt mesh data
             skirtVertices = new NativeArray<float3>(VoxelUtils.SKIRT_FACE * 2 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            
+            skirtNormals = new NativeArray<float3>(VoxelUtils.SKIRT_FACE * 2 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            skirtUvs = new NativeArray<float2>(VoxelUtils.SKIRT_FACE * 2 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
             // Dedicated vertex index lookup buffers for the copied vertices from the boundary and generated skirted vertices
             skirtVertexIndicesCopied = new NativeArray<int>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             skirtVertexIndicesGenerated = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -183,8 +187,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 voxelScale = voxelSizeFactor,
             };
 
-            // Calculate vertex ambient occlusion 
+            /*
+            // Calculate vertex ambient occlusion for the base vertices
             AmbientOcclusionJob aoJob = new AmbientOcclusionJob {
+                doSomething = request.chunk.node.depth == mesher.terrain.octree.maxDepth,
                 counter = counter,
                 normals = normals,
                 uvs = uvs,
@@ -198,6 +204,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 neighbours = neighbourPtrs,
                 neighbourMask = mask,
             };
+            */
 
             // Calculate the AABB for the chunk using another job
             BoundsJob boundsJob = new BoundsJob {
@@ -240,6 +247,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 sourceVertexIndices = indices,
                 sourceVertices = vertices,
                 skirtVertexCounter = skirtVertexCounter,
+                sourceNormals = normals,
+                skirtNormals = skirtNormals,
+                skirtUvs = skirtUvs,
             };
 
             // Job that acts like an SDF generator, checks if certain positions are within a certain distance from a surface (for forced skirt generation)
@@ -255,8 +265,31 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 withinThreshold = skirtWithinThreshold,
                 skirtVertexCounter = skirtVertexCounter,
                 voxels = voxels,
+                voxelNormals = voxelNormals,
+                skirtNormals = skirtNormals,
                 voxelScale = voxelSizeFactor,
+                skirtUvs = skirtUvs,
             };
+
+            /*
+            // Calculate vertex ambient occlusion for skirted vertices
+            AmbientOcclusionJob skirtAoJob = new AmbientOcclusionJob {
+                doSomething = request.chunk.node.depth == mesher.terrain.octree.maxDepth,
+                counter = skirtVertexCounter,
+                normals = skirtNormals,
+                uvs = skirtUvs,
+                vertices = skirtVertices,
+                voxels = voxels,
+                globalOffset = mesher.aoGlobalOffset,
+                globalSpread = mesher.aoGlobalSpread,
+                minDotNormal = mesher.aoMinDotNormal,
+                strength = mesher.aoStrength,
+                voxelScale = voxelSizeFactor,
+                neighbours = neighbourPtrs,
+                neighbourMask = mask,
+            };
+            */
+
 
             // Create skirt quads
             SkirtQuadJob skirtQuadJob = new SkirtQuadJob {
@@ -282,7 +315,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency, normalsJobHandle);
             JobHandle vertexJobHandle = vertexJob.Schedule(VOL, BATCH_SIZE, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-            JobHandle aoJobHandle = aoJob.Schedule(VOL, BATCH_SIZE / 16, vertexJobHandle);
+            //JobHandle aoJobHandle = aoJob.Schedule(VOL, BATCH_SIZE / 16, vertexJobHandle);
 
             // Copy boundary skirt vertices and start creating skirts
             JobHandle skirtJobHandle = default;
@@ -295,10 +328,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(vertexJobHandle);
 
                 // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
-                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
+                JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, normalsJobHandle, closestSurfaceJobHandle));
+                //JobHandle skirtVertexAoJobHandle = skirtAoJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, skirtVertexJobHandle));
 
                 // Creates quad based on the copied vertices and skirt-generated vertices
-                JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule((VoxelUtils.SIZE - 2) * (VoxelUtils.SIZE - 2) * 6, BATCH_SIZE, skirtVertexJobHandle);
+                JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, skirtVertexJobHandle);
+                //skirtJobHandle = JobHandle.CombineDependencies(skirtQuadJobHandle);
                 skirtJobHandle = skirtQuadJobHandle;
             }
 
@@ -308,7 +343,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle sumJobHandle = sumJob.Schedule(quadJobHandle);
             JobHandle copyJobHandle = copyJob.Schedule(VoxelUtils.MAX_MATERIAL_COUNT, 32, sumJobHandle);
 
-            JobHandle mainDependencies = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle, aoJobHandle);
+            JobHandle mainDependencies = JobHandle.CombineDependencies(copyJobHandle, boundsJobHandle);
             finalJobHandle = JobHandle.CombineDependencies(mainDependencies, skirtJobHandle);
 
             return finalJobHandle;
@@ -322,7 +357,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return default;
             }
 
-            skirt.Complete(skirtVertices, skirtIndices, skirtVertexIndicesGenerated, skirtVertexIndicesCopied, skirtVertexCounter.Count, skirtQuadCounter.Count, debugData);
+            skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexIndicesGenerated, skirtVertexIndicesCopied, skirtVertexCounter.Count, skirtQuadCounter.Count, debugData);
 
             Free = true;
 
@@ -433,7 +468,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtQuadCounter.Dispose();
             skirtWithinThreshold.Dispose();
             debugData.Dispose();
+            skirtNormals.Dispose();
             voxelNormals.Dispose();
+            skirtUvs.Dispose();
         }
     }
 

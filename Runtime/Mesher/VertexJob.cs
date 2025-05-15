@@ -100,7 +100,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Apply other vertex attribute data
             normals[vertexIndex] = math.normalizesafe(normal, math.up());
-            uvs[vertexIndex] = new float2(0.0f, 0.0f);
+            uvs[vertexIndex] = new float2(1.0f, 0.0f);
         }
     }
 }

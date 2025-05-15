@@ -9,6 +9,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
         [ReadOnly]
+        public NativeArray<float3> voxelNormals;
+        [ReadOnly]
         public NativeArray<bool> withinThreshold;
 
         [WriteOnly]
@@ -18,6 +20,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [WriteOnly]
         [NativeDisableParallelForRestriction]
         public NativeArray<float3> skirtVertices;
+        [WriteOnly]
+        [NativeDisableParallelForRestriction]
+        public NativeArray<float3> skirtNormals;
+        [WriteOnly]
+        [NativeDisableParallelForRestriction]
+        public NativeArray<float2> skirtUvs;
 
         public Unsafe.NativeCounter.Concurrent skirtVertexCounter;
 
@@ -40,6 +48,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         struct VertexToSpawn {
             // within the cell!!!
             public float3 offset;
+            public float3 normal;
             public bool shouldSpawn;
 
             public bool useWorldPosition;
@@ -51,7 +60,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int face = index / VoxelUtils.SKIRT_FACE;
             int direction = face % 3;
             bool negative = face < 3;
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 3);
             int localIndex = index % VoxelUtils.SKIRT_FACE;
             int indexIndex = localIndex + face * VoxelUtils.SKIRT_FACE;
 
@@ -76,15 +85,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // if edge case, then only 1 of the above is true
 
             if (count == 2) {
+                uint missing2 = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+                uint2 flatten2 = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
+                float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten2, direction, missing2);
+
                 // corner case!!!
-                vertex = default;
-                /*
-                // TODO: I know this is bad but wtv...
                 vertex = new VertexToSpawn {
-                    offset = 0.5f,
+                    offset = 0f,
                     shouldSpawn = true,
+                    worldPosition = worldPos,
+                    useWorldPosition = true,
                 };
-                */
             } else if (count == 1) {
                 // edge case!!!
                 vertex = SurfaceNets1D(flatten, minMaxMask, negative, face);
@@ -104,6 +115,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 } else {
                     skirtVertices[vertexIndex] = ((float3)unoffsetted + vertex.offset) * voxelScale;
                 }
+                
+                skirtNormals[vertexIndex] = math.normalizesafe(vertex.normal, math.up());
+                skirtUvs[vertexIndex] = 1f;
             }
         }
 
@@ -111,8 +125,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int faceDir = face % 3;
             
             float3 vertex = float3.zero;
+            float3 spawnedNormal = float3.zero;
+            float3 forcedNormal = float3.zero;
             bool force = false;
-
+            
             uint2 flat = SkirtUtils.FlattenToFaceRelative(position, faceDir);
 
             int count = 0;
@@ -140,7 +156,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     count++;
                     float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
                     vertex += math.lerp(startOffset, endOffset, value);
+                    spawnedNormal += math.lerp(voxelNormals[startIndex], voxelNormals[endIndex], value);
                 }
+
+                // we normalize the normal when spawning so this is fine
+                forcedNormal += voxelNormals[startIndex];
+                forcedNormal += voxelNormals[endIndex];
             }
 
             if (count == 0) {
@@ -150,6 +171,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         offset = middle2D,
                         shouldSpawn = true,
                         forced = true,
+                        normal = forcedNormal,
                     };
                 } else {
                     return default;
@@ -158,7 +180,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             return new VertexToSpawn {
                 offset = (vertex / (float)count) - SkirtUtils.UnflattenFromFaceRelative(new uint2(1), faceDir),
-                shouldSpawn = true
+                shouldSpawn = true,
+                normal = spawnedNormal,
             };
         }
 
@@ -168,11 +191,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool2 mask = new bool2(minMaxMask.x || minMaxMask.z, minMaxMask.y || minMaxMask.w);
             int edgeDir = SkirtUtils.GetEdgeDirFaceRelative(mask, faceDir);
 
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 1);
-            flatten = math.clamp(flatten, 0, VoxelUtils.SIZE - 1);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+            flatten = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
             float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten, faceDir, missing);
 
             float3 vertex = float3.zero;
+            float3 spawnedNormal = float3.zero;
+            float3 forcedNormal = float3.zero;
             bool force = false;
             bool spawn = false;
 
@@ -193,12 +218,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
                 spawn = true;
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
-                vertex += math.lerp(-(float3)(endOffset), 0, value);
+                vertex = math.lerp(-(float3)(endOffset), 0, value);
+                spawnedNormal = math.lerp(voxelNormals[startIndex], voxelNormals[endIndex], value);
             }
+
+            forcedNormal += voxelNormals[startIndex];
+            forcedNormal += voxelNormals[endIndex];
 
             if (spawn) {
                 return new VertexToSpawn {
                     worldPosition = worldPos,
+                    normal = spawnedNormal,
                     offset = vertex,
                     shouldSpawn = spawn,
                     useWorldPosition = true,
@@ -211,6 +241,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         shouldSpawn = true,
                         useWorldPosition = true,
                         forced = true,
+                        normal = forcedNormal,
                     };
                 } else {
                     return default;

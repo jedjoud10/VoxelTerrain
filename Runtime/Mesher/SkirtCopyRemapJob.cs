@@ -12,12 +12,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [WriteOnly]
         public NativeArray<float3> skirtVertices;
+        [WriteOnly]
+        public NativeArray<float3> skirtNormals;
+        [WriteOnly]
+        public NativeArray<float2> skirtUvs;
 
         [ReadOnly]
         public NativeArray<int> sourceVertexIndices;
 
         [ReadOnly]
         public NativeArray<float3> sourceVertices;
+        [ReadOnly]
+        public NativeArray<float3> sourceNormals;
 
         public NativeCounter skirtVertexCounter;
 
@@ -26,7 +32,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // -X, -Y, -Z, X, Y, Z
             for (int face = 0; face < 6; face++) {
-                uint missing = face < 3 ? 0 : ((uint)VoxelUtils.SIZE - 2);
+                uint missing = face < 3 ? 0 : ((uint)VoxelUtils.SIZE - 3);
                 int faceElementOffset = face * VoxelUtils.FACE;
 
                 // Loop through the face in 2D and copy the vertices from the boundary in 3D
@@ -39,11 +45,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     if (srcIndex != int.MaxValue) {
                         // Valid boundary vertex, copy it
                         skirtVertices[boundaryVertexCount] = sourceVertices[srcIndex];
+                        skirtNormals[boundaryVertexCount] = sourceNormals[srcIndex];
+                        skirtUvs[boundaryVertexCount] = 1f;
                         skirtVertexIndicesCopied[i + faceElementOffset] = boundaryVertexCount;
                         boundaryVertexCount++;
                     } else {
                         // Invalid boundary vertex, propagate invalid index (int.MaxValue)
                         skirtVertices[i + faceElementOffset] = 0f;
+                        skirtNormals[i + faceElementOffset] = 0f;
+                        skirtUvs[i +  faceElementOffset] = 0f;
                         skirtVertexIndicesCopied[i + faceElementOffset] = int.MaxValue;
                     }
                 }

@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
-        const int PADDING_SEARCH_AREA = 2;
+        const int PADDING_SEARCH_AREA = 3;
         public void Execute(int index) {
             withinThreshold[index] = false;
             
@@ -20,7 +20,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int direction = face % 3;
             bool negative = face < 3;
             int localIndex = index % VoxelUtils.FACE;
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 1);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
 
             {
                 uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
