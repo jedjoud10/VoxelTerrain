@@ -256,22 +256,6 @@ namespace jedjoud.VoxelTerrain {
         }
         */
 
-        static readonly int3[] DEDUPE_TRIS_THING = new int3[] {
-            new int3(0, 2, 3), // x/y, discard y
-            new int3(0, 1, 3), // x/z, discard z
-            new int3(0, 1, 2), // x/w, discard w
-            new int3(0, 1, 3), // y/z, discard z
-            new int3(0, 1, 2), // y/w, discard w
-            new int3(0, 1, 2), // z/w, discard w
-        };
-
-        static readonly int3[] IGNORE_SPECIFIC_VALUE_TRI = new int3[] {
-            new int3(1, 2, 3), // discard x
-            new int3(0, 2, 3), // discard y
-            new int3(0, 1, 3), // discard z
-            new int3(0, 1, 2), // discard w
-        };
-
         public static int CountTrue(bool2 b3) {
             return math.countbits(math.bitmask(new bool4(b3, false, false)));
         }
@@ -292,68 +276,6 @@ namespace jedjoud.VoxelTerrain {
         public static int FindTrueIndex(bool3 b3) {
             DebugCheckOnlyOneBitMask(b3);
             return math.tzcnt(math.bitmask(new bool4(b3, false)));
-        }
-
-        // Create quads / triangles based on the given vertex index data in the "v" parameter
-        public static bool TryAddQuadsOrTris(bool flip, int4 v, ref NativeCounter.Concurrent triangleCounter, ref NativeArray<int> indices) {
-            // Ts gpt-ed kek
-            int dupeType = 0;
-            dupeType |= math.select(0, 1, v.x == v.y);
-            dupeType |= math.select(0, 2, v.x == v.z);
-            dupeType |= math.select(0, 4, v.x == v.w);
-            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
-            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
-            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
-
-            // Means that there are more than 2 duplicate verts, not possible?
-            if (math.countbits(dupeType) > 1) {
-                return false;
-            }
-
-            // If there's only a SINGLE invalid index, then considering it to an extra duplicate one (and create a triangle for the valid ones instead)
-            bool4 b4 = v == int.MaxValue;
-            if (CountTrue(b4) == 1) {
-                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[FindTrueIndex(b4)];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-                int triIndex = triangleCounter.Add(1) * 3;
-                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                indices[triIndex + 1] = uniques[1];
-                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return true;
-            }
-
-            if (dupeType == 0) {
-                if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
-                    return false;
-                }
-
-                int triIndex = triangleCounter.Add(2) * 3;
-
-                // Set the first tri
-                indices[triIndex + (flip ? 0 : 2)] = v.x;
-                indices[triIndex + 1] = v.y;
-                indices[triIndex + (flip ? 2 : 0)] = v.z;
-
-                // Set the second tri
-                indices[triIndex + (flip ? 3 : 5)] = v.z;
-                indices[triIndex + 4] = v.w;
-                indices[triIndex + (flip ? 5 : 3)] = v.x;
-            } else {
-                int config = math.tzcnt(dupeType);
-                int3 remapper = DEDUPE_TRIS_THING[config];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-
-                if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
-                    return false;
-                }
-
-                int triIndex = triangleCounter.Add(1) * 3;
-                indices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                indices[triIndex + 1] = uniques[1];
-                indices[triIndex + (flip ? 2 : 0)] = uniques[2];
-            }
-
-            return true;
         }
     }
 }

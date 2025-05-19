@@ -108,7 +108,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Actually spawn the vertex if needed
             if (vertex.shouldSpawn) {
                 int vertexIndex = skirtVertexCounter.Increment();
-                skirtVertexIndicesGenerated[indexIndex] = vertexIndex;
+
+                // Set the *second* highest bit of non-forced 2D surface nets vertices to differenciate them
+                // We can't set the highest bit because that's the sign bit, if we set it, it means that the index is negative
+                // That would trigger the validation code that detects if we have an invalid index (negative one or int.MaxValue)
+                int packed = vertexIndex;
+                /*
+                if (vertex.forced)
+                    packed |= 1 << 30;
+                */
 
                 if (vertex.useWorldPosition) {
                     skirtVertices[vertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
@@ -118,6 +126,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 
                 skirtNormals[vertexIndex] = math.normalizesafe(vertex.normal, math.up());
                 skirtUvs[vertexIndex] = 1f;
+                skirtVertexIndicesGenerated[indexIndex] = packed;
             }
         }
 
@@ -240,7 +249,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         offset = -(float3)(endOffset) * 0.5f,
                         shouldSpawn = true,
                         useWorldPosition = true,
-                        forced = true,
                         normal = forcedNormal,
                     };
                 } else {

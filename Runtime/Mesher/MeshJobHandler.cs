@@ -40,7 +40,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<int> skirtVertexIndicesGenerated;
         public NativeArray<int> skirtIndices;
         public NativeCounter skirtVertexCounter;
-        public NativeCounter skirtQuadCounter;
+        public NativeCounter skirtTriangleCounter;
 
         // Native buffer for handling multiple materials
         public NativeParallelHashMap<byte, int> materialHashMap;
@@ -97,7 +97,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             skirtIndices = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 2 * 6 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             skirtVertexCounter = new NativeCounter(Allocator.Persistent);
-            skirtQuadCounter = new NativeCounter(Allocator.Persistent);
+            skirtTriangleCounter = new NativeCounter(Allocator.Persistent);
             skirtWithinThreshold = new NativeArray<bool>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             // Native buffer for handling multiple materials
@@ -124,7 +124,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             debugData.Clear();
             float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
             quadCounters.Reset();
-            skirtQuadCounter.Count = 0;
+            skirtTriangleCounter.Count = 0;
             skirtVertexCounter.Count = 0;
             counter.Count = 0;
             materialCounter.Count = 0;
@@ -295,7 +295,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 skirtIndices = skirtIndices,
                 skirtVertexIndicesCopied = skirtVertexIndicesCopied,
                 skirtVertexIndicesGenerated = skirtVertexIndicesGenerated,
-                skirtQuadCounter = skirtQuadCounter,
+                skirtTriangleCounter = skirtTriangleCounter,
                 voxels = voxels,
                 debugData = debugData.AsParallelWriter(),
             };
@@ -356,7 +356,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return default;
             }
 
-            skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexCounter.Count, skirtQuadCounter.Count);
+            skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexCounter.Count, skirtTriangleCounter.Count);
 
             Free = true;
 
@@ -464,7 +464,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtVertexIndicesCopied.Dispose();
             skirtVertexIndicesGenerated.Dispose();
             skirtVertexCounter.Dispose();
-            skirtQuadCounter.Dispose();
+            skirtTriangleCounter.Dispose();
             skirtWithinThreshold.Dispose();
             debugData.Dispose();
             skirtNormals.Dispose();

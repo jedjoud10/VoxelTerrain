@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine.Diagnostics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
@@ -21,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<int> skirtIndices;
 
-        public NativeCounter.Concurrent skirtQuadCounter;
+        public NativeCounter.Concurrent skirtTriangleCounter;
 
         // Fetch vertex index for a specific position
         // If it goes out of the chunk bounds, assume it is a skirt vertex's position we're trying to fetch
@@ -89,7 +90,142 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // there are some cases where this generates more tris than necessary, but that's better than not generating enough tris
             // for that reason I will stick to using uniform SN for between chunks of the same resolution
-            SkirtUtils.TryAddQuadsOrTris(flip, v, ref skirtQuadCounter, ref skirtIndices);
+            TryAddQuadsOrTris(flip, v, force);
+        }
+
+
+        static readonly int3[] DEDUPE_TRIS_THING = new int3[] {
+            new int3(0, 2, 3), // x/y, discard y
+            new int3(0, 1, 3), // x/z, discard z
+            new int3(0, 1, 2), // x/w, discard w
+            new int3(0, 1, 3), // y/z, discard z
+            new int3(0, 1, 2), // y/w, discard w
+            new int3(0, 1, 2), // z/w, discard w
+        };
+
+        static readonly int3[] IGNORE_SPECIFIC_VALUE_TRI = new int3[] {
+            new int3(1, 2, 3), // discard x
+            new int3(0, 2, 3), // discard y
+            new int3(0, 1, 3), // discard z
+            new int3(0, 1, 2), // discard w
+        };
+
+        // If we are NOT forcing triangle generation, check if we are creating a triangle between 3 non-forced vertices, which is invalid
+        bool CheckIfForcedAndClean(int3 input, out int3 cleaned, bool forced) {
+            // Checks if all the vertices were spawned with non-forced 2D surface nets
+            bool all = math.all((input & (1 << 30)) == 0);
+
+            // It is invalid to try to forcefully connect normal vertices to each other
+            // Normal <-> Forced - Okay
+            // Forced <-> Forced - Okay
+            // Normal <-> Normal - INVALID!!!!! NOT GOOD!!!
+            if (all && forced) {
+                cleaned = -1;
+                return false;
+            }
+
+
+            cleaned = input & ~(1 << 30);
+            return true;
+        }
+
+        // If we are NOT forcing quad generation, check if we are creating a quad between 4 non-forced vertices, which is invalid
+        bool CheckIfForcedAndClean(int4 input, out int4 cleaned, bool forced) {
+            // Checks if all the vertices were spawned with non-forced 2D surface nets
+            bool all = math.all((input & (1 << 30)) == 0);
+
+            // It is invalid to try to forcefully connect normal vertices to each other
+            // Normal <-> Forced - Okay
+            // Forced <-> Forced - Okay
+            // Normal <-> Normal - INVALID!!!!! NOT GOOD!!!
+            if (all && forced) {
+                cleaned = -1;
+                return false;
+            }
+
+
+            cleaned = input & ~(1 << 30);
+            return true;
+        }
+
+        // Create quads / triangles based on the given vertex index data in the "v" parameter
+        bool TryAddQuadsOrTris(bool flip, int4 v, bool forced) {
+            // Ts gpt-ed kek
+            int dupeType = 0;
+            dupeType |= math.select(0, 1, v.x == v.y);
+            dupeType |= math.select(0, 2, v.x == v.z);
+            dupeType |= math.select(0, 4, v.x == v.w);
+            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
+            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
+            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
+
+            // Means that there are more than 2 duplicate verts, not possible?
+            if (math.countbits(dupeType) > 1) {
+                return false;
+            }
+
+            // If there's only a SINGLE invalid index, then consider it as an extra duplicate one (and create a triangle for the valid ones instead of a quad)
+            bool4 b4 = v == int.MaxValue;
+            if (SkirtUtils.CountTrue(b4) == 1) {
+                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+
+                /*
+                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
+                }
+                */
+
+                int triIndex = skirtTriangleCounter.Add(1) * 3;
+                skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                skirtIndices[triIndex + 1] = uniques[1];
+                skirtIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
+                return true;
+            }
+
+            if (dupeType == 0) {
+                if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
+                    return false;
+                }
+
+                /*
+                if (CheckIfForcedAndClean(v, out int4 cleaned, forced)) {
+                }
+                */
+
+                int triIndex = skirtTriangleCounter.Add(2) * 3;
+
+                // Set the first tri
+                skirtIndices[triIndex + (flip ? 0 : 2)] = v[0];
+                skirtIndices[triIndex + 1] = v[1];
+                skirtIndices[triIndex + (flip ? 2 : 0)] = v[2];
+
+                // Set the second tri
+                skirtIndices[triIndex + (flip ? 3 : 5)] = v[2];
+                skirtIndices[triIndex + 4] = v[3];
+                skirtIndices[triIndex + (flip ? 5 : 3)] = v[0];
+                return true;
+            } else {
+                int config = math.tzcnt(dupeType);
+                int3 remapper = DEDUPE_TRIS_THING[config];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+
+                if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
+                    return false;
+                }
+
+                /*
+                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
+                }
+                */
+
+                int triIndex = skirtTriangleCounter.Add(1) * 3;
+                skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                skirtIndices[triIndex + 1] = uniques[1];
+                skirtIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
+                return true;
+            }
+
+            return false;
         }
 
         public void Execute(int index) {
