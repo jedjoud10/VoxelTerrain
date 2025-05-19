@@ -7,6 +7,13 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
+    internal struct MeshingRequest {
+        //public VoxelChunk chunk;
+        public bool collisions;
+        public int maxTicks;
+        //public Action<VoxelChunk> callback;
+    }
+
     // Contains the allocation data for a single job
     // There are multiple instances of this class stored inside the voxel mesher to saturate the other threads
     internal class MeshJobHandler {
@@ -50,11 +57,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Other misc stuff
         public JobHandle finalJobHandle;
-        public VoxelMesher.MeshingRequest request;
+        public MeshingRequest request;
         public long startingTick;
         public NativeArray<uint> buckets;
         public NativeArray<float3> bounds;
-        public VoxelMesher mesher;
 
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
@@ -65,9 +71,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         const int VOL = VoxelUtils.VOLUME;
         const int MATS = VoxelUtils.MAX_MATERIAL_COUNT;
 
-        internal MeshJobHandler(VoxelMesher mesher) {
-            this.mesher = mesher;
-
+        internal MeshJobHandler() {
+            
             // Native buffers for copied voxel data and generated normal data
             voxels = new NativeArray<Voxel>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             voxelNormals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -122,7 +127,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Begin the vertex + quad job that will generate the mesh
         internal JobHandle BeginJob(JobHandle dependency, NativeArray<Voxel>[] neighboursArray, BitField32 mask) {
             debugData.Clear();
-            float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
+            //float voxelSizeFactor = mesher.terrain.voxelSizeFactor;
+            float voxelSizeFactor = 1f;
             quadCounters.Reset();
             skirtTriangleCounter.Count = 0;
             skirtVertexCounter.Count = 0;
@@ -319,7 +325,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Copy boundary skirt vertices and start creating skirts
             JobHandle skirtJobHandle = default;
 
-            if (mesher.useSkirting) {
+            if (/* mesher.useSkirting */ false) {
                 // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
                 JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, dependency);
 
@@ -349,14 +355,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // Complete the jobs and return a mesh
-        internal VoxelMesh Complete(Mesh mesh, VoxelSkirt skirt) {
+        internal VoxelMesh Complete(Mesh mesh) {
             finalJobHandle.Complete();
 
-            if (voxels == null || request.chunk == null || mesh == null || skirt == null) {
+            if (voxels == null || /* request.chunk == null  || */ mesh == null /* || skirt == null */) {
                 return default;
             }
 
-            skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexCounter.Count, skirtTriangleCounter.Count);
+            //skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexCounter.Count, skirtTriangleCounter.Count);
 
             Free = true;
 

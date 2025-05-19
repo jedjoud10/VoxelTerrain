@@ -3,7 +3,7 @@
   "name": "com.jedjoud.voxelterrain",
   "version": "1.0.8221",
   "unity": "6000.0",
-  "unityRelease": "30f1",
+  "unityRelease": "47f1",
   "author": {
     "name": "Jed Jribi",
     "email": "jribijed6@gmail.com",
@@ -13,6 +13,9 @@
   "dependencies": {
     "com.unity.mathematics": "1.3.2",
     "com.unity.burst": "1.8.18",
-    "com.unity.collections": "2.5.1"
+    "com.unity.collections": "2.5.1",
+    "com.unity.physics": "1.3.14",
+    "com.unity.entities": "1.3.14",
+    "com.unity.entities.graphics": "1.3.2"
   }
 }

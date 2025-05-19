@@ -1,7 +1,5 @@
 using Unity.Mathematics;
-
-
-
+using UnityEngine;
 
 
 #if UNITY_EDITOR
@@ -10,7 +8,7 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain.Generation {
 
     // A voxel graph is the base class to inherit from to be able to write custom voxel stuff
-    public abstract partial class VoxelGraph : VoxelBehaviour {
+    public abstract partial class VoxelGraph : MonoBehaviour {
         private void OnValidate() {
             GetComponent<VoxelCompiler>().SoftRecompile();
             GetComponent<VoxelCompiler>().OnPropertiesChanged();

@@ -1,11 +1,12 @@
 using System;
+using jedjoud.VoxelTerrain.Generation;
 using UnityEditor;
 using UnityEngine;
 
 
-namespace jedjoud.VoxelTerrain.Generation {
+namespace jedjoud.VoxelTerrain.Editor {
     [CustomEditor(typeof(VoxelCompiler), true)]
-    public class VoxelCompilerEditor : Editor {
+    public class VoxelCompilerEditor : UnityEditor.Editor {
         bool dispatchFoldout;
         bool scopeFoldout;
 

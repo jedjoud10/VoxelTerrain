@@ -6,7 +6,8 @@ using UnityEditor;
 using UnityEngine;
 
 
-namespace jedjoud.VoxelTerrain.Generation {
+namespace jedjoud.VoxelTerrain.Editor {
+    /*
     [CustomEditor(typeof(VoxelExecutor), true)]
     public class VoxelExecutorEditor : Editor {
         private bool textureFoldout;
@@ -120,4 +121,5 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
     }
+    */
 }

@@ -1,6 +1,5 @@
 using Unity.Mathematics;
 using UnityEngine;
-using static jedjoud.VoxelTerrain.Generation.VoxelGraph;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -14,11 +13,7 @@ using UnityEditor;
 #endif
 
 namespace jedjoud.VoxelTerrain.Generation {
-
-    public class VoxelCompiler : VoxelBehaviour {
-        [Header("Compilation")]
-        public bool autoCompile = true;
-
+    public class VoxelCompiler : MonoBehaviour {
         [HideInInspector]
         public TreeContext ctx;
 
@@ -48,6 +43,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf)
                 return;
 
+            /*
 #if UNITY_EDITOR
             var visualizer = GetComponent<VoxelPreview>();
             if (visualizer != null && visualizer.isActiveAndEnabled) {
@@ -67,6 +63,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 visualizer.Meshify(voxels);
             }
 #endif
+            */
         }
 
         // Checks if we need to recompile the shader by checking the hash changes.
@@ -76,6 +73,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
 
             ParsedTranspilation();
+
+            /*
             if (hash != ctx.hashinator.hash) {
                 hash = ctx.hashinator.hash;
 
@@ -85,13 +84,14 @@ namespace jedjoud.VoxelTerrain.Generation {
                     Compile(false);
                 }
             }
+            */
         }
 
 
         // Writes the transpiled shader code to a file and recompiles it automatically (through AssetDatabase)
         public void Compile(bool force) {
 #if UNITY_EDITOR
-            GetComponent<VoxelExecutor>().DisposeResources();
+            //GetComponent<VoxelExecutor>().DisposeResources();
 
             if (force) {
                 ctx = null;
@@ -132,8 +132,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf)
                 return;
 
+            /*
             var visualizer = GetComponent<VoxelPreview>();
             visualizer?.InitializeForSize();
+            */
 #else
             throw new System.Exception("Cannot compile code at runtime");
 #endif
@@ -187,8 +189,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Execute the voxel graph to get all required output variables 
             // We will contextualize the variables in their separate passes ({ density + color + material }, { props }, etc)
-            AllInputs inputs = new AllInputs() { position = position, id = id };
-            graph.Execute(inputs, out AllOutputs outputs);
+            VoxelGraph.AllInputs inputs = new VoxelGraph.AllInputs() { position = position, id = id };
+            graph.Execute(inputs, out VoxelGraph.AllOutputs outputs);
             ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
             //ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
             ScopeArgument materialArgument = new ScopeArgument("material", VariableType.StrictType.Int, outputs.material, true);

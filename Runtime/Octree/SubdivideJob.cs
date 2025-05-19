@@ -7,31 +7,34 @@ namespace jedjoud.VoxelTerrain.Octree {
     [BurstCompile(CompileSynchronously = true)]
     public struct SubdivideJob : IJob {
         public NativeList<OctreeNode> nodes;
-        public NativeQueue<OctreeNode> pending;
         public NativeList<BitField32> neighbourMasks;
+        public OctreeNode root;
 
-        [ReadOnly]
-        public OctreeLoader.Target target;
+        public float3 center;
+        public float radius;
 
         [ReadOnly] public int maxDepth;
 
         public void Execute() {
+            NativeQueue<OctreeNode> pending = new NativeQueue<OctreeNode>(Allocator.Temp);
+            pending.Enqueue(root);
+
             while (pending.TryDequeue(out OctreeNode node)) {
                 // AABB bounds method
                 //bool subdivide = node.Bounds.Overlaps(targetBounds);
 
-                float3 clamped = math.clamp(target.center, nodes[0].Bounds.Min, nodes[0].Bounds.Max);
+                float3 clamped = math.clamp(center, nodes[0].Bounds.Min, nodes[0].Bounds.Max);
 
                 // relative distance method
-                bool subdivide = math.distance(node.Center, clamped) < target.radius * node.size;
+                bool subdivide = math.distance(node.Center, clamped) < radius * node.size;
 
                 if (subdivide && node.depth < maxDepth) {
-                    Subdivide(node);
+                    Subdivide(node, ref pending);
                 }
             }
         }
 
-        private void Subdivide(OctreeNode node) {
+        private void Subdivide(OctreeNode node, ref NativeQueue<OctreeNode> pending) {
             node.childBaseIndex = nodes.Length;
 
             for (int i = 0; i < 8; i++) {

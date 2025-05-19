@@ -26,7 +26,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &5361457892440788241
 Transform:
   m_ObjectHideFlags: 0
@@ -57,12 +57,15 @@ MonoBehaviour:
   ticksPerSecond: 32
   maxTicksPerFrame: 1
   chunkPrefab: {fileID: 6177338312385691531, guid: 4d388002189c96345901f85821f1a600, type: 3}
+  stitchingPrefab: {fileID: 6177338312385691531, guid: bddc1aaa282df6c45aa02798bacfd520, type: 3}
   materials:
+  - {fileID: 11400000, guid: 9327a853fb9717845856c6816a3223d7, type: 2}
   - {fileID: 11400000, guid: 70763bc693187524f91243c1a8bcd3b4, type: 2}
   - {fileID: 11400000, guid: 9a18df698f73187488acf9eb9da60248, type: 2}
-  - {fileID: 11400000, guid: 2bfefb5dc2ec0554582ccd900ab84b90, type: 2}
-  voxelSizeReduction: 2
+  ditherTransitionTime: 0.2
+  voxelSizeReduction: 0
   drawGizmos: 1
+  debugGUI: 1
   collisions: {fileID: 0}
   mesher: {fileID: 0}
   graph: {fileID: 0}
@@ -97,9 +100,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 574bbe1e4b4f7d54c800acb1d6d8d7d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: 2082
-  permutationSeed: {x: -169, y: 429, z: -878}
-  moduloSeed: {x: 0, y: 0, z: 0}
+  seed: -546
+  permutationSeed: {x: 940, y: -953, z: -170}
+  moduloSeed: {x: -804, y: 434, z: 414}
 --- !u!114 &2659349426322332056
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113,9 +116,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autoCompile: 0
-  hash: 392348271
+  hash: -219539943
   voxelsDispatchIndex: 0
-  propsDispatchIndex: 1
+  propsDispatchIndex: -1
+  debugTex: {fileID: 0}
   shader: {fileID: 7200000, guid: b54d7fbcd993ce642a1c8ad3878fa83a, type: 3}
 --- !u!114 &8197692837568637671
 MonoBehaviour:
@@ -129,7 +133,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62faa8992fd92d043b860fa8cf274527, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  asyncReadbackPerTick: 1
+  skipEmptyChunks: 1
 --- !u!114 &4459649915349211665
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,8 +162,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   drawGizmos: 0
-  maxDepth: 4
+  maxDepth: 3
   target: {fileID: 0}
+  continuousCheck: 1
 --- !u!114 &2489052534160842304
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -184,10 +189,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 998d14371a252d844953b5096474c997, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  meshJobsPerTick: 4
-  aoGlobalOffset: 1.5
+  meshJobsPerTick: 1
+  useSkirting: 1
+  aoGlobalOffset: 0.5
   aoMinDotNormal: 0.2
-  aoGlobalSpread: 1
+  aoGlobalSpread: 4
   aoStrength: 1
 --- !u!114 &7318964257985538370
 MonoBehaviour:
@@ -204,13 +210,13 @@ MonoBehaviour:
   surfaceNetsCompute: {fileID: 7200000, guid: 414c71a72bcba394d921913198296aac, type: 3}
   heightMapCompute: {fileID: 7200000, guid: de7c990be885cc84292f8dc0e8dd3f48, type: 3}
   customRenderingMaterial: {fileID: -876546973899608171, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
-  materialId: 1
+  materialId: 0
   blocky: 0
   useHeightSimplification: 0
   flatshaded: 0
   size: 128
-  scale: {x: 2, y: 2, z: 2}
-  offset: {x: -54.64, y: -24.45, z: -103.48}
+  scale: {x: 1, y: 1, z: 1}
+  offset: {x: 23.9, y: 102.2, z: 0}
 --- !u!114 &3475662089056963851
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -224,29 +230,49 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transform1:
-    position: {x: -52.5, y: -14.1, z: 0}
+    position: {x: -12.92, y: 50, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 1, y: 1, z: 1}
   scale:
-    x: 0.004
+    value: 0.0012
   amplitude:
-    x: 31.9
-  persistence:
-    x: 0.4
-  lacunarity:
-    x: 1.6
-  cellularScale:
-    x: 0.05
-  cellularOffset:
-    x: 1.85
-  cellularAmplitude:
-    x: -4.3
-  materialHeightNoisy:
-    x: 37
-  materialHeight:
-    x: -10
-  smoothing:
-    x:
-      x: 10
-      y: 12
-  octaves: 4
+    value: 203.7
+  offset:
+    value: 94.2
+  detailScale:
+    value:
+      x: 0.05
+      y: 0
+      z: 0.05
+  detailAmplitude:
+    value: 165.5
+  detailProbability:
+    value: 0.01
+  detailOffset:
+    value: -118.95
+  detailSmooth:
+    value: 238.4
+  voronoiScale:
+    value: 0.03
+  voronoiAmplitude:
+    value: 15
+  warperScale:
+    value: 0.002
+  warperAmplitude:
+    value: 200
+  others:
+    value:
+      x: 1.8
+      y: 0.2
+  warpScale:
+    value:
+      x: -0.35
+      y: 0.005
+      z: 5.99
+  warpAmplitude:
+    value:
+      x: 5.9
+      y: -10
+      z: 1
+  octaves: 5
+  detailOctaves: 1
