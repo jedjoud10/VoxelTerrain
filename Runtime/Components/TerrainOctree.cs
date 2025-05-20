@@ -6,6 +6,7 @@ namespace jedjoud.VoxelTerrain.Octree {
     public struct TerrainOctree : IComponentData {
         public bool continuous;
         public bool pending;
+        public bool readyToSpawn;
 
         public NativeList<OctreeNode> added;
         public NativeList<OctreeNode> removed;

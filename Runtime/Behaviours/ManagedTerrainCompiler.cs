@@ -13,7 +13,7 @@ using UnityEditor;
 #endif
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public class VoxelCompiler : MonoBehaviour {
+    public class ManagedTerrainCompiler : MonoBehaviour {
         [HideInInspector]
         public TreeContext ctx;
 
@@ -159,7 +159,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         // Parses the voxel graph into a tree context with all required nodes and everything!!!
         public void ParsedTranspilation() {
-            VoxelGraph graph = GetComponent<VoxelGraph>();
+            ManagedTerrainGraph graph = GetComponent<ManagedTerrainGraph>();
 
             if (graph == null) {
                 Debug.LogError("Can't transpile the graph since we don't have one to begin with! Add a VoxelGraph component...");
@@ -189,8 +189,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Execute the voxel graph to get all required output variables 
             // We will contextualize the variables in their separate passes ({ density + color + material }, { props }, etc)
-            VoxelGraph.AllInputs inputs = new VoxelGraph.AllInputs() { position = position, id = id };
-            graph.Execute(inputs, out VoxelGraph.AllOutputs outputs);
+            ManagedTerrainGraph.AllInputs inputs = new ManagedTerrainGraph.AllInputs() { position = position, id = id };
+            graph.Execute(inputs, out ManagedTerrainGraph.AllOutputs outputs);
             ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
             //ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
             ScopeArgument materialArgument = new ScopeArgument("material", VariableType.StrictType.Int, outputs.material, true);

@@ -3,6 +3,6 @@ using Unity.Entities;
 using Unity.Jobs;
 
 namespace jedjoud.VoxelTerrain {
-    public struct TerrainChunkTag : IComponentData {
+    public struct TerrainChunkRequestCollisionTag : IComponentData, IEnableableComponent {
     }
 }

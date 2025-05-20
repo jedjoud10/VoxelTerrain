@@ -8,10 +8,10 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Generation {
 
     // A voxel graph is the base class to inherit from to be able to write custom voxel stuff
-    public abstract partial class VoxelGraph : MonoBehaviour {
+    public abstract partial class ManagedTerrainGraph : MonoBehaviour {
         private void OnValidate() {
-            GetComponent<VoxelCompiler>().SoftRecompile();
-            GetComponent<VoxelCompiler>().OnPropertiesChanged();
+            GetComponent<ManagedTerrainCompiler>().SoftRecompile();
+            GetComponent<ManagedTerrainCompiler>().OnPropertiesChanged();
         }
 
         public class AllInputs {

@@ -128,8 +128,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 435758290}
-  - component: {fileID: 435758291}
   - component: {fileID: 435758292}
+  - component: {fileID: 435758291}
   m_Layer: 0
   m_Name: Le Voxel Terrain
   m_TagString: Untagged
@@ -161,10 +161,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 435758289}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 016d67e6a5967a14eb3ab83688f57532, type: 3}
+  m_Script: {fileID: 11500000, guid: cc2838eddcec1304fa818474d2d49848, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxDepth: 4
+  ditherTransitionTime: 0.5
+  voxelSizeReduction: 0
 --- !u!114 &435758292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -174,11 +175,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 435758289}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cc2838eddcec1304fa818474d2d49848, type: 3}
+  m_Script: {fileID: 11500000, guid: 016d67e6a5967a14eb3ab83688f57532, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ditherTransitionTime: 0.2
-  voxelSizeReduction: 0
+  maxDepth: 12
 --- !u!1 &1889961594
 GameObject:
   m_ObjectHideFlags: 0
@@ -208,7 +208,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11976dabb38d8a249b3805238f767c26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  factor: 1.4
+  factor: 1.8
 --- !u!4 &1889961596
 Transform:
   m_ObjectHideFlags: 0

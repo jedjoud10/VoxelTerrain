@@ -119,6 +119,147 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &141261180
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 141261185}
+  - component: {fileID: 141261184}
+  - component: {fileID: 141261183}
+  - component: {fileID: 141261182}
+  - component: {fileID: 141261181}
+  m_Layer: 0
+  m_Name: Managed Terrain
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &141261181
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141261180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1964f9915237e104bbf6a80ee84a37c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  transform1:
+    position: {x: -12.92, y: 50, z: -23.37}
+    rotation: {x: 0, y: 0, z: 0}
+    scale: {x: 1, y: 1, z: 1}
+  scale:
+    value: 0.0012
+  amplitude:
+    value: 203.7
+  offset:
+    value: 94.2
+  detailScale:
+    value:
+      x: 0.05
+      y: 0
+      z: 0.05
+  detailAmplitude:
+    value: 165.5
+  detailProbability:
+    value: 0.01
+  detailOffset:
+    value: -118.95
+  detailSmooth:
+    value: 238.4
+  voronoiScale:
+    value: 0.03
+  voronoiAmplitude:
+    value: 15
+  warperScale:
+    value: 0.002
+  warperAmplitude:
+    value: 200
+  others:
+    value:
+      x: 1.8
+      y: 0.2
+  warpScale:
+    value:
+      x: -0.35
+      y: 0.005
+      z: 5.99
+  warpAmplitude:
+    value:
+      x: 5.9
+      y: -10
+      z: 1
+  octaves: 2
+  detailOctaves: 1
+--- !u!114 &141261182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141261180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6dcce6796ecd274594a6a37e20cf884, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  seed: 1234
+  permutationSeed: {x: 0, y: 0, z: 0}
+  moduloSeed: {x: 0, y: 0, z: 0}
+--- !u!114 &141261183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141261180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hash: 0
+  voxelsDispatchIndex: 0
+  propsDispatchIndex: -1
+  debugTex: {fileID: 0}
+  shader: {fileID: 7200000, guid: 3e5d4d57dc1604242bcb3c3004388a2a, type: 3}
+--- !u!114 &141261184
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141261180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67629de0b6144d04ca976524e6cd8137, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  compiler: {fileID: 0}
+  executor: {fileID: 0}
+  graph: {fileID: 0}
+--- !u!4 &141261185
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141261180}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &169386877
 GameObject:
   m_ObjectHideFlags: 0
@@ -422,7 +563,7 @@ Transform:
   m_GameObject: {fileID: 664809940}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -127.368095, y: -52.451176, z: -22.80599}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -621,3 +762,4 @@ SceneRoots:
   - {fileID: 1607214703}
   - {fileID: 664809944}
   - {fileID: 1333687731}
+  - {fileID: 141261185}

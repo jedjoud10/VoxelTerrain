@@ -7,6 +7,7 @@ using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Octree {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
+    [UpdateBefore(typeof(TerrainOctreeJobSystem))]
     [RequireMatchingQueriesForUpdate]
     partial class CopyCameraPositionSystem : SystemBase {
         protected override void OnCreate() {

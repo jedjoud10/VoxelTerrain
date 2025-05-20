@@ -5,7 +5,7 @@ using UnityEngine;
 
 
 namespace jedjoud.VoxelTerrain.Editor {
-    [CustomEditor(typeof(VoxelCompiler), true)]
+    [CustomEditor(typeof(ManagedTerrainCompiler), true)]
     public class VoxelCompilerEditor : UnityEditor.Editor {
         bool dispatchFoldout;
         bool scopeFoldout;
@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Editor {
         public override void OnInspectorGUI() {
             base.OnInspectorGUI();
 
-            var script = (VoxelCompiler)target;
+            var script = (ManagedTerrainCompiler)target;
 
             if (GUILayout.Button("Recompile")) {
                 script.Compile(true);

@@ -3,7 +3,7 @@ using UnityEngine;
 
 
 namespace jedjoud.VoxelTerrain.Generation.Demo {
-    public class TestTerrain : VoxelGraph {
+    public class TestTerrain : ManagedTerrainGraph {
         // Main transform
         public InlineTransform transform1;
 
