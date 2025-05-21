@@ -23,7 +23,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public int childBaseIndex;
 
         public float3 Center => math.float3(position) + math.float3(size) / 2.0F;
-        public MinMaxAABB Bounds => new MinMaxAABB(position, position + size);
+        public Unity.Mathematics.Geometry.MinMaxAABB Bounds => new Unity.Mathematics.Geometry.MinMaxAABB(position, position + size);
 
 
         public static OctreeNode RootNode(int maxDepth, int chunkSize) {

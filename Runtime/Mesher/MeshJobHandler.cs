@@ -1,6 +1,8 @@
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -9,8 +11,8 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct MeshingRequest {
         //public VoxelChunk chunk;
-        public bool collisions;
-        public int maxTicks;
+        public Entity chunk;
+        public NativeArray<Voxel> voxels;
         //public Action<VoxelChunk> callback;
     }
 
@@ -58,7 +60,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Other misc stuff
         public JobHandle finalJobHandle;
         public MeshingRequest request;
-        public long startingTick;
         public NativeArray<uint> buckets;
         public NativeArray<float3> bounds;
 
@@ -67,7 +68,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public NativeList<float3> debugData;
 
-        const int BATCH_SIZE = 64 * 64 * 32;
+        const int BATCH_SIZE = VoxelUtils.VOLUME * 2;
         const int VOL = VoxelUtils.VOLUME;
         const int MATS = VoxelUtils.MAX_MATERIAL_COUNT;
 
@@ -142,12 +143,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             unsafe {
                 neighbourPtrs.Clear();
-                foreach (NativeArray<Voxel> v in neighboursArray) {
-                    if (v.IsCreated) {
-                        neighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
-                    } else {
-                        neighbourPtrs.Add(System.IntPtr.Zero);
-                    }
+                /*
+            foreach (NativeArray<Voxel> v in neighboursArray) {
+                if (v.IsCreated) {
+                    neighbourPtrs.Add(v.GetUnsafeReadOnlyPtr<Voxel>());
+                } else {
+                neighbourPtrs.Add(System.IntPtr.Zero);
+                }
+            }
+                */
+                for (int i = 0; i < 27; i++) {
+                    neighbourPtrs.Add(System.IntPtr.Zero);
                 }
             }
 
@@ -358,7 +364,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal VoxelMesh Complete(Mesh mesh) {
             finalJobHandle.Complete();
 
-            if (voxels == null || /* request.chunk == null  || */ mesh == null /* || skirt == null */) {
+            if (/* request.chunk == null  || */ mesh == null /* || skirt == null */) {
                 return default;
             }
 
@@ -435,7 +441,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             return new VoxelMesh {
                 VoxelMaterialsLookup = lookup,
                 TriangleOffsetLocalMaterials = lookup2,
-                ComputeCollisions = request.collisions,
                 VertexCount = maxVertices,
                 TriangleCount = maxIndices / 3,
                 Bounds = new Bounds() {

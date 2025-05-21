@@ -9,7 +9,7 @@ using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(TerrainOctreeJobSystem))]
+    [UpdateAfter(typeof(TerrainOctreeSystem))]
     public partial struct TerrainManagerSystem : ISystem {
         private NativeHashMap<OctreeNode, Entity> chunks;
         private Entity prototype;
@@ -29,11 +29,13 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainChunkRequestReadbackTag>(prototype);
             mgr.AddComponent<TerrainChunkRequestMeshingTag>(prototype);
             mgr.AddComponent<TerrainChunkRequestCollisionTag>(prototype);
+            mgr.AddComponent<TerrainChunkVoxelsReadyTag>(prototype);
 
             mgr.SetComponentEnabled<TerrainChunkVoxels>(prototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(prototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(prototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(prototype, false);
+            mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(prototype, false);
         }
 
         [BurstCompile]
@@ -60,8 +62,16 @@ namespace jedjoud.VoxelTerrain {
 
                     Entity chunk = state.EntityManager.Instantiate(prototype);
                     chunks.Add(node, chunk);
+
+                    state.EntityManager.SetComponentData<TerrainChunk>(chunk, new TerrainChunk {
+                        node = node,
+                    });
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(chunk, true);
                     state.EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunk, true);
+
+                    float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / 64f);
+                    state.EntityManager.SetComponentData<LocalToWorld>(chunk, new LocalToWorld() { Value = localToWorld });
+
 
                     state.EntityManager.SetComponentData<TerrainChunkVoxels>(chunk, new TerrainChunkVoxels {
                         inner = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory)

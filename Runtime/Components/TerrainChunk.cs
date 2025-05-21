@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain {
         // public byte[] voxelMaterialsLookup;
         // public (byte, int)[] triangleOffsetLocalMaterials;
         
-        public MinMaxAABB bounds;
-        public BitField32 neighbours;
+        //public MinMaxAABB bounds;
+        // public BitField32 neighbours;
     }
 }

@@ -11,8 +11,8 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    [UpdateInGroup(typeof(PresentationSystemGroup))]
-    //[UpdateAfter(typeof(TerrainManagerSystem))]
+    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
+    [UpdateAfter(typeof(TerrainManagerSystem))]
     public partial class TerrainReadbackSystem : SystemBase {
         private bool free;
         private List<Entity> entities;
@@ -65,6 +65,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
+        public bool IsFree() {
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk, TerrainChunkRequestReadbackTag>().Build();
+            return query.CalculateEntityCount() == 0 && free;
+        }
+
         private void TryBeginReadback() {
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk, TerrainChunkRequestReadbackTag>().Build();
             NativeArray<TerrainChunkVoxels> voxelsArray = query.ToComponentDataArray<TerrainChunkVoxels>(Allocator.Temp);
@@ -92,6 +97,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             for (int j = 0; j < numChunks; j++) {
                 TerrainChunk chunk = chunksArray[j];
                 Entity entity = entitiesArray[j];
+                entities.Add(entity);
 
                 float3 pos = (float3)chunk.node.position;
                 float scale = chunk.node.size / 64f;
@@ -103,6 +109,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                 // Disable the tag component since we won't need to readback anymore
                 EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
+                EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, false);
             }
 
             // Size*2 since we are using octal generation!!!!
@@ -192,8 +199,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                     int max = VoxelUtils.VOLUME;
                     bool skipped = count == max || count == -max;
 
-                    EntityManager.AddComponent<TerrainChunkRequestMeshingTag>(entity);
-                    EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, !skipped);
+
+                    EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
+                    EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
                 }
 
                 Reset();

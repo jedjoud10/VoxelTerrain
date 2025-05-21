@@ -9,9 +9,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         // Lookup for converting triangle indices to material type (given submesh)
         public (byte, int)[] TriangleOffsetLocalMaterials { get; internal set; }
 
-        // Should we compute collisions for this voxel mesh?
-        public bool ComputeCollisions { get; internal set; }
-
         // Total number of vertices used by this mesh
         public int VertexCount { get; internal set; }
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using jedjoud.VoxelTerrain.Generation;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -9,7 +10,7 @@ using Unity.Transforms;
 namespace jedjoud.VoxelTerrain.Octree {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [RequireMatchingQueriesForUpdate]
-    public partial struct TerrainOctreeJobSystem : ISystem {
+    public partial struct TerrainOctreeSystem : ISystem {
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
         private float3 oldPosition;
@@ -51,7 +52,6 @@ namespace jedjoud.VoxelTerrain.Octree {
             octree.neighbourMasks.Dispose();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             if (!initialized) {
                 state.EntityManager.CreateSingleton<TerrainOctree>(InitOctree());
@@ -84,6 +84,14 @@ namespace jedjoud.VoxelTerrain.Octree {
             if (math.distance(transform.Position, oldPosition) < 1) {
                 return;
             }
+
+            TerrainMeshingSystem mesher = state.World.GetExistingSystemManaged<TerrainMeshingSystem>();
+            TerrainReadbackSystem readbacker = state.World.GetExistingSystemManaged<TerrainReadbackSystem>();
+
+            if (!mesher.IsFree() || !readbacker.IsFree()) {
+                return;
+            }
+
 
             oldPosition = transform.Position;
             octree.nodes.Clear();

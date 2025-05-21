@@ -1,7 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 
-namespace jedjoud.VoxelTerrain.Octree {
+namespace jedjoud.VoxelTerrain {
     class TerrainManagerConfigAuthoring : MonoBehaviour {
         [Range(0, 1)]
         public float ditherTransitionTime;
