@@ -11,12 +11,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 
-        [ReadOnly]
-        public UnsafePtrList<Voxel> neighbours;
-
-        [ReadOnly]
-        public BitField32 neighbourMask;
-
         // 8 uints that are used for atomic ors
         public NativeArray<uint> buckets;
 

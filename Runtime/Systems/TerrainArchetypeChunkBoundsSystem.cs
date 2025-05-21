@@ -53,7 +53,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
 
                 archetypeChunk.SetChunkComponentData(ref chunkBoundsTypeHandle, new ChunkWorldRenderBounds {
-                    Value = new MinMaxAABB { Max = min, Min = max },
+                    Value = new MinMaxAABB { Max = max, Min = min },
                 });
             }
 

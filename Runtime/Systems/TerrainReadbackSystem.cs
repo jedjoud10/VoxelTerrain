@@ -15,9 +15,9 @@ namespace jedjoud.VoxelTerrain.Generation {
     [UpdateAfter(typeof(TerrainManagerSystem))]
     public partial class TerrainReadbackSystem : SystemBase {
         private bool free;
+        private NativeArray<uint> data;
         private List<Entity> entities;
         private JobHandle? pendingCopies;
-        private NativeArray<uint> data;
         private NativeArray<JobHandle> copies;
         private NativeArray<int> counters;
         private bool countersFetched, voxelsFetched;
@@ -25,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         protected override void OnCreate() {
             data = new NativeArray<uint>(VoxelUtils.VOLUME * 8, Allocator.Persistent);
-            entities = new List<Entity>();
+            entities = new List<Entity>(8);
             copies = new NativeArray<JobHandle>(8, Allocator.Persistent);
             counters = new NativeArray<int>(8, Allocator.Persistent);
             free = true;
@@ -199,9 +199,11 @@ namespace jedjoud.VoxelTerrain.Generation {
                     int max = VoxelUtils.VOLUME;
                     bool skipped = count == max || count == -max;
 
-
-                    EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
+                    // Voxel data is always ready no matter what
                     EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
+
+                    // Skip empty chunks!!!
+                    EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, !skipped);
                 }
 
                 Reset();
