@@ -133,6 +133,17 @@ namespace jedjoud.VoxelTerrain {
                 // The actual increment is implemented with an atomic since it can be incremented by multiple threads at the same time
                 return Interlocked.Increment(ref *(m_Counters + index * sizeOfInt)) - 1;
             }
+
+            public NativeCounter.Concurrent BecomeSigma(int index) {
+                NativeCounter.Concurrent concurrent;
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
+                concurrent.m_Safety = m_Safety;
+#endif
+
+                concurrent.m_Counter = m_Counters + index * sizeOfInt;
+                return concurrent;
+            }
         }
     }
 }

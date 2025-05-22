@@ -59,6 +59,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool negative, bool force, int face) {
+            if (force) {
+                return;
+            }
+
             uint3 forward = DirectionOffsetUtils.FORWARD_DIRECTION[index];
 
             bool flip = !negative;
@@ -94,11 +98,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 v[i] = FetchIndex(offset + (int3)DirectionOffsetUtils.PERPENDICULAR_OFFSETS[index * 4 + i], face);
             }
 
-            if (force) {
-
-            } else {
-                AddQuadOrTris(flip, v);
+            if (TryCalculateQuadOrTris(flip, v, out Triangulate data)) {
+                AddQuadsOrTris(data, ref skirtStitchedTriangleCounter, ref skirtStitchedIndices);
             }
+
 
             //TryAddQuadsOrTris(flip, v, force);
         }
@@ -120,146 +123,38 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new int3(0, 1, 2), // discard w
         };
 
-        // Add quads/tris for stitched triangles (filling the gap between surface nets verts and copied verts)
-        // We NEED to have triangle fallback to handle the literal "edge" case (since there are only 3 vertices there)
-        void AddQuadOrTris(bool flip, int4 v) {
-            // Ts gpt-ed kek
-            int dupeType = 0;
-            dupeType |= math.select(0, 1, v.x == v.y);
-            dupeType |= math.select(0, 2, v.x == v.z);
-            dupeType |= math.select(0, 4, v.x == v.w);
-            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
-            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
-            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
+        struct Triangulate {
+            public int4 indices;
+            public bool triangle;
 
-            // Means that there are more than 2 duplicate verts, not possible?
-            if (math.countbits(dupeType) > 1) {
-                return;
-            }
-
-            /*
-            // Means that there are more than 2 invalid verts, not possible to create a tri nor a quad
-            if (SkirtUtils.CountTrue(v == int.MaxValue) > 1) {
-                ret
-            }
-            */
-
-            // If there's only a SINGLE invalid index, then consider it as an extra duplicate one (and create a triangle for the valid ones instead of a quad)
-            bool4 b4 = v == int.MaxValue;
-            if (SkirtUtils.CountTrue(b4) == 1) {
-                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-
-                /*
-                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
-                }
-                */
-
-                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
-                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                skirtStitchedIndices[triIndex + 1] = uniques[1];
-                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return;
-            }
-
-            if (dupeType == 0) {
-                if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
-                    return;
-                }
-
-                /*
-                if (CheckIfForcedAndClean(v, out int4 cleaned, forced)) {
-                }
-                */
-
-                int triIndex = skirtStitchedTriangleCounter.Add(2) * 3;
-
-                // Set the first tri
-                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = v[0];
-                skirtStitchedIndices[triIndex + 1] = v[1];
-                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = v[2];
-
-                // Set the second tri
-                skirtStitchedIndices[triIndex + (flip ? 3 : 5)] = v[2];
-                skirtStitchedIndices[triIndex + 4] = v[3];
-                skirtStitchedIndices[triIndex + (flip ? 5 : 3)] = v[0];
-            } else {
-                int config = math.tzcnt(dupeType);
-                int3 remapper = DEDUPE_TRIS_THING[config];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-
-                if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
-                    return;
-                }
-
-                /*
-                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
-                }
-                */
-
-                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
-                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                skirtStitchedIndices[triIndex + 1] = uniques[1];
-                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-            }
-
-            return;
-
-            /*
-
-
-            if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
-                return;
-            }
-
-            // Means that there are more than 2 duplicate verts, not possible?
-            if (math.countbits(dupeType) > 1) {
-                return;
-            }
-
-            // If there's only a SINGLE invalid index, then consider it as an extra duplicate one (and create a triangle for the valid ones instead of a quad)
-            bool4 b4 = v == int.MaxValue;
-            if (SkirtUtils.CountTrue(b4) == 1) {
-                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
-                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                skirtStitchedIndices[triIndex + 1] = uniques[1];
-                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return;
-            }
-
-            if (dupeType == 0) {
-                int triIndex = skirtStitchedTriangleCounter.Add(2) * 3;
-
-                // Set the first tri
-                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = v[0];
-                skirtStitchedIndices[triIndex + 1] = v[1];
-                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = v[2];
-
-                // Set the second tri
-                skirtStitchedIndices[triIndex + (flip ? 3 : 5)] = v[2];
-                skirtStitchedIndices[triIndex + 4] = v[3];
-                skirtStitchedIndices[triIndex + (flip ? 5 : 3)] = v[0];
-
-                return;
-            } else {
-                int config = math.tzcnt(dupeType);
-                int3 remapper = DEDUPE_TRIS_THING[config];
-                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-
-                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
-                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                skirtStitchedIndices[triIndex + 1] = uniques[1];
-                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return;
-            }
-            */
         }
 
-        /*
-        // Add quads/tris for the forced quads
-        void TryAddQuadsOrTrisForced(bool flip, int4 v) {
+        static  void AddQuadsOrTris(Triangulate triangulate, ref NativeCounter.Concurrent counter, ref NativeArray<int> indices) {
+            int4 v = triangulate.indices;
+
+            if (triangulate.triangle) {
+                int triIndex = counter.Add(1) * 3;
+                indices[triIndex + 0] = v[0];
+                indices[triIndex + 1] = v[1];
+                indices[triIndex + 2] = v[2];
+            } else {
+                int triIndex = counter.Add(2) * 3;
+
+                indices[triIndex + 0] = v[0];
+                indices[triIndex + 1] = v[1];
+                indices[triIndex + 2] = v[2];
+
+                indices[triIndex + 3] = v[2];
+                indices[triIndex + 4] = v[3];
+                indices[triIndex + 5] = v[0];
+            }
+        }
+
+        // Add quads/tris for stitched triangles (filling the gap between surface nets verts and copied verts)
+        // We NEED to have triangle fallback to handle the literal "edge" case (since there are only 3 vertices there)
+        static bool TryCalculateQuadOrTris(bool flip, int4 v, out Triangulate data) {
+            data = default;
+
             // Ts gpt-ed kek
             int dupeType = 0;
             dupeType |= math.select(0, 1, v.x == v.y);
@@ -269,39 +164,42 @@ namespace jedjoud.VoxelTerrain.Meshing {
             dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
             dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
 
+            bool4 b4 = v == int.MaxValue;
+            int bitmask = math.bitmask(b4);
+
             // Means that there are more than 2 duplicate verts, not possible?
             if (math.countbits(dupeType) > 1) {
-                return;
+                return false;
+            }
+
+            // Means that there are more than 2 invalid verts, not possible to create a tri nor a quad
+            if (math.countbits(bitmask) > 1) {
+                return false;
             }
 
             // If there's only a SINGLE invalid index, then consider it as an extra duplicate one (and create a triangle for the valid ones instead of a quad)
-            bool4 b4 = v == int.MaxValue;
-            if (SkirtUtils.CountTrue(b4) == 1) {
-                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
+            if (math.countbits(bitmask) == 1) {
+                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[math.tzcnt(bitmask)];
                 int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
-                int triIndex = skirtTriangleCounter.Add(1) * 3;
-                skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                skirtIndices[triIndex + 1] = uniques[1];
-                skirtIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return;
+
+                data.triangle = true;
+                data.indices.x = uniques[flip ? 0 : 2];
+                data.indices.y = uniques[1];
+                data.indices.z = uniques[flip ? 2 : 0];
+
+                return true;
             }
 
             if (dupeType == 0) {
                 if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
-                    return;
+                    return false;
                 }
 
-                int triIndex = skirtTriangleCounter.Add(2) * 3;
-
-                // Set the first tri
-                skirtIndices[triIndex + (flip ? 0 : 2)] = v[0];
-                skirtIndices[triIndex + 1] = v[1];
-                skirtIndices[triIndex + (flip ? 2 : 0)] = v[2];
-
-                // Set the second tri
-                skirtIndices[triIndex + (flip ? 3 : 5)] = v[2];
-                skirtIndices[triIndex + 4] = v[3];
-                skirtIndices[triIndex + (flip ? 5 : 3)] = v[0];
+                data.triangle = false;
+                data.indices.x = v[flip ? 0 : 2];
+                data.indices.y = v[1];
+                data.indices.z = v[flip ? 2 : 0];
+                data.indices.w = v[3];
                 return true;
             } else {
                 int config = math.tzcnt(dupeType);
@@ -309,17 +207,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
 
                 if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
-                    return;
+                    return false;
                 }
 
-                int triIndex = skirtTriangleCounter.Add(1) * 3;
-                skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                skirtIndices[triIndex + 1] = uniques[1];
-                skirtIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return;
+                data.triangle = true;
+                data.indices.x = uniques[flip ? 0 : 2];
+                data.indices.y = uniques[1];
+                data.indices.z = uniques[flip ? 2 : 0];
+                return true;
             }
+
+            return false;
         }
-        */
 
         public void Execute(int index) {
             // we run the job for VoxelUtils.FACE since quad jobs always miss the last 2/1 voxels (due to missing indices)

@@ -94,11 +94,11 @@ namespace jedjoud.VoxelTerrain {
         unsafe public struct Concurrent {
             // Copy of the pointer from the full NativeCounter
             [NativeDisableUnsafePtrRestriction]
-            int* m_Counter;
+            internal int* m_Counter;
 
             // Copy of the AtomicSafetyHandle from the full NativeCounter. The dispose sentinel is not copied since this inner struct does not own the memory and is not responsible for freeing it
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle m_Safety;
+            internal AtomicSafetyHandle m_Safety;
 #endif
 
             // This is what makes it possible to assign to NativeCounter.Concurrent from NativeCounter
