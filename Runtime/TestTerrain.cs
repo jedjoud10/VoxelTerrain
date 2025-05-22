@@ -52,11 +52,6 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Cellular<float3> detail = Cellular<float3>.Simple(Sdf.DistanceMetric.Chebyshev, detailProbability);
             var amogus = Sdf.Union(fractal.Evaluate(xz) + offset, detail.Tile(detailScale * projected) * detailAmplitude + detailOffset, detailSmooth);
 
-            Warper<float3> warper = new Warper<float3>(new Simplex(warperScale, warperAmplitude), warpScale, warpAmplitude);
-
-            var voronoi = new Fractal<float3>(new Voronoi(voronoiScale, voronoiAmplitude), FractalMode.Sum, 4, 1.6f, 0.3f).Evaluate(warper.Warpinate(projected)); 
-            amogus = Sdf.Union(voronoi, amogus);
-
             output = new AllOutputs();
             output.density = y + amogus;
             output.material = 0;

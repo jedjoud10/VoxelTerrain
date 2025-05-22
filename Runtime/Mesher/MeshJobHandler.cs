@@ -51,7 +51,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
         public NativeList<float3> debugData;
 
-        public int PER_VOXEL_JOB_BATCH_SIZE = VoxelUtils.VOLUME / 2;
+        public int PER_VOXEL_JOB_BATCH_SIZE = VoxelUtils.VOLUME;
         public int PER_SKIRT_SURFACE_JOB_BATCH_SIZE = VoxelUtils.SKIRT_FACE * 3;
 
         const int VOL = VoxelUtils.VOLUME;
@@ -122,12 +122,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
 
             // Normalize my shi dawg
-            /*
             NormalsJob normalsJob = new NormalsJob {
                 normals = voxelNormals,
                 voxels = voxels,
             };
-            */
 
             // Handles fetching MC corners for the SN edges
             CornerJob cornerJob = new CornerJob {
@@ -212,14 +210,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Voxel finite-diffed normals job
-            //JobHandle normalsJobHandle = normalsJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, dependency);
+            JobHandle normalsJobHandle = normalsJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, dependency);
 
             // Start the corner job and material job
             JobHandle checkJobHandle = checkJob.Schedule(bits.Length, PER_VOXEL_JOB_BATCH_SIZE, dependency);
             JobHandle cornerJobHandle = cornerJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, checkJobHandle);
 
             // Start the vertex job
-            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
+            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency, normalsJobHandle);
             JobHandle vertexJobHandle = vertexJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
 

@@ -31,16 +31,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             for (int i = 0; i < MESH_JOBS_PER_TICK; i++) {
                 handlers.Add(new MeshJobHandler());
             }
-            uint4 indices = new uint4(0, 1, 32, 33);
-            NativeArray<uint> data = new NativeArray<uint>(2, Allocator.Temp);
-            data[0] = 0b1111;
-            data[1] = 0b1100;
-            unsafe {
-                CornerJob.DoItTheSimdWay(indices, data.GetUnsafeReadOnlyPtr());
-            }
-            data.Dispose();
-
-
         }
 
         public bool IsFree() {
