@@ -79,8 +79,7 @@ namespace jedjoud.VoxelTerrain {
                     FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
                     float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / 64f);
 
-                    // TODO!!!! SET THIS BACK TO 7!!!!!
-                    for (int i = 0; i < 1; i++) {
+                    for (int i = 0; i < 7; i++) {
                         Entity skirt = state.EntityManager.Instantiate(skirtPrototype);
                         state.EntityManager.SetComponentData<LocalToWorld>(skirt, new LocalToWorld() { Value = localToWorld });
                         skirts.Add(skirt);

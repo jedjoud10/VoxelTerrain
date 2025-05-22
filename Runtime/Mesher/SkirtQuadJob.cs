@@ -59,10 +59,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool negative, bool force, int face) {
-            if (force) {
-                return;
-            }
-
             uint3 forward = DirectionOffsetUtils.FORWARD_DIRECTION[index];
 
             bool flip = !negative;
@@ -99,11 +95,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             if (TryCalculateQuadOrTris(flip, v, out Triangulate data)) {
-                AddQuadsOrTris(data, ref skirtStitchedTriangleCounter, ref skirtStitchedIndices);
+                if (force) {
+                    NativeArray<int> faceIndicesSubArray = skirtForcedPerFaceIndices.GetSubArray(face * VoxelUtils.SKIRT_FACE * 6, VoxelUtils.SKIRT_FACE * 6);
+                    AddQuadsOrTris(data, skirtForcedTriangleCounter.BecomeSigma(face), faceIndicesSubArray);
+                } else {
+                    AddQuadsOrTris(data, skirtStitchedTriangleCounter, skirtStitchedIndices);
+                }
             }
-
-
-            //TryAddQuadsOrTris(flip, v, force);
         }
 
 
@@ -129,7 +127,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         }
 
-        static  void AddQuadsOrTris(Triangulate triangulate, ref NativeCounter.Concurrent counter, ref NativeArray<int> indices) {
+        static  void AddQuadsOrTris(Triangulate triangulate, NativeCounter.Concurrent counter, NativeArray<int> indices) {
             int4 v = triangulate.indices;
 
             if (triangulate.triangle) {

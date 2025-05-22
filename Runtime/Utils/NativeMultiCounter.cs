@@ -61,7 +61,7 @@ namespace jedjoud.VoxelTerrain {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
-                return *(m_Counters + index * sizeOfInt);
+                return *(m_Counters + index);
             }
             set {
                 if (index >= capacity || index < 0)
@@ -71,7 +71,7 @@ namespace jedjoud.VoxelTerrain {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
-                *(m_Counters + index * sizeOfInt) = value;
+                *(m_Counters + index) = value;
             }
         }
 
@@ -85,6 +85,8 @@ namespace jedjoud.VoxelTerrain {
 #endif
             UnsafeUtility.MemClear(m_Counters, sizeOfInt * capacity);
         }
+
+
 
         public void Dispose() {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
@@ -126,22 +128,28 @@ namespace jedjoud.VoxelTerrain {
             }
 
             public int Increment(int index) {
+                if (index >= capacity || index < 0)
+                    throw new ArgumentOutOfRangeException("index");
+
                 // Increment still needs to check for write permissions
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
                 // The actual increment is implemented with an atomic since it can be incremented by multiple threads at the same time
-                return Interlocked.Increment(ref *(m_Counters + index * sizeOfInt)) - 1;
+                return Interlocked.Increment(ref *(m_Counters + index)) - 1;
             }
 
             public NativeCounter.Concurrent BecomeSigma(int index) {
+                if (index >= capacity || index < 0)
+                    throw new ArgumentOutOfRangeException("index");
+
                 NativeCounter.Concurrent concurrent;
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
                 concurrent.m_Safety = m_Safety;
 #endif
 
-                concurrent.m_Counter = m_Counters + index * sizeOfInt;
+                concurrent.m_Counter = m_Counters + index;
                 return concurrent;
             }
         }
