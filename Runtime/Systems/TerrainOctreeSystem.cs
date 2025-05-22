@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using jedjoud.VoxelTerrain.Generation;
+using jedjoud.VoxelTerrain.Meshing;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

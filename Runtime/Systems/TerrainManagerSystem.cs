@@ -1,3 +1,4 @@
+using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Burst;
 using Unity.Collections;
@@ -6,6 +7,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
+using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
@@ -44,6 +46,36 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainSkirtTag>(skirtPrototype);
         }
 
+        static void WriteOffsetDirAsMask(ref BitField32 skirtMask, uint3 offset) {
+            BitField32 intern = new BitField32(0);
+
+            // Negative axii
+            intern.SetBits(0, offset.x == 0);
+            intern.SetBits(1, offset.y == 0);
+            intern.SetBits(2, offset.z == 0);
+
+            // Positive axii
+            intern.SetBits(3, offset.x == 2);
+            intern.SetBits(4, offset.y == 2);
+            intern.SetBits(5, offset.z == 2);
+
+            skirtMask.Value |= intern.Value;
+        }
+
+        public static BitField32 CalculateEnabledSkirtMask(BitField32 inputMask) {
+            BitField32 skirtMask = new BitField32(0);
+
+            for (int i = 0; i < 27; i++) {
+                uint3 offset = VoxelUtils.IndexToPos(i, 3);
+
+                if (!inputMask.IsSet(i)) {
+                    WriteOffsetDirAsMask(ref skirtMask, offset);
+                }
+            }
+
+            return skirtMask;
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             TerrainManagerConfig config = SystemAPI.GetSingleton<TerrainManagerConfig>();
@@ -58,11 +90,9 @@ namespace jedjoud.VoxelTerrain {
                         NativeArray<Entity> skirts = chunk.skirts.ToNativeArray(Allocator.Temp);
                         state.EntityManager.DestroyEntity(skirts);
                         skirts.Dispose();
-                        
 
                         TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
                         voxels.inner.Dispose();
-
 
                         state.EntityManager.DestroyEntity(entity);
                         chunks.Remove(node);
@@ -87,7 +117,11 @@ namespace jedjoud.VoxelTerrain {
 
                     state.EntityManager.SetComponentData<TerrainChunk>(chunk, new TerrainChunk {
                         node = node,
-                        skirts = skirts
+                        skirts = skirts,
+                        
+                        // No need to bother with these as we update them in the next foreach
+                        // neighbourMask = octree.neighbourMasks[node.index],
+                        // skirtMask = CalculateEnabledSkirtMask(octree.neighbourMasks[node.index])
                     });
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(chunk, true);
                     state.EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunk, true);
@@ -98,7 +132,21 @@ namespace jedjoud.VoxelTerrain {
                         inner = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory)
                     });
                 }
-                                
+
+                foreach (var node in octree.nodes) {
+                    if (node.childBaseIndex != -1)
+                        continue;
+
+                    if (chunks.TryGetValue(node, out var entity)) {
+                        RefRW<TerrainChunk> _chunk = SystemAPI.GetComponentRW<TerrainChunk>(entity);
+                        ref TerrainChunk chunk = ref _chunk.ValueRW;
+                        chunk.neighbourMask = octree.neighbourMasks[node.index];
+                        chunk.skirtMask = CalculateEnabledSkirtMask(chunk.neighbourMask);
+                    }
+                }
+
+
+
                 octree.continuous = true;
                 octree.readyToSpawn = false;
             }

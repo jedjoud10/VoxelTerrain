@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Burst;
@@ -15,7 +16,7 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
-namespace jedjoud.VoxelTerrain.Generation {
+namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [UpdateAfter(typeof(TerrainReadbackSystem))]
     public partial class TerrainMeshingSystem : SystemBase {
@@ -23,6 +24,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         const int MESH_JOBS_PER_TICK = 2;
         private RenderMeshDescription meshDescription;
         private RenderMeshDescription skirtDescription;
+        private EntitiesGraphicsSystem graphics;
+        private BatchMaterialID materialId;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainMesherConfig>();
@@ -54,6 +57,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 },
                 LightProbeUsage = LightProbeUsage.Off,
             };
+
+            graphics = null;
         }
 
         public bool IsFree() {
@@ -62,6 +67,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         protected override void OnUpdate() {
+            if (SystemAPI.ManagedAPI.TryGetSingleton<TerrainMesherConfig>(out TerrainMesherConfig config) && graphics == null) {
+                graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
+                materialId = graphics.RegisterMaterial(config.material.material);
+            }
+
             foreach (var handler in handlers) {
 
                 if (handler.IsComplete(EntityManager)) {
@@ -117,9 +127,15 @@ namespace jedjoud.VoxelTerrain.Generation {
                     }
                 };
 
-                RenderMeshArray renderMeshArray = new RenderMeshArray(new Material[1] { config.material.material }, new Mesh[1] { mesh }, indices);
-                MaterialMeshInfo materialMeshInfo = MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0);
-                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, meshDescription, renderMeshArray, materialMeshInfo);
+                BatchMeshID meshId = graphics.RegisterMesh(mesh);
+                MaterialMeshInfo materialMeshInfo = new MaterialMeshInfo(materialId, meshId, 0);
+
+                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, meshDescription, materialMeshInfo);
+
+                EntityManager.AddComponent<UnregisterMeshCleanup>(chunkEntity);
+                EntityManager.SetComponentData<UnregisterMeshCleanup>(chunkEntity, new UnregisterMeshCleanup {
+                    meshId = meshId
+                });
 
                 float scalingFactor = node.size / (64f);
                 AABB localRenderBounds = new Unity.Mathematics.MinMaxAABB {
@@ -139,7 +155,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                     Value = worldRenderBounds
                 });
 
-
                 AABB skirtLocalRenderBounds = localRenderBounds;
                 skirtLocalRenderBounds.Extents *= 1.1f;
 
@@ -158,12 +173,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                         }
                     };
 
-                    RenderMeshArray skirtRenderMeshArray = new RenderMeshArray(new Material[1] { config.material.material }, new Mesh[1] { skirtMesh }, skirtIndices);
-                    MaterialMeshInfo skirtMaterialMeshInfo = MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0, (ushort)skirtIndex);
+                    BatchMeshID skirtMeshId = graphics.RegisterMesh(skirtMesh);
+                    MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(materialId, skirtMeshId, (ushort)skirtIndex);
 
-                    RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtDescription, skirtRenderMeshArray, skirtMaterialMeshInfo);
-
-
+                    RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtDescription, skirtMaterialMeshInfo);
 
                     EntityManager.SetComponentData<RenderBounds>(skirtEntity, new RenderBounds() {
                         Value = skirtLocalRenderBounds,
