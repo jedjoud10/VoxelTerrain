@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Surface mesh job that will generate the isosurface mesh vertices
-    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct VertexJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
@@ -38,7 +38,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float2> uvs;
 
         // Vertex Counter
-        public NativeCounter.Concurrent counter;
+        public NativeCounter.Concurrent vertexCounter;
         public float voxelScale;
 
         // Excuted for each cell within the grid
@@ -60,7 +60,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (empty) return;
 
             // Doing some marching cube shit here
-            uint code = VoxelUtils.EdgeMasks[enabledCorners];
+            uint code = EdgeMaskUtils.EDGE_MASKS[enabledCorners];
             int count = math.countbits(code);
 
             // Create the smoothed vertex
@@ -69,8 +69,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // Continue if the edge isn't inside
                 if (((code >> edge) & 1) == 0) continue;
 
-                uint3 startOffset = VoxelUtils.EDGE_POSITIONS_0[edge];
-                uint3 endOffset = VoxelUtils.EDGE_POSITIONS_1[edge];
+                uint3 startOffset = EdgeMaskUtils4.EDGE_POSITIONS_0[edge];
+                uint3 endOffset = EdgeMaskUtils4.EDGE_POSITIONS_1[edge];
 
                 int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
@@ -90,7 +90,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             // Must be offset by vec3(1, 1, 1)
-            int vertexIndex = counter.Increment();
+            int vertexIndex = vertexCounter.Increment();
             indices[index] = vertexIndex;
 
             // Output vertex in object space

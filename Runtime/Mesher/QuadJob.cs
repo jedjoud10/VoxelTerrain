@@ -4,8 +4,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    // Surface mesh job that will generate the isosurface quads, and thus, the triangles
-    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Deterministic, OptimizeFor = OptimizeFor.Performance)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct QuadJob : IJobParallelFor {
         // Voxel native array
         [ReadOnly]
@@ -22,33 +21,26 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Bit shift used to check for edges
         [ReadOnly]
-        static readonly int[] shifts = new int[3]
-        {
+        static readonly int[] shifts = new int[3] {
             0, 3, 8
         };
+
+        const int EMPTY_MASK = 1 << 0 | 1 << 3 | 1 << 8;
         
         // Used for fast traversal
         [ReadOnly]
         public NativeArray<byte> enabled;
 
-        // Quad Counter for each material
         [WriteOnly]
-        public NativeMultiCounter.Concurrent counters;
-
-        // Material counter to keep track of divido
-        [ReadOnly]
-        public NativeCounter materialCounter;
-
-        // HashMap that converts the material index to submesh index
-        [ReadOnly]
-        public NativeParallelHashMap<byte, int>.ReadOnly materialHashMap;
+        public NativeCounter.Concurrent quadCounter;
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
-        void CheckEdge(uint3 basePosition, int index) {
-            uint3 forward = VoxelUtils.FORWARD_DIRECTION[index];
+        void CheckEdge(int index, uint3 basePosition, int direction) {
+            uint3 forward = EdgeMaskUtils2.FORWARD_DIRECTION[direction];
+            int forwardIndexOffset = EdgeMaskUtils3.FORWARD_DIRECTION_INDEX_OFFSET[direction];
 
-            int baseIndex = VoxelUtils.PosToIndex(basePosition, VoxelUtils.SIZE);
-            int endIndex = VoxelUtils.PosToIndex(basePosition + forward, VoxelUtils.SIZE);
+            int baseIndex = index;
+            int endIndex = forwardIndexOffset + index;
 
             Voxel startVoxel = voxels[baseIndex];
             Voxel endVoxel = voxels[endIndex];
@@ -59,36 +51,31 @@ namespace jedjoud.VoxelTerrain.Meshing {
             uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
-            int index0 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4], VoxelUtils.SIZE);
-            int index1 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 1], VoxelUtils.SIZE);
-            int index2 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 2], VoxelUtils.SIZE);
-            int index3 = VoxelUtils.PosToIndex(offset + VoxelUtils.PERPENDICULAR_OFFSETS[index * 4 + 3], VoxelUtils.SIZE);
-
-            // Fetch the actual indices of the vertices
-            int vertex0 = vertexIndices[index0];
-            int vertex1 = vertexIndices[index1];
-            int vertex2 = vertexIndices[index2];
-            int vertex3 = vertexIndices[index3];
+            int4 indices = int.MaxValue;
+            int4 positionalIndex = index + EdgeMaskUtils3.NEGATIVE_ONE_OFFSET + EdgeMaskUtils3.PERPENDICULAR_OFFSETS_INDEX_OFFSET[direction];
+            for (int i = 0; i < 4; i++) {
+                //int positionalIndex = VoxelUtils.PosToIndex(offset + EdgeMaskUtils2.PERPENDICULAR_OFFSETS[direction * 4 + i], VoxelUtils.SIZE);
+                //int positionalIndex = 
+                indices[i] = vertexIndices[positionalIndex[i]];
+                //indices[i] = vertexIndices[positionalIndex];
+            }
 
             // Don't make a quad if the vertices are invalid
-            if ((vertex0 | vertex1 | vertex2 | vertex3) == int.MaxValue)
+            if (math.cmax(indices) == int.MaxValue)
                 return;
 
             // Get the triangle index base
-            int packedMaterialIndex = materialHashMap[material];
-            int segmentOffset = triangles.Length / materialCounter.Count;
-            int triIndex = counters.Increment(packedMaterialIndex) * 6;
-            triIndex += segmentOffset * packedMaterialIndex;
-
+            int triIndex = quadCounter.Increment() * 6;
+            
             // Set the first tri
-            triangles[triIndex + (flip ? 0 : 2)] = vertex0;
-            triangles[triIndex + 1] = vertex1;
-            triangles[triIndex + (flip ? 2 : 0)] = vertex2;
+            triangles[triIndex + (flip ? 0 : 2)] = indices[0];
+            triangles[triIndex + 1] = indices[1];
+            triangles[triIndex + (flip ? 2 : 0)] = indices[2];
 
             // Set the second tri
-            triangles[triIndex + (flip ? 3 : 5)] = vertex2;
-            triangles[triIndex + 4] = vertex3;
-            triangles[triIndex + (flip ? 5 : 3)] = vertex0;
+            triangles[triIndex + (flip ? 3 : 5)] = indices[2];
+            triangles[triIndex + 4] = indices[3];
+            triangles[triIndex + (flip ? 5 : 3)] = indices[0];
         }
 
         // Excuted for each cell within the grid
@@ -98,16 +85,23 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (math.any(position > VoxelUtils.SIZE-3))
                 return;
 
+            byte code = enabled[index];
+            if (code == 0 || code == 255)
+                return;
+
             // Allows us to save two voxel fetches (very important)
-            ushort enabledEdges = VoxelUtils.EdgeMasks[enabled[index]];
+            ushort enabledEdges = EdgeMaskUtils.EDGE_MASKS[code];
+
+            if ((enabledEdges & EMPTY_MASK) == 0)
+                return;
 
             for (int i = 0; i < 3; i++) {
                 // we CAN do quad stuff on the v=0 boundary as long as we're doing it parallel to the face boundary
-                if (math.any(position < (1 - VoxelUtils.FORWARD_DIRECTION[i])))
+                if (math.any(position < (1 - EdgeMaskUtils2.FORWARD_DIRECTION[i])))
                     continue;
                 
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {
-                    CheckEdge(position, i);
+                    CheckEdge(index, position, i);
                 }
             }
         }

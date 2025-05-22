@@ -210,7 +210,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool force = false;
             bool spawn = false;
 
-            uint3 endOffset = VoxelUtils.FORWARD_DIRECTION[edgeDir];
+            uint3 endOffset = EdgeMaskUtils2.FORWARD_DIRECTION[edgeDir];
             uint3 unoffsetted = SkirtUtils.UnflattenFromFaceRelative(flatten, faceDir, missing);
             int startIndex = VoxelUtils.PosToIndex(unoffsetted - endOffset, VoxelUtils.SIZE);
             int endIndex = VoxelUtils.PosToIndex(unoffsetted, VoxelUtils.SIZE);

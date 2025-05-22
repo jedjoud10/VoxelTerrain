@@ -154,7 +154,7 @@ MonoBehaviour:
   transform1:
     position: {x: -12.92, y: 50, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
-    scale: {x: 1, y: 1, z: 1}
+    scale: {x: 0.5, y: 0.5, z: 0.5}
   scale:
     value: 0.0012
   amplitude:
@@ -196,7 +196,7 @@ MonoBehaviour:
       x: 5.9
       y: -10
       z: 1
-  octaves: 2
+  octaves: 6
   detailOctaves: 1
 --- !u!114 &141261182
 MonoBehaviour:

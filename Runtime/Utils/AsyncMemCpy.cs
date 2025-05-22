@@ -2,9 +2,10 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
-    [BurstCompile(CompileSynchronously = true, Debug = true)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct AsyncMemCpy<T> : IJob where T: unmanaged {
         [ReadOnly]
         public NativeArray<T> src;
@@ -15,7 +16,7 @@ namespace jedjoud.VoxelTerrain {
         }
     }
 
-    [BurstCompile(CompileSynchronously = true, Debug = true)]
+    [BurstCompile(CompileSynchronously = true)]
     public unsafe struct UnsafeAsyncMemCpy : IJob {
         [NativeDisableUnsafePtrRestriction]
         public void* src;

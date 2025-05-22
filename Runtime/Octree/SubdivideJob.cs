@@ -34,11 +34,25 @@ namespace jedjoud.VoxelTerrain.Octree {
             }
         }
 
+
+        // Offsets used for octree generation
+        // Also mortonated!!!
+        public static readonly int3[] OCTREE_CHILD_OFFSETS = new int3[] {
+            new int3(0, 0, 0),
+            new int3(1, 0, 0),
+            new int3(0, 1, 0),
+            new int3(1, 1, 0),
+            new int3(0, 0, 1),
+            new int3(1, 0, 1),
+            new int3(0, 1, 1),
+            new int3(1, 1, 1),
+        };
+
         private void Subdivide(OctreeNode node, ref NativeQueue<OctreeNode> pending) {
             node.childBaseIndex = nodes.Length;
 
             for (int i = 0; i < 8; i++) {
-                int3 offset = VoxelUtils.OCTREE_CHILD_OFFSETS[i];
+                int3 offset = OCTREE_CHILD_OFFSETS[i];
                 OctreeNode child = new OctreeNode {
                     position = offset * (node.size / 2) + node.position,
                     depth = node.depth + 1,
