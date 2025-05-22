@@ -4,7 +4,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct BoundsJob: IJob {
         [ReadOnly]
         public NativeArray<float3> vertices;

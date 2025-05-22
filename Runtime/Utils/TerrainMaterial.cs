@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     [CreateAssetMenu(fileName = "New Voxel Material", menuName = "Voxel Terrain/Create new Voxel Material")]
-    public class VoxelMaterial: ScriptableObject {
+    public class TerrainMaterial: ScriptableObject {
         [Header("Rendering")]
         public Material material;
 

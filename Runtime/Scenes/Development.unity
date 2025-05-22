@@ -154,7 +154,7 @@ MonoBehaviour:
   transform1:
     position: {x: -12.92, y: 50, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
-    scale: {x: 0.5, y: 0.5, z: 0.5}
+    scale: {x: 1, y: 1, z: 1}
   scale:
     value: 0.0012
   amplitude:
@@ -563,7 +563,7 @@ Transform:
   m_GameObject: {fileID: 664809940}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -100, z: 250}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

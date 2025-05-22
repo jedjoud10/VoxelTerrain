@@ -4,8 +4,8 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
-    public struct SkirtVertexJob : IJobParallelFor {                
+    [BurstCompile(CompileSynchronously = true)]
+    public struct SkirtVertexJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<Voxel> voxels;
         [ReadOnly]
@@ -27,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<float2> skirtUvs;
 
-        public NativeMultiCounter.Concurrent skirtVertexCounter;
+        public NativeCounter.Concurrent skirtVertexCounter;
 
         public float voxelScale;
 
@@ -85,35 +85,35 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // if edge case, then only 1 of the above is true
 
             if (count == 2) {
-                // corner case!!!!!~~~ :wink:
-                vertex = Corner(direction, negative, flatten);
+                // corner case!!!!
+                vertex = CreateCorner(direction, negative, flatten);
             } else if (count == 1) {
                 // edge case!!!
-                vertex = SurfaceNets1D(flatten, minMaxMask, negative, face);
+                vertex = CreateSurfaceNets1D(flatten, minMaxMask, negative, face);
             } else {
                 // normal face case!!!
                 uint3 position = SkirtUtils.UnflattenFromFaceRelative(flatten - 1, direction, missing);
-                vertex = SurfaceNets2D(face, negative, position);
+                vertex = CreateSurfaceNets2D(face, negative, position);
             }
 
             // Actually spawn the vertex if needed
             if (vertex.shouldSpawn) {
-                int localVertexIndex = skirtVertexCounter.Increment(face);
-                int globalVertexIndex = localVertexIndex + VoxelUtils.SKIRT_FACE * face; ;
+                int vertexIndex = skirtVertexCounter.Increment();
+                int packed = vertexIndex;
 
                 if (vertex.useWorldPosition) {
-                    skirtVertices[globalVertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
+                    skirtVertices[vertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
                 } else {
-                    skirtVertices[globalVertexIndex] = ((float3)unoffsetted + vertex.offset) * voxelScale;
+                    skirtVertices[vertexIndex] = ((float3)unoffsetted + vertex.offset) * voxelScale;
                 }
-                
-                skirtNormals[globalVertexIndex] = math.normalizesafe(vertex.normal, math.up());
-                skirtUvs[globalVertexIndex] = 1f;
-                skirtVertexIndicesGenerated[indexIndex] = localVertexIndex;
+
+                skirtNormals[vertexIndex] = math.normalizesafe(vertex.normal, math.up());
+                skirtUvs[vertexIndex] = 1f;
+                skirtVertexIndicesGenerated[indexIndex] = packed;
             }
         }
 
-        private VertexToSpawn Corner(int direction, bool negative, uint2 flatten) {
+        private VertexToSpawn CreateCorner(int direction, bool negative, uint2 flatten) {
             VertexToSpawn vertex;
             uint missing2 = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
             uint2 flatten2 = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
@@ -129,14 +129,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             return vertex;
         }
 
-        private VertexToSpawn SurfaceNets2D(int face, bool negative, uint3 position) {
+        private VertexToSpawn CreateSurfaceNets2D(int face, bool negative, uint3 position) {
             int faceDir = face % 3;
-            
+
             float3 vertex = float3.zero;
             float3 spawnedNormal = float3.zero;
             float3 forcedNormal = float3.zero;
             bool force = false;
-            
+
             uint2 flat = SkirtUtils.FlattenToFaceRelative(position, faceDir);
 
             int count = 0;
@@ -193,7 +193,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
         }
 
-        private VertexToSpawn SurfaceNets1D(uint2 flatten, bool4 minMaxMask, bool negative, int face) {
+        private VertexToSpawn CreateSurfaceNets1D(uint2 flatten, bool4 minMaxMask, bool negative, int face) {
             int faceDir = face % 3;
 
             bool2 mask = new bool2(minMaxMask.x || minMaxMask.z, minMaxMask.y || minMaxMask.w);

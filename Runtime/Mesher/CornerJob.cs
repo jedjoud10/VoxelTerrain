@@ -49,7 +49,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private unsafe int CalculateMarchingCubesCode(uint3 position, int baseIndex) {
             // https://docs.unity3d.com/Packages/com.unity.burst@1.4/manual/docs/CSharpLanguageSupport_BurstIntrinsics.html
             // I LOVE MICROOPTIMIZATIONS!!! I LOVE DOING THIS ON A WHIM WITHOUT ACTUALLY TRUSTING PROFILER DATA!!!!
-            // I actually profiled this and it is actually faster. Saved 6ms on the median time. Pretty good desu
+            // I actually profiled this and it is actually faster. Saved 3ms on the median time. Pretty good desu
             if (X86.Avx2.IsAvx2Supported) {
                 uint4 indices = (uint4)(offsets[0] + new int4(baseIndex));
                 uint4 indices2 = (uint4)(offsets[1] + new int4(baseIndex));

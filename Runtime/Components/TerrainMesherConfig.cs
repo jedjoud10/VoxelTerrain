@@ -5,6 +5,6 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     public class TerrainMesherConfig : IComponentData {
-        public Material material;
+        public TerrainMaterial material;
     }
 }

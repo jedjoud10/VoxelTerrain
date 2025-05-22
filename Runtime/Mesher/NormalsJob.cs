@@ -5,7 +5,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low, OptimizeFor = OptimizeFor.Performance)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct NormalsJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<Voxel> voxels;

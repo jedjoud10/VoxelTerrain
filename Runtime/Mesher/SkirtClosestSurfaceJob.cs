@@ -4,14 +4,14 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct SkirtClosestSurfaceJob : IJobParallelFor {
         [WriteOnly]
         public NativeArray<bool> withinThreshold;
 
         [ReadOnly]
         public NativeArray<Voxel> voxels;
-
+            
         const int PADDING_SEARCH_AREA = 3;
         public void Execute(int index) {
             withinThreshold[index] = false;

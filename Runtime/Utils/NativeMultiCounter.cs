@@ -53,6 +53,9 @@ namespace jedjoud.VoxelTerrain {
 
         public int this[int index] {
             get {
+                if (index >= capacity || index < 0)
+                    throw new ArgumentOutOfRangeException("index");
+
                 // Verify that the caller has read permission on this data.
                 // This is the race condition protection, without these checks the AtomicSafetyHandle is useless
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
@@ -61,6 +64,9 @@ namespace jedjoud.VoxelTerrain {
                 return *(m_Counters + index * sizeOfInt);
             }
             set {
+                if (index >= capacity || index < 0)
+                    throw new ArgumentOutOfRangeException("index");
+
                 // Verify that the caller has write permission on this data. This is the race condition protection, without these checks the AtomicSafetyHandle is useless
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);

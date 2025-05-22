@@ -18,27 +18,37 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
     [UpdateAfter(typeof(TerrainMeshingSystem))]
-    public partial struct TerrainArchetypeChunkBoundsSystem : ISystem {
+    public partial struct TerrainArchetypeBoundsSystem : ISystem {
         private ComponentTypeHandle<WorldRenderBounds> instanceBoundsTypeHandle;
         private ComponentTypeHandle<ChunkWorldRenderBounds> chunkBoundsTypeHandle;
-        private EntityQuery query;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
-            query = SystemAPI.QueryBuilder().WithAll<TerrainChunk, RenderMeshArray, WorldRenderBounds>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
+            EntityQuery chunkQuery = SystemAPI.QueryBuilder().WithAll<TerrainChunk, RenderMeshArray, MaterialMeshInfo, WorldRenderBounds>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
+            EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<TerrainSkirtTag, RenderMeshArray, MaterialMeshInfo, WorldRenderBounds>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
+
             instanceBoundsTypeHandle = state.GetComponentTypeHandle<WorldRenderBounds>(true);
             chunkBoundsTypeHandle = state.GetComponentTypeHandle<ChunkWorldRenderBounds>();
-            state.RequireForUpdate(query);
+            state.RequireForUpdate(chunkQuery);
+            state.RequireForUpdate(skirtQuery);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             instanceBoundsTypeHandle.Update(ref state);
             chunkBoundsTypeHandle.Update(ref state);
-
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunk, RenderMeshArray, WorldRenderBounds>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
-            NativeArray<ArchetypeChunk> archetypeChunks = query.ToArchetypeChunkArray(Allocator.Temp);
             
+            EntityQuery chunkQuery = SystemAPI.QueryBuilder().WithAll<RenderMeshArray, WorldRenderBounds, MaterialMeshInfo, TerrainChunk>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
+            EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<RenderMeshArray, WorldRenderBounds, MaterialMeshInfo, TerrainSkirtTag>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
+
+
+            EncapsulateBoundsGeneric<TerrainChunk>(ref state, chunkQuery);
+            EncapsulateBoundsGeneric<TerrainSkirtTag>(ref state, skirtQuery);
+        }
+
+        private void EncapsulateBoundsGeneric<T>(ref SystemState state, EntityQuery query) where T: IComponentData {
+            NativeArray<ArchetypeChunk> archetypeChunks = query.ToArchetypeChunkArray(Allocator.Temp);
+
             for (int i = 0; i < archetypeChunks.Length; i++) {
                 ArchetypeChunk archetypeChunk = archetypeChunks[i];
                 NativeArray<WorldRenderBounds> terrainChunkWorldBounds = archetypeChunk.GetNativeArray<WorldRenderBounds>(ref instanceBoundsTypeHandle);

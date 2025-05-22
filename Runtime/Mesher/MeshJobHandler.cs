@@ -38,9 +38,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<bool> skirtWithinThreshold;
         public NativeArray<int> skirtVertexIndicesCopied;
         public NativeArray<int> skirtVertexIndicesGenerated;
-        public NativeArray<int> skirtIndices;
-        public NativeMultiCounter skirtVertexCounter;
-        public NativeMultiCounter skirtTriangleCounter;
+        public NativeArray<int> skirtStitchedIndices;
+        public NativeArray<int> skirtForcedPerFaceIndices;
+
+        public NativeCounter skirtVertexCounter;
+
+        public NativeCounter skirtStitchedTriangleCounter;
+        public NativeMultiCounter skirtForcedTriangleCounter;
 
         // Other misc stuff
         public JobHandle finalJobHandle;
@@ -56,7 +60,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         const int VOL = VoxelUtils.VOLUME;
 
         internal MeshJobHandler() {
-            
             // Native buffers for copied voxel data and generated normal data
             voxels = new NativeArray<Voxel>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             voxelNormals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -85,9 +88,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtVertexIndicesCopied = new NativeArray<int>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             skirtVertexIndicesGenerated = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
-            skirtIndices = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 2 * 6 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            skirtVertexCounter = new NativeMultiCounter(6, Allocator.Persistent);
-            skirtTriangleCounter = new NativeMultiCounter(6, Allocator.Persistent);
+            // Stored sequentially, used for the main skirt mesh (submesh = 0)
+            // Uses the skirtStitchedIndexCounter as next ptr
+            skirtStitchedIndices = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 6 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
+            // Stored with gaps, since it will be copied to the submeshes' triangle array at an offset
+            // Each face can reserve up to VoxelUtils.SKIRT_FACE * 6 indices for itself, so since we have 6 faces, we mult by 6
+            skirtForcedPerFaceIndices = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 6 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            
+            skirtVertexCounter = new NativeCounter(Allocator.Persistent);
+
+            skirtStitchedTriangleCounter = new NativeCounter(Allocator.Persistent);
+            skirtForcedTriangleCounter = new NativeMultiCounter(6, Allocator.Persistent);
+
             skirtWithinThreshold = new NativeArray<bool>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             VertexAttributeDescriptor positionDesc = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
@@ -114,11 +127,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float voxelSizeFactor = 1f;
             quadCounter.Count = 0;
             vertexCounter.Count = 0;
-            skirtTriangleCounter.Reset();
-            skirtVertexCounter.Reset();
+            
+            skirtStitchedTriangleCounter.Count = 0;
+            skirtForcedTriangleCounter.Reset();
+
+            skirtVertexCounter.Count = 0;
             bounds[0] = new float3(VoxelUtils.SIZE * voxelSizeFactor);
             bounds[1] = new float3(0.0);
-
 
             // Normalize my shi dawg
             NormalsJob normalsJob = new NormalsJob {
@@ -200,10 +215,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Create skirt quads
             SkirtQuadJob skirtQuadJob = new SkirtQuadJob {
-                skirtIndices = skirtIndices,
                 skirtVertexIndicesCopied = skirtVertexIndicesCopied,
                 skirtVertexIndicesGenerated = skirtVertexIndicesGenerated,
-                skirtTriangleCounter = skirtTriangleCounter,
+                skirtForcedPerFaceIndices = skirtForcedPerFaceIndices,
+                skirtForcedTriangleCounter = skirtForcedTriangleCounter,
+                skirtStitchedTriangleCounter = skirtStitchedTriangleCounter,
+                skirtStitchedIndices = skirtStitchedIndices,
                 voxels = voxels,
                 debugData = debugData.AsParallelWriter(),
             };
@@ -217,13 +234,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency, normalsJobHandle);
+            
             JobHandle vertexJobHandle = vertexJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexDep);
             
-            
-            JobHandle skirtJobHandle = default;
-            /*
-            // Copy boundary skirt vertices and start creating skirts
-
             // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
             JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, dependency);
 
@@ -232,11 +245,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
             JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
-            */
+            
             // Creates quad based on the copied vertices and skirt-generated vertices
-            //JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, skirtVertexJobHandle);
+            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, skirtVertexJobHandle);
             //skirtJobHandle = JobHandle.CombineDependencies(skirtQuadJobHandle);
-            //skirtJobHandle = skirtQuadJobHandle;            
+            JobHandle skirtJobHandle = skirtQuadJobHandle;            
             //skirtJobHandle = skirtVertexJobHandle;
 
 
@@ -251,7 +264,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // Complete the jobs and return a mesh
-        internal bool TryComplete(EntityManager mgr, out Mesh mesh, out Entity entity, out VoxelMesh stats) {
+        internal bool TryComplete(EntityManager mgr, out Mesh mesh, out Mesh skirtMesh, out Entity entity, out VoxelMesh stats) {
             finalJobHandle.Complete();
             Free = true;
 
@@ -259,38 +272,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 entity = Entity.Null;
                 stats = default;
                 mesh = null;
+                skirtMesh = null;
                 return false;
             }
 
             //skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexCounter.Count, skirtTriangleCounter.Count);
             mesh = new Mesh();
+            skirtMesh = new Mesh();
             entity = this.entity;
-
-            int maxVertices = vertexCounter.Count;
-            int maxIndices = quadCounter.Count * 6;
-
-            // Set mesh shared vertices
-            mesh.Clear();
-
-            // TODO: batch this
-            Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(1);
-            Mesh.MeshData data = array[0];
-
-            SetMeshDataJob test = new SetMeshDataJob() {
-                vertexAttributeDescriptors = vertexAttributeDescriptors,
-                vertices = vertices.Slice(0, maxVertices),
-                normals = normals.Slice(0, maxVertices),
-                uvs = uvs.Slice(0, maxVertices),
-                indices = indices.Slice(0, maxIndices),
-                maxVertices = maxVertices,
-                maxIndices = maxIndices,
-                data = data,
-            };
-
-            // TODO: asyncify this
-            test.Schedule().Complete();
-
-            Mesh.ApplyAndDisposeWritableMeshData(array, mesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
 
             stats = new VoxelMesh {
                 Bounds = new Bounds() {
@@ -298,6 +287,40 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     max = bounds[1],
                 }
             };
+
+            int maxSkirtVertices = skirtVertexCounter.Count;
+
+            // TODO: batch this
+            Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(2);
+            
+            SetMeshDataJob setMeshDataJob = new SetMeshDataJob {
+                vertexAttributeDescriptors = vertexAttributeDescriptors,
+                vertices = vertices,
+                normals = normals,
+                uvs = uvs,
+                indices = indices,
+                maxVertices = vertexCounter.Count,
+                maxIndices = quadCounter.Count * 6,
+                data = array[0],
+            };
+
+            SetSkirtMeshDataJob setSkirtMeshDataJob = new SetSkirtMeshDataJob {
+                vertexAttributeDescriptors = vertexAttributeDescriptors,
+                skirtVertices = skirtVertices,
+                skirtNormals = skirtNormals,
+                skirtUvs = skirtUvs,
+                indices = skirtStitchedIndices,
+                maxSkirtVertices = maxSkirtVertices,
+                maxSkirtIndices = skirtStitchedTriangleCounter.Count * 3,
+                data = array[1],
+            };
+
+            setMeshDataJob.Run();
+            setSkirtMeshDataJob.Run();
+                        
+            Mesh.ApplyAndDisposeWritableMeshData(array, new Mesh[2] {
+                mesh, skirtMesh
+            }, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
             return true;
         }
 
@@ -318,7 +341,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtVertexIndicesCopied.Dispose();
             skirtVertexIndicesGenerated.Dispose();
             skirtVertexCounter.Dispose();
-            skirtTriangleCounter.Dispose();
+            skirtForcedTriangleCounter.Dispose();
+            skirtStitchedTriangleCounter.Dispose();
+            skirtForcedPerFaceIndices.Dispose();
+            skirtStitchedIndices.Dispose();
             skirtWithinThreshold.Dispose();
             debugData.Dispose();
             skirtNormals.Dispose();
@@ -332,33 +358,75 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct SetMeshDataJob : IJob {
         [WriteOnly]
         public Mesh.MeshData data;
-        [ReadOnly]
-        public NativeSlice<float3> vertices;
-        [ReadOnly]
-        public NativeSlice<float3> normals;
-        [ReadOnly]
-        public NativeSlice<float2> uvs;
-        public int maxVertices;
-        public int maxIndices;
+
         [ReadOnly]
         public NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
+
         [ReadOnly]
-        public NativeSlice<int> indices;
+        public NativeArray<float3> vertices;
+        [ReadOnly]
+        public NativeArray<float3> normals;
+        [ReadOnly]
+        public NativeArray<float2> uvs;
+        [ReadOnly]
+        public NativeArray<int> indices;
+
+        public int maxVertices;
+        public int maxIndices;
 
         public void Execute() {
             data.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
 
-            vertices.CopyTo(data.GetVertexData<float3>(0)); 
-            normals.CopyTo(data.GetVertexData<float3>(1)); 
-            uvs.CopyTo(data.GetVertexData<float2>(2)); 
+            vertices.GetSubArray(0, maxVertices).CopyTo(data.GetVertexData<float3>(0)); 
+            normals.GetSubArray(0, maxVertices).CopyTo(data.GetVertexData<float3>(1)); 
+            uvs.GetSubArray(0, maxVertices).CopyTo(data.GetVertexData<float2>(2)); 
 
             data.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);
-            indices.CopyTo(data.GetIndexData<int>());
+            indices.GetSubArray(0, maxIndices).CopyTo(data.GetIndexData<int>());
 
             data.subMeshCount = 1;
             data.SetSubMesh(0, new SubMeshDescriptor {
                 indexStart = 0,
                 indexCount = maxIndices,
+                topology = MeshTopology.Triangles,
+            }, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
+        }
+    }
+
+    [BurstCompile]
+    public struct SetSkirtMeshDataJob : IJob {
+        [WriteOnly]
+        public Mesh.MeshData data;
+
+        [ReadOnly]
+        public NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
+        
+        [ReadOnly]
+        public NativeArray<float3> skirtVertices;
+        [ReadOnly]
+        public NativeArray<float3> skirtNormals;
+        [ReadOnly]
+        public NativeArray<float2> skirtUvs;
+        [ReadOnly]
+        public NativeArray<int> indices;
+
+        public int maxSkirtVertices;
+        public int maxSkirtIndices;
+
+        public void Execute() {
+            data.SetVertexBufferParams(maxSkirtVertices, vertexAttributeDescriptors);
+
+            skirtVertices.GetSubArray(0, maxSkirtVertices).CopyTo(data.GetVertexData<float3>(0));
+            skirtNormals.GetSubArray(0, maxSkirtVertices).CopyTo(data.GetVertexData<float3>(1));
+            skirtUvs.GetSubArray(0, maxSkirtVertices).CopyTo(data.GetVertexData<float2>(2));
+
+            data.SetIndexBufferParams(maxSkirtIndices, IndexFormat.UInt32);
+            indices.GetSubArray(0, maxSkirtIndices).CopyTo(data.GetIndexData<int>());
+
+            data.subMeshCount = 1;
+            data.SetSubMesh(0, new SubMeshDescriptor {
+                indexStart = 0,
+                indexCount = maxSkirtIndices,
                 topology = MeshTopology.Triangles,
             }, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
         }

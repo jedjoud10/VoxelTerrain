@@ -20,17 +20,29 @@ namespace jedjoud.VoxelTerrain.Generation {
     [UpdateAfter(typeof(TerrainReadbackSystem))]
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
-        private EntitiesGraphicsSystem graphicsSystem;
-
         const int MESH_JOBS_PER_TICK = 2;
+        private RenderMeshDescription description;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainMesherConfig>();
-            graphicsSystem = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
             handlers = new List<MeshJobHandler>(MESH_JOBS_PER_TICK);
             for (int i = 0; i < MESH_JOBS_PER_TICK; i++) {
                 handlers.Add(new MeshJobHandler());
             }
+
+            RenderFilterSettings filterSettings = new RenderFilterSettings {
+                ShadowCastingMode = ShadowCastingMode.On,
+                ReceiveShadows = true,
+                MotionMode = MotionVectorGenerationMode.ForceNoMotion,
+                StaticShadowCaster = false,
+                Layer = 0,
+                RenderingLayerMask = ~0u,
+            };
+
+            description = new RenderMeshDescription {
+                FilterSettings = filterSettings,
+                LightProbeUsage = LightProbeUsage.Off,
+            };
         }
 
         public bool IsFree() {
@@ -80,24 +92,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         private void FinishJob(MeshJobHandler handler) {
-            if (handler.TryComplete(EntityManager, out Mesh mesh, out Entity entity, out VoxelMesh stats)) {
-                RenderFilterSettings filterSettings = new RenderFilterSettings {
-                    ShadowCastingMode = ShadowCastingMode.On,
-                    ReceiveShadows = true,
-                    MotionMode = MotionVectorGenerationMode.ForceNoMotion,
-                    StaticShadowCaster = false,
-                    Layer = 0,
-                    RenderingLayerMask = ~0u,
-                };
-
-                RenderMeshDescription description = new RenderMeshDescription {
-                    FilterSettings = filterSettings,
-                    LightProbeUsage = LightProbeUsage.Off,
-                };
+            if (handler.TryComplete(EntityManager, out Mesh mesh, out Mesh skirtMesh, out Entity chunkEntity, out VoxelMesh stats)) {
+                TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
+                OctreeNode node = chunk.node;
 
                 TerrainMesherConfig config = SystemAPI.ManagedAPI.GetSingleton<TerrainMesherConfig>();
-                Material[] materials = new Material[1] { config.material };
-                Mesh[] meshes = new Mesh[1] { mesh };
 
                 MaterialMeshIndex[] indices = new MaterialMeshIndex[1] {
                     new MaterialMeshIndex {
@@ -107,18 +106,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                     }
                 };
 
-                RenderMeshArray renderMeshArray = new RenderMeshArray(materials, meshes, indices);
-
-                //Debug.Log($"{mesh.vertexCount}, {mesh.GetIndexCount(0)}");
-                BatchMeshID meshId = graphicsSystem.RegisterMesh(mesh);
-                //Debug.Log("registered mesh!");
-
-
+                RenderMeshArray renderMeshArray = new RenderMeshArray(new Material[1] { config.material.material }, new Mesh[1] { mesh }, indices);
                 MaterialMeshInfo materialMeshInfo = MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0);
-
-                OctreeNode node = EntityManager.GetComponentData<TerrainChunk>(entity).node;
-
-                RenderMeshUtility.AddComponents(entity, EntityManager, description, renderMeshArray, materialMeshInfo);
+                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, description, renderMeshArray, materialMeshInfo);
 
                 float scalingFactor = node.size / (64f);
                 AABB localRenderBounds = new Unity.Mathematics.MinMaxAABB {
@@ -130,36 +120,70 @@ namespace jedjoud.VoxelTerrain.Generation {
                 worldRenderBounds.Center += (float3)node.position;
                 worldRenderBounds.Extents *= scalingFactor;
 
-                EntityManager.SetComponentData<RenderBounds>(entity, new RenderBounds() {
+                EntityManager.SetComponentData<RenderBounds>(chunkEntity, new RenderBounds() {
                     Value = localRenderBounds,
                 });
 
-                EntityManager.SetComponentData<WorldRenderBounds>(entity, new WorldRenderBounds() {
+                EntityManager.SetComponentData<WorldRenderBounds>(chunkEntity, new WorldRenderBounds() {
                     Value = worldRenderBounds
                 });
-            }
-                //chunk.voxelMaterialsLookup = stats.VoxelMaterialsLookup;
-                //chunk.triangleOffsetLocalMaterials = stats.TriangleOffsetLocalMaterials;
-                //chunk.state = VoxelChunk.ChunkState.Done;
 
-                //onMeshingComplete?.Invoke(chunk, stats);
-                //handler.request.callback?.Invoke(chunk);
 
-                /*
-                chunk.GetComponent<MeshFilter>().sharedMesh = chunk.sharedMesh;
-                var renderer = chunk.GetComponent<MeshRenderer>();
-                renderer.enabled = true;
-                renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
 
-                float scalingFactor = chunk.node.size / (64f * terrain.voxelSizeFactor);
-                chunk.bounds = new Bounds {
-                    min = chunk.transform.position + stats.Bounds.min * scalingFactor,
-                    max = chunk.transform.position + stats.Bounds.max * scalingFactor,
+
+
+
+
+                Entity skirtEntity = chunk.skirts[0];
+
+                MaterialMeshIndex[] skirtIndices = new MaterialMeshIndex[1] {
+                    new MaterialMeshIndex {
+                        MaterialIndex = 0,
+                        SubMeshIndex = 0,
+                        MeshIndex = 0,
+                    }
                 };
-                renderer.bounds = chunk.bounds;
-                */
 
-            
+                RenderMeshArray skirtRenderMeshArray = new RenderMeshArray(new Material[1] { config.material.material }, new Mesh[1] { skirtMesh }, skirtIndices);
+                MaterialMeshInfo skirtMaterialMeshInfo = MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0);
+
+                RenderMeshUtility.AddComponents(skirtEntity, EntityManager, description, skirtRenderMeshArray, skirtMaterialMeshInfo);
+
+                AABB amGannaGoInsane = new Unity.Mathematics.MinMaxAABB {
+                    Min = -1000,
+                    Max = 1000,
+                };
+
+                EntityManager.SetComponentData<RenderBounds>(skirtEntity, new RenderBounds() {
+                    Value = amGannaGoInsane,
+                });
+
+                EntityManager.SetComponentData<WorldRenderBounds>(skirtEntity, new WorldRenderBounds() {
+                    Value = amGannaGoInsane
+                });
+            }
+            //chunk.voxelMaterialsLookup = stats.VoxelMaterialsLookup;
+            //chunk.triangleOffsetLocalMaterials = stats.TriangleOffsetLocalMaterials;
+            //chunk.state = VoxelChunk.ChunkState.Done;
+
+            //onMeshingComplete?.Invoke(chunk, stats);
+            //handler.request.callback?.Invoke(chunk);
+
+            /*
+            chunk.GetComponent<MeshFilter>().sharedMesh = chunk.sharedMesh;
+            var renderer = chunk.GetComponent<MeshRenderer>();
+            renderer.enabled = true;
+            renderer.materials = stats.VoxelMaterialsLookup.Select(x => terrain.materials[x].material).ToArray();
+
+            float scalingFactor = chunk.node.size / (64f * terrain.voxelSizeFactor);
+            chunk.bounds = new Bounds {
+                min = chunk.transform.position + stats.Bounds.min * scalingFactor,
+                max = chunk.transform.position + stats.Bounds.max * scalingFactor,
+            };
+            renderer.bounds = chunk.bounds;
+            */
+
+
         }
 
         private void BeginJob(MeshJobHandler handler, Entity entity, NativeArray<Voxel> voxels) {
@@ -169,7 +193,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         protected override void OnDestroy() {
             foreach (MeshJobHandler handler in handlers) {
-                handler.TryComplete(EntityManager, out Mesh _, out Entity _, out VoxelMesh _);
+                handler.TryComplete(EntityManager, out Mesh _, out Mesh _, out Entity _, out VoxelMesh _);
                 handler.Dispose();
             }
         }

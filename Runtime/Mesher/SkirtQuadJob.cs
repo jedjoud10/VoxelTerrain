@@ -5,7 +5,7 @@ using Unity.Mathematics;
 using UnityEngine.Diagnostics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [BurstCompile(CompileSynchronously = true, FloatMode = FloatMode.Fast, OptimizeFor = OptimizeFor.Performance)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct SkirtQuadJob : IJobParallelFor {
         public NativeList<float3>.ParallelWriter debugData;
 
@@ -18,11 +18,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<int> skirtVertexIndicesCopied;
 
+        
         [WriteOnly]
         [NativeDisableParallelForRestriction]
-        public NativeArray<int> skirtIndices;
+        public NativeArray<int> skirtForcedPerFaceIndices;
 
-        public NativeMultiCounter.Concurrent skirtTriangleCounter;
+        [WriteOnly]
+        [NativeDisableParallelForRestriction]
+        public NativeArray<int> skirtStitchedIndices;
+
+        public NativeCounter.Concurrent skirtStitchedTriangleCounter;
+        public NativeMultiCounter.Concurrent skirtForcedTriangleCounter;
 
         // Fetch vertex index for a specific position
         // If it goes out of the chunk bounds, assume it is a skirt vertex's position we're trying to fetch
@@ -32,7 +38,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int other = position[direction];
 
             // checks if we are dealing with a skirt vertex or a copied vertex in a particular direction
-            if (other < 0 || other > VoxelUtils.SIZE-3) {
+            if (other < 0 || other > VoxelUtils.SIZE - 3) {
                 // since the skirt generated vertices have 2 padding vertices (for edges), we need to add an offset 
                 flattened += 1;
                 flattened = math.clamp(flattened, 0, VoxelUtils.SKIRT_SIZE);
@@ -72,7 +78,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             int3 offset = (int3)((int3)unflattened + (int3)forward - math.int3(1));
-            
+
             // to help the fetcher a bit lol (I honestly don't know why I need this but I do... whatever)
             if (force) {
                 if (negative) {
@@ -88,9 +94,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 v[i] = FetchIndex(offset + (int3)DirectionOffsetUtils.PERPENDICULAR_OFFSETS[index * 4 + i], face);
             }
 
-            // there are some cases where this generates more tris than necessary, but that's better than not generating enough tris
-            // for that reason I will stick to using uniform SN for between chunks of the same resolution
-            TryAddQuadsOrTris(flip, v, force);
+            if (force) {
+
+            } else {
+                AddQuadOrTris(flip, v);
+            }
+
+            //TryAddQuadsOrTris(flip, v, force);
         }
 
 
@@ -110,48 +120,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             new int3(0, 1, 2), // discard w
         };
 
-        // If we are NOT forcing triangle generation, check if we are creating a triangle between 3 non-forced vertices, which is invalid
-        bool CheckIfForcedAndClean(int3 input, out int3 cleaned, bool forced) {
-            // Checks if all the vertices were spawned with non-forced 2D surface nets
-            bool all = math.all((input & (1 << 30)) == 0);
-
-            // It is invalid to try to forcefully connect normal vertices to each other
-            // Normal <-> Forced - Okay
-            // Forced <-> Forced - Okay
-            // Normal <-> Normal - INVALID!!!!! NOT GOOD!!!
-            if (all && forced) {
-                cleaned = -1;
-                return false;
-            }
-
-
-            cleaned = input & ~(1 << 30);
-            return true;
-        }
-
-        // If we are NOT forcing quad generation, check if we are creating a quad between 4 non-forced vertices, which is invalid
-        bool CheckIfForcedAndClean(int4 input, out int4 cleaned, bool forced) {
-            // Checks if all the vertices were spawned with non-forced 2D surface nets
-            bool all = math.all((input & (1 << 30)) == 0);
-
-            // It is invalid to try to forcefully connect normal vertices to each other
-            // Normal <-> Forced - Okay
-            // Forced <-> Forced - Okay
-            // Normal <-> Normal - INVALID!!!!! NOT GOOD!!!
-            if (all && forced) {
-                cleaned = -1;
-                return false;
-            }
-
-
-            cleaned = input & ~(1 << 30);
-            return true;
-        }
-
-        // Create quads / triangles based on the given vertex index data in the "v" parameter
-        bool TryAddQuadsOrTris(bool flip, int4 v, bool forced) {
-            return false;
-            /*
+        // Add quads/tris for stitched triangles (filling the gap between surface nets verts and copied verts)
+        // We NEED to have triangle fallback to handle the literal "edge" case (since there are only 3 vertices there)
+        void AddQuadOrTris(bool flip, int4 v) {
             // Ts gpt-ed kek
             int dupeType = 0;
             dupeType |= math.select(0, 1, v.x == v.y);
@@ -163,8 +134,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Means that there are more than 2 duplicate verts, not possible?
             if (math.countbits(dupeType) > 1) {
-                return false;
+                return;
             }
+
+            /*
+            // Means that there are more than 2 invalid verts, not possible to create a tri nor a quad
+            if (SkirtUtils.CountTrue(v == int.MaxValue) > 1) {
+                ret
+            }
+            */
 
             // If there's only a SINGLE invalid index, then consider it as an extra duplicate one (and create a triangle for the valid ones instead of a quad)
             bool4 b4 = v == int.MaxValue;
@@ -172,16 +150,145 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
                 int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
 
-                int triIndex = skirtTriangleCounter.Add(1) * 3;
-                skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
-                skirtIndices[triIndex + 1] = uniques[1];
-                skirtIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return true;
+                /*
+                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
+                }
+                */
+
+                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
+                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                skirtStitchedIndices[triIndex + 1] = uniques[1];
+                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
+                return;
             }
 
             if (dupeType == 0) {
                 if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
-                    return false;
+                    return;
+                }
+
+                /*
+                if (CheckIfForcedAndClean(v, out int4 cleaned, forced)) {
+                }
+                */
+
+                int triIndex = skirtStitchedTriangleCounter.Add(2) * 3;
+
+                // Set the first tri
+                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = v[0];
+                skirtStitchedIndices[triIndex + 1] = v[1];
+                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = v[2];
+
+                // Set the second tri
+                skirtStitchedIndices[triIndex + (flip ? 3 : 5)] = v[2];
+                skirtStitchedIndices[triIndex + 4] = v[3];
+                skirtStitchedIndices[triIndex + (flip ? 5 : 3)] = v[0];
+            } else {
+                int config = math.tzcnt(dupeType);
+                int3 remapper = DEDUPE_TRIS_THING[config];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+
+                if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
+                    return;
+                }
+
+                /*
+                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
+                }
+                */
+
+                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
+                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                skirtStitchedIndices[triIndex + 1] = uniques[1];
+                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
+            }
+
+            return;
+
+            /*
+
+
+            if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
+                return;
+            }
+
+            // Means that there are more than 2 duplicate verts, not possible?
+            if (math.countbits(dupeType) > 1) {
+                return;
+            }
+
+            // If there's only a SINGLE invalid index, then consider it as an extra duplicate one (and create a triangle for the valid ones instead of a quad)
+            bool4 b4 = v == int.MaxValue;
+            if (SkirtUtils.CountTrue(b4) == 1) {
+                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
+                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                skirtStitchedIndices[triIndex + 1] = uniques[1];
+                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
+                return;
+            }
+
+            if (dupeType == 0) {
+                int triIndex = skirtStitchedTriangleCounter.Add(2) * 3;
+
+                // Set the first tri
+                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = v[0];
+                skirtStitchedIndices[triIndex + 1] = v[1];
+                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = v[2];
+
+                // Set the second tri
+                skirtStitchedIndices[triIndex + (flip ? 3 : 5)] = v[2];
+                skirtStitchedIndices[triIndex + 4] = v[3];
+                skirtStitchedIndices[triIndex + (flip ? 5 : 3)] = v[0];
+
+                return;
+            } else {
+                int config = math.tzcnt(dupeType);
+                int3 remapper = DEDUPE_TRIS_THING[config];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+
+                int triIndex = skirtStitchedTriangleCounter.Add(1) * 3;
+                skirtStitchedIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                skirtStitchedIndices[triIndex + 1] = uniques[1];
+                skirtStitchedIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
+                return;
+            }
+            */
+        }
+
+        /*
+        // Add quads/tris for the forced quads
+        void TryAddQuadsOrTrisForced(bool flip, int4 v) {
+            // Ts gpt-ed kek
+            int dupeType = 0;
+            dupeType |= math.select(0, 1, v.x == v.y);
+            dupeType |= math.select(0, 2, v.x == v.z);
+            dupeType |= math.select(0, 4, v.x == v.w);
+            dupeType |= math.select(0, 8, v.y == v.z && v.x != v.y);
+            dupeType |= math.select(0, 16, v.y == v.w && v.x != v.y && v.z != v.y);
+            dupeType |= math.select(0, 32, v.z == v.w && v.x != v.z && v.y != v.z);
+
+            // Means that there are more than 2 duplicate verts, not possible?
+            if (math.countbits(dupeType) > 1) {
+                return;
+            }
+
+            // If there's only a SINGLE invalid index, then consider it as an extra duplicate one (and create a triangle for the valid ones instead of a quad)
+            bool4 b4 = v == int.MaxValue;
+            if (SkirtUtils.CountTrue(b4) == 1) {
+                int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
+                int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
+                int triIndex = skirtTriangleCounter.Add(1) * 3;
+                skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
+                skirtIndices[triIndex + 1] = uniques[1];
+                skirtIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
+                return;
+            }
+
+            if (dupeType == 0) {
+                if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
+                    return;
                 }
 
                 int triIndex = skirtTriangleCounter.Add(2) * 3;
@@ -202,19 +309,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
 
                 if (math.cmax(uniques) == int.MaxValue | math.cmin(v) < 0) {
-                    return false;
+                    return;
                 }
 
                 int triIndex = skirtTriangleCounter.Add(1) * 3;
                 skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
                 skirtIndices[triIndex + 1] = uniques[1];
                 skirtIndices[triIndex + (flip ? 2 : 0)] = uniques[2];
-                return true;
+                return;
             }
-
-            return false;
-            */
         }
+        */
 
         public void Execute(int index) {
             // we run the job for VoxelUtils.FACE since quad jobs always miss the last 2/1 voxels (due to missing indices)
@@ -223,9 +328,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int direction = face % 3;
             bool negative = face < 3;
             int localIndex = index % VoxelUtils.FACE;
-            
+
             // convert from 2D position to 3D using missing value
-            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE-2);
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
             uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
             uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
 
@@ -242,8 +347,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // (unless it's a forced quad, and in which case we don't care since we don't read voxel data anyways!!!)
                 if (position[i] > VoxelUtils.SIZE - 3 && !force)
                     continue;
-                
-                CheckEdge(flattened, position, i, negative, force, face);      
+
+                CheckEdge(flattened, position, i, negative, force, face);
             }
         }
     }
