@@ -7,7 +7,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [BurstCompile(CompileSynchronously = true, Debug = false)]
+    [BurstCompile(CompileSynchronously = true)]
     public struct CornerJob : IJobParallelFor {
         [WriteOnly]
         public NativeArray<byte> enabled;

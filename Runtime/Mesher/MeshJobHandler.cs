@@ -49,11 +49,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> bounds;
 
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
-
-
         public NativeList<float3> debugData;
 
-        const int BATCH_SIZE = VoxelUtils.VOLUME * 2;
+        public int PER_VOXEL_JOB_BATCH_SIZE = VoxelUtils.VOLUME / 2;
+        public int PER_SKIRT_SURFACE_JOB_BATCH_SIZE = VoxelUtils.SKIRT_FACE * 3;
+
         const int VOL = VoxelUtils.VOLUME;
 
         internal MeshJobHandler() {
@@ -122,10 +122,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
 
             // Normalize my shi dawg
+            /*
             NormalsJob normalsJob = new NormalsJob {
                 normals = voxelNormals,
                 voxels = voxels,
             };
+            */
 
             // Handles fetching MC corners for the SN edges
             CornerJob cornerJob = new CornerJob {
@@ -210,36 +212,36 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Voxel finite-diffed normals job
-            JobHandle normalsJobHandle = normalsJob.Schedule(VOL, BATCH_SIZE, dependency);
+            //JobHandle normalsJobHandle = normalsJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, dependency);
 
             // Start the corner job and material job
-            JobHandle checkJobHandle = checkJob.Schedule(bits.Length, BATCH_SIZE, dependency);
-            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, BATCH_SIZE, checkJobHandle);
+            JobHandle checkJobHandle = checkJob.Schedule(bits.Length, PER_VOXEL_JOB_BATCH_SIZE, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, checkJobHandle);
 
             // Start the vertex job
-            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency, normalsJobHandle);
-            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, BATCH_SIZE, vertexDep);
+            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency);
+            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexDep);
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
 
             // Copy boundary skirt vertices and start creating skirts
             JobHandle skirtJobHandle = default;
 
             // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
-            JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, dependency);
+            JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, dependency);
 
             // Copies vertices from the boundary in the source mesh to our skirt vertices. also sets proper indices in the skirtVertexIndicesCopied array
             JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(vertexJobHandle);
 
             // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
-            JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, normalsJobHandle, closestSurfaceJobHandle));
+            JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
 
             // Creates quad based on the copied vertices and skirt-generated vertices
-            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, BATCH_SIZE, skirtVertexJobHandle);
+            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, skirtVertexJobHandle);
             //skirtJobHandle = JobHandle.CombineDependencies(skirtQuadJobHandle);
             skirtJobHandle = skirtQuadJobHandle;            
 
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, checkJobHandle);
-            JobHandle quadJobHandle = quadJob.Schedule(VOL, BATCH_SIZE, merged);
+            JobHandle quadJobHandle = quadJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, merged);
             JobHandle mainDependencies = JobHandle.CombineDependencies(quadJobHandle, boundsJobHandle);
             finalJobHandle = JobHandle.CombineDependencies(mainDependencies, skirtJobHandle);
 
