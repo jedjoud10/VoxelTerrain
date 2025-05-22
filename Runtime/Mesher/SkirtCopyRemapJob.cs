@@ -24,15 +24,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<float3> sourceNormals;
 
-        public NativeCounter skirtVertexCounter;
+        public NativeMultiCounter skirtVertexCounter;
 
         public void Execute() {
-            int boundaryVertexCount = 0;
-
             // -X, -Y, -Z, X, Y, Z
             for (int face = 0; face < 6; face++) {
+                // Skirt faces are all separate, so their vertex indices aren't sequential
+                int boundaryVertexCount = 0;
+
                 uint missing = face < 3 ? 0 : ((uint)VoxelUtils.SIZE - 3);
-                int faceElementOffset = face * VoxelUtils.FACE;
+                
+                int dstVertexFaceOffset = VoxelUtils.SKIRT_FACE * face;
+
+
+                int dstIndexFaceOffset = face * VoxelUtils.FACE;
+
 
                 // Loop through the face in 2D and copy the vertices from the boundary in 3D
                 for (int i = 0; i < VoxelUtils.FACE; i++) {
@@ -43,24 +49,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                     if (srcIndex != int.MaxValue) {
                         // Valid boundary vertex, copy it
-                        skirtVertices[boundaryVertexCount] = sourceVertices[srcIndex];
-                        skirtNormals[boundaryVertexCount] = sourceNormals[srcIndex];
-                        skirtUvs[boundaryVertexCount] = 1f;
-                        skirtVertexIndicesCopied[i + faceElementOffset] = boundaryVertexCount;
+                        skirtVertices[dstVertexFaceOffset + boundaryVertexCount] = sourceVertices[srcIndex];
+                        skirtNormals[dstVertexFaceOffset + boundaryVertexCount] = sourceNormals[srcIndex];
+                        skirtUvs[dstVertexFaceOffset + boundaryVertexCount] = 1f;
+                        skirtVertexIndicesCopied[i + dstIndexFaceOffset] = boundaryVertexCount;
                         boundaryVertexCount++;
                     } else {
                         // Invalid boundary vertex, propagate invalid index (int.MaxValue)
-                        skirtVertices[i + faceElementOffset] = 0f;
-                        skirtNormals[i + faceElementOffset] = 0f;
-                        skirtUvs[i +  faceElementOffset] = 0f;
-                        skirtVertexIndicesCopied[i + faceElementOffset] = int.MaxValue;
+                        skirtVertices[i + dstVertexFaceOffset] = 0f;
+                        skirtNormals[i + dstVertexFaceOffset] = 0f;
+                        skirtUvs[i + dstVertexFaceOffset] = 0f;
+                        skirtVertexIndicesCopied[i + dstIndexFaceOffset] = int.MaxValue;
                     }
                 }
+
+                // The next job (which is SkirtVertexJob) will need to generate new vertices,
+                // so we must update the counter so that the indices are contiguous
+                skirtVertexCounter[face] = boundaryVertexCount;
             }            
-            
-            // The next job (which is SkirtVertexJob) will need to generate new vertices,
-            // so we must update the counter so that the indices are contiguous
-            skirtVertexCounter.Count = boundaryVertexCount;
         }
     }
 }

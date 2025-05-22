@@ -32,7 +32,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeCounter vertexCounter;
 
         // Native buffers for skirt mesh data
-        // Only for the face that faces the negative x direction for now
         public NativeArray<float3> skirtVertices;
         public NativeArray<float3> skirtNormals;
         public NativeArray<float2> skirtUvs;
@@ -40,8 +39,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<int> skirtVertexIndicesCopied;
         public NativeArray<int> skirtVertexIndicesGenerated;
         public NativeArray<int> skirtIndices;
-        public NativeCounter skirtVertexCounter;
-        public NativeCounter skirtTriangleCounter;
+        public NativeMultiCounter skirtVertexCounter;
+        public NativeMultiCounter skirtTriangleCounter;
 
         // Other misc stuff
         public JobHandle finalJobHandle;
@@ -87,8 +86,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtVertexIndicesGenerated = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             skirtIndices = new NativeArray<int>(VoxelUtils.SKIRT_FACE * 2 * 6 * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            skirtVertexCounter = new NativeCounter(Allocator.Persistent);
-            skirtTriangleCounter = new NativeCounter(Allocator.Persistent);
+            skirtVertexCounter = new NativeMultiCounter(6, Allocator.Persistent);
+            skirtTriangleCounter = new NativeMultiCounter(6, Allocator.Persistent);
             skirtWithinThreshold = new NativeArray<bool>(VoxelUtils.FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             VertexAttributeDescriptor positionDesc = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
@@ -115,8 +114,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float voxelSizeFactor = 1f;
             quadCounter.Count = 0;
             vertexCounter.Count = 0;
-            skirtTriangleCounter.Count = 0;
-            skirtVertexCounter.Count = 0;
+            skirtTriangleCounter.Reset();
+            skirtVertexCounter.Reset();
             bounds[0] = new float3(VoxelUtils.SIZE * voxelSizeFactor);
             bounds[1] = new float3(0.0);
 
@@ -219,10 +218,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency, normalsJobHandle);
             JobHandle vertexJobHandle = vertexJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexDep);
-            JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-
-            // Copy boundary skirt vertices and start creating skirts
+            
+            
             JobHandle skirtJobHandle = default;
+            /*
+            // Copy boundary skirt vertices and start creating skirts
 
             // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
             JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, dependency);
@@ -232,14 +232,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
             JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
-
+            */
             // Creates quad based on the copied vertices and skirt-generated vertices
-            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, skirtVertexJobHandle);
+            //JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, skirtVertexJobHandle);
             //skirtJobHandle = JobHandle.CombineDependencies(skirtQuadJobHandle);
-            skirtJobHandle = skirtQuadJobHandle;            
+            //skirtJobHandle = skirtQuadJobHandle;            
+            //skirtJobHandle = skirtVertexJobHandle;
+
 
             JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, checkJobHandle);
             JobHandle quadJobHandle = quadJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, merged);
+
+            JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
             JobHandle mainDependencies = JobHandle.CombineDependencies(quadJobHandle, boundsJobHandle);
             finalJobHandle = JobHandle.CombineDependencies(mainDependencies, skirtJobHandle);
 

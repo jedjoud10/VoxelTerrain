@@ -27,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<float2> skirtUvs;
 
-        public NativeCounter.Concurrent skirtVertexCounter;
+        public NativeMultiCounter.Concurrent skirtVertexCounter;
 
         public float voxelScale;
 
@@ -85,17 +85,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // if edge case, then only 1 of the above is true
 
             if (count == 2) {
-                uint missing2 = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
-                uint2 flatten2 = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
-                float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten2, direction, missing2);
-
-                // corner case!!!
-                vertex = new VertexToSpawn {
-                    offset = 0f,
-                    shouldSpawn = true,
-                    worldPosition = worldPos,
-                    useWorldPosition = true,
-                };
+                // corner case!!!!!~~~ :wink:
+                vertex = Corner(direction, negative, flatten);
             } else if (count == 1) {
                 // edge case!!!
                 vertex = SurfaceNets1D(flatten, minMaxMask, negative, face);
@@ -107,27 +98,35 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Actually spawn the vertex if needed
             if (vertex.shouldSpawn) {
-                int vertexIndex = skirtVertexCounter.Increment();
-
-                // Set the *second* highest bit of non-forced 2D surface nets vertices to differenciate them
-                // We can't set the highest bit because that's the sign bit, if we set it, it means that the index is negative
-                // That would trigger the validation code that detects if we have an invalid index (negative one or int.MaxValue)
-                int packed = vertexIndex;
-                /*
-                if (vertex.forced)
-                    packed |= 1 << 30;
-                */
+                int localVertexIndex = skirtVertexCounter.Increment(face);
+                int globalVertexIndex = localVertexIndex + VoxelUtils.SKIRT_FACE * face; ;
 
                 if (vertex.useWorldPosition) {
-                    skirtVertices[vertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
+                    skirtVertices[globalVertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
                 } else {
-                    skirtVertices[vertexIndex] = ((float3)unoffsetted + vertex.offset) * voxelScale;
+                    skirtVertices[globalVertexIndex] = ((float3)unoffsetted + vertex.offset) * voxelScale;
                 }
                 
-                skirtNormals[vertexIndex] = math.normalizesafe(vertex.normal, math.up());
-                skirtUvs[vertexIndex] = 1f;
-                skirtVertexIndicesGenerated[indexIndex] = packed;
+                skirtNormals[globalVertexIndex] = math.normalizesafe(vertex.normal, math.up());
+                skirtUvs[globalVertexIndex] = 1f;
+                skirtVertexIndicesGenerated[indexIndex] = localVertexIndex;
             }
+        }
+
+        private VertexToSpawn Corner(int direction, bool negative, uint2 flatten) {
+            VertexToSpawn vertex;
+            uint missing2 = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+            uint2 flatten2 = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
+            float3 worldPos = SkirtUtils.UnflattenFromFaceRelative(flatten2, direction, missing2);
+
+            // corner case!!!
+            vertex = new VertexToSpawn {
+                offset = 0f,
+                shouldSpawn = true,
+                worldPosition = worldPos,
+                useWorldPosition = true,
+            };
+            return vertex;
         }
 
         private VertexToSpawn SurfaceNets2D(int face, bool negative, uint3 position) {

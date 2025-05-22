@@ -179,7 +179,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 016d67e6a5967a14eb3ab83688f57532, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxDepth: 7
+  maxDepth: 5
 --- !u!114 &435758293
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -222,7 +222,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11976dabb38d8a249b3805238f767c26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  factor: 1
+  factor: 1.5
 --- !u!4 &1889961596
 Transform:
   m_ObjectHideFlags: 0

@@ -12,7 +12,9 @@ namespace jedjoud.VoxelTerrain {
     [UpdateAfter(typeof(TerrainOctreeSystem))]
     public partial struct TerrainManagerSystem : ISystem {
         private NativeHashMap<OctreeNode, Entity> chunks;
-        private Entity prototype;
+        private Entity chunkPrototype;
+        private Entity skirtPrototype;
+
 
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
@@ -21,21 +23,25 @@ namespace jedjoud.VoxelTerrain {
             chunks = new NativeHashMap<OctreeNode, Entity>(0, Allocator.Persistent);
 
             EntityManager mgr = state.EntityManager;
-            prototype = mgr.CreateEntity();
-            mgr.AddComponent<LocalToWorld>(prototype);
-            mgr.AddComponent<TerrainChunk>(prototype);
+            chunkPrototype = mgr.CreateEntity();
+            mgr.AddComponent<LocalToWorld>(chunkPrototype);
+            mgr.AddComponent<TerrainChunk>(chunkPrototype);
 
-            mgr.AddComponent<TerrainChunkVoxels>(prototype);
-            mgr.AddComponent<TerrainChunkRequestReadbackTag>(prototype);
-            mgr.AddComponent<TerrainChunkRequestMeshingTag>(prototype);
-            mgr.AddComponent<TerrainChunkRequestCollisionTag>(prototype);
-            mgr.AddComponent<TerrainChunkVoxelsReadyTag>(prototype);
+            mgr.AddComponent<TerrainChunkVoxels>(chunkPrototype);
+            mgr.AddComponent<TerrainChunkRequestReadbackTag>(chunkPrototype);
+            mgr.AddComponent<TerrainChunkRequestMeshingTag>(chunkPrototype);
+            mgr.AddComponent<TerrainChunkRequestCollisionTag>(chunkPrototype);
+            mgr.AddComponent<TerrainChunkVoxelsReadyTag>(chunkPrototype);
 
-            mgr.SetComponentEnabled<TerrainChunkVoxels>(prototype, false);
-            mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(prototype, false);
-            mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(prototype, false);
-            mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(prototype, false);
-            mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(prototype, false);
+            mgr.SetComponentEnabled<TerrainChunkVoxels>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(chunkPrototype, false);
+
+            skirtPrototype = mgr.CreateEntity();
+            mgr.AddComponent<LocalToWorld>(skirtPrototype);
+            mgr.AddComponent<TerrainSkirtTag>(skirtPrototype);
         }
 
         [BurstCompile]
@@ -47,6 +53,13 @@ namespace jedjoud.VoxelTerrain {
             if (!octree.pending && octree.handle.IsCompleted && octree.readyToSpawn) {
                 foreach (var node in octree.removed) {
                     if (chunks.TryGetValue(node, out var entity)) {
+                        TerrainChunk chunk = state.EntityManager.GetComponentData<TerrainChunk>(entity);
+
+                        NativeArray<Entity> skirts = chunk.skirts.ToNativeArray(Allocator.Temp);
+                        state.EntityManager.DestroyEntity(skirts);
+                        skirts.Dispose();
+                        
+
                         TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
                         voxels.inner.Dispose();
 
@@ -60,16 +73,24 @@ namespace jedjoud.VoxelTerrain {
                     if (node.childBaseIndex != -1)
                         continue;
 
-                    Entity chunk = state.EntityManager.Instantiate(prototype);
+                    Entity chunk = state.EntityManager.Instantiate(chunkPrototype);
                     chunks.Add(node, chunk);
+
+                    FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
+                    float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / 64f);
+
+                    for (int i = 0; i < 6; i++) {
+                        Entity skirt = state.EntityManager.Instantiate(skirtPrototype);
+                        state.EntityManager.SetComponentData<LocalToWorld>(skirt, new LocalToWorld() { Value = localToWorld });
+                        skirts.Add(skirt);
+                    }
 
                     state.EntityManager.SetComponentData<TerrainChunk>(chunk, new TerrainChunk {
                         node = node,
+                        skirts = skirts
                     });
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(chunk, true);
                     state.EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunk, true);
-
-                    float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / 64f);
                     state.EntityManager.SetComponentData<LocalToWorld>(chunk, new LocalToWorld() { Value = localToWorld });
 
 

@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<int> skirtIndices;
 
-        public NativeCounter.Concurrent skirtTriangleCounter;
+        public NativeMultiCounter.Concurrent skirtTriangleCounter;
 
         // Fetch vertex index for a specific position
         // If it goes out of the chunk bounds, assume it is a skirt vertex's position we're trying to fetch
@@ -150,6 +150,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Create quads / triangles based on the given vertex index data in the "v" parameter
         bool TryAddQuadsOrTris(bool flip, int4 v, bool forced) {
+            return false;
+            /*
             // Ts gpt-ed kek
             int dupeType = 0;
             dupeType |= math.select(0, 1, v.x == v.y);
@@ -170,11 +172,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int3 remapper = IGNORE_SPECIFIC_VALUE_TRI[SkirtUtils.FindTrueIndex(b4)];
                 int3 uniques = new int3(v[remapper[0]], v[remapper[1]], v[remapper[2]]);
 
-                /*
-                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
-                }
-                */
-
                 int triIndex = skirtTriangleCounter.Add(1) * 3;
                 skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
                 skirtIndices[triIndex + 1] = uniques[1];
@@ -186,11 +183,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (math.cmax(v) == int.MaxValue | math.cmin(v) < 0) {
                     return false;
                 }
-
-                /*
-                if (CheckIfForcedAndClean(v, out int4 cleaned, forced)) {
-                }
-                */
 
                 int triIndex = skirtTriangleCounter.Add(2) * 3;
 
@@ -213,11 +205,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     return false;
                 }
 
-                /*
-                if (CheckIfForcedAndClean(uniques, out int3 cleaned, forced)) {
-                }
-                */
-
                 int triIndex = skirtTriangleCounter.Add(1) * 3;
                 skirtIndices[triIndex + (flip ? 0 : 2)] = uniques[0];
                 skirtIndices[triIndex + 1] = uniques[1];
@@ -226,6 +213,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             return false;
+            */
         }
 
         public void Execute(int index) {
