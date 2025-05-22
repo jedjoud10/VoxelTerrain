@@ -53,7 +53,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(uint2 flattened, uint3 unflattened, int index, bool negative, bool force, int face) {
-            uint3 forward = EdgeMaskUtils2.FORWARD_DIRECTION[index];
+            uint3 forward = DirectionOffsetUtils.FORWARD_DIRECTION[index];
 
             bool flip = !negative;
 
@@ -85,7 +85,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // load the vertex indices inside this vector
             int4 v = int.MaxValue;
             for (int i = 0; i < 4; i++) {
-                v[i] = FetchIndex(offset + (int3)EdgeMaskUtils2.PERPENDICULAR_OFFSETS[index * 4 + i], face);
+                v[i] = FetchIndex(offset + (int3)DirectionOffsetUtils.PERPENDICULAR_OFFSETS[index * 4 + i], face);
             }
 
             // there are some cases where this generates more tris than necessary, but that's better than not generating enough tris

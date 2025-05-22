@@ -36,8 +36,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(int index, uint3 basePosition, int direction) {
-            uint3 forward = EdgeMaskUtils2.FORWARD_DIRECTION[direction];
-            int forwardIndexOffset = EdgeMaskUtils3.FORWARD_DIRECTION_INDEX_OFFSET[direction];
+            uint3 forward = DirectionOffsetUtils.FORWARD_DIRECTION[direction];
+            int forwardIndexOffset = DirectionIndexOffsetUtils.FORWARD_DIRECTION_INDEX_OFFSET[direction];
 
             int baseIndex = index;
             int endIndex = forwardIndexOffset + index;
@@ -52,7 +52,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Fetch the indices of the vertex positions
             int4 indices = int.MaxValue;
-            int4 positionalIndex = index + EdgeMaskUtils3.NEGATIVE_ONE_OFFSET + EdgeMaskUtils3.PERPENDICULAR_OFFSETS_INDEX_OFFSET[direction];
+            int4 positionalIndex = index + DirectionIndexOffsetUtils.NEGATIVE_ONE_OFFSET + DirectionIndexOffsetUtils.PERPENDICULAR_OFFSETS_INDEX_OFFSET[direction];
             for (int i = 0; i < 4; i++) {
                 //int positionalIndex = VoxelUtils.PosToIndex(offset + EdgeMaskUtils2.PERPENDICULAR_OFFSETS[direction * 4 + i], VoxelUtils.SIZE);
                 //int positionalIndex = 
@@ -97,7 +97,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             for (int i = 0; i < 3; i++) {
                 // we CAN do quad stuff on the v=0 boundary as long as we're doing it parallel to the face boundary
-                if (math.any(position < (1 - EdgeMaskUtils2.FORWARD_DIRECTION[i])))
+                if (math.any(position < (1 - DirectionOffsetUtils.FORWARD_DIRECTION[i])))
                     continue;
                 
                 if (((enabledEdges >> shifts[i]) & 1) == 1) {

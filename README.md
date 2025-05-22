@@ -5,6 +5,7 @@
   - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices
 - Proper S.N Skirts by running 2D and 1D S.N on the chunk boundary. Still need to dynamically disable / enable them based on the direction that they face relative to the camera
 
+
 # TODO / Ideas
 - Figure out how to handle per voxel color (nointerpolation in shader trick)
 - Re-implement props with hopefully better implementation
@@ -31,7 +32,8 @@
   - Maybe rename "materials" to shaders and "material variants" to materials? would make more sense...
 - Do some sort of Minecraft-style spreading lighting calculations
 - Meshing (uniform) code has to be COMPLETELY OVERHAULED. So many microoptimizations that I didn't profile / test. Also I just figured out there's a diagnostic tab for Burst in the editor so I can see what couldn't get vectorized. Gonna optimize all of that later 
-
+  - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled)
+  
 # Current Screenies
 Runtime terrain gen with some simple props
 ![Screenshot 2025-04-23 162113](https://github.com/user-attachments/assets/69548b73-7dc9-409a-85c0-98f5f2279cc6)

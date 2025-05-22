@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     // https://discussions.unity.com/t/bc1361-when-total-static-readonly-array-length-is-greater-than-180/874045/2
-    public static class EdgeMaskUtils2 {
+    public static class DirectionOffsetUtils {
         // Forward direction of each quad
         public static readonly uint3[] FORWARD_DIRECTION = new uint3[] {
             new uint3(1, 0, 0),

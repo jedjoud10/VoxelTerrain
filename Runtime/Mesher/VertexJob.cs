@@ -69,8 +69,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 // Continue if the edge isn't inside
                 if (((code >> edge) & 1) == 0) continue;
 
-                uint3 startOffset = EdgeMaskUtils4.EDGE_POSITIONS_0[edge];
-                uint3 endOffset = EdgeMaskUtils4.EDGE_POSITIONS_1[edge];
+                uint3 startOffset = EdgePositionUtils.EDGE_POSITIONS_0[edge];
+                uint3 endOffset = EdgePositionUtils.EDGE_POSITIONS_1[edge];
 
                 int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
