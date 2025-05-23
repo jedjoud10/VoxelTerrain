@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Editor {
     [CustomEditor(typeof(ManagedTerrainCompiler), true)]
-    public class VoxelCompilerEditor : UnityEditor.Editor {
+    public class ManagedTerrainCompilerEditor : UnityEditor.Editor {
         bool dispatchFoldout;
         bool scopeFoldout;
 
@@ -16,10 +16,11 @@ namespace jedjoud.VoxelTerrain.Editor {
             var script = (ManagedTerrainCompiler)target;
 
             if (Application.isPlaying) {
-                EditorGUILayout.LabelField($"Running in play mode... don't do anything...");
+                EditorGUILayout.LabelField($"Running in play mode... don't do anything...", EditorStyles.boldLabel);
                 return;
             }
 
+            
             if (GUILayout.Button("Recompile")) {
                 script.Compile(true);
                 script.OnPropertiesChanged();
@@ -28,6 +29,11 @@ namespace jedjoud.VoxelTerrain.Editor {
             if (GUILayout.Button("Retranspile")) {
                 script.ParsedTranspilation();
                 script.OnPropertiesChanged();
+            }
+
+            if (script.dirty) {
+                EditorGUILayout.LabelField($"Compile hash changed! Recompile pls...", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField($"(press recompile button)", EditorStyles.boldLabel);
             }
 
             EditorGUILayout.LabelField($"Properties: {script.ctx.properties.Count}");

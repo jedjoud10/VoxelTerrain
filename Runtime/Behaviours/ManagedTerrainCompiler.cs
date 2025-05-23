@@ -21,6 +21,9 @@ namespace jedjoud.VoxelTerrain.Generation {
         private int hash;
 
         [HideInInspector]
+        public bool dirty;
+
+        [HideInInspector]
         public int voxelsDispatchIndex;
 
         [HideInInspector]
@@ -43,13 +46,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf)
                 return;
 
-            /*
 #if UNITY_EDITOR
-            var visualizer = GetComponent<VoxelPreview>();
+            var visualizer = GetComponent<ManagedTerrainPreview>();
             if (visualizer != null && visualizer.isActiveAndEnabled) {
-                var exec = GetComponent<VoxelExecutor>();
+                var exec = GetComponent<ManagedTerrainExecutor>();
 
-                VoxelExecutor.EditorPreviewParameters parameters = new VoxelExecutor.EditorPreviewParameters() {
+                ManagedTerrainExecutor.EditorPreviewParameters parameters = new ManagedTerrainExecutor.EditorPreviewParameters() {
                     newSize = visualizer.size,
                     previewScale = visualizer.scale,
                     previewOffset = visualizer.offset,
@@ -58,12 +60,11 @@ namespace jedjoud.VoxelTerrain.Generation {
                 };
 
                 exec.ExecuteShader(parameters);
-                RenderTexture voxels = (RenderTexture)exec.textures["voxels"];
+                RenderTexture voxels = (RenderTexture)exec.Textures["voxels"];
                 debugTex = voxels;
                 visualizer.Meshify(voxels);
             }
 #endif
-            */
         }
 
         // Checks if we need to recompile the shader by checking the hash changes.
@@ -74,22 +75,16 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             ParsedTranspilation();
 
-            /*
             if (hash != ctx.hashinator.hash) {
                 hash = ctx.hashinator.hash;
-
-                GetComponent<VoxelExecutor>().DisposeResources();
-
-                if (autoCompile) {
-                    Compile(false);
-                }
+                dirty = true;
             }
-            */
         }
 
 
         // Writes the transpiled shader code to a file and recompiles it automatically (through AssetDatabase)
         public void Compile(bool force) {
+            dirty = false;
 #if UNITY_EDITOR
             //GetComponent<VoxelExecutor>().DisposeResources();
 

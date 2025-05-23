@@ -1,15 +1,15 @@
 using System;
 using System.Collections;
 using System.Linq;
+using jedjoud.VoxelTerrain.Generation;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 
 
 namespace jedjoud.VoxelTerrain.Editor {
-    /*
-    [CustomEditor(typeof(VoxelExecutor), true)]
-    public class VoxelExecutorEditor : Editor {
+    [CustomEditor(typeof(ManagedTerrainExecutor), true)]
+    public class ManagedTerrainExecutorEditor : UnityEditor.Editor {
         private bool textureFoldout;
         private bool bufferFoldout;
 
@@ -19,7 +19,7 @@ namespace jedjoud.VoxelTerrain.Editor {
             GUILayout.Label("Supports Async Readback: " + SystemInfo.supportsAsyncGPUReadback);
             
             base.OnInspectorGUI();
-            var script = (VoxelExecutor)target;
+            var script = (ManagedTerrainExecutor)target;
 
             if (GUILayout.Button("Randomize Seed")) {
                 script.RandomizeSeed();
@@ -30,20 +30,20 @@ namespace jedjoud.VoxelTerrain.Editor {
             }
 
 
-            if (script.textures == null || script.buffers == null) {
-                EditorGUILayout.LabelField("Interally Allocated Resources (NONE! You should press the Recompile button...)", EditorStyles.boldLabel);
+            if (script.Textures == null || script.Buffers == null) {
+                EditorGUILayout.LabelField("Interally Allocated Resources (NONE! You must recompile...)", EditorStyles.boldLabel);
                 return;
             } else {
                 EditorGUILayout.LabelField("Interally Allocated Resources", EditorStyles.boldLabel);
             }
 
-            textureFoldout = EditorGUILayout.Foldout(textureFoldout, "Textures: " + script.textures.Count);
+            textureFoldout = EditorGUILayout.Foldout(textureFoldout, "Textures: " + script.Textures.Count);
 
             if (textureFoldout) {
-                string[] keys = script.textures.Keys.ToArray();
+                string[] keys = script.Textures.Keys.ToArray();
                 Array.Sort(keys, StringComparer.Ordinal);
-                for (int i = 0; i < script.textures.Count; i++) {
-                    ExecutorTexture texture = script.textures[keys[i]];
+                for (int i = 0; i < script.Textures.Count; i++) {
+                    ExecutorTexture texture = script.Textures[keys[i]];
 
                     string graphicsFormat = "";
                     string dimensions = "";
@@ -90,13 +90,13 @@ namespace jedjoud.VoxelTerrain.Editor {
             }
 
 
-            bufferFoldout = EditorGUILayout.Foldout(bufferFoldout, "Buffers: " + script.buffers.Count);
+            bufferFoldout = EditorGUILayout.Foldout(bufferFoldout, "Buffers: " + script.Buffers.Count);
 
             if (bufferFoldout) {
-                string[] keys = script.buffers.Keys.ToArray();
+                string[] keys = script.Buffers.Keys.ToArray();
                 Array.Sort(keys, StringComparer.Ordinal);
-                for (int i = 0; i < script.buffers.Count; i++) {
-                    ExecutorBuffer buffer = script.buffers[keys[i]];
+                for (int i = 0; i < script.Buffers.Count; i++) {
+                    ExecutorBuffer buffer = script.Buffers[keys[i]];
 
                     int count = 0;
                     int stride = 0;
@@ -121,5 +121,4 @@ namespace jedjoud.VoxelTerrain.Editor {
             }
         }
     }
-    */
 }

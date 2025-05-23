@@ -126,7 +126,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         private void FinishJob(MeshJobHandler handler) {
-            if (handler.TryComplete(EntityManager, out Mesh mesh, out Mesh skirtMesh, out Entity chunkEntity, out VoxelMesh stats)) {
+            if (handler.TryComplete(EntityManager, out Mesh mesh, out Mesh skirtMesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
                 TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
                 OctreeNode node = chunk.node;
 
@@ -176,6 +176,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 worldRenderBounds.Extents *= scalingFactor;
 
                 for (int skirtIndex = 0; skirtIndex < 7; skirtIndex++) {
+                    if (skirtIndex > 1 && stats.ForcedSkirtFacesTriCount[skirtIndex - 1] == 0)
+                        continue;
+                    
                     Entity skirtEntity = chunk.skirts[skirtIndex];
 
                     MaterialMeshIndex[] skirtIndices = new MaterialMeshIndex[1] {

@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -73,6 +74,19 @@ namespace jedjoud.VoxelTerrain {
 #endif
                 *(m_Counters + index) = value;
             }
+        }
+
+        public int[] ToArray() {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            int[] arr = new int[capacity];
+
+            fixed (int* ptr = arr) {
+                UnsafeUtility.MemCpy(ptr, m_Counters, sizeOfInt * capacity);
+            }
+
+            return arr;
         }
 
         public bool IsCreated {

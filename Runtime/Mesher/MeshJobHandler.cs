@@ -13,6 +13,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // Contains the allocation data for a single job
     // There are multiple instances of this class stored inside the voxel mesher to saturate the other threads
     internal class MeshJobHandler {
+        public struct Stats {
+            // AABB that we generated using the vertices
+            public Bounds Bounds { get; internal set; }
+
+            // Number of triangles per forced skirt face
+            public int[] ForcedSkirtFacesTriCount { get; internal set; }
+        }
+
         // Copy of the voxel data that we will use for meshing
         public NativeArray<Voxel> voxels;
 
@@ -260,6 +268,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             const int SKIRT_BATCH = VoxelUtils.SKIRT_FACE * 6;
             const int SMALLER_SKIRT_BATCH = VoxelUtils.SKIRT_FACE / 2;
             const int PER_SKIRT_FACE_BATCH = VoxelUtils.SKIRT_FACE / 6;
+            const int PER_SKIRT_FACE_SMALLER_BATCH = VoxelUtils.SKIRT_FACE / 12;
 
             // Voxel finite-diffed normals job
             JobHandle prefetchBaseJobHandle = prefetchBase.Schedule(VOL, SMALLER_BATCH, dependency);
@@ -276,10 +285,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, normalsJobHandle);
-            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, SMALLER_BATCH, vertexDep);
+            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, SMALLEST_BATCH, vertexDep);
 
             // Start the main mesh quad job
-            JobHandle quadJobHandle = quadJob.Schedule(VOL, SMALLER_BATCH, vertexJobHandle);
+            JobHandle quadJobHandle = quadJob.Schedule(VOL, SMALLEST_BATCH, vertexJobHandle);
 
             // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
             JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, SMALLER_SKIRT_BATCH, dependency);
@@ -288,10 +297,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(vertexJobHandle);
 
             // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
-            JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, PER_SKIRT_FACE_BATCH, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
+            JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, PER_SKIRT_FACE_SMALLER_BATCH, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
             
             // Creates quad based on the copied vertices and skirt-generated vertices
-            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_FACE_BATCH, skirtVertexJobHandle);
+            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_FACE_SMALLER_BATCH, skirtVertexJobHandle);
 
 
             // Not linked to the main pipeline but still requires verts access
@@ -330,7 +339,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // Complete the jobs and return a mesh
-        internal bool TryComplete(EntityManager mgr, out Mesh outChunkMesh, out Mesh outSkirtMesh, out Entity entity, out VoxelMesh stats) {
+        internal bool TryComplete(EntityManager mgr, out Mesh outChunkMesh, out Mesh outSkirtMesh, out Entity entity, out Stats stats) {
             finalJobHandle.Complete();
             Free = true;
 
@@ -350,11 +359,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 outChunkMesh, outSkirtMesh
             }, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
 
-            stats = new VoxelMesh {
+            stats = new Stats {
                 Bounds = new Bounds() {
                     min = bounds[0],
                     max = bounds[1],
-                }
+                },
+
+                ForcedSkirtFacesTriCount = skirtForcedTriangleCounter.ToArray(),
             };                       
 
             return true;
