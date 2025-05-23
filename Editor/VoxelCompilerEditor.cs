@@ -15,6 +15,11 @@ namespace jedjoud.VoxelTerrain.Editor {
 
             var script = (ManagedTerrainCompiler)target;
 
+            if (Application.isPlaying) {
+                EditorGUILayout.LabelField($"Running in play mode... don't do anything...");
+                return;
+            }
+
             if (GUILayout.Button("Recompile")) {
                 script.Compile(true);
                 script.OnPropertiesChanged();

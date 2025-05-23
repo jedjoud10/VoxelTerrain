@@ -58,6 +58,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public int PER_SKIRT_SURFACE_JOB_BATCH_SIZE = VoxelUtils.SKIRT_FACE * 3;
 
         const int VOL = VoxelUtils.VOLUME;
+        private Mesh.MeshDataArray array;
 
         internal MeshJobHandler() {
             // Native buffers for copied voxel data and generated normal data
@@ -119,7 +120,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         // Begin the vertex + quad job that will generate the mesh
-        internal JobHandle BeginJob(Entity entity, JobHandle dependency) {
+        internal void BeginJob(Entity entity, JobHandle dependency) {
             Free = false;
             this.entity = entity;
 
@@ -234,10 +235,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             JobHandle cornerJobHandle = cornerJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, checkJobHandle);
 
             // Start the vertex job
-            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, dependency, normalsJobHandle);
-            
+            JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, normalsJobHandle);
             JobHandle vertexJobHandle = vertexJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexDep);
-            
+
+            // Start the main mesh quad job
+            JobHandle quadJobHandle = quadJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexJobHandle);
+
             // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
             JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, dependency);
 
@@ -249,56 +252,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
             
             // Creates quad based on the copied vertices and skirt-generated vertices
             JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, skirtVertexJobHandle);
-            JobHandle skirtJobHandle = skirtQuadJobHandle;   
 
-            JobHandle merged = JobHandle.CombineDependencies(vertexJobHandle, cornerJobHandle, checkJobHandle);
-            JobHandle quadJobHandle = quadJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, merged);
 
+            // Not linked to the main pipeline but still requires verts access
             JobHandle boundsJobHandle = boundsJob.Schedule(vertexJobHandle);
-            JobHandle mainDependencies = JobHandle.CombineDependencies(quadJobHandle, boundsJobHandle);
-            finalJobHandle = JobHandle.CombineDependencies(mainDependencies, skirtJobHandle);
 
-            return finalJobHandle;
-        }
-
-        // Complete the jobs and return a mesh
-        internal bool TryComplete(EntityManager mgr, out Mesh mesh, out Mesh skirtMesh, out Entity entity, out VoxelMesh stats) {
-            finalJobHandle.Complete();
-            Free = true;
-
-            if (vertexCounter.Count == 0 || quadCounter.Count == 0 || !mgr.Exists(this.entity)) {
-                entity = Entity.Null;
-                stats = default;
-                mesh = null;
-                skirtMesh = null;
-                return false;
-            }
-
-            //skirt.Complete(skirtVertices, skirtNormals, skirtUvs, skirtIndices, skirtVertexCounter.Count, skirtTriangleCounter.Count);
-            mesh = new Mesh();
-            skirtMesh = new Mesh();
-            entity = this.entity;
-
-            stats = new VoxelMesh {
-                Bounds = new Bounds() {
-                    min = bounds[0],
-                    max = bounds[1],
-                }
-            };
-
-            int maxSkirtVertices = skirtVertexCounter.Count;
-
-            // TODO: batch this
-            Mesh.MeshDataArray array = Mesh.AllocateWritableMeshData(2);
-            
+            array = Mesh.AllocateWritableMeshData(2);
             SetMeshDataJob setMeshDataJob = new SetMeshDataJob {
                 vertexAttributeDescriptors = vertexAttributeDescriptors,
                 vertices = vertices,
                 normals = normals,
                 uvs = uvs,
                 indices = indices,
-                maxVertices = vertexCounter.Count,
-                maxIndices = quadCounter.Count * 6,
+                vertexCounter = vertexCounter,
+                quadCounter = quadCounter,
                 data = array[0],
             };
 
@@ -309,24 +276,60 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 skirtUvs = skirtUvs,
                 skirtStitchedIndices = skirtStitchedIndices,
                 skirtForcedPerFaceIndices = skirtForcedPerFaceIndices,
-                
-                maxSkirtVertices = maxSkirtVertices,
+
+                skirtVertexCounter = skirtVertexCounter,
                 skirtStitchedTriangleCounter = skirtStitchedTriangleCounter,
                 skirtForcedTriangleCounter = skirtForcedTriangleCounter,
                 data = array[1],
             };
 
-            setMeshDataJob.Run();
-            setSkirtMeshDataJob.Run();
-                        
+            JobHandle setMeshDataJobHandle = setMeshDataJob.Schedule(quadJobHandle);
+            JobHandle setSkirtMeshDataJobHandle = setSkirtMeshDataJob.Schedule(skirtQuadJobHandle);
+            JobHandle setMeshDataJobs = JobHandle.CombineDependencies(setMeshDataJobHandle, setSkirtMeshDataJobHandle);
+            finalJobHandle =  JobHandle.CombineDependencies(boundsJobHandle, setMeshDataJobs);
+        }
+
+        // Complete the jobs and return a mesh
+        internal bool TryComplete(EntityManager mgr, out Mesh outChunkMesh, out Mesh outSkirtMesh, out Entity entity, out VoxelMesh stats) {
+            finalJobHandle.Complete();
+            Free = true;
+
+            if (vertexCounter.Count == 0 || quadCounter.Count == 0 || !mgr.Exists(this.entity) || array.Length == 0) {
+                entity = Entity.Null;
+                stats = default;
+                outChunkMesh = null;
+                outSkirtMesh = null;
+                return false;
+            }
+
+            outChunkMesh = new Mesh();
+            outSkirtMesh = new Mesh();
+            entity = this.entity;
+
             Mesh.ApplyAndDisposeWritableMeshData(array, new Mesh[2] {
-                mesh, skirtMesh
+                outChunkMesh, outSkirtMesh
             }, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
+
+            stats = new VoxelMesh {
+                Bounds = new Bounds() {
+                    min = bounds[0],
+                    max = bounds[1],
+                }
+            };                       
+
             return true;
         }
 
         // Dispose of the underlying memory allocations
         internal void Dispose() {
+            finalJobHandle.Complete();
+
+            /*
+            if (array.Length > 0) {
+                array.Dispose();
+            }
+            */
+
             voxels.Dispose();
             vertexIndices.Dispose();
             vertices.Dispose();
@@ -372,23 +375,27 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<int> indices;
 
-        public int maxVertices;
-        public int maxIndices;
+        [ReadOnly]
+        public NativeCounter vertexCounter;
+        [ReadOnly]
+        public NativeCounter quadCounter;
 
         public void Execute() {
-            data.SetVertexBufferParams(maxVertices, vertexAttributeDescriptors);
+            int maxVerticesCnt = vertexCounter.Count;
+            int maxIndicesCnt = quadCounter.Count * 6;
+            data.SetVertexBufferParams(maxVerticesCnt, vertexAttributeDescriptors);
 
-            vertices.GetSubArray(0, maxVertices).CopyTo(data.GetVertexData<float3>(0)); 
-            normals.GetSubArray(0, maxVertices).CopyTo(data.GetVertexData<float3>(1)); 
-            uvs.GetSubArray(0, maxVertices).CopyTo(data.GetVertexData<float2>(2)); 
+            vertices.GetSubArray(0, maxVerticesCnt).CopyTo(data.GetVertexData<float3>(0)); 
+            normals.GetSubArray(0, maxVerticesCnt).CopyTo(data.GetVertexData<float3>(1)); 
+            uvs.GetSubArray(0, maxVerticesCnt).CopyTo(data.GetVertexData<float2>(2)); 
 
-            data.SetIndexBufferParams(maxIndices, IndexFormat.UInt32);
-            indices.GetSubArray(0, maxIndices).CopyTo(data.GetIndexData<int>());
+            data.SetIndexBufferParams(maxIndicesCnt, IndexFormat.UInt32);
+            indices.GetSubArray(0, maxIndicesCnt).CopyTo(data.GetIndexData<int>());
 
             data.subMeshCount = 1;
             data.SetSubMesh(0, new SubMeshDescriptor {
                 indexStart = 0,
-                indexCount = maxIndices,
+                indexCount = maxIndicesCnt,
                 topology = MeshTopology.Triangles,
             }, MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices);
         }
@@ -413,8 +420,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public NativeArray<int> skirtForcedPerFaceIndices;
 
-        public int maxSkirtVertices;
-
+        [ReadOnly]
+        public NativeCounter skirtVertexCounter;
 
         [ReadOnly]
         public NativeCounter skirtStitchedTriangleCounter;
@@ -423,11 +430,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeMultiCounter skirtForcedTriangleCounter;
 
         public void Execute() {
-            data.SetVertexBufferParams(maxSkirtVertices, vertexAttributeDescriptors);
+            int maxSkirtVerticesCnt = skirtVertexCounter.Count;
+            data.SetVertexBufferParams(maxSkirtVerticesCnt, vertexAttributeDescriptors);
 
-            skirtVertices.GetSubArray(0, maxSkirtVertices).CopyTo(data.GetVertexData<float3>(0));
-            skirtNormals.GetSubArray(0, maxSkirtVertices).CopyTo(data.GetVertexData<float3>(1));
-            skirtUvs.GetSubArray(0, maxSkirtVertices).CopyTo(data.GetVertexData<float2>(2));
+            skirtVertices.GetSubArray(0, maxSkirtVerticesCnt).CopyTo(data.GetVertexData<float3>(0));
+            skirtNormals.GetSubArray(0, maxSkirtVerticesCnt).CopyTo(data.GetVertexData<float3>(1));
+            skirtUvs.GetSubArray(0, maxSkirtVerticesCnt).CopyTo(data.GetVertexData<float2>(2));
 
             NativeArray<int> indexStarts = new NativeArray<int>(6, Allocator.Temp);
             NativeArray<int> indexCounts = new NativeArray<int>(6, Allocator.Temp);

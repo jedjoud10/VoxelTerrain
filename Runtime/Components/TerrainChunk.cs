@@ -8,8 +8,6 @@ namespace jedjoud.VoxelTerrain {
     public struct TerrainChunk : IComponentData {
         public OctreeNode node;
         public FixedList64Bytes<Entity> skirts;
-        public BitField32 neighbourMask;
-        public BitField32 skirtMask;
 
         // public Mesh sharedMesh;
         // public byte[] voxelMaterialsLookup;

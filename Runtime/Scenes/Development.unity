@@ -156,9 +156,9 @@ MonoBehaviour:
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 1, y: 1, z: 1}
   scale:
-    value: 0.0012
+    value: 0.005
   amplitude:
-    value: 203.7
+    value: 50
   offset:
     value: 94.2
   detailScale:
@@ -614,7 +614,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &920976696
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -44,6 +44,7 @@ namespace jedjoud.VoxelTerrain {
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
             mgr.AddComponent<TerrainSkirtTag>(skirtPrototype);
+            mgr.AddComponent<TerrainSkirtVisForceTag>(skirtPrototype);
         }
 
         static void WriteOffsetDirAsMask(ref BitField32 skirtMask, uint3 offset) {
@@ -111,6 +112,8 @@ namespace jedjoud.VoxelTerrain {
 
                     for (int i = 0; i < 7; i++) {
                         Entity skirt = state.EntityManager.Instantiate(skirtPrototype);
+                        byte direction = i == 0 ? byte.MaxValue : (byte)(i - 1);
+                        state.EntityManager.SetComponentData<TerrainSkirtTag>(skirt, new TerrainSkirtTag() { direction = direction });
                         state.EntityManager.SetComponentData<LocalToWorld>(skirt, new LocalToWorld() { Value = localToWorld });
                         skirts.Add(skirt);
                     }
@@ -118,10 +121,6 @@ namespace jedjoud.VoxelTerrain {
                     state.EntityManager.SetComponentData<TerrainChunk>(chunk, new TerrainChunk {
                         node = node,
                         skirts = skirts,
-                        
-                        // No need to bother with these as we update them in the next foreach
-                        // neighbourMask = octree.neighbourMasks[node.index],
-                        // skirtMask = CalculateEnabledSkirtMask(octree.neighbourMasks[node.index])
                     });
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(chunk, true);
                     state.EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunk, true);
@@ -140,8 +139,13 @@ namespace jedjoud.VoxelTerrain {
                     if (chunks.TryGetValue(node, out var entity)) {
                         RefRW<TerrainChunk> _chunk = SystemAPI.GetComponentRW<TerrainChunk>(entity);
                         ref TerrainChunk chunk = ref _chunk.ValueRW;
-                        chunk.neighbourMask = octree.neighbourMasks[node.index];
-                        chunk.skirtMask = CalculateEnabledSkirtMask(chunk.neighbourMask);
+                        BitField32 neighbourMask = octree.neighbourMasks[node.index];
+                        BitField32 skirtMask = CalculateEnabledSkirtMask(neighbourMask);
+
+
+                        for (int i = 0; i < 6; i++) {
+                            SystemAPI.SetComponentEnabled<TerrainSkirtVisForceTag>(chunk.skirts[i + 1], skirtMask.IsSet(i));
+                        }
                     }
                 }
 

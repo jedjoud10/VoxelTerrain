@@ -196,9 +196,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         protected override void OnDestroy() {
             foreach (MeshJobHandler handler in handlers) {
-                handler.TryComplete(EntityManager, out Mesh _, out Mesh _, out Entity _, out VoxelMesh _);
                 handler.Dispose();
             }
+
+            handlers.Clear();
         }
     }
 }
