@@ -17,11 +17,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<Voxel> voxels;
 
         // Normals that are calculated based on the inputted voxels
-        // Normals on the boundary are set to zero, since we can't use finite diffs at the boundary
+        // Split into two different jobs to improve cache locality (hopefully)
+        // Array of 4 elements; base,x,y,z
+        public NativeArray<half>[] normalPrefetchedVals;
         public NativeArray<float3> voxelNormals;
 
         // Native buffers for mesh data
         public NativeArray<float3> vertices;
+
         public NativeArray<float3> normals;
         public NativeArray<float2> uvs;
         public NativeArray<int> indices;
@@ -54,9 +57,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         internal NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
         public NativeList<float3> debugData;
 
-        public int PER_VOXEL_JOB_BATCH_SIZE = VoxelUtils.VOLUME;
-        public int PER_SKIRT_SURFACE_JOB_BATCH_SIZE = VoxelUtils.SKIRT_FACE * 3;
-
         const int VOL = VoxelUtils.VOLUME;
         private Mesh.MeshDataArray array;
 
@@ -64,6 +64,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Native buffers for copied voxel data and generated normal data
             voxels = new NativeArray<Voxel>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             voxelNormals = new NativeArray<float3>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
+            normalPrefetchedVals = new NativeArray<half>[4];
+            for (int i = 0; i < 4; i++) {
+                normalPrefetchedVals[i] = new NativeArray<half>(VOL, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            }
 
             int packedCount = (int)math.ceil((float)VOL / (8 * sizeof(uint)));
             bits = new NativeArray<uint>(packedCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -137,11 +142,33 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bounds[0] = new float3(VoxelUtils.SIZE * voxelSizeFactor);
             bounds[1] = new float3(0.0);
 
-            // Normalize my shi dawg
-            NormalsJob normalsJob = new NormalsJob {
-                normals = voxelNormals,
-                voxels = voxels,
+            // Normalize my shi dawg | Part 1
+            NormalsPrefetchJob prefetchBase = new NormalsPrefetchJob {
+                voxels = voxels.GetSubArray(0, VOL),
+                val = normalPrefetchedVals[0],
             };
+            NormalsPrefetchJob prefetchX = new NormalsPrefetchJob {
+                voxels = voxels.GetSubArray(1, VOL - 1),
+                val = normalPrefetchedVals[1],
+            };
+            NormalsPrefetchJob prefetchY = new NormalsPrefetchJob {
+                voxels = voxels.GetSubArray(VoxelUtils.SIZE * VoxelUtils.SIZE, VOL - VoxelUtils.SIZE * VoxelUtils.SIZE),
+                val = normalPrefetchedVals[2],
+            };
+            NormalsPrefetchJob prefetchZ = new NormalsPrefetchJob {
+                voxels = voxels.GetSubArray(VoxelUtils.SIZE, VOL - VoxelUtils.SIZE),
+                val = normalPrefetchedVals[3],
+            };
+
+            // Normalize my shi dawg | Part 2
+            NormalsCalculateJob normalsCalculateJob = new NormalsCalculateJob {
+                normals = voxelNormals,
+                baseVal = normalPrefetchedVals[0],
+                xVal = normalPrefetchedVals[1],
+                yVal = normalPrefetchedVals[2],
+                zVal = normalPrefetchedVals[3]
+            };
+
 
             // Handles fetching MC corners for the SN edges
             CornerJob cornerJob = new CornerJob {
@@ -227,31 +254,44 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 debugData = debugData.AsParallelWriter(),
             };
 
+            const int BATCH = VoxelUtils.VOLUME;
+            const int SMALLER_BATCH = VoxelUtils.VOLUME / 2;
+            const int SMALLEST_BATCH = VoxelUtils.VOLUME / 4;
+            const int SKIRT_BATCH = VoxelUtils.SKIRT_FACE * 6;
+            const int SMALLER_SKIRT_BATCH = VoxelUtils.SKIRT_FACE / 2;
+            const int PER_SKIRT_FACE_BATCH = VoxelUtils.SKIRT_FACE / 6;
+
             // Voxel finite-diffed normals job
-            JobHandle normalsJobHandle = normalsJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, dependency);
+            JobHandle prefetchBaseJobHandle = prefetchBase.Schedule(VOL, SMALLER_BATCH, dependency);
+            JobHandle prefetchXJobHandle = prefetchX.Schedule(VOL - 1, SMALLER_BATCH, dependency);
+            JobHandle prefetchYJobHandle = prefetchY.Schedule(VOL - VoxelUtils.SIZE * VoxelUtils.SIZE, SMALLER_BATCH, dependency);
+            JobHandle prefetchZJobHandle = prefetchZ.Schedule(VOL - VoxelUtils.SIZE, SMALLER_BATCH, dependency);
+            JobHandle normalsDep1 = JobHandle.CombineDependencies(prefetchXJobHandle, prefetchYJobHandle, prefetchZJobHandle);
+            JobHandle normalsDep2 = JobHandle.CombineDependencies(normalsDep1, prefetchBaseJobHandle);
+            JobHandle normalsJobHandle = normalsCalculateJob.Schedule(VOL, SMALLEST_BATCH, normalsDep2);
 
             // Start the corner job and material job
-            JobHandle checkJobHandle = checkJob.Schedule(bits.Length, PER_VOXEL_JOB_BATCH_SIZE, dependency);
-            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, checkJobHandle);
+            JobHandle checkJobHandle = checkJob.Schedule(bits.Length, SMALLEST_BATCH, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VOL, SMALLEST_BATCH, checkJobHandle);
 
             // Start the vertex job
             JobHandle vertexDep = JobHandle.CombineDependencies(cornerJobHandle, normalsJobHandle);
-            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexDep);
+            JobHandle vertexJobHandle = vertexJob.Schedule(VOL, SMALLER_BATCH, vertexDep);
 
             // Start the main mesh quad job
-            JobHandle quadJobHandle = quadJob.Schedule(VOL, PER_VOXEL_JOB_BATCH_SIZE, vertexJobHandle);
+            JobHandle quadJobHandle = quadJob.Schedule(VOL, SMALLER_BATCH, vertexJobHandle);
 
             // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
-            JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, dependency);
+            JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(VoxelUtils.FACE * 6, SMALLER_SKIRT_BATCH, dependency);
 
             // Copies vertices from the boundary in the source mesh to our skirt vertices. also sets proper indices in the skirtVertexIndicesCopied array
             JobHandle skirtCopyJobHandle = skirtCopyJob.Schedule(vertexJobHandle);
 
             // Creates skirt vertices (both normal and forced). needs to run at VoxelUtils.SKIRT_FACE since it has a padding of 2 (for edge case on the boundaries)
-            JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
+            JobHandle skirtVertexJobHandle = skirtVertexJob.Schedule(VoxelUtils.SKIRT_FACE * 6, PER_SKIRT_FACE_BATCH, JobHandle.CombineDependencies(skirtCopyJobHandle, closestSurfaceJobHandle));
             
             // Creates quad based on the copied vertices and skirt-generated vertices
-            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_SURFACE_JOB_BATCH_SIZE, skirtVertexJobHandle);
+            JobHandle skirtQuadJobHandle = skirtQuadJob.Schedule(VoxelUtils.FACE * 6, PER_SKIRT_FACE_BATCH, skirtVertexJobHandle);
 
 
             // Not linked to the main pipeline but still requires verts access
@@ -355,6 +395,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
             voxelNormals.Dispose();
             skirtUvs.Dispose();
             bits.Dispose();
+            
+            for (int i = 0; i < 4; i++) {
+                normalPrefetchedVals[i].Dispose();
+            }
         }
     }
 

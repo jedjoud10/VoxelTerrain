@@ -38,10 +38,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public void Execute(int index) {
             uint3 position = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
-
+            
             if (math.any(position > VoxelUtils.SIZE - 2))
                 return;
-
+            
             enabled[index] = (byte)(CalculateMarchingCubesCode(position, index));
         }
 
@@ -51,8 +51,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // I LOVE MICROOPTIMIZATIONS!!! I LOVE DOING THIS ON A WHIM WITHOUT ACTUALLY TRUSTING PROFILER DATA!!!!
             // I actually profiled this and it is actually faster. Saved 3ms on the median time. Pretty good desu
             if (X86.Avx2.IsAvx2Supported) {
-                uint4 indices = (uint4)(offsets[0] + new int4(baseIndex));
-                uint4 indices2 = (uint4)(offsets[1] + new int4(baseIndex));
+                int4 indices = (offsets[0] + new int4(baseIndex));
+                int4 indices2 = (offsets[1] + new int4(baseIndex));
 
                 v256 indices_v256 = new v256(indices.x, indices.y, indices.z, indices.w, indices2.x, indices2.y, indices2.z, indices2.w);
 

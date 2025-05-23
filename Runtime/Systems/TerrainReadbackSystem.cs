@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using jedjoud.VoxelTerrain.Octree;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -24,6 +25,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         private bool disposed;
 
         protected override void OnCreate() {
+            RequireForUpdate<TerrainReadbackConfig>();
             data = new NativeArray<uint>(VoxelUtils.VOLUME * 8, Allocator.Persistent);
             entities = new List<Entity>(8);
             copies = new NativeArray<JobHandle>(8, Allocator.Persistent);
@@ -54,6 +56,12 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         protected override void OnUpdate() {
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk, TerrainChunkRequestReadbackTag>().Build();
+            bool ready = query.CalculateEntityCount() == 0 && free;
+
+            RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
+            _ready.ValueRW.readback = ready;
+
             if (ManagedTerrain.instance == null) {
                 throw new System.Exception("Missing managed terrain instance");
             }
@@ -63,11 +71,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             } else {
                 TryCheckIfReadbackComplete();
             }
-        }
-
-        public bool IsFree() {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk, TerrainChunkRequestReadbackTag>().Build();
-            return query.CalculateEntityCount() == 0 && free;
         }
 
         private void TryBeginReadback() {
@@ -189,6 +192,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (pendingCopies.HasValue && pendingCopies.Value.IsCompleted && countersFetched && voxelsFetched) {
                 pendingCopies.Value.Complete();
 
+                bool skipEmptyChunks = SystemAPI.GetSingleton<TerrainReadbackConfig>().skipEmptyChunks;
+
                 // Since we now fetch n+2 voxels (66^3) we can actually use the pos/neg optimizations
                 // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
                 // heheheha....
@@ -203,7 +208,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
 
                     // Skip empty chunks!!!
-                    EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, !skipped);
+                    EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, !(skipped && skipEmptyChunks));
                 }
 
                 Reset();

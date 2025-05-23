@@ -53,6 +53,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             octree.neighbourMasks.Dispose();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             if (!initialized) {
                 state.EntityManager.CreateSingleton<TerrainOctree>(InitOctree());
@@ -86,10 +87,10 @@ namespace jedjoud.VoxelTerrain.Octree {
                 return;
             }
 
-            TerrainMeshingSystem mesher = state.World.GetExistingSystemManaged<TerrainMeshingSystem>();
-            TerrainReadbackSystem readbacker = state.World.GetExistingSystemManaged<TerrainReadbackSystem>();
+            TerrainReadySystems ready = SystemAPI.GetSingleton<TerrainReadySystems>();
 
-            if (!mesher.IsFree() || !readbacker.IsFree()) {
+            
+            if (!ready.manager || !ready.mesher || !ready.readback) {
                 return;
             }
 

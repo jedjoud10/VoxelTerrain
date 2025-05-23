@@ -23,7 +23,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private List<MeshJobHandler> handlers;
         const int MESH_JOBS_PER_TICK = 2;
         private RenderMeshDescription meshDescription;
-        private RenderMeshDescription skirtDescription;
+        private RenderMeshDescription mainSkirtsDescription;
+        private RenderMeshDescription forcedSkirtsDescription;
         private EntitiesGraphicsSystem graphics;
         private BatchMaterialID materialId;
 
@@ -36,7 +37,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             meshDescription = new RenderMeshDescription {
                 FilterSettings = new RenderFilterSettings {
-                    ShadowCastingMode = ShadowCastingMode.TwoSided,
+                    ShadowCastingMode = ShadowCastingMode.On,
                     ReceiveShadows = true,
                     MotionMode = MotionVectorGenerationMode.ForceNoMotion,
                     StaticShadowCaster = false,
@@ -46,9 +47,21 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 LightProbeUsage = LightProbeUsage.Off,
             };
 
-            skirtDescription = new RenderMeshDescription {
+            mainSkirtsDescription = new RenderMeshDescription {
                 FilterSettings = new RenderFilterSettings {
-                    ShadowCastingMode = ShadowCastingMode.TwoSided,
+                    ShadowCastingMode = ShadowCastingMode.On,
+                    ReceiveShadows = true,
+                    MotionMode = MotionVectorGenerationMode.ForceNoMotion,
+                    StaticShadowCaster = false,
+                    Layer = 0,
+                    RenderingLayerMask = ~0u,
+                },
+                LightProbeUsage = LightProbeUsage.Off,
+            };
+
+            forcedSkirtsDescription = new RenderMeshDescription {
+                FilterSettings = new RenderFilterSettings {
+                    ShadowCastingMode = ShadowCastingMode.Off,
                     ReceiveShadows = false,
                     MotionMode = MotionVectorGenerationMode.ForceNoMotion,
                     StaticShadowCaster = false,
@@ -61,12 +74,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             graphics = null;
         }
 
-        public bool IsFree() {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunk, TerrainChunkVoxels, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
-            return query.CalculateEntityCount() == 0 && handlers.All(x => x.Free);
-        }
-
         protected override void OnUpdate() {
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunk, TerrainChunkVoxels, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
+            bool ready = query.CalculateEntityCount() == 0 && handlers.All(x => x.Free);
+
+            RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
+            _ready.ValueRW.mesher = ready;
+
             if (SystemAPI.ManagedAPI.TryGetSingleton<TerrainMesherConfig>(out TerrainMesherConfig config) && graphics == null) {
                 graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
                 materialId = graphics.RegisterMaterial(config.material.material);
@@ -82,7 +96,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunk, TerrainChunkVoxels, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
             NativeArray<TerrainChunkVoxels> voxelsArray = query.ToComponentDataArray<TerrainChunkVoxels>(Allocator.Temp);
             NativeArray<Entity> entitiesArray = query.ToEntityArray(Allocator.Temp);
 
@@ -176,6 +189,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     BatchMeshID skirtMeshId = graphics.RegisterMesh(skirtMesh);
                     MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(materialId, skirtMeshId, (ushort)skirtIndex);
 
+                    RenderMeshDescription skirtDescription = skirtIndex == 0 ? mainSkirtsDescription : forcedSkirtsDescription;
                     RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtDescription, skirtMaterialMeshInfo);
 
                     EntityManager.SetComponentData<RenderBounds>(skirtEntity, new RenderBounds() {

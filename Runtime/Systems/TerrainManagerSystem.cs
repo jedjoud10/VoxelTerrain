@@ -45,6 +45,8 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
             mgr.AddComponent<TerrainSkirtTag>(skirtPrototype);
             mgr.AddComponent<TerrainSkirtVisForceTag>(skirtPrototype);
+
+            state.EntityManager.CreateSingleton<TerrainReadySystems>();
         }
 
         static void WriteOffsetDirAsMask(ref BitField32 skirtMask, uint3 offset) {
@@ -82,6 +84,9 @@ namespace jedjoud.VoxelTerrain {
             TerrainManagerConfig config = SystemAPI.GetSingleton<TerrainManagerConfig>();
             RefRW<TerrainOctree> _octree = SystemAPI.GetSingletonRW<TerrainOctree>();
             ref TerrainOctree octree = ref _octree.ValueRW;
+
+            RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
+            _ready.ValueRW.manager = true;
 
             if (!octree.pending && octree.handle.IsCompleted && octree.readyToSpawn) {
                 foreach (var node in octree.removed) {
