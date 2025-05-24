@@ -113,12 +113,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             for (int i = 0; i < numChunksToProcess; i++) {
                 MeshJobHandler handler = freeHandlers[i];
+                Entity chunkEntity = entitiesArray[i];
+                NativeArray<Voxel> voxels = voxelsArray[i].inner;
+
                 Profiler.BeginSample("Begin Mesh Jobs");
                 //Debug.Log(entitiesArray[i].ToString());
-                BeginJob(handler, entitiesArray[i], voxelsArray[i].inner);
+                BeginJob(handler, chunkEntity, voxels);
                 Profiler.EndSample();
 
-                SystemAPI.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entitiesArray[i], false);
+                SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, false);
+                SystemAPI.SetComponentEnabled<TerrainChunkMeshReadyTag>(chunkEntity, false);
+                SystemAPI.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkEntity, false);
             }
 
             voxelsArray.Dispose();
@@ -127,6 +132,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         private void FinishJob(MeshJobHandler handler) {
             if (handler.TryComplete(EntityManager, out Mesh mesh, out Mesh skirtMesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
+                EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, true);
+                SystemAPI.SetComponentEnabled<TerrainChunkMeshReadyTag>(chunkEntity, true);
+
+                if (stats.Empty)
+                    return;
+
                 TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
                 OctreeNode node = chunk.node;
 
@@ -146,6 +157,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 RenderMeshUtility.AddComponents(chunkEntity, EntityManager, meshDescription, materialMeshInfo);
 
                 EntityManager.AddComponent<UnregisterMeshCleanup>(chunkEntity);
+
                 EntityManager.SetComponentData<UnregisterMeshCleanup>(chunkEntity, new UnregisterMeshCleanup {
                     meshId = meshId
                 });

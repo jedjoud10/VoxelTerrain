@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -14,6 +15,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // There are multiple instances of this class stored inside the voxel mesher to saturate the other threads
     internal class MeshJobHandler {
         public struct Stats {
+            // Check if the mesh is completely empty desu (including skirts)
+            public bool Empty;
+
             // AABB that we generated using the vertices
             public Bounds Bounds { get; internal set; }
 
@@ -343,7 +347,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             finalJobHandle.Complete();
             Free = true;
 
-            if (vertexCounter.Count == 0 || quadCounter.Count == 0 || !mgr.Exists(this.entity) || array.Length == 0) {
+            if (!mgr.Exists(this.entity) || array.Length == 0) {
                 entity = Entity.Null;
                 stats = default;
                 outChunkMesh = null;
@@ -351,13 +355,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return false;
             }
 
-            outChunkMesh = new Mesh();
-            outSkirtMesh = new Mesh();
             entity = this.entity;
 
-            Mesh.ApplyAndDisposeWritableMeshData(array, new Mesh[2] {
-                outChunkMesh, outSkirtMesh
-            }, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
+            int[] temp = skirtForcedTriangleCounter.ToArray();
+            bool empty = vertexCounter.Count == 0 && quadCounter.Count == 0 && temp.All(x => x == 0) && skirtVertexCounter.Count == 0;
+
+            if (empty) {
+                outChunkMesh = null;
+                outSkirtMesh = null;
+                array.Dispose();
+            } else {
+                outChunkMesh = new Mesh();
+                outSkirtMesh = new Mesh();
+                Mesh.ApplyAndDisposeWritableMeshData(array, new Mesh[2] {
+                    outChunkMesh, outSkirtMesh
+                }, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
+            }
 
             stats = new Stats {
                 Bounds = new Bounds() {
@@ -365,7 +378,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     max = bounds[1],
                 },
 
-                ForcedSkirtFacesTriCount = skirtForcedTriangleCounter.ToArray(),
+                ForcedSkirtFacesTriCount = temp,
+                Empty = empty,
             };                       
 
             return true;
