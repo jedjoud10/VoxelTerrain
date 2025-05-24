@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             for (int j = 0; j < count; j++) {
                 Voxel voxel = voxels[j + index * 32];
-                uint bit = (voxel.density <= 0f) ? 1u : 0u;
+                uint bit = (voxel.density >= 0f) ? 1u : 0u;
                 packed |= bit << j;
             }
 

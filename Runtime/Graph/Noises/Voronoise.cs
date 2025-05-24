@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoronoiseNode<T> : AbstractNoiseNode<T> {
@@ -37,17 +38,17 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.randomness = 0.5f;
         }
 
-        public Voronoise(float amplitude = 1.0f, float scale = 0.01f, float lerpValue = 0.5f, float randomness = 0.5f) {
+        public Voronoise(Variable<float> amplitude, Variable<float> scale, Variable<float> lerpValue = null, Variable<float> randomness = null) {
             this.amplitude = amplitude;
             this.scale = scale;
-            this.lerpValue = lerpValue;
-            this.randomness = randomness;
+            this.lerpValue = lerpValue == null ? 0.5f : lerpValue;
+            this.randomness = randomness == null ? 0.5f : randomness;
         }
 
         public override AbstractNoiseNode<I> CreateAbstractYetToEval<I>() {
             return new VoronoiseNode<I>() {
                 amplitude = amplitude,
-                scale = scale,
+                scale = scale.Broadcast<float3>(),
                 position = null,
                 randomness = randomness,
                 lerpValue = lerpValue,

@@ -16,7 +16,7 @@ namespace jedjoud.VoxelTerrain {
                 return position.xy;
             }
 
-            // never should happen
+            // should never happen
             throw new Exception();
         }
 
@@ -30,7 +30,7 @@ namespace jedjoud.VoxelTerrain {
                 return position.xy;
             }
 
-            // never should happen
+            // should never happen
             throw new Exception();
         }
 
@@ -46,7 +46,7 @@ namespace jedjoud.VoxelTerrain {
                 return new uint3(relative.x, relative.y, missing);
             }
 
-            // never should happen
+            // should never happen
             throw new Exception();
         }
 
@@ -59,7 +59,7 @@ namespace jedjoud.VoxelTerrain {
                 return new float3(relative.x, relative.y, missing);
             }
 
-            // never should happen
+            // should never happen
             throw new Exception();
         }
 
@@ -72,7 +72,7 @@ namespace jedjoud.VoxelTerrain {
                 return new int3(relative.x, relative.y, missing);
             }
 
-            // never should happen
+            // should never happen
             throw new Exception();
         }
 
@@ -141,7 +141,7 @@ namespace jedjoud.VoxelTerrain {
                 }
             }
 
-            // never should happen
+            // should never happen
             throw new Exception();
         }
 

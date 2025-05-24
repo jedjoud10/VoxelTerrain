@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
@@ -100,6 +101,14 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Fractal(AbstractNoise noise, FractalMode mode, int octaves, Variable<float> lacunarity = null, Variable<float> persistence = null) {
             this.lacunarity = lacunarity;
             this.persistence = persistence;
+            this.inner = (Variable<T> position) => { return noise.Evaluate(position); };
+            this.remap = CreatePreFoldRemapFromNoise(noise, mode);
+            this.octaves = octaves;
+        }
+
+        public Fractal(AbstractNoise noise, FractalMode mode, int octaves, Variable<float2> others = null) {
+            this.lacunarity = others.Swizzle<float>("x");
+            this.persistence = others.Swizzle<float>("y");
             this.inner = (Variable<T> position) => { return noise.Evaluate(position); };
             this.remap = CreatePreFoldRemapFromNoise(noise, mode);
             this.octaves = octaves;

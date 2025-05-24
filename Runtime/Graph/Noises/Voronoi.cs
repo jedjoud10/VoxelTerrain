@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoronoiNode<T> : AbstractNoiseNode<T> {
@@ -38,7 +39,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
     public class Voronoi : AbstractNoise {
         public Variable<float> amplitude;
-        public Variable<float> scale;
+        public Variable<float3> scale;
         public Type type;
 
         public enum Type {
@@ -48,17 +49,17 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public Voronoi() {
             this.amplitude = 1.0f;
-            this.scale = 0.01f;
+            this.scale = new float3(0.01f);
             this.type = Type.F1;
         }
 
-        public Voronoi(Variable<float> scale, Variable<float> amplitude) {
+        public Voronoi(Variable<float> scale, Variable<float> amplitude, Type type = Type.F1) {
             this.amplitude = amplitude;
-            this.scale = scale;
-            this.type = Type.F1;
+            this.scale = scale.Broadcast<float3>();
+            this.type = type;
         }
 
-        public Voronoi(float scale = 0.01f, float amplitude = 1.0f, Type type = Type.F1) {
+        public Voronoi(Variable<float3> scale, Variable<float> amplitude, Type type = Type.F1) {
             this.amplitude = amplitude;
             this.scale = scale;
             this.type = type;

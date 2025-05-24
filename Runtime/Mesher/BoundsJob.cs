@@ -10,13 +10,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> vertices;
         [ReadOnly]
         public NativeCounter vertexCounter;
+        [WriteOnly]
         public NativeArray<float3> bounds;
 
         public void Execute() {
+            float3 min = 100000;
+            float3 max = -10000;
+
             for (int i = 0; i < vertexCounter.Count; i++) {
-                bounds[0] = math.min(bounds[0], vertices[i]);
-                bounds[1] = math.max(bounds[1], vertices[i]);
+                min = math.min(min, vertices[i]);
+                max = math.max(max, vertices[i]);
             }
+
+            bounds[0] = min;
+            bounds[1] = max;
         }
     }
 }

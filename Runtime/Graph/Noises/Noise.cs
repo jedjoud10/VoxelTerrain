@@ -1,10 +1,11 @@
 using System;
+using Unity.Mathematics;
 
 
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract class AbstractNoiseNode<I> : Variable<float>, ICloneable {
         public Variable<float> amplitude;
-        public Variable<float> scale;
+        public Variable<float3> scale;
         public Variable<I> position;
 
         public abstract object Clone();
@@ -26,11 +27,23 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new Simplex(scale, amplitude).Evaluate(input);
         }
 
+        public static Variable<float> Simplex<T>(Variable<T> input, float3 scale, float amplitude) {
+            return new Simplex(scale, amplitude).Evaluate(input);
+        }
+
         public static Variable<float> VoronoiF1<T>(Variable<T> input, float scale, float amplitude) {
             return new Voronoi(scale, amplitude, Voronoi.Type.F1).Evaluate(input);
         }
 
         public static Variable<float> VoronoiF2<T>(Variable<T> input, float scale, float amplitude) {
+            return new Voronoi(scale, amplitude, Voronoi.Type.F2).Evaluate(input);
+        }
+
+        public static Variable<float> VoronoiF1<T>(Variable<T> input, float3 scale, float amplitude) {
+            return new Voronoi(scale, amplitude, Voronoi.Type.F1).Evaluate(input);
+        }
+
+        public static Variable<float> VoronoiF2<T>(Variable<T> input, float3 scale, float amplitude) {
             return new Voronoi(scale, amplitude, Voronoi.Type.F2).Evaluate(input);
         }
 

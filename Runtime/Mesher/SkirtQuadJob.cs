@@ -74,7 +74,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (startVoxel.density >= 0f == endVoxel.density >= 0f)
                     return;
 
-                flip = (endVoxel.density > 0.0);
+                flip = (endVoxel.density >= 0.0);
             }
 
             int3 offset = (int3)((int3)unflattened + (int3)forward - math.int3(1));
@@ -93,6 +93,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = 0; i < 4; i++) {
                 v[i] = FetchIndex(offset + (int3)DirectionOffsetUtils.PERPENDICULAR_OFFSETS[index * 4 + i], face);
             }
+
+            /*
+            if (math.cmax(v) != int.MaxValue && math.cmin(v) >= 0 && !force) {
+                v.x = v[flip ? 0 : 2];
+                v.z = v[flip ? 2 : 0];
+                AddQuadsOrTris(new Triangulate {
+                    indices = v,
+                    triangle = false
+                }, skirtStitchedTriangleCounter, skirtStitchedIndices);
+            }
+            */
 
             if (TryCalculateQuadOrTris(flip, v, out Triangulate data)) {
                 if (force) {

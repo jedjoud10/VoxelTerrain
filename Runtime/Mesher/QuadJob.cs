@@ -45,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Voxel startVoxel = voxels[baseIndex];
             Voxel endVoxel = voxels[endIndex];
 
-            bool flip = (endVoxel.density > 0.0);
+            bool flip = (endVoxel.density >= 0.0);
 
             byte material = flip ? startVoxel.material : endVoxel.material;
             uint3 offset = basePosition + forward - math.uint3(1);

@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class SimplexNode<T> : AbstractNoiseNode<T> {
@@ -20,14 +21,19 @@ namespace jedjoud.VoxelTerrain.Generation {
 
     public class Simplex : AbstractNoise {
         public Variable<float> amplitude;
-        public Variable<float> scale;
+        public Variable<float3> scale;
 
         public Simplex() {
             amplitude = 1.0f;
-            scale = 0.01f;
+            scale = new float3(0.01f);
         }
 
         public Simplex(Variable<float> scale, Variable<float> amplitude) {
+            this.amplitude = amplitude;
+            this.scale = scale.Broadcast<float3>();
+        }
+
+        public Simplex(Variable<float3> scale, Variable<float> amplitude) {
             this.amplitude = amplitude;
             this.scale = scale;
         }
