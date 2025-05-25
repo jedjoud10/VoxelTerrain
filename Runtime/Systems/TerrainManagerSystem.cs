@@ -38,7 +38,7 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainChunkRequestMeshingTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkRequestCollisionTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkVoxelsReadyTag>(chunkPrototype);
-            mgr.AddComponent<TerrainChunkMeshReadyTag>(chunkPrototype);
+            mgr.AddComponent<TerrainChunkMeshReady>(chunkPrototype);
             mgr.AddComponent<TerrainChunkEndOfPipeTag>(chunkPrototype);
             mgr.AddComponent<Prefab>(chunkPrototype);
 
@@ -48,8 +48,8 @@ namespace jedjoud.VoxelTerrain {
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(chunkPrototype, false);
-            mgr.SetComponentEnabled<TerrainChunkMeshReadyTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainChunkMeshReady>(chunkPrototype, false);
 
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
@@ -99,7 +99,8 @@ namespace jedjoud.VoxelTerrain {
             RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
             _ready.ValueRW.manager = chunksToShow.IsEmpty && chunksToDestroy.IsEmpty;
 
-            TerrainManagerConfig config = SystemAPI.GetSingleton<TerrainManagerConfig>();
+            TerrainManagerConfig managerConfig = SystemAPI.GetSingleton<TerrainManagerConfig>();
+            TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             RefRW<TerrainOctree> _octree = SystemAPI.GetSingletonRW<TerrainOctree>();
             ref TerrainOctree octree = ref _octree.ValueRW;
 
@@ -135,6 +136,7 @@ namespace jedjoud.VoxelTerrain {
                     state.EntityManager.SetComponentData<TerrainChunk>(entity, new TerrainChunk {
                         node = node,
                         skirts = skirts,
+                        generateCollisions = node.depth == octreeConfig.maxDepth,
                     });
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, true);
                     state.EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, true);
@@ -187,6 +189,12 @@ namespace jedjoud.VoxelTerrain {
                     TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
                     voxels.inner.Dispose();
 
+                    if (state.EntityManager.HasChunkComponent<TerrainChunkMeshReady>(entity)) {
+                        TerrainChunkMeshReady mesh = state.EntityManager.GetComponentData<TerrainChunkMeshReady>(entity);
+                        mesh.vertices.Dispose();
+                        mesh.indices.Dispose();
+                    }
+
                     state.EntityManager.DestroyEntity(entity);
                     chunks.Remove(chunk.node);
                 }
@@ -202,9 +210,16 @@ namespace jedjoud.VoxelTerrain {
             chunksToShow.Dispose();
             chunksToDestroy.Dispose();
 
-            foreach (var (voxels, entity) in SystemAPI.Query<TerrainChunkVoxels>().WithEntityAccess()) {
+            foreach (var voxels in SystemAPI.Query<TerrainChunkVoxels>()) {
                 if (voxels.inner.IsCreated) {
                     voxels.inner.Dispose();
+                }
+            }
+
+            foreach (var mesh in SystemAPI.Query<TerrainChunkMeshReady>()) {
+                if (mesh.vertices.IsCreated) {
+                    mesh.vertices.Dispose();
+                    mesh.indices.Dispose();
                 }
             }
         }

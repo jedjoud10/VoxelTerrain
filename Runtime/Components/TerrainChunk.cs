@@ -8,6 +8,7 @@ namespace jedjoud.VoxelTerrain {
     public struct TerrainChunk : IComponentData {
         public OctreeNode node;
         public FixedList64Bytes<Entity> skirts;
+        public bool generateCollisions;
 
         // public Mesh sharedMesh;
         // public byte[] voxelMaterialsLookup;

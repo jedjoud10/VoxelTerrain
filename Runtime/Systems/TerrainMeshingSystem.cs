@@ -122,7 +122,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Profiler.EndSample();
 
                 SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, false);
-                SystemAPI.SetComponentEnabled<TerrainChunkMeshReadyTag>(chunkEntity, false);
                 SystemAPI.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkEntity, false);
             }
 
@@ -133,23 +132,30 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private void FinishJob(MeshJobHandler handler) {
             if (handler.TryComplete(EntityManager, out Mesh mesh, out Mesh skirtMesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, true);
-                SystemAPI.SetComponentEnabled<TerrainChunkMeshReadyTag>(chunkEntity, true);
+                EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(chunkEntity, true);
 
-                if (stats.Empty)
+                {
+                    NativeArray<float3> vertices = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
+                    NativeArray<int> indices = new NativeArray<int>(stats.indexCount, Allocator.Persistent);
+
+                    vertices.CopyFrom(handler.vertices.GetSubArray(0, stats.vertexCount));
+                    indices.CopyFrom(handler.indices.GetSubArray(0, stats.indexCount));
+
+                    EntityManager.SetComponentData<TerrainChunkMeshReady>(chunkEntity, new TerrainChunkMeshReady {
+                        vertices = vertices,
+                        indices = indices
+                    });
+                }
+
+                if (stats.empty)
                     return;
 
                 TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
                 OctreeNode node = chunk.node;
 
-                TerrainMesherConfig config = SystemAPI.ManagedAPI.GetSingleton<TerrainMesherConfig>();
+                EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkEntity, chunk.generateCollisions);
 
-                MaterialMeshIndex[] indices = new MaterialMeshIndex[1] {
-                    new MaterialMeshIndex {
-                        MaterialIndex = 0,
-                        SubMeshIndex = 0,
-                        MeshIndex = 0,
-                    }
-                };
+                TerrainMesherConfig config = SystemAPI.ManagedAPI.GetSingleton<TerrainMesherConfig>();
 
                 BatchMeshID meshId = graphics.RegisterMesh(mesh);
                 MaterialMeshInfo materialMeshInfo = new MaterialMeshInfo(materialId, meshId, 0);
@@ -164,8 +170,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 float scalingFactor = node.size / (64f);
                 AABB localRenderBounds = new Unity.Mathematics.MinMaxAABB {
-                    Min = stats.Bounds.min,
-                    Max = stats.Bounds.max,
+                    Min = stats.bounds.min,
+                    Max = stats.bounds.max,
                 };
 
                 AABB worldRenderBounds = localRenderBounds;
@@ -188,18 +194,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 worldRenderBounds.Extents *= scalingFactor;
 
                 for (int skirtIndex = 0; skirtIndex < 7; skirtIndex++) {
-                    if (skirtIndex > 1 && stats.ForcedSkirtFacesTriCount[skirtIndex - 1] == 0)
+                    if (skirtIndex > 1 && stats.forcedSkirtFacesTriCount[skirtIndex - 1] == 0)
                         continue;
                     
                     Entity skirtEntity = chunk.skirts[skirtIndex];
-
-                    MaterialMeshIndex[] skirtIndices = new MaterialMeshIndex[1] {
-                        new MaterialMeshIndex {
-                            MaterialIndex = 0,
-                            SubMeshIndex = skirtIndex,
-                            MeshIndex = 0,
-                        }
-                    };
 
                     BatchMeshID skirtMeshId = graphics.RegisterMesh(skirtMesh);
                     MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(materialId, skirtMeshId, (ushort)skirtIndex);

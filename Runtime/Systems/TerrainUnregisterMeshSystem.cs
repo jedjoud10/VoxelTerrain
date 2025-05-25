@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
         }
         protected override void OnUpdate() {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<UnregisterMeshCleanup>().WithAbsent<MaterialMeshInfo>().WithAbsent<LocalToWorld>().Build();
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<UnregisterMeshCleanup, TerrainChunkMeshReady>().WithAbsent<MaterialMeshInfo>().WithAbsent<LocalToWorld>().Build();
 
             EntityCommandBuffer buffer = new EntityCommandBuffer(Allocator.Temp);
 

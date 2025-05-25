@@ -15,14 +15,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
     // There are multiple instances of this class stored inside the voxel mesher to saturate the other threads
     internal class MeshJobHandler {
         public struct Stats {
-            // Check if the mesh is completely empty desu (including skirts)
-            public bool Empty;
-
-            // AABB that we generated using the vertices
-            public Bounds Bounds { get; internal set; }
-
-            // Number of triangles per forced skirt face
-            public int[] ForcedSkirtFacesTriCount { get; internal set; }
+            public bool empty;
+            public Bounds bounds;
+            public int[] forcedSkirtFacesTriCount;
+            public int vertexCount;
+            public int indexCount;
         }
 
         // Copy of the voxel data that we will use for meshing
@@ -373,13 +370,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             stats = new Stats {
-                Bounds = new Bounds() {
+                bounds = new Bounds() {
                     min = bounds[0],
                     max = bounds[1],
                 },
 
-                ForcedSkirtFacesTriCount = temp,
-                Empty = empty,
+                vertexCount = vertexCounter.Count,
+                indexCount = quadCounter.Count * 6,
+                forcedSkirtFacesTriCount = temp,
+                empty = empty,
             };                       
 
             return true;

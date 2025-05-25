@@ -114,7 +114,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
                 EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, false);
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, false);
-                EntityManager.SetComponentEnabled<TerrainChunkMeshReadyTag>(entity, false);
+                EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(entity, false);
             }
 
             // Size*2 since we are using octal generation!!!!
@@ -212,13 +212,13 @@ namespace jedjoud.VoxelTerrain.Generation {
                     // Skip empty chunks!!!
                     if (skipEmptyChunks && skipped) {
                         EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, false);
-                        EntityManager.SetComponentEnabled<TerrainChunkMeshReadyTag>(entity, false);
+                        EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(entity, false);
 
                         // this chunk will directly go to the end of pipe, no need to deal with it anymore
                         EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, true);
                     } else {
                         EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
-                        EntityManager.SetComponentEnabled<TerrainChunkMeshReadyTag>(entity, false);
+                        EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(entity, false);
                     }
                 }
 

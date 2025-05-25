@@ -21,6 +21,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> normals;
 
         // TODO: for some reason really does not want to vectorize this... :(
+        // Note: Burst manages to vectorize it when we use halfs and half3s, but only saves 1ms
+        // (since we still need to do half <-> float conversion for subtraction, there is no sub between two halfs)
+        // also normalization breaks the vectorization it seems
         public void Execute(int index) {
             float src = baseVal[index];
             float x = xVal[index];
