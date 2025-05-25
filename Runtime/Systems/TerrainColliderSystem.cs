@@ -9,7 +9,7 @@ using Unity.Physics;
 using Unity.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [UpdateAfter(typeof(TerrainMeshingSystem))]
     public partial struct TerrainColliderSystem : ISystem {
         struct PendingBatchBakeRequest {
@@ -30,7 +30,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public void Execute(int i) {
                 NativeArray<float3> vertices = meshes[i].vertices;
                 NativeArray<int3> triangles = meshes[i].indices.Reinterpret<int3>(sizeof(int));
-                BlobAssetReference<Collider> collider = MeshCollider.Create(vertices, triangles, CollisionFilter.Default, Material.Default);
+                var material = Material.Default;
+                material.Friction = 0.95f;
+                BlobAssetReference<Collider> collider = MeshCollider.Create(vertices, triangles, CollisionFilter.Default, material);
                 colliders[i] = collider;
             }
         }

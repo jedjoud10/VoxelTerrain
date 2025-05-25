@@ -132,9 +132,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private void FinishJob(MeshJobHandler handler) {
             if (handler.TryComplete(EntityManager, out Mesh mesh, out Mesh skirtMesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, true);
-                EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(chunkEntity, true);
+
+                if (stats.empty)
+                    return;
 
                 {
+                    EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(chunkEntity, true);
                     NativeArray<float3> vertices = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
                     NativeArray<int> indices = new NativeArray<int>(stats.indexCount, Allocator.Persistent);
 
@@ -146,9 +149,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         indices = indices
                     });
                 }
-
-                if (stats.empty)
-                    return;
 
                 TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
                 OctreeNode node = chunk.node;
