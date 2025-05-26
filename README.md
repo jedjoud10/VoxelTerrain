@@ -1,12 +1,11 @@
 # New Features Features:
 - Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues . 
 - Octal Chunk Async Readback (instead of doing readback for a single chunk, do it for 8 chunks, the GPU can handle that much)
-- *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
-  - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices
-- Proper S.N Skirts by running 2D and 1D S.N on the chunk boundary. Still need to dynamically disable / enable them based on the direction that they face relative to the camera
-
+- Proper S.N Skirts by running 2D and 1D S.N on the chunk boundary. Skirt entities will be dynamically disabled / enabled based on the direction that they face relative to the octree loader position
 
 # TODO / Ideas
+- *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
+  - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices
 - Figure out how to handle per voxel color (nointerpolation in shader trick)
 - Re-implement props with hopefully better implementation
   - Currently WIP, got prop readback working, but need to clean up that mess graph wise
@@ -18,6 +17,7 @@
 - Figure out ``CachedVar`` node stuff
   - Ok figured it out, you just can't make a lower resolution kernel (unless you want to use point sampling)
   - Well, no, not really. You *can* make a lower resolution kernel, but it needs to have n+1 dispatches in the axii instead of n dispatches because bilinear sampling the lower-res texture needs that extra texel for the border. This is also true for finite-difference normal calculation, so maybe we can make that use a cached node internally? 
+  - Also, since we use octal readback now, 2D cached vars will actually need an array texture or a texture of size 2 x 128 x 128 to accomodate all the octal chunks
 - Implement smart range checking using texture value summation (cached textures)
 - Decide where to use ``SoA`` or ``AoS`` design for voxel data.
   - How much voxel data will we need anyways?
@@ -50,6 +50,9 @@ the C# graph that was used for the terrain. This gets converted to HLSL and then
 
 screenie with some triplanar texturing (thanks to PolyHaven)
 ![image](https://github.com/user-attachments/assets/5232947a-bc81-4e0e-91bf-36166efdcc71)
+
+vehicle demo test (posted on subreddit a few days ago)
+![image](https://github.com/user-attachments/assets/1857ebc8-06d1-475d-ba71-c39e9e05c515)
 
 
 # Credits
