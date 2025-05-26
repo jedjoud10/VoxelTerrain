@@ -80,7 +80,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             minMaxMask.z = flatten.x == (VoxelUtils.SKIRT_SIZE - 1);
             minMaxMask.w = flatten.y == (VoxelUtils.SKIRT_SIZE - 1);
 
-            int count = SkirtUtils.CountTrue(minMaxMask);
+            int count = BitUtils.CountTrue(minMaxMask);
             // if corner case, then only 2 of the above are true
             // if edge case, then only 1 of the above is true
 

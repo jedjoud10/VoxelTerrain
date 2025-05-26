@@ -397,8 +397,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     max = bounds[1],
                 },
 
-                vertexCount = vertexCounter.Count,
-                indexCount = triangleCounter.Count * 3,
+                vertexCount = totalVertexCount.Value,
+                indexCount = submeshIndexCounts[0],
                 forcedSkirtFacesTriCount = temp,
                 empty = empty,
 

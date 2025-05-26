@@ -17,9 +17,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
         const int MESH_JOBS_PER_TICK = 2;
-        private RenderMeshDescription meshDescription;
-        private RenderMeshDescription mainSkirtsDescription;
-        private RenderMeshDescription forcedSkirtsDescription;
+        private RenderMeshDescription mainMeshDescription;
+        private RenderMeshDescription skirtsMeshDescription;
         private EntitiesGraphicsSystem graphics;
         private BatchMaterialID materialId;
 
@@ -30,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 handlers.Add(new MeshJobHandler());
             }
 
-            meshDescription = new RenderMeshDescription {
+            mainMeshDescription = new RenderMeshDescription {
                 FilterSettings = new RenderFilterSettings {
                     ShadowCastingMode = ShadowCastingMode.On,
                     ReceiveShadows = true,
@@ -42,19 +41,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 LightProbeUsage = LightProbeUsage.Off,
             };
 
-            mainSkirtsDescription = new RenderMeshDescription {
-                FilterSettings = new RenderFilterSettings {
-                    ShadowCastingMode = ShadowCastingMode.On,
-                    ReceiveShadows = true,
-                    MotionMode = MotionVectorGenerationMode.ForceNoMotion,
-                    StaticShadowCaster = false,
-                    Layer = 0,
-                    RenderingLayerMask = ~0u,
-                },
-                LightProbeUsage = LightProbeUsage.Off,
-            };
-
-            forcedSkirtsDescription = new RenderMeshDescription {
+            skirtsMeshDescription = new RenderMeshDescription {
                 FilterSettings = new RenderFilterSettings {
                     ShadowCastingMode = ShadowCastingMode.Off,
                     ReceiveShadows = false,
@@ -102,9 +89,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
             }
 
-
-            //Debug.Log(numChunksToProcess);
-
             for (int i = 0; i < numChunksToProcess; i++) {
                 MeshJobHandler handler = freeHandlers[i];
                 Entity chunkEntity = entitiesArray[i];
@@ -142,18 +126,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         indices = indices
                     });
                 }
-
-                TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
+                // we MUST take a copy of TerrainChunk here (we cannot use GetComponentRW)
+                // because we execute RenderMeshUtility.AddComponents right after
+                // RenderMeshUtility.AddComponents changes the archetype of the chunk entity, invalidating the reference we hold to TerrainChunk
+                TerrainChunk chunk = SystemAPI.GetComponent<TerrainChunk>(chunkEntity);
                 OctreeNode node = chunk.node;
-
                 EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkEntity, chunk.generateCollisions);
-
-                TerrainMesherConfig config = SystemAPI.ManagedAPI.GetSingleton<TerrainMesherConfig>();
+                
 
                 BatchMeshID meshId = graphics.RegisterMesh(mesh);
                 MaterialMeshInfo materialMeshInfo = new MaterialMeshInfo(materialId, meshId, 0);
 
-                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, meshDescription, materialMeshInfo);
+                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
 
                 EntityManager.AddComponent<UnregisterMeshCleanup>(chunkEntity);
 
@@ -162,7 +146,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 });
 
                 float scalingFactor = node.size / (64f);
-                AABB localRenderBounds = new Unity.Mathematics.MinMaxAABB {
+                AABB localRenderBounds = new MinMaxAABB {
                     Min = stats.bounds.min,
                     Max = stats.bounds.max,
                 };
@@ -179,35 +163,23 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     Value = worldRenderBounds
                 });
 
-                /*
-                AABB skirtLocalRenderBounds = localRenderBounds;
-                skirtLocalRenderBounds.Extents *= 1.1f;
-
-                AABB skirtWorldRenderBounds = skirtLocalRenderBounds;
-                worldRenderBounds.Center += (float3)node.position;
-                worldRenderBounds.Extents *= scalingFactor;
-
-                for (int skirtIndex = 0; skirtIndex < 7; skirtIndex++) {
-                    if (skirtIndex > 1 && stats.forcedSkirtFacesTriCount[skirtIndex - 1] == 0)
+                for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
+                    if (stats.forcedSkirtFacesTriCount[skirtIndex] == 0)
                         continue;
                     
                     Entity skirtEntity = chunk.skirts[skirtIndex];
 
-                    BatchMeshID skirtMeshId = graphics.RegisterMesh(skirtMesh);
-                    MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(materialId, skirtMeshId, (ushort)skirtIndex);
-
-                    RenderMeshDescription skirtDescription = skirtIndex == 0 ? mainSkirtsDescription : forcedSkirtsDescription;
-                    RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtDescription, skirtMaterialMeshInfo);
+                    MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(materialId, meshId, (ushort)(skirtIndex + 1));
+                    RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
 
                     EntityManager.SetComponentData<RenderBounds>(skirtEntity, new RenderBounds() {
-                        Value = skirtLocalRenderBounds,
+                        Value = localRenderBounds,
                     });
 
                     EntityManager.SetComponentData<WorldRenderBounds>(skirtEntity, new WorldRenderBounds() {
-                        Value = skirtWorldRenderBounds
+                        Value = worldRenderBounds
                     });
                 }
-                */
             }
         }
 

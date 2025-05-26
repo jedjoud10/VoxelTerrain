@@ -107,7 +107,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (TryCalculateQuadOrTris(flip, v, out Triangulate data)) {
                 if (force) {
                     NativeArray<int> faceIndicesSubArray = skirtForcedPerFaceIndices.GetSubArray(face * VoxelUtils.SKIRT_FACE * 6, VoxelUtils.SKIRT_FACE * 6);
-                    AddQuadsOrTris(data, skirtForcedTriangleCounter.BecomeSigma(face), faceIndicesSubArray);
+                    AddQuadsOrTris(data, skirtForcedTriangleCounter.ToConcurrentNativeCounter(face), faceIndicesSubArray);
                 } else {
                     AddQuadsOrTris(data, skirtStitchedTriangleCounter, skirtStitchedIndices);
                 }

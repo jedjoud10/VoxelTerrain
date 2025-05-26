@@ -10,9 +10,13 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> scale;
         public Inject<float> amplitude;
 
-        // Noise parameters for the 3D cellular noise
+        // Noise parameters for the 3D voronoi noise
         public Inject<float3> voronoiScale;
         public Inject<float> voronoiAmplitude;
+
+        // Noise parameters for the 2D voronoise noise
+        public Inject<float> voronoiseScale;
+        public Inject<float> voronoiseAmplitude;
 
         // Fractal noise settings 
         public Inject<float2> others;
@@ -38,6 +42,10 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             // Create some extra "detail" voronoi noise
             Voronoi voronoi = new Voronoi(voronoiScale, voronoiAmplitude);
             density += voronoi.Evaluate(projected);
+
+            // Add some extra fractal voronoise because why not 
+            Voronoise voronoise = new Voronoise(voronoiseScale, voronoiseAmplitude);
+            density -= voronoise.Evaluate(xz);
 
             output = new AllOutputs();
             output.density = density;

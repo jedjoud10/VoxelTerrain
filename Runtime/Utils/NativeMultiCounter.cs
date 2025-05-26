@@ -165,7 +165,7 @@ namespace jedjoud.VoxelTerrain {
                 return Interlocked.Increment(ref *(m_Counters + index)) - 1;
             }
 
-            public NativeCounter.Concurrent BecomeSigma(int index) {
+            public NativeCounter.Concurrent ToConcurrentNativeCounter(int index) {
                 if (index >= capacity || index < 0)
                     throw new ArgumentOutOfRangeException("index");
 

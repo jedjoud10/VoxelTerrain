@@ -38,7 +38,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.randomness = 0.5f;
         }
 
-        public Voronoise(Variable<float> amplitude, Variable<float> scale, Variable<float> lerpValue = null, Variable<float> randomness = null) {
+        public Voronoise(Variable<float> scale, Variable<float> amplitude, Variable<float> lerpValue = null, Variable<float> randomness = null) {
             this.amplitude = amplitude;
             this.scale = scale;
             this.lerpValue = lerpValue == null ? 0.5f : lerpValue;

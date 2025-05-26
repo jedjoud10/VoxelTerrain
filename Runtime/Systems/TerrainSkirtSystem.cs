@@ -24,19 +24,14 @@ namespace jedjoud.VoxelTerrain {
             float chunkSize = 64f;
 
             foreach (var (localToWorld, skirt, skirtEntity) in SystemAPI.Query<LocalToWorld, TerrainSkirtTag>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisForceTag>().WithEntityAccess()) {
-                bool enabled = true;
+                float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * chunkSize * 0.5f;
+                float3 skirtDirection = DirectionOffsetUtils.FORWARD_DIRECTION_INCLUDING_NEGATIVE[(int)skirt.direction];
 
-                if (skirt.direction != byte.MaxValue) {
-                    int direction = (int)skirt.direction;
-                    float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * chunkSize * 0.5f;
-                    float3 skirtDirection = DirectionOffsetUtils.FORWARD_DIRECTION_INCLUDING_NEGATIVE[direction];
+                float3 skirtCenterToPlayer = math.normalize(loaderCenter - skirtCenter);
 
-                    float3 skirtCenterToPlayer = math.normalize(loaderCenter - skirtCenter);
-                    
-                    float dot = math.dot(skirtCenterToPlayer, skirtDirection);
+                float dot = math.dot(skirtCenterToPlayer, skirtDirection);
 
-                    enabled = dot > 0f;
-                }
+                bool enabled = dot > 0f;
 
                 SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, enabled);
             }

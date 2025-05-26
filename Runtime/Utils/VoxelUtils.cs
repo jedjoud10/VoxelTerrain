@@ -8,7 +8,6 @@ namespace jedjoud.VoxelTerrain {
     public static class VoxelUtils {
         // "logical" size of the chunks; how many voxels they store in one axis
         // technically this only needs to be 65 for skirts to work, but we also need normals to work so this must be 66
-        // but since we also want to avoid sampling from neighbouring chunks for general SN meshing we need to make this 67 to account for the very last vertex
         public const int SIZE = 66;
         public const int FACE = SIZE * SIZE;
         public const int VOLUME = SIZE * SIZE * SIZE;
@@ -16,7 +15,6 @@ namespace jedjoud.VoxelTerrain {
         // skirts will still spawn on the v=64 boundary though, we just need to add a 2 unit padding to handle literal 2D edge cases
         public const int SKIRT_SIZE = 66;
         public const int SKIRT_FACE = SKIRT_SIZE * SKIRT_SIZE;
-        public const int MAX_MATERIAL_COUNT = 256;
 
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
         static void DebugCheckBounds(int3 coordinates, int size) {

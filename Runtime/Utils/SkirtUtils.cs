@@ -75,35 +75,11 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
 
-        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        public static void DebugCheckOnlyOneBitMask(bool2 mask) {
-            if (CountTrue(mask) != 1) {
-                throw new System.Exception(
-                    $"There must exactly be one bool set in the bool2 mask");
-            }
-        }
-
-        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        public static void DebugCheckOnlyOneBitMask(bool3 mask) {
-            if (CountTrue(mask) != 1) {
-                throw new System.Exception(
-                    $"There must exactly be one bool set in the bool3 mask");
-            }
-        }
-
-        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        public static void DebugCheckOnlyOneBitMask(bool4 mask) {
-            if (CountTrue(mask) != 1) {
-                throw new System.Exception(
-                    $"There must exactly be one bool set in the bool4 mask");
-            }
-        }
-
         // Get the direction of an edge within a face relative space
         // Converts 2D direction to 3D basically
         public static int GetEdgeDirFaceRelative(bool2 mask, int faceNormal) {
             // No two bools can be set, otherwise that means that this is a CORNER
-            DebugCheckOnlyOneBitMask(mask);
+            BitUtils.DebugCheckOnlyOneBitMask(mask);
 
             // Need to pick the "other" value that isn't at a boundary
             mask = !mask;
@@ -254,27 +230,5 @@ namespace jedjoud.VoxelTerrain {
             throw new Exception();
         }
         */
-
-        public static int CountTrue(bool2 b3) {
-            return math.countbits(math.bitmask(new bool4(b3, false, false)));
-        }
-
-        public static int CountTrue(bool3 b3) {
-            return math.countbits(math.bitmask(new bool4(b3, false)));
-        }
-
-        public static int CountTrue(bool4 b4) {
-            return math.countbits(math.bitmask(b4));
-        }
-
-        public static int FindTrueIndex(bool4 b4) {
-            DebugCheckOnlyOneBitMask(b4);
-            return math.tzcnt(math.bitmask(b4));
-        }
-
-        public static int FindTrueIndex(bool3 b3) {
-            DebugCheckOnlyOneBitMask(b3);
-            return math.tzcnt(math.bitmask(new bool4(b3, false)));
-        }
     }
 }

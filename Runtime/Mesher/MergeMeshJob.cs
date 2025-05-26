@@ -56,8 +56,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             dst = vertices.GetSubArray(vertexCounter.Count, skirtVertexCounter.Count);
             src.CopyTo(dst);
 
-            // We will store ALL the indices (uniform + skirt)
-            totalIndexCount.Value = triangleCounter.Count * 3 + skirtStitchedTriangleCounter.Count * 3 /* + skirtForcedTriangleCounter.Sum() * 3 */;
+            // We will store ALL the indices (uniform + stitch + forced)
+            totalIndexCount.Value = triangleCounter.Count * 3 + skirtStitchedTriangleCounter.Count * 3 + skirtForcedTriangleCounter.Sum() * 3;
 
             // Merge the stitched indices (the ones that we do NOT forcefully generate) in the same submesh (submesh=0)
             NativeArray<int> indexSrc, indexDst;
@@ -68,6 +68,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Write submesh data for the base submesh
             submeshIndexOffsets[0] = 0;
             submeshIndexCounts[0] = triangleCounter.Count * 3 + skirtStitchedTriangleCounter.Count * 3;
+
+            // Merge the forced indices (the ones that we forcefully generated) in different submeshes
+            int contiguousIndexOffset = triangleCounter.Count * 3 + skirtStitchedTriangleCounter.Count * 3;
+            for (int face = 0; face < 6; face++) {
+                int perFaceIndexCount = skirtForcedTriangleCounter[face] * 3;
+
+                // Copy the scattered forced skirt indices into a contiguous array
+                indexSrc = skirtForcedPerFaceIndices.GetSubArray(face * VoxelUtils.SKIRT_FACE * 6, perFaceIndexCount);
+                indexDst = indices.GetSubArray(contiguousIndexOffset, perFaceIndexCount);
+                indexSrc.CopyTo(indexDst);
+
+                // Write submesh data for this skirt face submesh
+                submeshIndexOffsets[face + 1] = contiguousIndexOffset;
+                submeshIndexCounts[face + 1] = perFaceIndexCount;
+
+
+                contiguousIndexOffset += perFaceIndexCount;
+            }
         }
     }
 }

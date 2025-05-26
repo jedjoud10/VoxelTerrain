@@ -95,7 +95,11 @@ namespace jedjoud.VoxelTerrain {
             RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
             _ready.ValueRW.manager = chunksToShow.IsEmpty && chunksToDestroy.IsEmpty;
 
-            TerrainManagerConfig managerConfig = SystemAPI.GetSingleton<TerrainManagerConfig>();
+            RefRW<TerrainManagerConfig> managerConfig = SystemAPI.GetSingletonRW<TerrainManagerConfig>();
+            managerConfig.ValueRW.chunkPrototype = chunkPrototype;
+            managerConfig.ValueRW.skirtPrototype = skirtPrototype;
+
+
             TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             RefRW<TerrainOctree> _octree = SystemAPI.GetSingletonRW<TerrainOctree>();
             ref TerrainOctree octree = ref _octree.ValueRW;
@@ -121,15 +125,12 @@ namespace jedjoud.VoxelTerrain {
                     FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
                     float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / 64f);
 
-                    /*
-                    for (int i = 0; i < 7; i++) {
+                    for (int i = 0; i < 6; i++) {
                         Entity skirt = state.EntityManager.Instantiate(skirtPrototype);
-                        byte direction = i == 0 ? byte.MaxValue : (byte)(i - 1);
-                        state.EntityManager.SetComponentData<TerrainSkirtTag>(skirt, new TerrainSkirtTag() { direction = direction });
+                        state.EntityManager.SetComponentData<TerrainSkirtTag>(skirt, new TerrainSkirtTag() { direction = (byte)i });
                         state.EntityManager.SetComponentData<LocalToWorld>(skirt, new LocalToWorld() { Value = localToWorld });
                         skirts.Add(skirt);
                     }
-                    */
 
                     state.EntityManager.SetComponentData<TerrainChunk>(entity, new TerrainChunk {
                         node = node,
@@ -158,12 +159,9 @@ namespace jedjoud.VoxelTerrain {
                         BitField32 neighbourMask = octree.neighbourMasks[node.index];
                         BitField32 skirtMask = CalculateEnabledSkirtMask(neighbourMask);
 
-
-                        /*
                         for (int i = 0; i < 6; i++) {
-                            SystemAPI.SetComponentEnabled<TerrainSkirtVisForceTag>(chunk.skirts[i + 1], skirtMask.IsSet(i));
+                            SystemAPI.SetComponentEnabled<TerrainSkirtVisForceTag>(chunk.skirts[i], skirtMask.IsSet(i));
                         }
-                        */
                     }
                 }
 

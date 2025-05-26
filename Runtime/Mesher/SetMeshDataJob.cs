@@ -41,12 +41,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
             data.SetIndexBufferParams(totalIndexCount.Value, IndexFormat.UInt32);
             indices.GetSubArray(0, totalIndexCount.Value).CopyTo(data.GetIndexData<int>());
 
-            data.subMeshCount = 1;
-            data.SetSubMesh(0, new SubMeshDescriptor {
-                indexStart = submeshIndexOffsets[0],
-                indexCount = submeshIndexCounts[0],
-                topology = MeshTopology.Triangles,
-            }, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontResetBoneBounds);
+            NativeArray<float3> normals = data.GetVertexData<float3>(1);
+            for (int i = 0; i < totalVertexCount.Value; i++) {
+                normals[i] = math.up();
+            }
+
+            // 1 submesh for the main mesh + 6 submeshes per skirt face
+            data.subMeshCount = 7;
+
+            // Set each of the submeshes
+            for (int i = 0; i < 7; i++) {
+                data.SetSubMesh(i, new SubMeshDescriptor {
+                    indexStart = submeshIndexOffsets[i],
+                    indexCount = submeshIndexCounts[i],
+                    topology = MeshTopology.Triangles,
+                });
+            }
         }
     }
 }
