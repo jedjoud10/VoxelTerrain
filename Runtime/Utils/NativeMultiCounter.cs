@@ -3,9 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
-using PlasticPipe.PlasticProtocol.Messages;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 

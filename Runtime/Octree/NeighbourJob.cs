@@ -1,10 +1,8 @@
 using System;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Mathematics.Geometry;
 
 namespace jedjoud.VoxelTerrain.Octree {
     [BurstCompile(CompileSynchronously = true)]

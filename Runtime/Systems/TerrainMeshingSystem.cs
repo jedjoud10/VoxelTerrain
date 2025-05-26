@@ -1,17 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using jedjoud.VoxelTerrain.Generation;
-using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
-using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Entities.Graphics;
-using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Rendering;
-using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
@@ -135,19 +130,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     return;
 
                 {
-                    /*
                     EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(chunkEntity, true);
-                    NativeArray<float3> vertices = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
-                    NativeArray<int> indices = new NativeArray<int>(stats.indexCount, Allocator.Persistent);
+                    NativeArray<float3> vertices = new NativeArray<float3>(stats.vertices.Length, Allocator.Persistent);
+                    NativeArray<int> indices = new NativeArray<int>(stats.indices.Length, Allocator.Persistent);
 
-                    vertices.CopyFrom(handler.vertices.GetSubArray(0, stats.vertexCount));
-                    indices.CopyFrom(handler.indices.GetSubArray(0, stats.indexCount));
+                    vertices.CopyFrom(stats.vertices);
+                    indices.CopyFrom(stats.indices);
 
                     EntityManager.SetComponentData<TerrainChunkMeshReady>(chunkEntity, new TerrainChunkMeshReady {
                         vertices = vertices,
                         indices = indices
                     });
-                    */
                 }
 
                 TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);

@@ -1,8 +1,4 @@
-using System.Runtime.CompilerServices;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     // https://discussions.unity.com/t/bc1361-when-total-static-readonly-array-length-is-greater-than-180/874045/2

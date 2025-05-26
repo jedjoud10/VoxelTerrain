@@ -63,8 +63,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hash: -491777944
-  dirty: 0
+  hash: 710296673
+  dirty: 1
   voxelsDispatchIndex: 0
   propsDispatchIndex: -1
   debugTex: {fileID: 0}
@@ -104,7 +104,7 @@ MonoBehaviour:
   useHeightSimplification: 0
   flatshaded: 0
   size: 128
-  scale: {x: 50, y: 50, z: 50}
+  scale: {x: 100, y: 100, z: 100}
   offset: {x: 0, y: -2060, z: 0}
 --- !u!114 &4893179947538798331
 MonoBehaviour:
@@ -119,42 +119,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transform1:
-    position: {x: -12.92, y: 200, z: -23.37}
+    position: {x: -12.92, y: 18.9, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 0.02, y: 0.02, z: 0.02}
   scale:
     value: 0.005
   amplitude:
-    value: 20.28
-  offset:
-    value: -100.6
-  detailScale:
-    value:
-      x: 0.05
-      y: 0
-      z: 0.05
-  detailAmplitude:
-    value: 200
-  detailProbability:
-    value: 0.01
-  detailOffset:
-    value: -352.8
-  detailSmooth:
-    value: 203.8
+    value: 20
   voronoiScale:
-    value: 0.04
-  voronoiAmplitude:
-    value: -35.4
-  detailScale2:
     value:
-      x: 0.05
-      y: 0.2
-      z: 0.05
-  detailAmplitude2:
-    value: 3
+      x: 0.02
+      y: 0.05
+      z: 0.02
+  voronoiAmplitude:
+    value: -50
   others:
     value:
       x: 2
-      y: 0.22
+      y: 0.2
   octaves: 7
-  detailOctaves: 1

@@ -2,7 +2,6 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
-using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
     [BurstCompile(CompileSynchronously = true)]
