@@ -101,6 +101,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int vertexIndex = skirtVertexCounter.Increment();
                 int packed = vertexIndex;
 
+                // If the vertex was generated forcefully set the highest bit in the index
+                // This allows us to differentiate between normal skirt vertices and forced skirt vertices
+                // When we apply the indices to the mesh, we discard of these values (so it's not as cheap as a simple memcpy but whatever)
+                BitUtils.SetBit(ref packed, 31, vertex.forced);
+
                 if (vertex.useWorldPosition) {
                     skirtVertices[vertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
                 } else {

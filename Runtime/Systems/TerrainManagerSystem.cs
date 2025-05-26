@@ -125,6 +125,7 @@ namespace jedjoud.VoxelTerrain {
                     FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
                     float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / 64f);
 
+                    /*
                     for (int i = 0; i < 7; i++) {
                         Entity skirt = state.EntityManager.Instantiate(skirtPrototype);
                         byte direction = i == 0 ? byte.MaxValue : (byte)(i - 1);
@@ -132,6 +133,7 @@ namespace jedjoud.VoxelTerrain {
                         state.EntityManager.SetComponentData<LocalToWorld>(skirt, new LocalToWorld() { Value = localToWorld });
                         skirts.Add(skirt);
                     }
+                    */
 
                     state.EntityManager.SetComponentData<TerrainChunk>(entity, new TerrainChunk {
                         node = node,
@@ -161,9 +163,11 @@ namespace jedjoud.VoxelTerrain {
                         BitField32 skirtMask = CalculateEnabledSkirtMask(neighbourMask);
 
 
+                        /*
                         for (int i = 0; i < 6; i++) {
                             SystemAPI.SetComponentEnabled<TerrainSkirtVisForceTag>(chunk.skirts[i + 1], skirtMask.IsSet(i));
                         }
+                        */
                     }
                 }
 

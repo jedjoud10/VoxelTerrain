@@ -46,7 +46,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         skirtVertices[boundaryVertexCount] = sourceVertices[srcIndex];
                         skirtNormals[boundaryVertexCount] = sourceNormals[srcIndex];
                         skirtUvs[boundaryVertexCount] = 1f;
-                        skirtVertexIndicesCopied[i + faceElementOffset] = boundaryVertexCount;
+
+                        // We will merge the generated skirt triangles / skirt vertices back onto the main mesh, so we need to use the original mesh's vertex indices
+                        // Set the second highest bit to true for vertices that have been copied (so that we avoid copying them when we merge them to the og mesh)
+                        int newIndex = srcIndex;
+                        BitUtils.SetBit(ref newIndex, 30, true);
+                        skirtVertexIndicesCopied[i + faceElementOffset] = newIndex;
                         boundaryVertexCount++;
                     } else {
                         // Invalid boundary vertex, propagate invalid index (int.MaxValue)

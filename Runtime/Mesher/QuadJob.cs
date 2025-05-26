@@ -32,7 +32,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<byte> enabled;
 
         [WriteOnly]
-        public NativeCounter.Concurrent quadCounter;
+        public NativeCounter.Concurrent triangleCounter;
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(int index, uint3 basePosition, int direction) {
@@ -65,7 +65,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
 
             // Get the triangle index base
-            int triIndex = quadCounter.Increment() * 6;
+            int triIndex = triangleCounter.Add(2) * 3;
             
             // Set the first tri
             triangles[triIndex + (flip ? 0 : 2)] = indices[0];

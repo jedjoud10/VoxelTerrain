@@ -186,6 +186,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     Value = worldRenderBounds
                 });
 
+                /*
                 AABB skirtLocalRenderBounds = localRenderBounds;
                 skirtLocalRenderBounds.Extents *= 1.1f;
 
@@ -213,6 +214,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         Value = skirtWorldRenderBounds
                     });
                 }
+                */
             }
         }
 

@@ -16,6 +16,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public JobHandle dep;
             public NativeArray<Entity> entities;
             public NativeArray<BlobAssetReference<Collider>> colliders;
+            public UnsafeList<TerrainChunkMeshReady> what;
+
+            public void Dispose() {
+                dep.Complete();
+                entities.Dispose();
+                colliders.Dispose();
+                what.Dispose();
+            }
         }
 
         private NativeList<PendingBatchBakeRequest> batches;
@@ -66,9 +74,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         state.EntityManager.SetComponentData<PhysicsCollider>(entities[e], new PhysicsCollider() { Value = colliders[e] });
                     }
 
-                    entities.Dispose();
-                    colliders.Dispose();
-
+                    batches[i].Dispose();
                     batches.RemoveAt(i);
                 }
             }
@@ -84,11 +90,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we deallocate these later when we complete the jobs
             NativeArray<Entity> entities = query.ToEntityArray(Allocator.Persistent);
             NativeArray<BlobAssetReference<Collider>> colliders = new NativeArray<BlobAssetReference<Collider>>(entities.Length, Allocator.Persistent);
+            UnsafeList<TerrainChunkMeshReady> what = new UnsafeList<TerrainChunkMeshReady>(entities.Length, Allocator.Persistent);
 
             // temp allocation so we don't need to dispose of it
             // (we can't anyways, since we can't dispose nested containers in jobs, even the fucking deferred dispose ones)
             NativeArray<TerrainChunkMeshReady> meshes = query.ToComponentDataArray<TerrainChunkMeshReady>(Allocator.Temp);
-            UnsafeList<TerrainChunkMeshReady> what = new UnsafeList<TerrainChunkMeshReady>(entities.Length, Allocator.TempJob);
             what.Resize(entities.Length);
             what.CopyFrom(meshes);
 
@@ -100,12 +106,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             JobHandle handle = bake.Schedule(entities.Length, 1);
 
-            what.Dispose(handle);
-
             batches.Add(new PendingBatchBakeRequest {
                 dep = handle,
                 colliders = colliders,
-                entities = entities
+                entities = entities,
+                what = what
             });
 
             state.EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(query, false);
