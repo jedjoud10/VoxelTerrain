@@ -5,6 +5,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
+using PlasticPipe.PlasticProtocol.Messages;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
@@ -87,6 +88,19 @@ namespace jedjoud.VoxelTerrain {
             }
 
             return arr;
+        }
+
+        public int Sum() {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            int sum = 0;
+
+            for (int i = 0; i < capacity; i++) {
+                sum += this[i];
+            }
+
+            return sum;
         }
 
         public bool IsCreated {

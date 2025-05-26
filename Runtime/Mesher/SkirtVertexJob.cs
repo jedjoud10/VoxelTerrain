@@ -23,11 +23,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [WriteOnly]
         [NativeDisableParallelForRestriction]
         public NativeArray<float3> skirtNormals;
-        [WriteOnly]
-        [NativeDisableParallelForRestriction]
-        public NativeArray<float2> skirtUvs;
 
         public NativeCounter.Concurrent skirtVertexCounter;
+
+        [ReadOnly]
+        public NativeCounter vertexCounter;
 
         public float voxelScale;
 
@@ -99,12 +99,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Actually spawn the vertex if needed
             if (vertex.shouldSpawn) {
                 int vertexIndex = skirtVertexCounter.Increment();
-                int packed = vertexIndex;
-
-                // If the vertex was generated forcefully set the highest bit in the index
-                // This allows us to differentiate between normal skirt vertices and forced skirt vertices
-                // When we apply the indices to the mesh, we discard of these values (so it's not as cheap as a simple memcpy but whatever)
-                BitUtils.SetBit(ref packed, 31, vertex.forced);
 
                 if (vertex.useWorldPosition) {
                     skirtVertices[vertexIndex] = (vertex.worldPosition + vertex.offset) * voxelScale;
@@ -113,8 +107,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
 
                 skirtNormals[vertexIndex] = math.normalizesafe(vertex.normal, math.up());
-                skirtUvs[vertexIndex] = 1f;
-                skirtVertexIndicesGenerated[indexIndex] = packed;
+
+                // We want the triangles that utilize these vertex indices to refer to these vertices *after* we have merged them to the original mesh (after the SN vertices)
+                skirtVertexIndicesGenerated[indexIndex] = vertexCounter.Count + vertexIndex;
             }
         }
 

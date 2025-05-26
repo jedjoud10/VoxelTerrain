@@ -32,11 +32,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [NativeDisableParallelForRestriction]
         public NativeArray<float3> normals;
 
-        // Extra data passed to the shader for per vertex ambient occlusion
-        [WriteOnly]
-        [NativeDisableParallelForRestriction]
-        public NativeArray<float2> uvs;
-
         // Vertex Counter
         public NativeCounter.Concurrent vertexCounter;
         public float voxelScale;
@@ -64,7 +59,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int count = math.countbits(code);
 
             // Create the smoothed vertex
-            // TODO: Test out QEF or other methods for smoothing here
             for (int edge = 0; edge < 12; edge++) {
                 // Continue if the edge isn't inside
                 if (((code >> edge) & 1) == 0) continue;
@@ -86,21 +80,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
                 vertex += math.lerp(startOffset, endOffset, value);
                 normal += math.lerp(startNormal, endNormal, value);
-                //normal += -math.up();
             }
 
-            // Must be offset by vec3(1, 1, 1)
+            // Smooth the vertex with the number of edges that have a sign crossing
+            // TODO: Test out QEF or other methods for smoothing
+            vertex = vertex / (float)count + position;
+
+            // Write vertex data and index
             int vertexIndex = vertexCounter.Increment();
             indices[index] = vertexIndex;
-
-            // Output vertex in object space
-            float3 offset = (vertex / (float)count);
-            float3 outputVertex = offset + position;
-            vertices[vertexIndex] = outputVertex * voxelScale;
-
-            // Apply other vertex attribute data
+            vertices[vertexIndex] = vertex * voxelScale;
             normals[vertexIndex] = math.normalizesafe(normal, math.up());
-            uvs[vertexIndex] = new float2(1.0f, 0.0f);
         }
     }
 }

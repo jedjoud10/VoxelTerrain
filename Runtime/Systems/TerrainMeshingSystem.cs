@@ -92,7 +92,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     Profiler.BeginSample("Finish Mesh Jobs");
                     FinishJob(handler);
                     Profiler.EndSample();
-                    //Debug.Log("Finish Job: " + entity.ToString());
                 }
             }
 
@@ -117,8 +116,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 NativeArray<Voxel> voxels = voxelsArray[i].inner;
 
                 Profiler.BeginSample("Begin Mesh Jobs");
-                //Debug.Log(entitiesArray[i].ToString());
-                BeginJob(handler, chunkEntity, voxels);
+                handler.BeginJob(chunkEntity, voxels, default);
                 Profiler.EndSample();
 
                 SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, false);
@@ -130,13 +128,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         private void FinishJob(MeshJobHandler handler) {
-            if (handler.TryComplete(EntityManager, out Mesh mesh, out Mesh skirtMesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
+            if (handler.TryComplete(EntityManager, out Mesh mesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, true);
 
                 if (stats.empty)
                     return;
 
                 {
+                    /*
                     EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(chunkEntity, true);
                     NativeArray<float3> vertices = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
                     NativeArray<int> indices = new NativeArray<int>(stats.indexCount, Allocator.Persistent);
@@ -148,6 +147,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         vertices = vertices,
                         indices = indices
                     });
+                    */
                 }
 
                 TerrainChunk chunk = EntityManager.GetComponentData<TerrainChunk>(chunkEntity);
@@ -216,11 +216,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
                 */
             }
-        }
-
-        private void BeginJob(MeshJobHandler handler, Entity entity, NativeArray<Voxel> voxels) {
-            JobHandle dependency = new AsyncMemCpy<Voxel> { src = voxels, dst = handler.voxels }.Schedule();
-            handler.BeginJob(entity, dependency);
         }
 
         protected override void OnDestroy() {
