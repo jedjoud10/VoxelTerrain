@@ -20,7 +20,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private RenderMeshDescription mainMeshDescription;
         private RenderMeshDescription skirtsMeshDescription;
         private EntitiesGraphicsSystem graphics;
-        private BatchMaterialID materialId;
+
+        private BatchMaterialID mainMeshMaterialId;
+        private BatchMaterialID skirtMeshMaterialId;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainMesherConfig>();
@@ -64,8 +66,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             _ready.ValueRW.mesher = ready;
 
             if (SystemAPI.ManagedAPI.TryGetSingleton<TerrainMesherConfig>(out TerrainMesherConfig config) && graphics == null) {
+                Material mainMeshMaterial = new Material(config.material.material);
+
+                Material skirtMeshMaterial = new Material(config.material.material);
+
+                LocalKeyword keyword = skirtMeshMaterial.shader.keywordSpace.FindKeyword("_SKIRT");
+                skirtMeshMaterial.SetKeyword(keyword, true);
+
                 graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
-                materialId = graphics.RegisterMaterial(config.material.material);
+                mainMeshMaterialId = graphics.RegisterMaterial(mainMeshMaterial);
+                skirtMeshMaterialId = graphics.RegisterMaterial(skirtMeshMaterial);
             }
 
             foreach (var handler in handlers) {
@@ -135,7 +145,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 
 
                 BatchMeshID meshId = graphics.RegisterMesh(mesh);
-                MaterialMeshInfo materialMeshInfo = new MaterialMeshInfo(materialId, meshId, 0);
+                MaterialMeshInfo materialMeshInfo = new MaterialMeshInfo(mainMeshMaterialId, meshId, 0);
 
                 RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
 
@@ -171,7 +181,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     
                     Entity skirtEntity = chunk.skirts[skirtIndex];
 
-                    MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(materialId, meshId, (ushort)(skirtIndex + 1));
+                    MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(skirtMeshMaterialId, meshId, (ushort)(skirtIndex + 1));
                     RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
 
                     EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);

@@ -1,7 +1,16 @@
 # New Features Features:
-- Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues . 
-- Octal Chunk Async Readback (instead of doing readback for a single chunk, do it for 8 chunks, the GPU can handle that much)
-- Proper S.N Skirts by running 2D and 1D S.N on the chunk boundary. Skirt entities will be dynamically disabled / enabled based on the direction that they face relative to the octree loader position
+- Chunk size of 32, with some pros:
+  - Faster meshing (sub 1ms on 14 threads for 1-2 chunks, pretty darn good, though could be fasteerrrrr).
+  - We can now compute 64 chunks on the GPU all at *once* in the same compute dispatch instead of 8. This speeds up meshing a lot since we catch empty chunks and discard them early.
+  - Faster rendering (less triangles). Does make mushy terrain since we don't have any proper terrain-wide normals but I'm only going to use this for low-poly games so whatever lol.
+  - MUCH MUCH MUCH FASTER MESH COLLIDER BAKING!!!! (8ms vs 40ms) Why is it so fucking slow with a chunk size of 64??? Unity ECS Physics gotta lock in frfr.
+- Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues.
+- Proper Surface Nets Skirts by running 2D and 1D S.N on the chunk boundary. Skirt entities are enabled/disabled based on the direction that they face relative to the octree loader position.
+  - Implemented fallback normals system for flat shading so that skirts aren't as visible when you use DDY/DDX normals
+
+- Better optimized meshing jobs:
+  - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled).
+  - Optimized normal job by splitting it into a "prefetch" part and a "calculate" part. Prefetcher is vectorized by Burst, but not the calculate part (need to fix).
 
 # TODO / Ideas
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
@@ -9,19 +18,11 @@
 - Figure out how to handle per voxel color (nointerpolation in shader trick)
 - Re-implement props with hopefully better implementation
   - Currently WIP, got prop readback working, but need to clean up that mess graph wise
-- Wait until Shader Graph supports indirect indexed rendering
-  - This would allow us to generate meshes on the GPU and render them directly
 - Biome generation (custom data readback?)
 - Custom graph buffer initialization and readback (material, color, smoothness / metallic, custom user data)
   - Works for props, but I don't know if I should extend it to make it work with custom user input
-- Figure out ``CachedVar`` node stuff
-  - Ok figured it out, you just can't make a lower resolution kernel (unless you want to use point sampling)
-  - Well, no, not really. You *can* make a lower resolution kernel, but it needs to have n+1 dispatches in the axii instead of n dispatches because bilinear sampling the lower-res texture needs that extra texel for the border. This is also true for finite-difference normal calculation, so maybe we can make that use a cached node internally? 
-  - Also, since we use octal readback now, 2D cached vars will actually need an array texture or a texture of size 2 x 128 x 128 to accomodate all the octal chunks
 - Implement smart range checking using texture value summation (cached textures)
-- Decide where to use ``SoA`` or ``AoS`` design for voxel data.
-  - How much voxel data will we need anyways?
-  - If it's a lot then just go with ``SoA``
+- Switch the voxel data storage to ``SoA`` instead of ``AoS``, should help with cache hits, though we can only read ``AoS`` data from the GPU, so we'll need to do some packing/unpacking (shouldn't be that expensive).
 - Do some async chunk culling!!
   - There's this for caves: https://tomcc.github.io/2014/08/31/visibility-1.html
   - For surface chunks, ig do some funky stuff with bounds?  
@@ -31,9 +32,7 @@
   - We can do the same dedupe/lookup system as normal material values.
   - Maybe rename "materials" to shaders and "material variants" to materials? would make more sense...
 - Do some sort of Minecraft-style spreading lighting calculations
-- Meshing (uniform) code has to be COMPLETELY OVERHAULED. So many microoptimizations that I didn't profile / test. Also I just figured out there's a diagnostic tab for Burst in the editor so I can see what couldn't get vectorized. Gonna optimize all of that later 
-  - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled)
-  
+
 # Current Screenies
 Runtime terrain gen with some simple props
 ![Screenshot 2025-04-23 162113](https://github.com/user-attachments/assets/69548b73-7dc9-409a-85c0-98f5f2279cc6)

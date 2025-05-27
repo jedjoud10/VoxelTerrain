@@ -13,6 +13,7 @@ namespace jedjoud.VoxelTerrain {
         public void OnCreate(ref SystemState state) {
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainSkirt, LocalToWorld, MaterialMeshInfo>().Build();
             state.RequireForUpdate(query);
+            state.RequireForUpdate<TerrainOctreeLoader>();
         }
 
         [BurstCompile]

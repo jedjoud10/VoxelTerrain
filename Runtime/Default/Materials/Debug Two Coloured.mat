@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-1633113548766950371
+--- !u!114 &-5352042940929992020
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Procedural Visualizer Material
-  m_Shader: {fileID: -6465566751694194690, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
+  m_Name: Debug Two Coloured
+  m_Shader: {fileID: -6465566751694194690, guid: 63f6c57a03262ce4480c35ae6cc8d316, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -51,9 +51,13 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Flatshaded: 0
+    - _ChunkLodDither: 0
+    - _Multiplier: 15
+    - _Offset: -0.8
     - _QueueControl: 0
     - _QueueOffset: 0
-    m_Colors: []
+    m_Colors:
+    - _Color: {r: 0.2735849, g: 0.2722944, b: 0.2722944, a: 0}
+    - _Color_1: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

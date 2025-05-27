@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d81d5058a671344980d20203ea4d381, type: 3}
-  m_Name: Ambient Occlusion Debug
+  m_Name: Debug Two Coloured
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: e74acbff5e1f5b045984a43dc474be5b, type: 2}
   dynamicFriction: 0.3

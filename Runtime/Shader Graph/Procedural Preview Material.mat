@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-5352042940929992020
+--- !u!114 &-1633113548766950371
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Ambient Occlusion Debug
-  m_Shader: {fileID: -6465566751694194690, guid: a0a753dcc61a03f40aa78a606b77d4e4, type: 3}
+  m_Name: Procedural Preview Material
+  m_Shader: {fileID: -6465566751694194690, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -51,6 +51,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _Flatshaded: 0
     - _QueueControl: 0
     - _QueueOffset: 0
     m_Colors: []
