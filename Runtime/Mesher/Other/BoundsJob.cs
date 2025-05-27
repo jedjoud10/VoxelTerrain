@@ -10,8 +10,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> vertices;
         [ReadOnly]
         public NativeCounter vertexCounter;
-        [WriteOnly]
-        public NativeArray<float3> bounds;
+        public NativeReference<MinMaxAABB> bounds;
 
         public void Execute() {
             float3 min = 10000;
@@ -24,8 +23,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // add a slight offset to encapsulate the skirts as well...
             const float EPSILON = 0.5f;
-            bounds[0] = min - new float3(EPSILON);
-            bounds[1] = max + new float3(EPSILON);
+            min -= new float3(EPSILON);
+            max += new float3(EPSILON);
+
+            bounds.Value = new MinMaxAABB {
+                Min = min,
+                Max = max
+            }; 
         }
     }
 }

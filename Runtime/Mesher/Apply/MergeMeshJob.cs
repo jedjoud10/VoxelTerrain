@@ -6,6 +6,14 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
     public struct MergeMeshJob : IJob {
+        // Normal mesh buffers
+        [ReadOnly]
+        public NativeArray<float3> vertices;
+        [ReadOnly]
+        public NativeArray<float3> normals;
+        [ReadOnly]
+        public NativeArray<int> indices;
+
         // Normal mesh counters
         [ReadOnly]
         public NativeCounter vertexCounter;
@@ -40,35 +48,35 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeReference<int> totalVertexCount;
         public NativeReference<int> totalIndexCount;
 
-        // Normal mesh buffers that will ALSO store the merged mesh data
-        public NativeArray<float3> vertices;
-        public NativeArray<float3> normals;
-        public NativeArray<int> indices;
+        // Merged mesh buffers
+        public NativeArray<float3> mergedVertices;
+        public NativeArray<float3> mergedNormals;
+        public NativeArray<int> mergedIndices;
 
+        private void Copy<T>(NativeArray<T> src, NativeArray<T> dst, int dstOffset, int length) where T: unmanaged {
+            NativeArray<T> tmpSrc = src.GetSubArray(0, length);
+            tmpSrc.CopyTo(dst.GetSubArray(dstOffset, length));
+        }
 
         public void Execute() {
+
             // We will store ALL the vertices (uniform + skirt)
             totalVertexCount.Value = vertexCounter.Count + skirtVertexCounter.Count;
 
-            // Merge the skirt vertices onto the main mesh vertices
-            NativeArray<float3> src, dst;
-            src = skirtVertices.GetSubArray(0, skirtVertexCounter.Count);
-            dst = vertices.GetSubArray(vertexCounter.Count, skirtVertexCounter.Count);
-            src.CopyTo(dst);
+            // Merge the main mesh vertices
+            Copy(vertices, mergedVertices, 0, vertexCounter.Count);
+            Copy(normals, mergedNormals, 0, vertexCounter.Count);
 
-            // Merge the skirt normals onto the main mesh normals
-            src = skirtNormals.GetSubArray(0, skirtVertexCounter.Count);
-            dst = normals.GetSubArray(vertexCounter.Count, skirtVertexCounter.Count);
-            src.CopyTo(dst);
+            // Merge the skirt vertices
+            Copy(skirtVertices, mergedVertices, vertexCounter.Count, skirtVertexCounter.Count);
+            Copy(skirtNormals, mergedNormals, vertexCounter.Count, skirtVertexCounter.Count);
 
             // We will store ALL the indices (uniform + stitch + forced)
             totalIndexCount.Value = triangleCounter.Count * 3 + skirtStitchedTriangleCounter.Count * 3 + skirtForcedTriangleCounter.Sum() * 3;
 
-            // Merge the stitched indices (the ones that we do NOT forcefully generate) in the same submesh (submesh=0)
-            NativeArray<int> indexSrc, indexDst;
-            indexSrc = skirtStitchedIndices.GetSubArray(0, skirtStitchedTriangleCounter.Count * 3);
-            indexDst = indices.GetSubArray(triangleCounter.Count * 3, skirtStitchedTriangleCounter.Count * 3);
-            indexSrc.CopyTo(indexDst);
+            // Merge indices
+            Copy(indices, mergedIndices, 0, triangleCounter.Count * 3);
+            Copy(skirtStitchedIndices, mergedIndices, triangleCounter.Count * 3, skirtStitchedTriangleCounter.Count * 3);
 
             // Write submesh data for the base submesh
             submeshIndexOffsets[0] = 0;
@@ -80,9 +88,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int perFaceIndexCount = skirtForcedTriangleCounter[face] * 3;
 
                 // Copy the scattered forced skirt indices into a contiguous array
-                indexSrc = skirtForcedPerFaceIndices.GetSubArray(face * VoxelUtils.SKIRT_FACE * 6, perFaceIndexCount);
-                indexDst = indices.GetSubArray(contiguousIndexOffset, perFaceIndexCount);
-                indexSrc.CopyTo(indexDst);
+                NativeArray<int> tmpSrc = skirtForcedPerFaceIndices.GetSubArray(face * VoxelUtils.SKIRT_FACE * 6, perFaceIndexCount);
+                Copy(tmpSrc, mergedIndices, contiguousIndexOffset, perFaceIndexCount);
 
                 // Write submesh data for this skirt face submesh
                 submeshIndexOffsets[face + 1] = contiguousIndexOffset;

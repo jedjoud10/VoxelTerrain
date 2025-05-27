@@ -6,8 +6,6 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
     public struct SkirtQuadJob : IJobParallelFor {
-        public NativeList<float3>.ParallelWriter debugData;
-
         [ReadOnly]
         public NativeArray<Voxel> voxels;
 

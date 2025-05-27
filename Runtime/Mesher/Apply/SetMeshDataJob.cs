@@ -15,11 +15,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Merged buffers that include the original mesh and the skirt meshes
         [ReadOnly]
-        public NativeArray<float3> vertices;
+        public NativeArray<float3> mergedVertices;
         [ReadOnly]
-        public NativeArray<float3> normals;
+        public NativeArray<float3> mergedNormals;
         [ReadOnly]
-        public NativeArray<int> indices;
+        public NativeArray<int> mergedIndices;
 
         // Used from the MergeMeshJob
         [ReadOnly]
@@ -35,12 +35,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Execute() {
             // We will store ALL the vertices (uniform + skirt)
             data.SetVertexBufferParams(totalVertexCount.Value, vertexAttributeDescriptors);
-            vertices.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(0));
-            normals.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(1));
+            mergedVertices.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(0));
+            mergedNormals.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(1));
 
             // We will store ALL the indices (uniform + skirt)
             data.SetIndexBufferParams(totalIndexCount.Value, IndexFormat.UInt32);
-            indices.GetSubArray(0, totalIndexCount.Value).CopyTo(data.GetIndexData<int>());
+            mergedIndices.GetSubArray(0, totalIndexCount.Value).CopyTo(data.GetIndexData<int>());
 
 
             // 1 submesh for the main mesh + 6 submeshes per skirt face
