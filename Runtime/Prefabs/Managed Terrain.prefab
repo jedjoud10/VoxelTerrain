@@ -63,7 +63,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hash: 710296673
+  hash: 1456969459
   dirty: 1
   voxelsDispatchIndex: 0
   propsDispatchIndex: -1
@@ -119,20 +119,35 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transform1:
-    position: {x: -12.92, y: 18.9, z: -23.37}
+    position: {x: -12.92, y: 19, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 0.02, y: 0.02, z: 0.02}
+  flatPlaneHeight:
+    value: 36
+  flatPlaneUnionSmooth:
+    value: 40
   scale:
     value: 0.005
   amplitude:
-    value: 20
+    value: 40
   voronoiScale:
     value:
       x: 0.02
       y: 0.05
       z: 0.02
   voronoiAmplitude:
-    value: -50
+    value: -40
+  voronoiseScale:
+    value: 0.04
+  voronoiseAmplitude:
+    value: 30
+  detailScale:
+    value:
+      x: 0.1
+      y: 0.1
+      z: 0.1
+  detailAmplitude:
+    value: 1
   others:
     value:
       x: 2

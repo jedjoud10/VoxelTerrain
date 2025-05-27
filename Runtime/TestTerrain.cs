@@ -6,6 +6,10 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         // Main transform
         public InlineTransform transform1;
 
+        // Offset for the flat plane
+        public Inject<float> flatPlaneHeight = 10f;
+        public Inject<float> flatPlaneUnionSmooth = 10f;
+
         // Noise parameter for the simplex 2D noise
         public Inject<float> scale;
         public Inject<float> amplitude;
@@ -17,6 +21,10 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         // Noise parameters for the 2D voronoise noise
         public Inject<float> voronoiseScale;
         public Inject<float> voronoiseAmplitude;
+
+        // Noise parameters for simple 3D simplex detail noise
+        public Inject<float3> detailScale;
+        public Inject<float> detailAmplitude;
 
         // Fractal noise settings 
         public Inject<float2> others;
@@ -46,6 +54,13 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             // Add some extra fractal voronoise because why not 
             Voronoise voronoise = new Voronoise(voronoiseScale, voronoiseAmplitude);
             density -= voronoise.Evaluate(xz);
+
+            // Create a flat plane that we will smoothly blend with the rest of the terrain
+            Variable<float> flatPlane = y - flatPlaneHeight;
+            density = Sdf.Union(density, flatPlane, flatPlaneUnionSmooth);
+
+            // Add some noise details
+            density += new Simplex(detailScale, detailAmplitude).Evaluate(projected);
 
             output = new AllOutputs();
             output.density = density;

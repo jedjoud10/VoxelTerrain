@@ -11,5 +11,9 @@ namespace jedjoud.VoxelTerrain.Generation {
     [Serializable]
     public class Inject<T> {
         public T value;
+
+        public static implicit operator Inject<T>(T value) {
+            return new Inject<T> { value = value };
+        }
     }
 }
