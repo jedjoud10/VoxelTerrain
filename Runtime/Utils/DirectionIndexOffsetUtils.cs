@@ -1,11 +1,7 @@
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
-    // https://discussions.unity.com/t/bc1361-when-total-static-readonly-array-length-is-greater-than-180/874045/2
     public static class DirectionIndexOffsetUtils {
-        // Quad vertices index offsets based on direction
-        // uint3 offset = basePosition + forward - math.uint3(1);
-        // offset + VoxelUtils.PERPENDICULAR_OFFSETS[direction * 4 + i]
         // Quad vertices index offsets based on direction
         // uint3 offset = basePosition + forward - math.uint3(1);
         // offset + VoxelUtils.PERPENDICULAR_OFFSETS[direction * 4 + i]

@@ -30,11 +30,9 @@ namespace jedjoud.VoxelTerrain {
         public NativeArray<half> densities;
         public NativeArray<byte> material;
 
-        public static VoxelData Init() {
-            return new VoxelData {
-                densities = new NativeArray<half>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
-                material = new NativeArray<byte>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
-            };
+        public VoxelData(Allocator allocator) {
+            densities = new NativeArray<half>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+            material = new NativeArray<byte>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
         }
 
         public void Dispose() {

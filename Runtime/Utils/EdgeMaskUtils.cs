@@ -1,5 +1,4 @@
 namespace jedjoud.VoxelTerrain {
-    // https://discussions.unity.com/t/bc1361-when-total-static-readonly-array-length-is-greater-than-180/874045/2
     public static class EdgeMaskUtils {
         // Stolen from https://gist.github.com/dwilliamson/c041e3454a713e58baf6e4f8e5fffecd
         public static readonly ushort[] EDGE_MASKS = new ushort[] {
@@ -36,7 +35,5 @@ namespace jedjoud.VoxelTerrain {
             0xf00, 0xe09, 0xd03, 0xc0a, 0x70c, 0x605, 0x50f, 0x406,
             0xb06, 0xa0f, 0x905, 0x80c, 0x30a, 0x203, 0x109, 0x0,
         };
-
-
     }
 }

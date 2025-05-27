@@ -2,9 +2,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
-// Common utils and shorthand forms
-namespace jedjoud.VoxelTerrain {
-    using jedjoud.VoxelTerrain.Generation;
+namespace jedjoud.VoxelTerrain.Generation {
     using System;
     using UnityEngine.Rendering;
 

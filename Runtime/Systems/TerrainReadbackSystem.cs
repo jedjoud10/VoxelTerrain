@@ -22,10 +22,10 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadbackConfig>();
-            data = new NativeArray<uint>(VoxelUtils.VOLUME * 8, Allocator.Persistent);
-            entities = new List<Entity>(8);
-            copies = new NativeArray<JobHandle>(8, Allocator.Persistent);
-            counters = new NativeArray<int>(8, Allocator.Persistent);
+            data = new NativeArray<uint>(VoxelUtils.VOLUME * 64, Allocator.Persistent);
+            entities = new List<Entity>(64);
+            copies = new NativeArray<JobHandle>(64, Allocator.Persistent);
+            counters = new NativeArray<int>(64, Allocator.Persistent);
             free = true;
             pendingCopies = null;
             voxelsFetched = false;
@@ -82,12 +82,12 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
             }
 
-            int numChunks = math.min(8, voxelsArray.Length);
+            int numChunks = math.min(64, voxelsArray.Length);
             //UnityEngine.Debug.Log(voxelsArray.Length);
 
             ManagedTerrain terrain = ManagedTerrain.instance;
             ManagedTerrainExecutor executor = terrain.executor;
-            ManagedTerrainExecutor.PosScaleOctalData[] posScaleOctals = new ManagedTerrainExecutor.PosScaleOctalData[8];
+            ManagedTerrainExecutor.PosScaleOctalData[] posScaleOctals = new ManagedTerrainExecutor.PosScaleOctalData[64];
 
             free = false;
 
@@ -99,7 +99,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 entities.Add(entity);
 
                 float3 pos = (float3)chunk.node.position;
-                float scale = chunk.node.size / 64f;
+                float scale = chunk.node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
                 posScaleOctals[j] = new ManagedTerrainExecutor.PosScaleOctalData {
                     scale = scale,
@@ -115,7 +115,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Size*2 since we are using octal generation!!!!
             ManagedTerrainExecutor.ReadbackParameters parameters = new ManagedTerrainExecutor.ReadbackParameters() {
-                newSize = VoxelUtils.SIZE * 2,
+                newSize = VoxelUtils.SIZE * 4,
                 posScaleOctals = posScaleOctals,
                 dispatchIndex = terrain.compiler.voxelsDispatchIndex,
                 updateInjected = true,

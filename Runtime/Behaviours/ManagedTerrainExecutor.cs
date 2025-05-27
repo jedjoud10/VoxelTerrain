@@ -65,8 +65,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         private void CreateResources(int size, bool readback) {
             DisposeResources();
 
-            posScaleOctalBuffer = new ComputeBuffer(8, sizeof(int) * 4, ComputeBufferType.Structured);
-            negPosOctalCountersBuffer = new ComputeBuffer(8, sizeof(int), ComputeBufferType.Structured);
+            posScaleOctalBuffer = new ComputeBuffer(64, sizeof(int) * 4, ComputeBufferType.Structured);
+            negPosOctalCountersBuffer = new ComputeBuffer(64, sizeof(int), ComputeBufferType.Structured);
 
             // Creates dictionary with the default voxel graph textures (density + custom data)
             textures = new Dictionary<string, ExecutorTexture> {
@@ -78,7 +78,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
 
             if (readback) {
-                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(VoxelUtils.VOLUME * 8, Voxel.size, ComputeBufferType.Structured)));
+                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(VoxelUtils.VOLUME * 64, Voxel.size, ComputeBufferType.Structured)));
             } else {
                 textures.Add("voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt), -1));
             }
@@ -141,7 +141,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 commands.SetBufferData(posScaleOctalBuffer, readback.posScaleOctals);
                 commands.SetComputeBufferParam(shader, dispatchIndex, "pos_scale_octals", posScaleOctalBuffer);
 
-                commands.SetBufferData(negPosOctalCountersBuffer, new int[8]);
+                commands.SetBufferData(negPosOctalCountersBuffer, new int[64]);
                 commands.SetComputeBufferParam(shader, dispatchIndex, "neg_pos_octal_counters", negPosOctalCountersBuffer);
             } else if (parameters is EditorPreviewParameters editor) {
                 commands.DisableKeyword(shader, keyword);

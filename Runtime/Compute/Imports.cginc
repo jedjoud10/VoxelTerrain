@@ -2,7 +2,8 @@
 // Unless we are running a preview, and in which case the size can be anything!!!
 int size;
 
-static const int LOGICAL_SIZE = 66;
+static const int PHYSICAL_SIZE = 32;
+static const int LOGICAL_SIZE = PHYSICAL_SIZE + 2;
 
 int3 permuationSeed;
 int3 moduloSeed;
@@ -33,8 +34,8 @@ StructuredBuffer<float4> pos_scale_octals;
 
 #ifdef _ASYNC_READBACK_OCTAL
 float3 ConvertIntoWorldPosition(uint3 id) {
-        uint3 zero_to_one = id / LOGICAL_SIZE;
-        int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
+        uint3 zero_to_three = id / LOGICAL_SIZE;
+        int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
 
         float4 pos_scale = pos_scale_octals[chunk_index];
         return (float3)((int3)(id % LOGICAL_SIZE) * pos_scale.w) + pos_scale.xyz;
@@ -48,8 +49,8 @@ float3 ConvertIntoWorldPosition(uint3 id) {
 
 int CalcIdIndex(uint3 id) {
     #ifdef _ASYNC_READBACK_OCTAL
-        uint3 zero_to_one = id / LOGICAL_SIZE;
-        int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
+        uint3 zero_to_three = id / LOGICAL_SIZE;
+        int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
         uint3 local_id = id % LOGICAL_SIZE;
 
         return local_id.x + local_id.z * LOGICAL_SIZE + local_id.y * LOGICAL_SIZE*LOGICAL_SIZE + chunk_index * LOGICAL_SIZE*LOGICAL_SIZE*LOGICAL_SIZE;
@@ -60,8 +61,8 @@ int CalcIdIndex(uint3 id) {
 
 #ifdef _ASYNC_READBACK_OCTAL
 void CheckVoxelSign(uint3 id, float value) {
-    uint3 zero_to_one = id / LOGICAL_SIZE;
-    int chunk_index = zero_to_one.x + zero_to_one.z * 2 + zero_to_one.y * 4;
+    uint3 zero_to_three = id / LOGICAL_SIZE;
+    int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
     InterlockedAdd(neg_pos_octal_counters[chunk_index], value >= 0.0 ? 1 : -1);
 }
 #endif

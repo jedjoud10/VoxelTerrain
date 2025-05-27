@@ -123,7 +123,7 @@ namespace jedjoud.VoxelTerrain {
                     nextEndOfPipeCounts++;
 
                     FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
-                    float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / 64f);
+                    float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE);
 
                     for (int i = 0; i < 6; i++) {
                         Entity skirt = state.EntityManager.Instantiate(skirtPrototype);

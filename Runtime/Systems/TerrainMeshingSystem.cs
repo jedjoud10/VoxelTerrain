@@ -147,7 +147,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     meshId = meshId
                 });
 
-                float scalingFactor = node.size / (64f);
+                float scalingFactor = node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE;
                 AABB localRenderBounds = new MinMaxAABB {
                     Min = stats.bounds.min,
                     Max = stats.bounds.max,

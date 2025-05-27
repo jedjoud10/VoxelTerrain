@@ -6,14 +6,17 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
+        // "physical" size of the chunks, how big their entities are
+        public const int PHYSICAL_CHUNK_SIZE = 32;
+
         // "logical" size of the chunks; how many voxels they store in one axis
         // technically this only needs to be 65 for skirts to work, but we also need normals to work so this must be 66
-        public const int SIZE = 66;
+        public const int SIZE = 34;
         public const int FACE = SIZE * SIZE;
         public const int VOLUME = SIZE * SIZE * SIZE;
 
         // skirts will still spawn on the v=64 boundary though, we just need to add a 2 unit padding to handle literal 2D edge cases
-        public const int SKIRT_SIZE = 66;
+        public const int SKIRT_SIZE = 34;
         public const int SKIRT_FACE = SKIRT_SIZE * SKIRT_SIZE;
 
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
@@ -118,10 +121,10 @@ namespace jedjoud.VoxelTerrain {
         // Solely used for AO, since that needs to fetch data from all the neighbours
         public static Voxel FetchVoxelNeighbours(int3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
             // remap -1,1 to 0,2
-            position += new int3(64);
-            int3 chunkPosition = position / 64;
+            position += new int3(PHYSICAL_CHUNK_SIZE);
+            int3 chunkPosition = position / PHYSICAL_CHUNK_SIZE;
             int chunkIndex = PosToIndex((uint3)chunkPosition, 3);
-            int voxelIndex = PosToIndex((uint3)Mod(position, 64), SIZE);
+            int voxelIndex = PosToIndex((uint3)Mod(position, PHYSICAL_CHUNK_SIZE), SIZE);
 
             unsafe {
                 Voxel* ptr = neighbours[chunkIndex];
@@ -157,9 +160,9 @@ namespace jedjoud.VoxelTerrain {
         // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool CheckPosition(int3 position, BitField32 mask) {
-            int3 temp1 = position + 64;
+            int3 temp1 = position + PHYSICAL_CHUNK_SIZE;
 
-            DebugCheckBounds(temp1, 64 * 3);
+            DebugCheckBounds(temp1, PHYSICAL_CHUNK_SIZE * 3);
 
             int3 chunkPosition = temp1 / SIZE;
 

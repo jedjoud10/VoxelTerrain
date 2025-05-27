@@ -1,7 +1,6 @@
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
-    // https://discussions.unity.com/t/bc1361-when-total-static-readonly-array-length-is-greater-than-180/874045/2
     public static class DirectionOffsetUtils {
         // Forward direction of each quad
         public static readonly uint3[] FORWARD_DIRECTION = new uint3[] {

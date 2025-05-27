@@ -21,7 +21,7 @@ namespace jedjoud.VoxelTerrain {
             TerrainOctreeLoader loader = SystemAPI.GetComponent<TerrainOctreeLoader>(entity);
             LocalTransform transform = SystemAPI.GetComponent<LocalTransform>(entity);
             float3 loaderCenter = transform.Position;
-            float chunkSize = 64f;
+            float chunkSize = VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
             foreach (var (localToWorld, skirt, skirtEntity) in SystemAPI.Query<LocalToWorld, TerrainSkirt>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisibleTag>().WithEntityAccess()) {
                 float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * chunkSize * 0.5f;

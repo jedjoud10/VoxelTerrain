@@ -255,7 +255,7 @@ PrefabInstance:
     - target: {fileID: 6385058587415656688, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
       propertyPath: material
       value: 
-      objectReference: {fileID: 11400000, guid: 56f8c19583636144483d60796fa5eca9, type: 2}
+      objectReference: {fileID: 11400000, guid: 9327a853fb9717845856c6816a3223d7, type: 2}
     - target: {fileID: 8238762861437603885, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
       propertyPath: m_Name
       value: Terrain Authoring
