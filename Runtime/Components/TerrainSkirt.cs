@@ -1,7 +1,7 @@
 using Unity.Entities;
 
 namespace jedjoud.VoxelTerrain {
-    public struct TerrainSkirtTag : IComponentData {
+    public struct TerrainSkirt : IComponentData {
         public byte direction;
     }
 }

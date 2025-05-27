@@ -15,7 +15,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             EntityQuery chunkQuery = SystemAPI.QueryBuilder().WithAll<TerrainChunk, MaterialMeshInfo, WorldRenderBounds>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
-            EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<TerrainSkirtTag, MaterialMeshInfo, WorldRenderBounds>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
+            EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<TerrainSkirt, MaterialMeshInfo, WorldRenderBounds>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
 
             instanceBoundsTypeHandle = state.GetComponentTypeHandle<WorldRenderBounds>(true);
             chunkBoundsTypeHandle = state.GetComponentTypeHandle<ChunkWorldRenderBounds>();
@@ -29,11 +29,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             chunkBoundsTypeHandle.Update(ref state);
             
             EntityQuery chunkQuery = SystemAPI.QueryBuilder().WithAll<WorldRenderBounds, MaterialMeshInfo, TerrainChunk>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
-            EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<WorldRenderBounds, MaterialMeshInfo, TerrainSkirtTag>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
+            EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<WorldRenderBounds, MaterialMeshInfo, TerrainSkirt>().WithAllChunkComponentRW<ChunkWorldRenderBounds>().Build();
 
 
             EncapsulateBoundsGeneric<TerrainChunk>(ref state, chunkQuery);
-            EncapsulateBoundsGeneric<TerrainSkirtTag>(ref state, skirtQuery);
+            EncapsulateBoundsGeneric<TerrainSkirt>(ref state, skirtQuery);
         }
 
         private void EncapsulateBoundsGeneric<T>(ref SystemState state, EntityQuery query) where T: IComponentData {

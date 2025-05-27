@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Rendering;
 using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain {
@@ -49,9 +50,11 @@ namespace jedjoud.VoxelTerrain {
 
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
-            mgr.AddComponent<TerrainSkirtTag>(skirtPrototype);
-            mgr.AddComponent<TerrainSkirtVisForceTag>(skirtPrototype);
+            mgr.AddComponent<TerrainSkirt>(skirtPrototype);
+            mgr.AddComponent<TerrainSkirtVisibleTag>(skirtPrototype);
             mgr.AddComponent<Prefab>(skirtPrototype);
+
+            mgr.SetComponentEnabled<TerrainSkirtVisibleTag>(skirtPrototype, false);
 
             state.EntityManager.CreateSingleton<TerrainReadySystems>();
 
@@ -60,34 +63,31 @@ namespace jedjoud.VoxelTerrain {
             nextEndOfPipeCounts = -1;
         }
 
-        static void WriteOffsetDirAsMask(ref BitField32 skirtMask, uint3 offset) {
-            BitField32 intern = new BitField32(0);
-
-            // Negative axii
-            intern.SetBits(0, offset.x == 0);
-            intern.SetBits(1, offset.y == 0);
-            intern.SetBits(2, offset.z == 0);
-
-            // Positive axii
-            intern.SetBits(3, offset.x == 2);
-            intern.SetBits(4, offset.y == 2);
-            intern.SetBits(5, offset.z == 2);
-
-            skirtMask.Value |= intern.Value;
-        }
-
-        public static BitField32 CalculateEnabledSkirtMask(BitField32 inputMask) {
-            BitField32 skirtMask = new BitField32(0);
+        public static byte CalculateEnabledSkirtMask(BitField32 inputMask) {
+            byte outputMask = 0;
 
             for (int i = 0; i < 27; i++) {
                 uint3 offset = VoxelUtils.IndexToPos(i, 3);
 
                 if (!inputMask.IsSet(i)) {
-                    WriteOffsetDirAsMask(ref skirtMask, offset);
+                    byte backing = 0;
+
+                    // Negative axii
+                    BitUtils.SetBit(ref backing, 0, offset.x == 0);
+                    BitUtils.SetBit(ref backing, 1, offset.y == 0);
+                    BitUtils.SetBit(ref backing, 2, offset.z == 0);
+
+                    // Positive axii
+                    BitUtils.SetBit(ref backing, 3, offset.x == 2);
+                    BitUtils.SetBit(ref backing, 4, offset.y == 2);
+                    BitUtils.SetBit(ref backing, 5, offset.z == 2);
+
+                    // We can't write to the outputMask directly since we want this to consider ALL skirts, not simply the ones in the last iteration of the loop
+                    outputMask |= backing;
                 }
             }
 
-            return skirtMask;
+            return outputMask;
         }
 
         [BurstCompile]
@@ -127,7 +127,7 @@ namespace jedjoud.VoxelTerrain {
 
                     for (int i = 0; i < 6; i++) {
                         Entity skirt = state.EntityManager.Instantiate(skirtPrototype);
-                        state.EntityManager.SetComponentData<TerrainSkirtTag>(skirt, new TerrainSkirtTag() { direction = (byte)i });
+                        state.EntityManager.SetComponentData<TerrainSkirt>(skirt, new TerrainSkirt() { direction = (byte)i });
                         state.EntityManager.SetComponentData<LocalToWorld>(skirt, new LocalToWorld() { Value = localToWorld });
                         skirts.Add(skirt);
                     }
@@ -156,12 +156,8 @@ namespace jedjoud.VoxelTerrain {
                     if (chunks.TryGetValue(node, out var entity)) {
                         RefRW<TerrainChunk> _chunk = SystemAPI.GetComponentRW<TerrainChunk>(entity);
                         ref TerrainChunk chunk = ref _chunk.ValueRW;
-                        BitField32 neighbourMask = octree.neighbourMasks[node.index];
-                        BitField32 skirtMask = CalculateEnabledSkirtMask(neighbourMask);
-
-                        for (int i = 0; i < 6; i++) {
-                            SystemAPI.SetComponentEnabled<TerrainSkirtVisForceTag>(chunk.skirts[i], skirtMask.IsSet(i));
-                        }
+                        chunk.neighbourMask = octree.neighbourMasks[node.index];
+                        chunk.skirtMask = CalculateEnabledSkirtMask(chunk.neighbourMask);
                     }
                 }
 
@@ -175,7 +171,15 @@ namespace jedjoud.VoxelTerrain {
 
             if (query.CalculateEntityCount() == nextEndOfPipeCounts) {
                 nextEndOfPipeCounts = -1;
-                chunksToShow.Clear();
+
+
+                foreach (var entity in chunksToShow) {
+                    TerrainChunk chunk = state.EntityManager.GetComponentData<TerrainChunk>(entity);
+
+                    if (SystemAPI.HasComponent<MaterialMeshInfo>(entity)) {
+                        SystemAPI.SetComponentEnabled<MaterialMeshInfo>(entity, true);
+                    }
+                }
 
                 foreach (var entity in chunksToDestroy) {
                     TerrainChunk chunk = state.EntityManager.GetComponentData<TerrainChunk>(entity);
@@ -197,6 +201,15 @@ namespace jedjoud.VoxelTerrain {
                     chunks.Remove(chunk.node);
                 }
 
+                {
+                    foreach (var (chunk, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
+                        for (int i = 0; i < 6; i++) {
+                            SystemAPI.SetComponentEnabled<TerrainSkirtVisibleTag>(chunk.skirts[i], BitUtils.IsBitSet(chunk.skirtMask, i));
+                        }
+                    }
+                }
+
+                chunksToShow.Clear();
                 chunksToDestroy.Clear();
             }
         }

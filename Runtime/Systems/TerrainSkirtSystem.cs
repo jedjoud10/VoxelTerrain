@@ -11,7 +11,7 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainSkirtTag, LocalToWorld, MaterialMeshInfo>().Build();
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainSkirt, LocalToWorld, MaterialMeshInfo>().Build();
             state.RequireForUpdate(query);
         }
 
@@ -23,7 +23,7 @@ namespace jedjoud.VoxelTerrain {
             float3 loaderCenter = transform.Position;
             float chunkSize = 64f;
 
-            foreach (var (localToWorld, skirt, skirtEntity) in SystemAPI.Query<LocalToWorld, TerrainSkirtTag>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisForceTag>().WithEntityAccess()) {
+            foreach (var (localToWorld, skirt, skirtEntity) in SystemAPI.Query<LocalToWorld, TerrainSkirt>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisibleTag>().WithEntityAccess()) {
                 float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * chunkSize * 0.5f;
                 float3 skirtDirection = DirectionOffsetUtils.FORWARD_DIRECTION_INCLUDING_NEGATIVE[(int)skirt.direction];
 
@@ -36,7 +36,7 @@ namespace jedjoud.VoxelTerrain {
                 SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, enabled);
             }
 
-            foreach (var (_, skirtEntity) in SystemAPI.Query<TerrainSkirtTag>().WithPresent<MaterialMeshInfo>().WithDisabled<TerrainSkirtVisForceTag>().WithEntityAccess()) {
+            foreach (var (_, skirtEntity) in SystemAPI.Query<TerrainSkirt>().WithPresent<MaterialMeshInfo>().WithDisabled<TerrainSkirtVisibleTag>().WithEntityAccess()) {
                 SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
             }
         }

@@ -4,27 +4,44 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain {
     public static class BitUtils {
         [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
-        static void DebugCheckInsideInt(int index) {
-            if (index < 0 || index >= 32) {
+        static void DebugCheckInsideType(int index, int size) {
+            if (index < 0 || index >= size) {
                 throw new System.OverflowException(
-                    $"Index {index} does not fit in the bit range of [0, 32)");
+                    $"Index {index} does not fit in the bit range of [0, {size})");
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsBitSet(int backing, int index) {
-            DebugCheckInsideInt(index);
+            DebugCheckInsideType(index, 32);
             return ((backing >> index) & 1) == 1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void SetBit(ref int backing, int index, bool value) {
-            DebugCheckInsideInt(index);
+            DebugCheckInsideType(index, 32);
 
             if (value) {
                 backing |= 1 << index;
             } else {
                 backing &= ~(1 << index);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsBitSet(byte backing, int index) {
+            DebugCheckInsideType(index, 8);
+            return ((backing >> index) & 1) == 1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void SetBit(ref byte backing, int index, bool value) {
+            DebugCheckInsideType(index, 8);
+
+            if (value) {
+                backing |= (byte)(1 << index);
+            } else {
+                backing &= (byte)(~(1 << index) & byte.MaxValue);
             }
         }
 

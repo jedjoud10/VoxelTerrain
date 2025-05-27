@@ -7,12 +7,7 @@ namespace jedjoud.VoxelTerrain {
         public OctreeNode node;
         public FixedList64Bytes<Entity> skirts;
         public bool generateCollisions;
-
-        // public Mesh sharedMesh;
-        // public byte[] voxelMaterialsLookup;
-        // public (byte, int)[] triangleOffsetLocalMaterials;
-        
-        //public MinMaxAABB bounds;
-        // public BitField32 neighbours;
+        public byte skirtMask;
+        public BitField32 neighbourMask;
     }
 }

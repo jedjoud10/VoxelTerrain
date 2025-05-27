@@ -56,6 +56,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             dst = vertices.GetSubArray(vertexCounter.Count, skirtVertexCounter.Count);
             src.CopyTo(dst);
 
+            // Merge the skirt normals onto the main mesh normals
+            src = skirtNormals.GetSubArray(0, skirtVertexCounter.Count);
+            dst = normals.GetSubArray(vertexCounter.Count, skirtVertexCounter.Count);
+            src.CopyTo(dst);
+
             // We will store ALL the indices (uniform + stitch + forced)
             totalIndexCount.Value = triangleCounter.Count * 3 + skirtStitchedTriangleCounter.Count * 3 + skirtForcedTriangleCounter.Sum() * 3;
 

@@ -139,6 +139,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
 
+                EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+
                 EntityManager.AddComponent<UnregisterMeshCleanup>(chunkEntity);
 
                 EntityManager.SetComponentData<UnregisterMeshCleanup>(chunkEntity, new UnregisterMeshCleanup {
@@ -171,6 +173,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                     MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(materialId, meshId, (ushort)(skirtIndex + 1));
                     RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
+
+                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
 
                     EntityManager.SetComponentData<RenderBounds>(skirtEntity, new RenderBounds() {
                         Value = localRenderBounds,

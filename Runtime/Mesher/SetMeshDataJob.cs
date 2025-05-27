@@ -36,15 +36,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // We will store ALL the vertices (uniform + skirt)
             data.SetVertexBufferParams(totalVertexCount.Value, vertexAttributeDescriptors);
             vertices.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(0));
+            normals.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(1));
 
             // We will store ALL the indices (uniform + skirt)
             data.SetIndexBufferParams(totalIndexCount.Value, IndexFormat.UInt32);
             indices.GetSubArray(0, totalIndexCount.Value).CopyTo(data.GetIndexData<int>());
 
-            NativeArray<float3> normals = data.GetVertexData<float3>(1);
-            for (int i = 0; i < totalVertexCount.Value; i++) {
-                normals[i] = math.up();
-            }
 
             // 1 submesh for the main mesh + 6 submeshes per skirt face
             data.subMeshCount = 7;
