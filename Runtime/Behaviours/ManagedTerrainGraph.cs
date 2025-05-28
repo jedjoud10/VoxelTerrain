@@ -1,10 +1,6 @@
 using Unity.Mathematics;
 using UnityEngine;
 
-
-#if UNITY_EDITOR
-#endif
-
 namespace jedjoud.VoxelTerrain.Generation {
 
     // A voxel graph is the base class to inherit from to be able to write custom voxel stuff
@@ -14,6 +10,21 @@ namespace jedjoud.VoxelTerrain.Generation {
             GetComponent<ManagedTerrainCompiler>().OnPropertiesChanged();
         }
 
+        public class Context {
+            internal CustomCodeChainedNode chain;
+
+            public Context() {
+                chain = null;
+            }
+
+            public void SpawnProp(Props.GenerationProp prop) {
+                chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
+                    Props.GenerationProp copy = prop;
+                    ctx.AddLine("// this is some very cool prop spawning call....");
+                });
+            }
+        }
+
         public class AllInputs {
             public Variable<float3> position;
             public Variable<int3> id;
@@ -21,10 +32,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public class AllOutputs {
             public Variable<float> density;
-            //public Variable<GpuProp> prop;
-            public Variable<int> material;
         }
 
-        public abstract void Execute(AllInputs input, out AllOutputs output);
+        public abstract void Execute(Context context, AllInputs input, out AllOutputs output);
     }
 }

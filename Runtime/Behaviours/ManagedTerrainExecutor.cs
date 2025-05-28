@@ -65,20 +65,20 @@ namespace jedjoud.VoxelTerrain.Generation {
         private void CreateResources(int size, bool readback) {
             DisposeResources();
 
-            posScaleOctalBuffer = new ComputeBuffer(64, sizeof(int) * 4, ComputeBufferType.Structured);
-            negPosOctalCountersBuffer = new ComputeBuffer(64, sizeof(int), ComputeBufferType.Structured);
+            posScaleOctalBuffer = new ComputeBuffer(VoxelUtils.OCTAL_CHUNK_COUNT, sizeof(int) * 4, ComputeBufferType.Structured);
+            negPosOctalCountersBuffer = new ComputeBuffer(VoxelUtils.OCTAL_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
 
-            // Creates dictionary with the default voxel graph textures (density + custom data)
             textures = new Dictionary<string, ExecutorTexture> {
             };
 
             // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??
-            // I dispose of them just like the render textures idk why it's complaining
             buffers = new Dictionary<string, ExecutorBuffer> {
             };
 
+            // If we're doing octal readback, we want the data to be stored as a buffer (so that we can be sure that we packed it properly on the GPU)
+            // If not, we can just store it in a simple 3D texture instead
             if (readback) {
-                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(VoxelUtils.VOLUME * 64, Voxel.size, ComputeBufferType.Structured)));
+                buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxel" }, new ComputeBuffer(VoxelUtils.VOLUME * VoxelUtils.OCTAL_CHUNK_COUNT, Voxel.size, ComputeBufferType.Structured)));
             } else {
                 textures.Add("voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt), -1));
             }
@@ -103,11 +103,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             public int dispatchIndex = -1;
             public bool updateInjected = true;
         }
-        public class EditorPreviewParameters: ExecutionParameters {
-            public Vector3 previewOffset;
-            public Vector3 previewScale;
+        public class SimpleParameters: ExecutionParameters {
+            public Vector3 offset;
+            public Vector3 scale;
         }
-        public class ReadbackParameters: ExecutionParameters {
+        public class OctalReadbackParameters: ExecutionParameters {
             public PosScaleOctalData[] posScaleOctals;
         }
 
@@ -126,7 +126,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             if (newSize != setSize || textures == null || buffers == null) {
                 setSize = newSize;
-                CreateResources(newSize, parameters is ReadbackParameters);
+                CreateResources(newSize, parameters is OctalReadbackParameters);
             }
 
             CommandBuffer commands = new CommandBuffer();
@@ -135,18 +135,18 @@ namespace jedjoud.VoxelTerrain.Generation {
             ComputeShader shader = compiler.shader;
             
             LocalKeyword keyword = shader.keywordSpace.FindKeyword("_ASYNC_READBACK_OCTAL");
-            if (parameters is ReadbackParameters readback) {
+            if (parameters is OctalReadbackParameters readback) {
                 commands.EnableKeyword(shader, keyword);
                 
                 commands.SetBufferData(posScaleOctalBuffer, readback.posScaleOctals);
                 commands.SetComputeBufferParam(shader, dispatchIndex, "pos_scale_octals", posScaleOctalBuffer);
 
-                commands.SetBufferData(negPosOctalCountersBuffer, new int[64]);
+                commands.SetBufferData(negPosOctalCountersBuffer, new int[VoxelUtils.OCTAL_CHUNK_COUNT]);
                 commands.SetComputeBufferParam(shader, dispatchIndex, "neg_pos_octal_counters", negPosOctalCountersBuffer);
-            } else if (parameters is EditorPreviewParameters editor) {
+            } else if (parameters is SimpleParameters simple) {
                 commands.DisableKeyword(shader, keyword);
-                commands.SetComputeVectorParam(shader, "previewOffset", editor.previewOffset);
-                commands.SetComputeVectorParam(shader, "previewScale", editor.previewScale);
+                commands.SetComputeVectorParam(shader, "simpleOffset", simple.offset);
+                commands.SetComputeVectorParam(shader, "simpleScale", simple.scale);
             }
 
             commands.SetComputeIntParam(shader, "size", newSize);

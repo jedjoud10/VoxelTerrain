@@ -97,7 +97,7 @@ namespace jedjoud.VoxelTerrain {
                     float4 f4 = (float4)temp;
                     return $"float4({f4.x},{f4.y},{f4.z},{f4.w})";
                 case StrictType.Prop:
-                    GpuProp prop = (GpuProp)temp;
+                    CpuProp prop = (CpuProp)temp;
                     return $"{{ {ToDefinableString<float3>(prop.position)}, {ToDefinableString<float3>(prop.rotation)}, {prop.scale}, {prop.type}, {prop.variant} }}";
                 default:
                     return value.ToString();

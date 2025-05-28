@@ -9,11 +9,22 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string name;
         public bool output;
 
-        public ScopeArgument(string name, VariableType type, UntypedVariable node, bool output) {
-            this.type = type;
-            this.name = name;
-            this.node = node;
-            this.output = output;
+        public static ScopeArgument AsInput<T>(string name, Variable<T> backing = null) {
+            ScopeArgument arg = new ScopeArgument();
+            arg.type = VariableType.TypeOf<T>();
+            arg.name = name;
+            arg.node = backing ?? new NoOp<T>();
+            arg.output = false;
+            return arg;
+        }
+
+        public static ScopeArgument AsOutput<T>(string name, Variable<T> backing) {
+            ScopeArgument arg = new ScopeArgument();
+            arg.type = VariableType.TypeOf<T>();
+            arg.name = name;
+            arg.node = backing;
+            arg.output = true;
+            return arg;
         }
     }
 
@@ -85,6 +96,43 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             return $"    {name}({output});";
+        }
+    }
+
+    public class TreeScopeAndKernelBuilder {
+        public string dispatchIndexIdentifier;
+        public string scopeName;
+        public CustomCodeChainedNode customCodeChain;
+        public ScopeArgument[] arguments;
+        public KernelDispatch dispatch;
+
+        public void Build(TreeContext ctx, Dictionary<string, int> dispatchIndices) {
+            int idx = ctx.scopes.Count;
+            ctx.currentScope = idx;
+            ctx.scopes.Add(new TreeScope(0));
+            ctx.scopes[idx].name = scopeName;
+            ctx.scopes[idx].arguments = arguments;
+
+            foreach (var arg in arguments) {
+                if (arg.output) {
+                    arg.node.Handle(ctx);
+                } else {
+                    ctx.Add(arg.node, arg.name);
+                }
+            }
+
+            if (customCodeChain != null) {
+                customCodeChain.Handle(ctx);
+            }
+
+            dispatch.name = $"CS{scopeName}";
+            dispatch.depth = 0;
+            dispatch.scopeName = scopeName;
+            dispatch.scopeIndex = idx;
+
+            int dspIdx = ctx.dispatches.Count;
+            ctx.dispatches.Add(dispatch);
+            dispatchIndices.Add(dispatchIndexIdentifier, dspIdx);
         }
     }
 }

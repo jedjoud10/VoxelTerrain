@@ -16,61 +16,63 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public static Variable<T> operator +(Variable<T> a, Variable<T> b) {
-            return new SimpleBinOpNode<T, T, T> { a = a, b = b, op = "+" };
+            return new SimpleBinaryOperatorNode<T, T, T> { a = a, b = b, op = "+" };
         }
 
         public static Variable<T> operator -(Variable<T> a, Variable<T> b) {
-            return new SimpleBinOpNode<T, T, T> { a = a, b = b, op = "-" };
+            return new SimpleBinaryOperatorNode<T, T, T> { a = a, b = b, op = "-" };
         }
 
         public static Variable<bool> operator >(Variable<T> a, Variable<T> b) {
             VerifyEqCheck();
-            return new SimpleBinOpNode<T, T, bool> { a = a, b = b, op = ">" };
+            return new SimpleBinaryOperatorNode<T, T, bool> { a = a, b = b, op = ">" };
         }
 
         public static Variable<bool> operator <(Variable<T> a, Variable<T> b) {
             VerifyEqCheck();
-            return new SimpleBinOpNode<T, T, bool> { a = a, b = b, op = "<" };
+            return new SimpleBinaryOperatorNode<T, T, bool> { a = a, b = b, op = "<" };
         }
 
         public static Variable<bool> operator <=(Variable<T> a, Variable<T> b) {
             VerifyEqCheck();
-            return new SimpleBinOpNode<T, T, bool> { a = a, b = b, op = "<=" };
+            return new SimpleBinaryOperatorNode<T, T, bool> { a = a, b = b, op = "<=" };
         }
 
         public static Variable<bool> operator >=(Variable<T> a, Variable<T> b) {
             VerifyEqCheck();
-            return new SimpleBinOpNode<T, T, bool> { a = a, b = b, op = ">=" };
+            return new SimpleBinaryOperatorNode<T, T, bool> { a = a, b = b, op = ">=" };
         }
 
         public static Variable<bool> operator &(Variable<T> a, Variable<T> b) {
             VerifyBoolBitwiseCheck();
-            return new SimpleBinOpNode<T, T, bool> { a = a, b = b, op = "&&" };
+            return new SimpleBinaryOperatorNode<T, T, bool> { a = a, b = b, op = "&&" };
         }
 
         public static Variable<bool> operator |(Variable<T> a, Variable<T> b) {
             VerifyBoolBitwiseCheck();
-            return new SimpleBinOpNode<T, T, bool> { a = a, b = b, op = "||" };
+            return new SimpleBinaryOperatorNode<T, T, bool> { a = a, b = b, op = "||" };
         }
 
         public static Variable<T> operator -(Variable<T> a) {
-            return new SimpleUnaFuncNode<T> { a = a, func = "-" };
+            return new SimpleUnaryNode<T> { a = a, func = "-" };
         }
 
         public static Variable<T> operator *(Variable<T> a, Variable<T> b) {
-            return new SimpleBinOpNode<T, T, T> { a = a, b = b, op = "*" };
+            return new SimpleBinaryOperatorNode<T, T, T> { a = a, b = b, op = "*" };
         }
         public static Variable<T> operator /(Variable<T> a, Variable<T> b) {
-            return new SimpleBinOpNode<T, T, T> { a = a, b = b, op = "/" };
+            return new SimpleBinaryOperatorNode<T, T, T> { a = a, b = b, op = "/" };
         }
 
         public static implicit operator Variable<T>(Inject<T> value) {
             return new InjectedNode<T> { a = value };
         }
 
+        /*
         public static implicit operator Variable<T>(CustomCode<T> value) {
             return value.Execute();
         }
+        */
 
         private static void VerifyEqCheck() {
             if (VariableType.Dimensionality<T>() != 1) {
@@ -99,16 +101,17 @@ namespace jedjoud.VoxelTerrain.Generation {
             throw new NotImplementedException();
             //return new CachedNode<T> { inner = this, swizzle = swizzle };
         }
+
         public Variable<T> Min(Variable<T> other) {
-            return new SimpleBinFuncNode<T> { a = this, b = other, func = "min" };
+            return new SimpleBinaryFunctionNode<T> { a = this, b = other, func = "min" };
         }
 
         public Variable<T> Max(Variable<T> other) {
-            return new SimpleBinFuncNode<T> { a = this, b = other, func = "max" };
+            return new SimpleBinaryFunctionNode<T> { a = this, b = other, func = "max" };
         }
 
         public Variable<T> Abs() {
-            return new SimpleUnaFuncNode<T> { a = this, func = "abs" };
+            return new SimpleUnaryNode<T> { a = this, func = "abs" };
         }
 
         public Variable<T> SmoothAbs(Variable<T> smoothing) {
@@ -123,7 +126,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new ClampNode<T> { a = a, b = b, t = this };
         }
 
-        public Variable<T> ClampZeroOne() {
+        public Variable<T> Saturate() {
             return new ClampNode<T> { a = GraphUtils.Zero<T>(), b = GraphUtils.One<T>(), t = this };
         }
 
@@ -174,7 +177,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public static Variable<T> Select<T>(this Variable<bool> self, Variable<T> falseVal, Variable<T> trueVal) {
-            return new SelectorOpNode<T>() { falseVal = falseVal, trueVal = trueVal, selector = self };
+            return new SelectorNode<T>() { falseVal = falseVal, trueVal = trueVal, selector = self };
         }
 
         public static Variable<O> Broadcast<O>(this Variable<float> self) {
@@ -210,15 +213,15 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public static Variable<float2> Scaled(this Variable<float2> self, Variable<float> other) {
-            return new SimpleBinOpNode<float2, float, float2>() { a = self, b = other, op = "*" };
+            return new SimpleBinaryOperatorNode<float2, float, float2>() { a = self, b = other, op = "*" };
         }
 
         public static Variable<float3> Scaled(this Variable<float3> self, Variable<float> other) {
-            return new SimpleBinOpNode<float3, float, float3>() { a = self, b = other, op = "*" };
+            return new SimpleBinaryOperatorNode<float3, float, float3>() { a = self, b = other, op = "*" };
         }
 
         public static Variable<float4> Scaled(this Variable<float4> self, Variable<float> other) {
-            return new SimpleBinOpNode<float4, float, float4>() { a = self, b = other, op = "*" };
+            return new SimpleBinaryOperatorNode<float4, float, float4>() { a = self, b = other, op = "*" };
         }
     }
 }

@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         protected override void OnUpdate() {
             if (MainCameraGameObject.instance != null) {
                 MainCameraGameObject go = MainCameraGameObject.instance;
-                Entity entity = SystemAPI.GetSingletonEntity<TerrainOctreeLoader>();
+                Entity entity = SystemAPI.GetSingletonEntity<TerrainLoader>();
                 SystemAPI.SetComponent<LocalTransform>(entity, LocalTransform.FromPosition(go.transform.position));
             }
         }

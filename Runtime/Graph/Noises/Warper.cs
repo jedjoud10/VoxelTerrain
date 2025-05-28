@@ -77,8 +77,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             return new WarperNode<T> {
                 warping = warping,
-                axialAmplitude = axialAmplitude != null ? axialAmplitude : GraphUtils.One<T>(),
-                axialScale = axialScale != null ? axialScale : GraphUtils.One<T>(),
+                axialAmplitude = axialAmplitude ?? GraphUtils.One<T>(),
+                axialScale = axialScale ?? GraphUtils.One<T>(),
                 position = position,
             };
         }

@@ -12,11 +12,11 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public class NoOp<T> : Variable<T> {
-        public override void HandleInternal(TreeContext context) {
+        public override void HandleInternal(TreeContext ctx) {
         }
     }
 
-    public class SimpleBinOpNode<A, B, T> : Variable<T> {
+    public class SimpleBinaryOperatorNode<A, B, T> : Variable<T> {
         public Variable<A> a;
         public Variable<B> b;
         public string op;
@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class SimpleBinFuncNode<T> : Variable<T> {
+    public class SimpleBinaryFunctionNode<T> : Variable<T> {
         public Variable<T> a;
         public Variable<T> b;
         public string func;
@@ -40,7 +40,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class SimpleUnaFuncNode<T> : Variable<T> {
+    public class SimpleUnaryNode<T> : Variable<T> {
         public Variable<T> a;
         public string func;
 
@@ -214,7 +214,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class SelectorOpNode<T> : Variable<T> {
+    public class SelectorNode<T> : Variable<T> {
         public Variable<T> falseVal;
         public Variable<T> trueVal;
         public Variable<bool> selector;

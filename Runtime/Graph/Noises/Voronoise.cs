@@ -41,8 +41,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Voronoise(Variable<float> scale, Variable<float> amplitude, Variable<float> lerpValue = null, Variable<float> randomness = null) {
             this.amplitude = amplitude;
             this.scale = scale;
-            this.lerpValue = lerpValue == null ? 0.5f : lerpValue;
-            this.randomness = randomness == null ? 0.5f : randomness;
+            this.lerpValue = lerpValue ?? 0.5f;
+            this.randomness = randomness ?? 0.5f;
         }
 
         public override AbstractNoiseNode<I> CreateAbstractYetToEval<I>() {

@@ -107,7 +107,7 @@ namespace jedjoud.VoxelTerrain {
 
             if (!octree.pending && octree.handle.IsCompleted && octree.readyToSpawn) {
                 nextEndOfPipeCounts = SystemAPI.QueryBuilder().WithAll<TerrainChunk>().WithAbsent<Prefab>().Build().CalculateEntityCount();
-
+                
                 foreach (var node in octree.removed) {
                     if (chunks.TryGetValue(node, out var entity)) {
                         chunksToDestroy.Add(entity);

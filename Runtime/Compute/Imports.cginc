@@ -18,8 +18,8 @@ int3 moduloSeed;
 RWStructuredBuffer<uint> voxels;
 #else
 RWTexture3D<uint> voxels_write;
-float3 previewScale;
-float3 previewOffset;
+float3 simpleScale;
+float3 simpleOffset;
 #endif
 
 //RWStructuredBuffer<BlittableProp> props;
@@ -42,22 +42,9 @@ float3 ConvertIntoWorldPosition(uint3 id) {
 }
 #else
 float3 ConvertIntoWorldPosition(uint3 id) {
-    return ((float3)id * previewScale) + previewOffset;
+    return ((float3)id * simpleScale) + simpleOffset;
 }
 #endif
-
-
-int CalcIdIndex(uint3 id) {
-    #ifdef _ASYNC_READBACK_OCTAL
-        uint3 zero_to_three = id / LOGICAL_SIZE;
-        int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
-        uint3 local_id = id % LOGICAL_SIZE;
-
-        return local_id.x + local_id.z * LOGICAL_SIZE + local_id.y * LOGICAL_SIZE*LOGICAL_SIZE + chunk_index * LOGICAL_SIZE*LOGICAL_SIZE*LOGICAL_SIZE;
-    #else
-        return id.x + id.z * size + id.y * size * size;
-    #endif
-}
 
 #ifdef _ASYNC_READBACK_OCTAL
 void CheckVoxelSign(uint3 id, float value) {
@@ -66,3 +53,20 @@ void CheckVoxelSign(uint3 id, float value) {
     InterlockedAdd(neg_pos_octal_counters[chunk_index], value >= 0.0 ? 1 : -1);
 }
 #endif
+
+void StoreVoxel(uint3 id, float density, int material) {
+    #ifdef _ASYNC_READBACK_OCTAL
+        uint3 zero_to_three = id / LOGICAL_SIZE;
+        int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
+        uint3 local_id = id % LOGICAL_SIZE;
+
+        int index = local_id.x + local_id.z * LOGICAL_SIZE + local_id.y * LOGICAL_SIZE*LOGICAL_SIZE + chunk_index * LOGICAL_SIZE*LOGICAL_SIZE*LOGICAL_SIZE;
+
+        // this is a buffer!!!
+        // contiguous buffer containing 64 chunks worth of data
+        voxels[index] = packVoxelData(density, material);
+        CheckVoxelSign(id, density);
+    #else
+        voxels_write[id] = packVoxelData(density, material);
+    #endif
+}

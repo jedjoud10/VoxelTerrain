@@ -1,10 +1,9 @@
+using System.Runtime.InteropServices;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Props {
-    // TODO: Also implement the prop type system
-    // TODO: Also implement the prop variants system
-    // TODO: implement dispatch index
-    public struct GpuProp {
+    [StructLayout(LayoutKind.Sequential)]
+    public struct CpuProp {
         public float3 position;
         public float3 rotation;
         public float scale;

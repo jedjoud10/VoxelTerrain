@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
-            state.RequireForUpdate<TerrainOctreeLoader>();
+            state.RequireForUpdate<TerrainLoader>();
             state.RequireForUpdate<TerrainOctreeConfig>();
             state.RequireForUpdate<TerrainManagerConfig>();
 
@@ -76,8 +76,8 @@ namespace jedjoud.VoxelTerrain.Octree {
                 return;
             }
 
-            Entity entity = SystemAPI.GetSingletonEntity<TerrainOctreeLoader>();
-            TerrainOctreeLoader loader = SystemAPI.GetComponent<TerrainOctreeLoader>(entity);
+            Entity entity = SystemAPI.GetSingletonEntity<TerrainLoader>();
+            TerrainLoader loader = SystemAPI.GetComponent<TerrainLoader>(entity);
             LocalTransform transform = SystemAPI.GetComponent<LocalTransform>(entity);
 
             if (math.distance(transform.Position, oldPosition) < 1) {
@@ -111,7 +111,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                 neighbourMasks = octree.neighbourMasks,
                 
                 center = transform.Position,
-                radius = loader.factor,                
+                factor = math.clamp(loader.octreeNodeFactor + 1f, 1, 1.999f),                
             };
 
             NeighbourJob neighbourJob = new NeighbourJob {

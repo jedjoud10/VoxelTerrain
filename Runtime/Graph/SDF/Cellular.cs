@@ -20,7 +20,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             bool tiling = tilingModSize > 0;
             context.Hash(tilingModSize);
 
-            ScopeArgument input = new ScopeArgument(context[inner], VariableType.TypeOf<T>(), inner, false);
+            ScopeArgument input = ScopeArgument.AsInput<T>(context[inner], inner);
             if (dedupeOutputName != "" && dedupeScopeIndex != -1 && context.dedupe.Contains(dedupeOutputName)) {
                 TreeScope alreadyDefinedScope = context.scopes[dedupeScopeIndex];
 
@@ -47,7 +47,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 throw new Exception("uhhhh");
             }
 
-            Variable<float> tahini = new CustomCode<float>((UntypedVariable self, TreeContext ctx) => {
+            Variable<float> custom = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
                 offset.Handle(ctx);
                 factor.Handle(ctx);
                 string typeString = VariableType.TypeOf<T>().ToStringType();
@@ -103,10 +103,10 @@ float output = 100.0;
 ";
                 ctx.AddLine(outputThird);
 
-                ctx.DefineAndBindNode<float>(self, "__", $"min(output, 1.0) * {ctx[factor]} + {ctx[offset]}");
+                return $"min(output, 1.0) * {ctx[factor]} + {ctx[offset]}";
             });
 
-            ScopeArgument output = new ScopeArgument(outputName, VariableType.TypeOf<float>(), tahini, true);
+            ScopeArgument output = ScopeArgument.AsOutput<float>(outputName, custom);
 
             int index = context.scopes.Count;
             int oldScopeIndex = context.currentScope;
@@ -127,7 +127,7 @@ float output = 100.0;
             //context.scopes[index].namesToNodes.TryAdd(input.node, "position");
 
             // Call the recursive handle function within the indented scope
-            tahini.Handle(context);
+            custom.Handle(context);
 
             // EXIT SCOPE!!!
             context.scopeDepth--;
@@ -184,8 +184,8 @@ float output = 100.0;
         public Variable<float> Tile(Variable<T> position) {
             return new CellularNode<T>() {
                 tilingModSize = tilingModSize,
-                distance = distance != null ? distance : (a, b) => Sdf.Distance(a, b),
-                shouldSpawn = shouldSpawn != null ? shouldSpawn : (pos) => 1.0f,
+                distance = distance ?? ((a, b) => Sdf.Distance(a, b)),
+                shouldSpawn = shouldSpawn ?? ((pos) => 1.0f),
                 inner = position,
                 offset = offset,
                 factor = factor,

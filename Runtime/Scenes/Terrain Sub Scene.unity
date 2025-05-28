@@ -318,12 +318,24 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
-      propertyPath: factor
-      value: 1.4
+      propertyPath: segmentExtent.x
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
+      propertyPath: segmentExtent.y
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
+      propertyPath: segmentExtent.z
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
+      propertyPath: octreeNodeFactor
+      value: 0.7
       objectReference: {fileID: 0}
     - target: {fileID: 7735598465189242063, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: m_Name
-      value: Octree Loader
+      value: Loader
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

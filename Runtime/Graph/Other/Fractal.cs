@@ -131,10 +131,10 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             return new FractalNode<T> {
                 inner = inner,
-                fold = fold != null ? fold : (current, last) => current + last,
-                remap = remap != null ? remap : (current) => current,
-                lacunarity = lacunarity != null ? lacunarity : 2.0f,
-                persistence = persistence != null ? persistence : 0.5f,
+                fold = fold ?? ((current, last) => current + last),
+                remap = remap ?? ((current) => current),
+                lacunarity = lacunarity ?? 2.0f,
+                persistence = persistence ?? 0.5f,
                 octaves = octaves,
                 position = position
             };

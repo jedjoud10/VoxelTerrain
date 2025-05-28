@@ -24,11 +24,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public bool dirty;
 
         [HideInInspector]
-        public int voxelsDispatchIndex;
-
-        [HideInInspector]
-        public int propsDispatchIndex;
-        public RenderTexture debugTex;
+        public Dictionary<string, int> DispatchIndices {  get; private set; }
         public ComputeShader shader;
 
         // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
@@ -51,17 +47,16 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (visualizer != null && visualizer.isActiveAndEnabled) {
                 var exec = GetComponent<ManagedTerrainExecutor>();
 
-                ManagedTerrainExecutor.EditorPreviewParameters parameters = new ManagedTerrainExecutor.EditorPreviewParameters() {
+                ManagedTerrainExecutor.SimpleParameters parameters = new ManagedTerrainExecutor.SimpleParameters() {
                     newSize = visualizer.size,
-                    previewScale = visualizer.scale,
-                    previewOffset = visualizer.offset,
-                    dispatchIndex = this.voxelsDispatchIndex,
+                    scale = visualizer.scale,
+                    offset = visualizer.offset,
+                    dispatchIndex = this.DispatchIndices["voxels"],
                     updateInjected = true,
                 };
 
                 exec.ExecuteShader(parameters);
                 RenderTexture voxels = (RenderTexture)exec.Textures["voxels"];
-                debugTex = voxels;
                 visualizer.Meshify(voxels);
             }
 #endif
@@ -153,51 +148,72 @@ namespace jedjoud.VoxelTerrain.Generation {
 #endif
 
         // Parses the voxel graph into a tree context with all required nodes and everything!!!
+        // TODO: PLEASE FOR THE LOVE OF GOD. PLEASE. PLEASE I BEG YOU PLEASE REWRITE THIS!!! THIS SHIT IS ASS!!!!!
         public void ParsedTranspilation() {
             ManagedTerrainGraph graph = GetComponent<ManagedTerrainGraph>();
 
             if (graph == null) {
-                Debug.LogError("Can't transpile the graph since we don't have one to begin with! Add a VoxelGraph component...");
+                Debug.LogError("Can't transpile the graph since we don't have one to begin with! Add a ManagedTerrainGraph component...");
                 return;
             }
 
-            // TODO: for SOME FUCKING reason this causes problems
+            // TODO: for SOME fucking reason debug name causes problems
             // unity doesn't seem to be saving the debugNames field or doing some fucky fucky shit with it. pls fix
             ctx = new TreeContext(false);
-            ctx.scopes = new List<TreeScope>() {
-                // Voxel density scope
-                new TreeScope(0),
-
-                // Prop generation scope
-                //new TreeScope(0),
-            };
-            voxelsDispatchIndex = 0;
-            propsDispatchIndex = -1;
+            DispatchIndices = new Dictionary<string, int>();
+            ctx.scopes = new List<TreeScope>();
 
             // Create the external inputs that we use inside the function scope
-            Variable<float3> position = new NoOp<float3>();
-            var tempPos = new ScopeArgument("position", VariableType.StrictType.Float3, position, false);
-            Variable<int3> id = new NoOp<int3>();
-            var tempId = new ScopeArgument("id", VariableType.StrictType.Int3, id, false);
-            ctx.position = tempPos;
-            ctx.id = tempId;
+            ScopeArgument position = ScopeArgument.AsInput<float3>("position");
+            ScopeArgument id = ScopeArgument.AsInput<int3>("id");
+            ctx.position = position;
+            ctx.id = id;
+
+            // Extra context passed to the graph during building
+            // Allows you to do some non-node stuff, like spawning a prop
+            ManagedTerrainGraph.Context context = new ManagedTerrainGraph.Context();
 
             // Execute the voxel graph to get all required output variables 
-            // We will contextualize the variables in their separate passes ({ density + color + material }, { props }, etc)
-            ManagedTerrainGraph.AllInputs inputs = new ManagedTerrainGraph.AllInputs() { position = position, id = id };
-            graph.Execute(inputs, out ManagedTerrainGraph.AllOutputs outputs);
-            ScopeArgument voxelArgument = new ScopeArgument("voxel", VariableType.StrictType.Float, outputs.density, true);
-            //ScopeArgument propArgument = new ScopeArgument("prop", VariableType.StrictType.Prop, outputs.prop, true);
-            ScopeArgument materialArgument = new ScopeArgument("material", VariableType.StrictType.Int, outputs.material, true);
+            // We will contextualize the variables in their separate passes
+            ManagedTerrainGraph.AllInputs inputs = new ManagedTerrainGraph.AllInputs() { position = (Variable<float3>)position.node, id = (Variable<int3>)id.node };
 
-            ctx.currentScope = 0;
-            ctx.scopes[0].name = "Voxel";
-            ctx.scopes[0].arguments = new ScopeArgument[] {
-                tempPos, tempId, voxelArgument, materialArgument
+            // Execute the graph and fetch out outpus
+            graph.Execute(context, inputs, out ManagedTerrainGraph.AllOutputs outputs);
+
+            // Create the scope and kernel for the voxel generation step
+            // This will be used by the terrain previewer, terrain async readback system, and terrain segmentation system
+            TreeScopeAndKernelBuilder voxelKernelBuilder = new TreeScopeAndKernelBuilder {
+                scopeName = "Voxel",
+                dispatchIndexIdentifier = "voxels",
+                arguments = new ScopeArgument[] {
+                    position, id,
+                    ScopeArgument.AsOutput<float>("voxel", outputs.density),
+                    ScopeArgument.AsOutput<int>("material", 0)
+                },
+                dispatch = new VoxelKernelDispatch {
+                }
             };
-            ctx.Add(position, "position");
-            outputs.density.Handle(ctx);
-            outputs.material.Handle(ctx);
+
+            // Create the scope and kernel for the prop generation step
+            TreeScopeAndKernelBuilder propKernelBuilder = new TreeScopeAndKernelBuilder {
+                scopeName = "Prop",
+                dispatchIndexIdentifier = "props",
+                arguments = new ScopeArgument[] {
+                    position, id,
+                },
+                customCodeChain = context.chain,
+                dispatch = new PropKernelDispatch {
+                },
+            };
+
+            voxelKernelBuilder.Build(ctx, DispatchIndices);
+            propKernelBuilder.Build(ctx, DispatchIndices);
+
+
+            //Variable<int> noOpPropSpawn = context.noOp;
+            //ScopeArgument noOpPropSpawnArgument = new ScopeArgument("prop", VariableType.StrictType.Int, noOpPropSpawn, true);
+
+            //noOpPropSpawn.Handle(ctx);
 
             /*
             ctx.currentScope = 1;
@@ -208,19 +224,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
             outputs.prop.Handle(ctx);
             */
-
-
-            // Voxel kernel dispatcher
-            ctx.dispatches.Add(new VoxelKernelDispatch {
-                name = $"CSVoxel",
-                depth = 0,
-                scopeName = "Voxel",
-                scopeIndex = 0,
-                outputs = new KernelOutput[] {
-                    //new KernelOutput { setter = "packVoxelData(voxel, material)", outputTextureName = "voxels" },
-                    new KernelOutput { setter = "packVoxelData(voxel, material)", outputBufferName = "voxels", buffer = true }
-                }
-            });
 
             /*
             // Prop kernel dispatcher
@@ -271,6 +274,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Define each scope as a separate function with its arguments (input / output)
             int index = 0;
             foreach (var scope in ctx.scopes) {
+                if (scope == null)
+                    throw new NullReferenceException("Scope was null");
+                if (scope.arguments == null)
+                    throw new NullReferenceException("Scope arguments are null");
+
                 lines.Add($"// defined nodes: {scope.namesToNodes.Count}, depth: {scope.depth}, index: {index}, total lines: {scope.lines.Count}, argument count: {scope.arguments.Length} ");
 
                 // Create a string containing all the required arguments and stuff

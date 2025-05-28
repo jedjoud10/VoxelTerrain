@@ -157,5 +157,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         public void DefineAndBindNode<T>(UntypedVariable node, string name, string value, bool constant = false, bool rngName = true, bool assignOnly = false) {
             DefineAndBindNode(node, VariableType.TypeOf<T>(), name, value, constant, rngName, assignOnly);
         }
+
+        public void BindNode<T>(UntypedVariable node) {
+            if (!Contains(node)) {
+                Add(node, GenId("_"));
+            }
+        }
     }
 }

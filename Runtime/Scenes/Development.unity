@@ -621,6 +621,34 @@ PrefabInstance:
       propertyPath: m_Name
       value: Managed Terrain
       objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: detailScale.value.x
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: detailScale.value.y
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: detailScale.value.z
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: detailAmplitude.value
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: size
+      value: 128
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: offset.x
+      value: -42.03
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: offset.y
+      value: -2485
+      objectReference: {fileID: 0}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: debugTex
       value: 

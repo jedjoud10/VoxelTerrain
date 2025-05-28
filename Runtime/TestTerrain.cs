@@ -30,7 +30,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float2> others;
         public int octaves;
         
-        public override void Execute(AllInputs input, out AllOutputs output) {
+        public override void Execute(Context context, AllInputs input, out AllOutputs output) {
             // Project the position using the main transformation
             var position = input.position;
             var transformer = new ApplyTransformation(transform1);
@@ -59,12 +59,17 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<float> flatPlane = y - flatPlaneHeight;
             density = Sdf.Union(density, flatPlane, flatPlaneUnionSmooth);
 
-            // Add some noise details
-            density += new Simplex(detailScale, detailAmplitude).Evaluate(projected);
+            // Add some noise details (fractal!!!)
+            density += new Fractal<float3>(new Simplex(detailScale, detailAmplitude), FractalMode.Sum, 6, 1.5f, 0.3f).Evaluate(projected);
+            
+            context.SpawnProp(default);
+            context.SpawnProp(default);
+            context.SpawnProp(default);
+            context.SpawnProp(default);
+
 
             output = new AllOutputs();
             output.density = density;
-            output.material = 0;
         }
     }
 }

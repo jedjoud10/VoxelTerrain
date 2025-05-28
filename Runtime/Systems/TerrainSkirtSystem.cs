@@ -13,13 +13,13 @@ namespace jedjoud.VoxelTerrain {
         public void OnCreate(ref SystemState state) {
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainSkirt, LocalToWorld, MaterialMeshInfo>().Build();
             state.RequireForUpdate(query);
-            state.RequireForUpdate<TerrainOctreeLoader>();
+            state.RequireForUpdate<TerrainLoader>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-            Entity entity = SystemAPI.GetSingletonEntity<TerrainOctreeLoader>();
-            TerrainOctreeLoader loader = SystemAPI.GetComponent<TerrainOctreeLoader>(entity);
+            Entity entity = SystemAPI.GetSingletonEntity<TerrainLoader>();
+            TerrainLoader loader = SystemAPI.GetComponent<TerrainLoader>(entity);
             LocalTransform transform = SystemAPI.GetComponent<LocalTransform>(entity);
             float3 loaderCenter = transform.Position;
             float chunkSize = VoxelUtils.PHYSICAL_CHUNK_SIZE;

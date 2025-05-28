@@ -11,7 +11,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public OctreeNode root;
 
         public float3 center;
-        public float radius;
+        public float factor;
 
         [ReadOnly] public int maxDepth;
 
@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                 float3 clamped = math.clamp(center, nodes[0].Bounds.Min, nodes[0].Bounds.Max);
 
                 // relative distance method
-                bool subdivide = math.distance(node.Center, clamped) < radius * node.size;
+                bool subdivide = math.distance(node.Center, clamped) < factor * node.size;
 
                 if (subdivide && node.depth < maxDepth) {
                     Subdivide(node, ref pending);
