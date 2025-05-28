@@ -5,8 +5,8 @@ using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
-    [UpdateAfter(typeof(TerrainMeshingSystem))]
-    public partial class TerrainUnregisterMeshSystem : SystemBase {
+    [UpdateAfter(typeof(MeshingSystem))]
+    public partial class UnregisterMeshSystem : SystemBase {
         private EntitiesGraphicsSystem graphics;
 
         protected override void OnCreate() {

@@ -8,8 +8,8 @@ using Unity.Physics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(TerrainMeshingSystem))]
-    public partial struct TerrainColliderSystem : ISystem {
+    [UpdateAfter(typeof(MeshingSystem))]
+    public partial struct ColliderSystem : ISystem {
         struct PendingBatchBakeRequest {
             public JobHandle dep;
             public NativeArray<Entity> entities;

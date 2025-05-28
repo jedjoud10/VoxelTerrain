@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using NUnit.Framework.Internal.Execution;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -8,6 +9,7 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract class ExecutorParameters {
         public string dispatchName;
+        public string commandBufferName;
         public bool updateInjected;
         public ManagedTerrainCompiler compiler;
         public ManagedTerrainSeeder seeder;
@@ -62,7 +64,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             CommandBuffer commands = new CommandBuffer();
-            commands.name = "Execute Terrain Generator Dispatches";
+            commands.name = parameters.commandBufferName;
             commands.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
             ComputeShader shader = compiler.shader;
 
@@ -77,14 +79,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 compiler.ctx.injector.UpdateInjected(commands, shader, textures);
             }
 
-
-            foreach (var (name, texture) in textures) {
-                texture.PreDispatch(commands, shader);
-            }
-
-            foreach (var (name, buffer) in buffers) {
-                buffer.PreDispatch(commands, shader);
-            }
 
             foreach (var (name, texture) in textures) {
                 texture.BindToComputeShader(commands, shader);
@@ -103,11 +97,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             tempSize = Mathf.Max(size, 1);
             int minScaleBase3D = Mathf.CeilToInt((float)tempSize / 8.0f);
             commands.DispatchCompute(shader, id, minScaleBase3D, minScaleBase3D, minScaleBase3D);
-
-            // TODO: Dictionary<string, string> kernelsToWriteTexture = new Dictionary<string, string>();
-            foreach (var (name, item) in textures) {
-                item.PostDispatchKernel(commands, shader, id);
-            }
 
             // This works! Only in the builds, but async compute queue is being utilized!!!
             // If the target arch doesn't support async compute this will just revert to the normal queue

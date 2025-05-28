@@ -78,7 +78,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             ManagedTerrainCompiler compiler = GetComponent<ManagedTerrainCompiler>();
             ManagedTerrainSeeder seeder = GetComponent<ManagedTerrainSeeder>();
 
-            if (compiler == null || seeder == null)
+            if (compiler == null || seeder == null || compiler.DispatchIndices == null)
                 return;
 
             SimpleExecutorParameters parameters = new SimpleExecutorParameters() {

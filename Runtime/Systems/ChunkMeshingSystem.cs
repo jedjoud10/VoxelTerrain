@@ -13,8 +13,8 @@ using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(TerrainReadbackSystem))]
-    public partial class TerrainMeshingSystem : SystemBase {
+    [UpdateAfter(typeof(ReadbackSystem))]
+    public partial class MeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
         const int MESH_JOBS_PER_TICK = 2;
         private RenderMeshDescription mainMeshDescription;

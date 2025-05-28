@@ -10,7 +10,7 @@ using Unity.Transforms;
 namespace jedjoud.VoxelTerrain.Segments {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [RequireMatchingQueriesForUpdate]
-    public partial struct TerrainSegmentManagerSystem : ISystem {
+    public partial struct SegmentManagerSystem : ISystem {
         private NativeHashMap<TerrainSegment, Entity> map;
         private NativeHashSet<TerrainSegment> oldSegments;
         private NativeHashSet<TerrainSegment> newSegments;
@@ -55,7 +55,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 Entity entity = state.EntityManager.Instantiate(segmentPrototype);
                 map.Add(segment, entity);
 
-                float4x4 matrix = float4x4.Translate((float3)segment.position * SegmentUtils.WORLD_SEGMENT_SIZE);
+                float4x4 matrix = float4x4.Translate((float3)segment.position * SegmentUtils.PHYSICAL_SEGMENT_SIZE);
                 SystemAPI.SetComponent<LocalToWorld>(entity, new LocalToWorld {
                     Value = matrix
                 });
@@ -70,7 +70,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             TerrainOctreeConfig config = SystemAPI.GetSingleton<TerrainOctreeConfig>();
 
             OctreeNode root = OctreeNode.RootNode(config.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE /* >> (int)terrain.voxelSizeReduction */);
-            int maxSegmentsInWorld = root.size / SegmentUtils.WORLD_SEGMENT_SIZE;
+            int maxSegmentsInWorld = root.size / SegmentUtils.PHYSICAL_SEGMENT_SIZE;
 
             SegmentSpawnJob job = new SegmentSpawnJob {
                 addedSegments = addedSegments,
@@ -85,7 +85,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 lodMultiplier = loader.segmentLodFactor,
 
                 maxSegmentsInWorld = maxSegmentsInWorld,
-                worldSegmentSize = SegmentUtils.WORLD_SEGMENT_SIZE,
+                worldSegmentSize = SegmentUtils.PHYSICAL_SEGMENT_SIZE,
             };
             handle = job.Schedule();
         }

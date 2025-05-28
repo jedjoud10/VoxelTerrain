@@ -15,9 +15,10 @@ int3 moduloSeed;
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 
 #ifdef _ASYNC_READBACK_OCTAL
-RWStructuredBuffer<uint> voxels;
+RWStructuredBuffer<uint> voxels_buffer;
 #else
-RWTexture3D<uint> voxels_write;
+RWTexture3D<uint> voxels_texture_write;
+Texture3D<uint> voxels_texture_read;
 float3 simpleScale;
 float3 simpleOffset;
 #endif
@@ -64,9 +65,9 @@ void StoreVoxel(uint3 id, float density, int material) {
 
         // this is a buffer!!!
         // contiguous buffer containing 64 chunks worth of data
-        voxels[index] = packVoxelData(density, material);
+        voxels_buffer[index] = packVoxelData(density, material);
         CheckVoxelSign(id, density);
     #else
-        voxels_write[id] = packVoxelData(density, material);
+        voxels_texture_write[id] = packVoxelData(density, material);
     #endif
 }

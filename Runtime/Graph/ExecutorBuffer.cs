@@ -18,12 +18,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             return self.buffer;
         }
 
-        public virtual void PreDispatch(CommandBuffer commands, ComputeShader shader) { }
-
         public virtual void BindToComputeShader(CommandBuffer commands, ComputeShader shader) {
             foreach (var readKernel in readKernels) {
                 int readKernelId = shader.FindKernel(readKernel);
-                commands.SetComputeBufferParam(shader, readKernelId, name, buffer);
+                commands.SetComputeBufferParam(shader, readKernelId, name + "_buffer", buffer);
             }
         }
 
@@ -32,6 +30,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
+    /*
     public class ExecutorBufferCounter : ExecutorBuffer {
         int count;
 
@@ -40,8 +39,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.buffer = new ComputeBuffer(count, sizeof(int), ComputeBufferType.Structured);
         }
 
-        public override void PreDispatch(CommandBuffer commands, ComputeShader shader) {
+        public override void BindToComputeShader(CommandBuffer commands, ComputeShader shader) {
             commands.SetBufferData(buffer, new int[count]);
+            base.BindToComputeShader(commands, shader);
         }
     }
+    */
 }

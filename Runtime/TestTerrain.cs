@@ -29,8 +29,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         // Fractal noise settings 
         public Inject<float2> others;
         public int octaves;
-        
-        public override void Execute(Context context, AllInputs input, out AllOutputs output) {
+
+        public override void Voxels(VoxelInput input, out VoxelOutput output) {
             // Project the position using the main transformation
             var position = input.position;
             var transformer = new ApplyTransformation(transform1);
@@ -61,15 +61,12 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
             // Add some noise details (fractal!!!)
             density += new Fractal<float3>(new Simplex<float3>(detailScale, detailAmplitude), FractalMode.Sum, 6, 1.5f, 0.3f).Evaluate(projected);
-            
-            context.SpawnProp(default);
-            context.SpawnProp(default);
-            context.SpawnProp(default);
-            context.SpawnProp(default);
+            output = new VoxelOutput(density);
+        }
 
-
-            output = new AllOutputs();
-            output.density = density;
+        public override void Props(PropInput input, PropContext context) {
+            Variable<bool> shouldSpawnProp = input.density > -1 & input.density < 1;
+            context.TrySpawnProp(shouldSpawnProp, default);
         }
     }
 }

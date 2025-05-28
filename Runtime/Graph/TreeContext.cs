@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Dictionary<string, int> varNamesToId;
         public PropertyInjector injector;
         public List<string> properties;
-        public Hasher hashinator;
+        public int hash;
         public int counter;
         public bool debugNames;
         public List<TreeScope> scopes;
@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public ScopeArgument id;
 
         public string this[UntypedVariable node] {
-            get => scopes[currentScope].namesToNodes[node];
+            get => scopes[currentScope].nodesToNames[node];
         }
 
         public int Indent {
@@ -45,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 new TreeScope(0)
             };
 
-            this.hashinator = new Hasher();
+            this.hash = 0;
 
             this.currentScope = 0;
             this.scopeDepth = 0;
@@ -54,6 +54,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.computeKernels = new List<string>();
             this.dispatches = new List<KernelDispatch>();
             this.textures = new Dictionary<string, TextureDescriptor>();
+        }
+
+        public void Hash(object val) {
+            hash = HashCode.Combine(hash, val.GetHashCode());
         }
 
         public void Inject<T>(InjectedNode<T> node, string name, Func<object> func) {
@@ -71,16 +75,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             injector.injected.Add(func);
         }
 
-        public void Hash(object val) {
-            hashinator.Hash(val);
-        }
-
         public void Add(UntypedVariable node, string name) {
-            scopes[currentScope].namesToNodes.Add(node, name);
+            scopes[currentScope].nodesToNames.Add(node, name);
         }
 
         public bool Contains(UntypedVariable node) {
-            return scopes[currentScope].namesToNodes.ContainsKey(node);
+            return scopes[currentScope].nodesToNames.ContainsKey(node);
         }
 
         public void AddLine(string line) {

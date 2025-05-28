@@ -8,8 +8,8 @@ using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(TerrainOctreeSystem))]
-    public partial struct TerrainManagerSystem : ISystem {
+    [UpdateAfter(typeof(OctreeSystem))]
+    public partial struct ManagerSystem : ISystem {
         private NativeHashMap<OctreeNode, Entity> chunks;
         private Entity chunkPrototype;
         private Entity skirtPrototype;

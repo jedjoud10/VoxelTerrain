@@ -10,30 +10,42 @@ namespace jedjoud.VoxelTerrain.Generation {
             GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
         }
 
-        public class Context {
+        public class PropContext {
             internal CustomCodeChainedNode chain;
 
-            public Context() {
+            public PropContext() {
                 chain = null;
             }
 
-            public void SpawnProp(Props.GenerationProp prop) {
+            public void TrySpawnProp(Variable<bool> shouldSpawn, Props.GenerationProp prop) {
                 chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
                     Props.GenerationProp copy = prop;
+                    shouldSpawn.Handle(ctx);
                     ctx.AddLine("// this is some very cool prop spawning call....");
                 });
             }
         }
 
-        public class AllInputs {
+        public class PropInput {
+            public Variable<float3> position;
+            public Variable<float> density;
+            public Variable<float3> normal;
+        }
+
+        public class VoxelInput {
             public Variable<float3> position;
             public Variable<int3> id;
         }
 
-        public class AllOutputs {
+        public class VoxelOutput {
             public Variable<float> density;
+
+            public VoxelOutput(Variable<float> density) {
+                this.density = density;
+            }
         }
 
-        public abstract void Execute(Context context, AllInputs input, out AllOutputs output);
+        public abstract void Voxels(VoxelInput input, out VoxelOutput output);
+        public abstract void Props(PropInput input, PropContext propContext);
     }
 }

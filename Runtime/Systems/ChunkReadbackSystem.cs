@@ -10,8 +10,8 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     // This MUST stay as a SystemBase since we have some AsyncGPUReadback stuff with delegates that keep a handle to the properties stored here
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(TerrainManagerSystem))]
-    public partial class TerrainReadbackSystem : SystemBase {
+    [UpdateAfter(typeof(ManagerSystem))]
+    public partial class ReadbackSystem : SystemBase {
         private bool free;
         private NativeArray<uint> data;
         private List<Entity> entities;
@@ -117,16 +117,17 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
             OctalReadbackExecutorParameters parameters = new OctalReadbackExecutorParameters() {
+                commandBufferName = "Terrain Readback System Async Dispatch",
                 posScaleOctals = posScaleOctals,
                 dispatchName = "voxels",
-                updateInjected = true,
+                updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
                 seeder = ManagedTerrain.instance.seeder,
             };
 
             GraphicsFence fence = octalExecutor.Execute(parameters);
             CommandBuffer cmds = new CommandBuffer();
-            cmds.name = "Async Readback";
+            cmds.name = "Terrain Readback System Async Readback";
             cmds.WaitOnAsyncGraphicsFence(fence, SynchronisationStageFlags.ComputeProcessing);
 
             // Request GPU data into the native array we allocated at the start

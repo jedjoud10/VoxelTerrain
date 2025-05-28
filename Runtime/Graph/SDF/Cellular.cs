@@ -114,7 +114,7 @@ float output = 100.0;
             TreeScope scopium = new TreeScope(context.scopeDepth + 1) {
                 name = scopeName,
                 arguments = new ScopeArgument[] { input, output, },
-                namesToNodes = new Dictionary<UntypedVariable, string> { { input.node, context[input.node] } },
+                nodesToNames = new Dictionary<UntypedVariable, string> { { input.node, context[input.node] } },
             };
 
             context.scopes.Add(scopium);

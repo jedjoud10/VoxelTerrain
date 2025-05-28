@@ -1,38 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public class ScopeArgument {
-        public VariableType type;
-        public UntypedVariable node;
-        public string name;
-        public bool output;
-
-        public static ScopeArgument AsInput<T>(string name, Variable<T> backing = null) {
-            ScopeArgument arg = new ScopeArgument();
-            arg.type = VariableType.TypeOf<T>();
-            arg.name = name;
-            arg.node = backing ?? new NoOp<T>();
-            arg.output = false;
-            return arg;
-        }
-
-        public static ScopeArgument AsOutput<T>(string name, Variable<T> backing) {
-            ScopeArgument arg = new ScopeArgument();
-            arg.type = VariableType.TypeOf<T>();
-            arg.name = name;
-            arg.node = backing;
-            arg.output = true;
-            return arg;
-        }
-    }
-
-    // One scope per compute shader kernel.
-    // Multiple scopes are used when we want to execute multiple kernels sequentially
     public class TreeScope {
+        public KeywordGuards keywordGuards = null;
         public List<string> lines;
-        public Dictionary<UntypedVariable, string> namesToNodes;
+        public Dictionary<UntypedVariable, string> nodesToNames;
         public int depth;
 
         // TODO: this should NOT be stored here. "arguments" is also a wrong name for this, as this stores parameter data as well (incoming variable names from outside the scope)
@@ -43,12 +18,13 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public TreeScope(int depth) {
             this.lines = new List<string>();
-            this.namesToNodes = new Dictionary<UntypedVariable, string>();
+            this.nodesToNames = new Dictionary<UntypedVariable, string>();
             this.indent = 1;
             this.depth = depth;
             this.arguments = null;
             this.name = "TreeScopeNameWasNotSet!!!";
         }
+
         public void AddLine(string line) {
             lines.Add(new string('\t', indent) + line);
         }
@@ -97,42 +73,56 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             return $"    {name}({output});";
         }
-    }
 
-    public class TreeScopeAndKernelBuilder {
-        public string dispatchIndexIdentifier;
-        public string scopeName;
-        public CustomCodeChainedNode customCodeChain;
-        public ScopeArgument[] arguments;
-        public KernelDispatch dispatch;
 
-        public void Build(TreeContext ctx, Dictionary<string, int> dispatchIndices) {
-            int idx = ctx.scopes.Count;
-            ctx.currentScope = idx;
-            ctx.scopes.Add(new TreeScope(0));
-            ctx.scopes[idx].name = scopeName;
-            ctx.scopes[idx].arguments = arguments;
+        public List<string> CreateScope(int scopeIndex) {
+            List<string> outputLines = new List<string>();
+            outputLines.Add($"// defined nodes: {nodesToNames.Count}, depth: {depth}, index: {scopeIndex}, total lines: {lines.Count}, argument count: {arguments.Length} ");
 
-            foreach (var arg in arguments) {
-                if (arg.output) {
-                    arg.node.Handle(ctx);
-                } else {
-                    ctx.Add(arg.node, arg.name);
+            // Create a string containing all the required arguments and stuff
+            string argumentsCode = "";
+            for (int i = 0; i < arguments.Length; i++) {
+                var item = arguments[i];
+
+                if (item.node == null) {
+                    throw new NullReferenceException($"Input argument '{item.name}' is null");
+                }
+
+                var comma = i == arguments.Length - 1 ? "" : ",";
+                var output = item.output ? " out " : "";
+
+                argumentsCode += $"{output}{item.type.ToStringType()} {item.name}{comma}";
+            }
+
+            // Open scope
+            outputLines.Add($"void {name}({argumentsCode}) {{");
+
+            // Add the lines of the scope to the main shader lines
+            IEnumerable<string> parsed2 = lines.SelectMany(str => str.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.None)).Select(x => $"{x}");
+            outputLines.AddRange(parsed2);
+
+            // Set the output arguments inside of the scope
+            foreach (var item in arguments) {
+                if (item.output) {
+                    if (item.node == null) {
+                        throw new NullReferenceException($"Output argument '{item.name}' is null");
+                    }
+
+                    outputLines.Add($"    {item.name} = {nodesToNames[item.node]};");
                 }
             }
 
-            if (customCodeChain != null) {
-                customCodeChain.Handle(ctx);
+            // Close scope
+            outputLines.Add("}");
+
+
+            // Add keyword guards if needed
+            if (keywordGuards != null) {
+                outputLines.Insert(0, keywordGuards.BeginGuard());
+                outputLines.Add(keywordGuards.EndGuard());
             }
 
-            dispatch.name = $"CS{scopeName}";
-            dispatch.depth = 0;
-            dispatch.scopeName = scopeName;
-            dispatch.scopeIndex = idx;
-
-            int dspIdx = ctx.dispatches.Count;
-            ctx.dispatches.Add(dispatch);
-            dispatchIndices.Add(dispatchIndexIdentifier, dspIdx);
+            return outputLines;
         }
     }
 }

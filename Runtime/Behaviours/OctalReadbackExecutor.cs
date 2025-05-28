@@ -44,7 +44,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         protected override void ExecuteSetCommands(CommandBuffer commands, ComputeShader shader, OctalReadbackExecutorParameters parameters, int dispatchIndex) {
-            LocalKeyword keyword = shader.keywordSpace.FindKeyword("_ASYNC_READBACK_OCTAL");
+            LocalKeyword keyword = shader.keywordSpace.FindKeyword(ComputeDispatchUtils.OCTAL_READBACK_KEYWORD);
             commands.EnableKeyword(shader, keyword);
 
             commands.SetBufferData(posScaleOctalBuffer, parameters.posScaleOctals);

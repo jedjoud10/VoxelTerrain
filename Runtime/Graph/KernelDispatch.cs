@@ -4,15 +4,16 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int depth;
         public string scopeName;
         public int scopeIndex;
+        public KeywordGuards keywordGuards = null;
 
         public virtual string InjectBeforeScopeInit(TreeContext ctx) => "";
         public virtual string InjectAfterScopeCalls(TreeContext ctx) => "";
         public virtual string CreateKernel(TreeContext ctx) {
             TreeScope scope = ctx.scopes[scopeIndex];
-            return $@"
-#pragma kernel CS{scopeName}
+
+            string code = $@"#pragma kernel CS{scopeName}
 [numthreads(8, 8, 8)]
-// Name: {name}, Scope name: {scopeName}, Scope index: {scopeIndex}, Arguments: {scope.arguments.Length}, Nodes: {scope.namesToNodes.Count}
+// Name: {name}, Scope name: {scopeName}, Scope index: {scopeIndex}, Arguments: {scope.arguments.Length}, Nodes: {scope.nodesToNames.Count}
 void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
     if (any(id >= (uint)size)) {{
         return;
@@ -23,6 +24,16 @@ void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
 {scope.CallWithArgs()}
 {InjectAfterScopeCalls(ctx)}
 }}";
+
+            if (keywordGuards != null) {
+                return @$"
+{keywordGuards.BeginGuard()}
+{code}
+{keywordGuards.EndGuard()}
+";
+            } else {
+                return code;
+            }
         }
     }
 
@@ -43,10 +54,6 @@ void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
             return @"
     float3 position = ConvertIntoWorldPosition(id);
 ";
-        }
-
-        public override string InjectAfterScopeCalls(TreeContext ctx) {
-            return "";
         }
     }
 }

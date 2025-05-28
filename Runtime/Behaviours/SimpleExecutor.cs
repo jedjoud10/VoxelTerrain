@@ -16,11 +16,17 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         protected override void CreateMainResources() {
-            textures.Add("voxels", new OutputExecutorTexture("voxels", new List<string>() { "CSVoxel" }, TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt), -1));
+            textures.Add("voxels", new ExecutorTexture {
+                name = "voxels",
+                readKernels = new List<string>() { "CSProp" },
+                texture = TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt),
+                writeKernel = "CSVoxel",
+                requestingNodeHash = -1,
+            });
         }
 
         protected override void ExecuteSetCommands(CommandBuffer commands, ComputeShader shader, SimpleExecutorParameters parameters, int dispatchIndex) {
-            LocalKeyword keyword = shader.keywordSpace.FindKeyword("_ASYNC_READBACK_OCTAL");
+            LocalKeyword keyword = shader.keywordSpace.FindKeyword(ComputeDispatchUtils.OCTAL_READBACK_KEYWORD);
             commands.DisableKeyword(shader, keyword);
 
             commands.SetComputeVectorParam(shader, "simpleOffset", parameters.offset);

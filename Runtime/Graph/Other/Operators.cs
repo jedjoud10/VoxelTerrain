@@ -16,6 +16,15 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
+    public class Passthrough<T> : Variable<T> {
+        public Variable<T> past;
+        
+        public override void HandleInternal(TreeContext ctx) {
+            past.Handle(ctx);
+            ctx.DefineAndBindNode<T>(this, "passthrough", ctx[past]);
+        }
+    }
+
     public class SimpleBinaryOperatorNode<A, B, T> : Variable<T> {
         public Variable<A> a;
         public Variable<B> b;

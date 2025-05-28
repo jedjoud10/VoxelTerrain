@@ -4,7 +4,7 @@ using Unity.Entities;
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
     [BurstCompile]
-    public partial struct TerrainTickSystem : ISystem {
+    public partial struct TickSystem : ISystem {
         public struct Singleton : IComponentData {
             public uint tick;
         }

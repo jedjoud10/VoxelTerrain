@@ -7,7 +7,7 @@ using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
-    public partial struct TerrainSkirtSystem : ISystem {
+    public partial struct SkirtSystem : ISystem {
 
         [BurstCompile]
         public void OnCreate(ref SystemState state) {

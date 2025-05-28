@@ -7,8 +7,8 @@ using Unity.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
-    [UpdateAfter(typeof(TerrainMeshingSystem))]
-    public partial struct TerrainArchetypeBoundsSystem : ISystem {
+    [UpdateAfter(typeof(MeshingSystem))]
+    public partial struct ArchetypeBoundsSystem : ISystem {
         private ComponentTypeHandle<WorldRenderBounds> instanceBoundsTypeHandle;
         private ComponentTypeHandle<ChunkWorldRenderBounds> chunkBoundsTypeHandle;
 

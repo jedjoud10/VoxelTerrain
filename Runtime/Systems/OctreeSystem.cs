@@ -8,7 +8,7 @@ using Unity.Transforms;
 namespace jedjoud.VoxelTerrain.Octree {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [RequireMatchingQueriesForUpdate]
-    public partial struct TerrainOctreeSystem : ISystem {
+    public partial struct OctreeSystem : ISystem {
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
         private float3 oldPosition;

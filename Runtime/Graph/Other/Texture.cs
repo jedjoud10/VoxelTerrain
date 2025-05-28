@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public TreeContext context;
 
         public Variable<float4> SampleLeBruh(Variable<T> coordinates) {
-            return context.AssignTempVariable<float4>("hehehehe", $"{textureName}_read.SampleLevel(sampler{textureName}_read, {context[coordinates]} * {context[scale]} + {context[offset]}, {context[level]})");
+            return context.AssignTempVariable<float4>("hehehehe", $"{textureName}_read.SampleLevel(sampler{textureName}_texture_read, {context[coordinates]} * {context[scale]} + {context[offset]}, {context[level]})");
         }
     }
 
@@ -42,8 +42,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             string textureName = context.GenId($"_user_texture");
 
             tempTextureName = textureName;
-            context.properties.Add($"Texture{dimensionality}D {textureName}_read;");
-            context.properties.Add($"SamplerState sampler{textureName}_read;");
+            context.properties.Add($"Texture{dimensionality}D {textureName}_texture_read;");
+            context.properties.Add($"SamplerState sampler{textureName}_texture_read;");
 
             Variable<float4> aaa = sampler.function(new SampleableTexture<T> {
                 level = sampler.level,

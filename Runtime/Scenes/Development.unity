@@ -422,7 +422,7 @@ Transform:
   m_GameObject: {fileID: 664809940}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -816, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -642,12 +642,24 @@ PrefabInstance:
       value: 128
       objectReference: {fileID: 0}
     - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: blocky
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: offset.x
-      value: -42.03
+      value: -44.4
       objectReference: {fileID: 0}
     - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: offset.y
       value: -2485
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: flatshaded
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: useHeightSimplification
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: debugTex

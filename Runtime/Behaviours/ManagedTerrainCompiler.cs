@@ -45,8 +45,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             ParsedTranspilation();
 
-            if (hash != ctx.hashinator.hash) {
-                hash = ctx.hashinator.hash;
+            if (hash != ctx.hash) {
+                hash = ctx.hash;
                 dirty = true;
             }
         }
@@ -54,8 +54,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         // Writes the transpiled shader code to a file and recompiles it automatically (through AssetDatabase)
         public void Compile(bool force) {
-            dirty = false;
 #if UNITY_EDITOR
+            dirty = false;
             //GetComponent<VoxelExecutor>().DisposeResources();
 
             if (force) {
@@ -144,41 +144,60 @@ namespace jedjoud.VoxelTerrain.Generation {
             ctx.position = position;
             ctx.id = id;
 
-            // Extra context passed to the graph during building
-            // Allows you to do some non-node stuff, like spawning a prop
-            ManagedTerrainGraph.Context context = new ManagedTerrainGraph.Context();
-
-            // Execute the voxel graph to get all required output variables 
-            // We will contextualize the variables in their separate passes
-            ManagedTerrainGraph.AllInputs inputs = new ManagedTerrainGraph.AllInputs() { position = (Variable<float3>)position.node, id = (Variable<int3>)id.node };
-
-            // Execute the graph and fetch out outpus
-            graph.Execute(context, inputs, out ManagedTerrainGraph.AllOutputs outputs);
+            // Run the graph for the voxels pass
+            ManagedTerrainGraph.VoxelInput voxelInput = new ManagedTerrainGraph.VoxelInput() { position = (Variable<float3>)position.node, id = (Variable<int3>)id.node };
+            graph.Voxels(voxelInput, out ManagedTerrainGraph.VoxelOutput voxelOutput);
 
             // Create the scope and kernel for the voxel generation step
             // This will be used by the terrain previewer, terrain async readback system, and terrain segmentation system
-            TreeScopeAndKernelBuilder voxelKernelBuilder = new TreeScopeAndKernelBuilder {
+            KernelBuilder voxelKernelBuilder = new KernelBuilder {
                 scopeName = "Voxel",
                 dispatchIndexIdentifier = "voxels",
                 arguments = new ScopeArgument[] {
                     position, id,
-                    ScopeArgument.AsOutput<float>("voxel", outputs.density),
+                    ScopeArgument.AsOutput<float>("voxel", voxelOutput.density),
                     ScopeArgument.AsOutput<int>("material", 0)
                 },
                 dispatch = new VoxelKernelDispatch {
                 }
             };
 
+            // Create a specific new node for sampling from the voxel texture
+            Variable<float> cachedDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
+                return $"unpackDensity(voxels_texture_read[{ctx.id.name}])";
+            });
+
+            // Run the graph for the props pass
+            ManagedTerrainGraph.PropInput propInput = new ManagedTerrainGraph.PropInput() {
+                position = (Variable<float3>)position.node,
+                density = cachedDensity,
+                normal = float3.zero,
+            };
+            ManagedTerrainGraph.PropContext propContext = new ManagedTerrainGraph.PropContext();
+
+            graph.Props(propInput, propContext);
+
+
             // Create the scope and kernel for the prop generation step
-            TreeScopeAndKernelBuilder propKernelBuilder = new TreeScopeAndKernelBuilder {
+            KernelBuilder propKernelBuilder = new KernelBuilder {
                 scopeName = "Prop",
                 dispatchIndexIdentifier = "props",
                 arguments = new ScopeArgument[] {
                     position, id,
                 },
-                customCodeChain = context.chain,
+                customCallback = (TreeContext ctx) => {
+                    cachedDensity.Handle(ctx);
+                    propContext.chain.Handle(ctx);
+                },
                 dispatch = new PropKernelDispatch {
                 },
+                keywordGuards = new KeywordGuards(ComputeDispatchUtils.OCTAL_READBACK_KEYWORD, true),
+
+                /*
+                preDefinedVars = new Dictionary<(UntypedVariable, VariableType), string> {
+                    { (outputs.density, VariableType.TypeOf<float>()), "sfad" },
+                }
+                */
             };
 
             voxelKernelBuilder.Build(ctx, DispatchIndices);
@@ -231,65 +250,22 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             List<string> lines = new List<string>();
-
-            // Add the octal async readback pragma
-            lines.Add("#pragma multi_compile __ _ASYNC_READBACK_OCTAL\n");
-
+            lines.Add($"#pragma multi_compile __ {ComputeDispatchUtils.OCTAL_READBACK_KEYWORD}\n");
             lines.AddRange(ctx.Properties);
-
-
-            // Include all includes kek. Look in the file for more.
             lines.Add("#include \"Packages/com.jedjoud.voxelterrain/Runtime/Compute/Imports.cginc\"");
-            var temp = ctx.dispatches.AsEnumerable().Select(x => x.CreateKernel(ctx)).ToList();
 
             // Sort the scopes based on their depth
             // We want the scopes that don't require other scopes to be defined at the top, and scopes that require scopes to be defined at the bottom
             ctx.scopes.Sort((TreeScope a, TreeScope b) => { return b.depth.CompareTo(a.depth); });
 
             // Define each scope as a separate function with its arguments (input / output)
-            int index = 0;
-            foreach (var scope in ctx.scopes) {
-                if (scope == null)
-                    throw new NullReferenceException("Scope was null");
-                if (scope.arguments == null)
-                    throw new NullReferenceException("Scope arguments are null");
-
-                lines.Add($"// defined nodes: {scope.namesToNodes.Count}, depth: {scope.depth}, index: {index}, total lines: {scope.lines.Count}, argument count: {scope.arguments.Length} ");
-
-                // Create a string containing all the required arguments and stuff
-                string arguments = "";
-                for (int i = 0; i < scope.arguments.Length; i++) {
-                    var item = scope.arguments[i];
-                    var comma = i == scope.arguments.Length - 1 ? "" : ",";
-                    var output = item.output ? " out " : "";
-
-                    arguments += $"{output}{item.type.ToStringType()} {item.name}{comma}";
-                }
-
-                // Open scope
-                lines.Add($"void {scope.name}({arguments}) {{");
-
-                // Set the output arguments inside of the scope
-                foreach (var item in scope.arguments) {
-                    if (item.output) {
-                        if (item.node == null) {
-                            throw new NullReferenceException($"Output argument '{item.name}' was not set in the graph");
-                        }
-
-                        scope.AddLine($"{item.name} = {scope.namesToNodes[item.node]};");
-                    }
-                }
-
-                // Add the lines of the scope to the main shader lines
-                IEnumerable<string> parsed2 = scope.lines.SelectMany(str => str.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.None)).Select(x => $"{x}");
-                lines.AddRange(parsed2);
-
-                // Close scope
-                lines.Add("}\n");
-                index++;
+            for (int i = 0; i < ctx.scopes.Count; i++) {
+                TreeScope scope = ctx.scopes[i];
+                lines.AddRange(scope.CreateScope(i));
             }
 
-            lines.AddRange(temp);
+            // Create the dispatches
+            lines.AddRange(ctx.dispatches.AsEnumerable().Select(x => x.CreateKernel(ctx)).ToList());
 
             return lines.Aggregate("", (a, b) => a + "\n" + b);
         }

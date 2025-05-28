@@ -13,6 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public abstract ExecutorTexture Create(int size);
     }
 
+    /*
     public class TempTextureDescriptor : TextureDescriptor {
         public VariableType type;
         public string writeKernel;
@@ -34,6 +35,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new TemporaryExecutorTexture(name, readKernels, rt, writeKernel, mips, requestingNodeHash);
         }
     }
+    */
 
     public class GradientTextureDescriptor : TextureDescriptor {
         public int size;
@@ -43,7 +45,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             texture.wrapMode = wrap;
             texture.filterMode = filter;
 
-            return new ExecutorTexture(name, readKernels, texture, requestingNodeHash);
+            return new ExecutorTexture() {
+                name = name,
+                readKernels = readKernels,
+                texture = texture,
+                writeKernel = null,
+                requestingNodeHash = requestingNodeHash,
+            };
         }
     }
 
@@ -55,7 +63,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             texture.wrapMode = wrap;
             texture.filterMode = filter;
 
-            return new ExecutorTexture(name, readKernels, texture, requestingNodeHash);
+            return new ExecutorTexture() {
+                name = name,
+                readKernels = readKernels,
+                texture = texture,
+                writeKernel = null,
+                requestingNodeHash = requestingNodeHash,
+            };
         }
     }
 
@@ -63,7 +77,13 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Texture texture;
 
         public override ExecutorTexture Create(int volumeSize) {
-            return new ExecutorTexture(name, readKernels, texture, requestingNodeHash);
+            return new ExecutorTexture() {
+                name = name,
+                readKernels = readKernels,
+                texture = texture,
+                writeKernel = null,
+                requestingNodeHash = requestingNodeHash,
+            };
         }
     }
 }
