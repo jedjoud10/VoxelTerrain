@@ -20,6 +20,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         private NativeArray<int> counters;
         private bool countersFetched, voxelsFetched;
         private bool disposed;
+        private OctalReadbackExecutor octalExecutor;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadbackConfig>();
@@ -32,6 +33,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             voxelsFetched = false;
             countersFetched = false;
             disposed = false;
+
+            octalExecutor = new OctalReadbackExecutor(VoxelUtils.SIZE * VoxelUtils.OCTAL_CHUNK_SIZE_RATIO);
         }
 
         private void Reset() {
@@ -50,6 +53,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             entities.Clear();
             counters.Dispose();
             copies.Dispose();
+            octalExecutor.DisposeResources();
         }
 
         protected override void OnUpdate() {
@@ -85,9 +89,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 
             int numChunks = math.min(VoxelUtils.OCTAL_CHUNK_COUNT, voxelsArray.Length);
 
-            ManagedTerrain terrain = ManagedTerrain.instance;
-            ManagedTerrainExecutor executor = terrain.executor;
-            ManagedTerrainExecutor.PosScaleOctalData[] posScaleOctals = new ManagedTerrainExecutor.PosScaleOctalData[VoxelUtils.OCTAL_CHUNK_COUNT];
+            OctalReadbackPosScaleData[] posScaleOctals = new OctalReadbackPosScaleData[VoxelUtils.OCTAL_CHUNK_COUNT];
 
             free = false;
 
@@ -101,7 +103,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 float3 pos = (float3)chunk.node.position;
                 float scale = chunk.node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
-                posScaleOctals[j] = new ManagedTerrainExecutor.PosScaleOctalData {
+                posScaleOctals[j] = new OctalReadbackPosScaleData {
                     scale = scale,
                     position = pos
                 };
@@ -114,15 +116,15 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
-            ManagedTerrainExecutor.OctalReadbackParameters parameters = new ManagedTerrainExecutor.OctalReadbackParameters() {
-                newSize = VoxelUtils.SIZE * VoxelUtils.OCTAL_CHUNK_SIZE_RATIO,
+            OctalReadbackExecutorParameters parameters = new OctalReadbackExecutorParameters() {
                 posScaleOctals = posScaleOctals,
-                dispatchIndex = terrain.compiler.DispatchIndices["voxels"],
+                dispatchName = "voxels",
                 updateInjected = true,
+                compiler = ManagedTerrain.instance.compiler,
+                seeder = ManagedTerrain.instance.seeder,
             };
 
-
-            GraphicsFence fence = terrain.executor.ExecuteShader(parameters);
+            GraphicsFence fence = octalExecutor.Execute(parameters);
             CommandBuffer cmds = new CommandBuffer();
             cmds.name = "Async Readback";
             cmds.WaitOnAsyncGraphicsFence(fence, SynchronisationStageFlags.ComputeProcessing);
@@ -133,7 +135,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             NativeArray<uint> voxelData = data;
             cmds.RequestAsyncReadbackIntoNativeArray(
                 ref voxelData,
-                terrain.executor.Buffers["voxels"],
+                octalExecutor.Buffers["voxels"],
                 delegate (AsyncGPUReadbackRequest asyncRequest) {
                     unsafe {
                         if (disposed) {
@@ -168,7 +170,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             cmds.RequestAsyncReadbackIntoNativeArray(
                 ref counters,
-                terrain.executor.negPosOctalCountersBuffer,
+                octalExecutor.OctalCountersBuffer,
                 delegate (AsyncGPUReadbackRequest asyncRequest) {
                     if (disposed) {
                         return;

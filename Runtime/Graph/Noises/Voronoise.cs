@@ -2,12 +2,12 @@ using System;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    public class VoronoiseNode<T> : AbstractNoiseNode<T> {
+    public class VoronoiseNode : AbstractNoiseNode<float2> {
         public Variable<float> lerpValue;
         public Variable<float> randomness;
 
         public override object Clone() {
-            return new VoronoiseNode<T> {
+            return new VoronoiseNode {
                 amplitude = this.amplitude,
                 scale = this.scale,
                 position = this.position,
@@ -25,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             context.DefineAndBindNode<float>(this, $"{context[position]}_noised", value);
         }
     }
-    public class Voronoise : AbstractNoise {
+    public class Voronoise : AbstractNoise<float2> {
         public Variable<float> amplitude;
         public Variable<float> scale;
         public Variable<float> lerpValue;
@@ -45,23 +45,18 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.randomness = randomness ?? 0.5f;
         }
 
-        public override AbstractNoiseNode<I> CreateAbstractYetToEval<I>() {
-            return new VoronoiseNode<I>() {
+        public override AbstractNoiseNode<float2> CreateAbstractYetToEval() {
+            return new VoronoiseNode() {
                 amplitude = amplitude,
-                scale = scale.Broadcast<float3>(),
+                scale = scale.Broadcast<float2>(),
                 position = null,
                 randomness = randomness,
                 lerpValue = lerpValue,
             };
         }
 
-        public override Variable<float> Evaluate<T>(Variable<T> position) {
-            var type = VariableType.TypeOf<T>();
-            if (type.strict != VariableType.StrictType.Float2) {
-                throw new Exception("Type not supported");
-            }
-
-            AbstractNoiseNode<T> a = CreateAbstractYetToEval<T>();
+        public override Variable<float> Evaluate(Variable<float2> position) {
+            AbstractNoiseNode<float2> a = CreateAbstractYetToEval();
             a.position = position;
             return a;
         }

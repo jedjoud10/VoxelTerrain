@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
         }
 
-        public Voronoi.Type type;
+        public Voronoi<T>.Type type;
 
 
         public override void HandleInternal(TreeContext context) {
@@ -22,11 +22,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             string fn = "";
 
             switch (type) {
-                case Voronoi.Type.F1:
+                case Voronoi<T>.Type.F1:
                     fn = "cellular";
                     suffix = ".x - 0.5";
                     break;
-                case Voronoi.Type.F2:
+                case Voronoi<T>.Type.F2:
                     fn = "cellular";
                     suffix = ".y - 0.5";
                     break;
@@ -37,9 +37,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             context.DefineAndBindNode<float>(this, $"{context[position]}_noised", value);
         }
     }
-    public class Voronoi : AbstractNoise {
+    public class Voronoi<T> : AbstractNoise<T> {
         public Variable<float> amplitude;
-        public Variable<float3> scale;
+        public Variable<T> scale;
         public Type type;
 
         public enum Type {
@@ -49,35 +49,35 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public Voronoi() {
             this.amplitude = 1.0f;
-            this.scale = new float3(0.01f);
+            scale = GraphUtils.One<T>() * (Variable<float>.New(0.01f)).Broadcast<T>();
             this.type = Type.F1;
         }
 
         public Voronoi(Variable<float> scale, Variable<float> amplitude, Type type = Type.F1) {
             this.amplitude = amplitude;
-            this.scale = scale.Broadcast<float3>();
+            this.scale = scale.Broadcast<T>();
             this.type = type;
         }
 
-        public Voronoi(Variable<float3> scale, Variable<float> amplitude, Type type = Type.F1) {
+        public Voronoi(Variable<T> scale, Variable<float> amplitude, Type type = Type.F1) {
             this.amplitude = amplitude;
             this.scale = scale;
             this.type = type;
         }
 
-        public override Variable<float> Evaluate<T>(Variable<T> position) {
+        public override Variable<float> Evaluate(Variable<T> position) {
             var type2 = VariableType.TypeOf<T>();
             if (type2.strict != VariableType.StrictType.Float2 && type2.strict != VariableType.StrictType.Float3) {
                 throw new Exception("Type not supported");
             }
 
-            AbstractNoiseNode<T> a = CreateAbstractYetToEval<T>();
+            AbstractNoiseNode<T> a = CreateAbstractYetToEval();
             a.position = position;
             return a;
         }
 
-        public override AbstractNoiseNode<I> CreateAbstractYetToEval<I>() {
-            return new VoronoiNode<I>() {
+        public override AbstractNoiseNode<T> CreateAbstractYetToEval() {
+            return new VoronoiNode<T>() {
                 amplitude = amplitude,
                 scale = scale,
                 position = null,

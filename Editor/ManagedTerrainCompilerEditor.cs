@@ -23,12 +23,12 @@ namespace jedjoud.VoxelTerrain.Editor {
             
             if (GUILayout.Button("Recompile")) {
                 script.Compile(true);
-                script.OnPropertiesChanged();
+                script.GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
             }
 
             if (GUILayout.Button("Retranspile")) {
                 script.ParsedTranspilation();
-                script.OnPropertiesChanged();
+                script.GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
             }
 
             if (script.dirty) {

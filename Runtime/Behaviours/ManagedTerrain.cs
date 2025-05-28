@@ -8,7 +8,7 @@ namespace jedjoud.VoxelTerrain {
         public Generation.ManagedTerrainCompiler compiler;
 
         [HideInInspector]
-        public Generation.ManagedTerrainExecutor executor;
+        public Generation.ManagedTerrainSeeder seeder;
 
         [HideInInspector]
         public Generation.ManagedTerrainGraph graph;
@@ -19,7 +19,7 @@ namespace jedjoud.VoxelTerrain {
 
         void Start() {
             compiler = GetComponent<Generation.ManagedTerrainCompiler>();
-            executor = GetComponent<Generation.ManagedTerrainExecutor>();
+            seeder = GetComponent<Generation.ManagedTerrainSeeder>();
             graph = GetComponent<Generation.ManagedTerrainGraph>();
         }
 

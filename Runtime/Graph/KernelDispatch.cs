@@ -14,6 +14,10 @@ namespace jedjoud.VoxelTerrain.Generation {
 [numthreads(8, 8, 8)]
 // Name: {name}, Scope name: {scopeName}, Scope index: {scopeIndex}, Arguments: {scope.arguments.Length}, Nodes: {scope.namesToNodes.Count}
 void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
+    if (any(id >= (uint)size)) {{
+        return;
+    }}
+
 {InjectBeforeScopeInit(ctx)}
 {scope.InitArgVars()}
 {scope.CallWithArgs()}
@@ -25,10 +29,6 @@ void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
     public class VoxelKernelDispatch : KernelDispatch {
         public override string InjectBeforeScopeInit(TreeContext ctx) {
             return @"
-    if (any(id >= (uint)size)) {
-        return;
-    }
-    
     float3 position = ConvertIntoWorldPosition(id);
 ";
         }
@@ -41,10 +41,6 @@ void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
     public class PropKernelDispatch : KernelDispatch {
         public override string InjectBeforeScopeInit(TreeContext ctx) {
             return @"
-    if (any(id >= (uint)size)) {
-        return;
-    }
-    
     float3 position = ConvertIntoWorldPosition(id);
 ";
         }

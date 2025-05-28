@@ -11,7 +11,7 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Segments {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [RequireMatchingQueriesForUpdate]
-    public partial class TerrainSegmentGpuDispatchSystem : SystemBase {
+    public partial class TerrainSegmentDispatchSystem : SystemBase {
 
         protected override void OnCreate() {
         }

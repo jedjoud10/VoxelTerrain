@@ -41,14 +41,14 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             var xz = projected.Swizzle<float2>("xz");
 
             // Create simplex and fractal noise
-            Simplex simplex = new Simplex(scale, amplitude);
+            Simplex<float2> simplex = new Simplex<float2>(scale, amplitude);
             Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, others);
 
             // Execute fractal noise as 2D function
             Variable<float> density = fractal.Evaluate(xz) + y;
 
             // Create some extra "detail" voronoi noise
-            Voronoi voronoi = new Voronoi(voronoiScale, voronoiAmplitude);
+            Voronoi<float3> voronoi = new Voronoi<float3>(voronoiScale, voronoiAmplitude);
             density += voronoi.Evaluate(projected);
 
             // Add some extra fractal voronoise because why not 
@@ -60,7 +60,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             density = Sdf.Union(density, flatPlane, flatPlaneUnionSmooth);
 
             // Add some noise details (fractal!!!)
-            density += new Fractal<float3>(new Simplex(detailScale, detailAmplitude), FractalMode.Sum, 6, 1.5f, 0.3f).Evaluate(projected);
+            density += new Fractal<float3>(new Simplex<float3>(detailScale, detailAmplitude), FractalMode.Sum, 6, 1.5f, 0.3f).Evaluate(projected);
             
             context.SpawnProp(default);
             context.SpawnProp(default);

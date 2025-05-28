@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -26,6 +27,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public Vector3 scale = Vector3.one;
         public Vector3 offset;
+
+        private SimpleExecutor executor;
 
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
@@ -63,9 +66,40 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         private void OnValidate() {
-            GetComponent<ManagedTerrainCompiler>()?.OnPropertiesChanged();
+            OnPropertiesChanged();
         }
 
+
+        public void OnPropertiesChanged() {
+            if (!gameObject.activeSelf || !this.isActiveAndEnabled)
+                return;
+
+#if UNITY_EDITOR
+            ManagedTerrainCompiler compiler = GetComponent<ManagedTerrainCompiler>();
+            ManagedTerrainSeeder seeder = GetComponent<ManagedTerrainSeeder>();
+
+            if (compiler == null || seeder == null)
+                return;
+
+            SimpleExecutorParameters parameters = new SimpleExecutorParameters() {
+                scale = scale,
+                offset = offset,
+                dispatchName = "voxels",
+                updateInjected = true,
+                compiler = compiler,
+                seeder = seeder,
+            };
+
+            if (executor != null)
+                executor.DisposeResources();
+
+            executor = new SimpleExecutor(size);
+            executor.Execute(parameters);
+            
+            RenderTexture voxels = (RenderTexture)executor.Textures["voxels"];
+            Meshify(voxels);
+#endif
+        }
 
         public void DisposeBuffers() {
             initSize = -1;

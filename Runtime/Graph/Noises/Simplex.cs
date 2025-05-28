@@ -19,40 +19,40 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class Simplex : AbstractNoise {
+    public class Simplex<T> : AbstractNoise<T> {
         public Variable<float> amplitude;
-        public Variable<float3> scale;
+        public Variable<T> scale;
 
         public Simplex() {
             amplitude = 1.0f;
-            scale = new float3(0.01f);
+            scale = GraphUtils.One<T>() * (Variable<float>.New(0.01f)).Broadcast<T>();
         }
 
         public Simplex(Variable<float> scale, Variable<float> amplitude) {
             this.amplitude = amplitude;
-            this.scale = scale.Broadcast<float3>();
+            this.scale = scale.Broadcast<T>();
         }
 
-        public Simplex(Variable<float3> scale, Variable<float> amplitude) {
+        public Simplex(Variable<T> scale, Variable<float> amplitude) {
             this.amplitude = amplitude;
             this.scale = scale;
         }
 
-        public override AbstractNoiseNode<I> CreateAbstractYetToEval<I>() {
-            return new SimplexNode<I>() {
+        public override AbstractNoiseNode<T> CreateAbstractYetToEval() {
+            return new SimplexNode<T>() {
                 amplitude = amplitude,
                 scale = scale,
                 position = null,
             };
         }
 
-        public override Variable<float> Evaluate<T>(Variable<T> position) {
+        public override Variable<float> Evaluate(Variable<T> position) {
             var type = VariableType.TypeOf<T>();
             if (type.strict != VariableType.StrictType.Float2 && type.strict != VariableType.StrictType.Float3) {
                 throw new Exception("Type not supported");
             }
 
-            AbstractNoiseNode<T> a = CreateAbstractYetToEval<T>();
+            AbstractNoiseNode<T> a = CreateAbstractYetToEval();
             a.position = position;
             return a;
         }

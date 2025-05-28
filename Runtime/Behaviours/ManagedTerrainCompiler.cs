@@ -34,32 +34,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
 
             SoftRecompile();
-            OnPropertiesChanged();
-        }
-
-        // Called when the voxel graph's properties get modified
-        public void OnPropertiesChanged() {
-            if (!gameObject.activeSelf)
-                return;
-
-#if UNITY_EDITOR
-            var visualizer = GetComponent<ManagedTerrainPreview>();
-            if (visualizer != null && visualizer.isActiveAndEnabled) {
-                var exec = GetComponent<ManagedTerrainExecutor>();
-
-                ManagedTerrainExecutor.SimpleParameters parameters = new ManagedTerrainExecutor.SimpleParameters() {
-                    newSize = visualizer.size,
-                    scale = visualizer.scale,
-                    offset = visualizer.offset,
-                    dispatchIndex = this.DispatchIndices["voxels"],
-                    updateInjected = true,
-                };
-
-                exec.ExecuteShader(parameters);
-                RenderTexture voxels = (RenderTexture)exec.Textures["voxels"];
-                visualizer.Meshify(voxels);
-            }
-#endif
+            GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
         }
 
         // Checks if we need to recompile the shader by checking the hash changes.

@@ -8,23 +8,20 @@ using UnityEngine;
 
 
 namespace jedjoud.VoxelTerrain.Editor {
-    [CustomEditor(typeof(ManagedTerrainExecutor), true)]
-    public class ManagedTerrainExecutorEditor : UnityEditor.Editor {
+    [CustomEditor(typeof(ManagedTerrainSeeder), true)]
+    public class ManagedTerrainSeederEditor : UnityEditor.Editor {
         private bool textureFoldout;
         private bool bufferFoldout;
 
         public override void OnInspectorGUI() {
-            EditorGUILayout.LabelField("Features", EditorStyles.boldLabel);
-            GUILayout.Label("Supports Async Compute: " + SystemInfo.supportsAsyncCompute);
-            GUILayout.Label("Supports Async Readback: " + SystemInfo.supportsAsyncGPUReadback);
-            
             base.OnInspectorGUI();
-            var script = (ManagedTerrainExecutor)target;
+            var script = (ManagedTerrainSeeder)target;
 
             if (GUILayout.Button("Randomize Seed")) {
                 script.RandomizeSeed();
             }
 
+            /*
             if (GUILayout.Button("Dispose Resources")) {
                 script.DisposeResources();
             }
@@ -119,6 +116,7 @@ namespace jedjoud.VoxelTerrain.Editor {
                     EditorGUI.indentLevel--;
                 }
             }
+            */
         }
     }
 }

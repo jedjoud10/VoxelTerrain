@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     public abstract partial class ManagedTerrainGraph : MonoBehaviour {
         private void OnValidate() {
             GetComponent<ManagedTerrainCompiler>().SoftRecompile();
-            GetComponent<ManagedTerrainCompiler>().OnPropertiesChanged();
+            GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
         }
 
         public class Context {
