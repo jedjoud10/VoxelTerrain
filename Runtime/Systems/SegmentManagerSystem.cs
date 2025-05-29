@@ -35,8 +35,10 @@ namespace jedjoud.VoxelTerrain.Segments {
             mgr.AddComponent<LocalToWorld>(segmentPrototype);
             mgr.AddComponent<TerrainSegment>(segmentPrototype);
             mgr.AddComponent<Prefab>(segmentPrototype);
-            mgr.AddComponent<TerrainSegmentRequestDispatchTag>(segmentPrototype);
-            mgr.SetComponentEnabled<TerrainSegmentRequestDispatchTag>(segmentPrototype, true);
+            mgr.AddComponent<TerrainSegmentRequestPropsTag>(segmentPrototype);
+            mgr.AddComponent<TerrainSegmentRequestVoxelsTag>(segmentPrototype);
+            mgr.SetComponentEnabled<TerrainSegmentRequestPropsTag>(segmentPrototype, true);
+            mgr.SetComponentEnabled<TerrainSegmentRequestVoxelsTag>(segmentPrototype, true);
         }
 
         [BurstCompile]
@@ -59,6 +61,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                 SystemAPI.SetComponent<LocalToWorld>(entity, new LocalToWorld {
                     Value = matrix
                 });
+
+                SystemAPI.SetComponent<TerrainSegment>(entity, segment);
             }
         }
 

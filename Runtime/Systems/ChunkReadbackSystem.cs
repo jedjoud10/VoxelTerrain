@@ -21,9 +21,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         private bool countersFetched, voxelsFetched;
         private bool disposed;
         private OctalReadbackExecutor octalExecutor;
+        private ComputeBuffer negPosOctalCountersBuffer;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadbackConfig>();
+            RequireForUpdate<TerrainReadySystems>();
             data = new NativeArray<uint>(VoxelUtils.VOLUME * VoxelUtils.OCTAL_CHUNK_COUNT, Allocator.Persistent);
             entities = new List<Entity>(VoxelUtils.OCTAL_CHUNK_COUNT);
             copies = new NativeArray<JobHandle>(VoxelUtils.OCTAL_CHUNK_COUNT, Allocator.Persistent);
@@ -35,6 +37,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             disposed = false;
 
             octalExecutor = new OctalReadbackExecutor(VoxelUtils.SIZE * VoxelUtils.OCTAL_CHUNK_SIZE_RATIO);
+            negPosOctalCountersBuffer = new ComputeBuffer(VoxelUtils.OCTAL_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
         }
 
         private void Reset() {
@@ -54,6 +57,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             counters.Dispose();
             copies.Dispose();
             octalExecutor.DisposeResources();
+            negPosOctalCountersBuffer.Dispose();
         }
 
         protected override void OnUpdate() {
@@ -119,10 +123,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             OctalReadbackExecutorParameters parameters = new OctalReadbackExecutorParameters() {
                 commandBufferName = "Terrain Readback System Async Dispatch",
                 posScaleOctals = posScaleOctals,
-                dispatchName = "voxels",
+                kernelName = "CSVoxels",
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
                 seeder = ManagedTerrain.instance.seeder,
+                negPosOctalCountersBuffer = negPosOctalCountersBuffer,
             };
 
             GraphicsFence fence = octalExecutor.Execute(parameters);
@@ -139,9 +144,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 octalExecutor.Buffers["voxels"],
                 delegate (AsyncGPUReadbackRequest asyncRequest) {
                     unsafe {
-                        if (disposed) {
+                        if (disposed)
                             return;
-                        }
 
                         // We have to do this to stop unity from complaining about using the data...
                         // fuck you...
@@ -171,11 +175,11 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             cmds.RequestAsyncReadbackIntoNativeArray(
                 ref counters,
-                octalExecutor.OctalCountersBuffer,
+                negPosOctalCountersBuffer,
                 delegate (AsyncGPUReadbackRequest asyncRequest) {
-                    if (disposed) {
+                    if (disposed)
                         return;
-                    }
+                    
 
                     countersFetched = true;
                 }

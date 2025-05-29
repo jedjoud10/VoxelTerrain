@@ -18,10 +18,6 @@ namespace jedjoud.VoxelTerrain {
             Bool2,
             Bool3,
             Bool4,
-
-            // TODO: decide if we should allow custom structs like the prop struct in strict type or not
-            // How 2 do pls???
-            Prop
         }
 
         public VariableType(StrictType strict) {
@@ -34,12 +30,7 @@ namespace jedjoud.VoxelTerrain {
 
 
         public string ToStringType() {
-            switch (strict) {
-                case StrictType.Prop:
-                    return "GpuProp";
-                default:
-                    return strict.ToString().ToLower();
-            }
+            return strict.ToString().ToLower();
         }
 
         // Convert type data to string
@@ -72,8 +63,6 @@ namespace jedjoud.VoxelTerrain {
                     output = new(StrictType.Bool3); break;
                 case "bool4":
                     output = new(StrictType.Bool4); break;
-                case "GpuProp":
-                    output = new(StrictType.Prop); break;
 
                 default:
                     throw new System.Exception($"Type {tn} not supported");
@@ -96,9 +85,6 @@ namespace jedjoud.VoxelTerrain {
                 case StrictType.Float4:
                     float4 f4 = (float4)temp;
                     return $"float4({f4.x},{f4.y},{f4.z},{f4.w})";
-                case StrictType.Prop:
-                    CpuProp prop = (CpuProp)temp;
-                    return $"{{ {ToDefinableString<float3>(prop.position)}, {ToDefinableString<float3>(prop.rotation)}, {prop.scale}, {prop.type}, {prop.variant} }}";
                 default:
                     return value.ToString();
             }

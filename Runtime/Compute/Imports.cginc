@@ -5,8 +5,8 @@ int size;
 static const int PHYSICAL_SIZE = 32;
 static const int LOGICAL_SIZE = PHYSICAL_SIZE + 2;
 
-int3 permuationSeed;
-int3 moduloSeed;
+int3 permutation_seed;
+int3 modulo_seed;
 
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises.cginc"
@@ -19,8 +19,8 @@ RWStructuredBuffer<uint> voxels_buffer;
 #else
 RWTexture3D<uint> voxels_texture_write;
 Texture3D<uint> voxels_texture_read;
-float3 simpleScale;
-float3 simpleOffset;
+float3 simple_scale;
+float3 simple_offset;
 #endif
 
 //RWStructuredBuffer<BlittableProp> props;
@@ -43,7 +43,7 @@ float3 ConvertIntoWorldPosition(uint3 id) {
 }
 #else
 float3 ConvertIntoWorldPosition(uint3 id) {
-    return ((float3)id * simpleScale) + simpleOffset;
+    return ((float3)id * simple_scale) + simple_offset;
 }
 #endif
 

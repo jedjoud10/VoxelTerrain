@@ -65,7 +65,7 @@ for(int x = -{maxLoopSize}; x <= {maxLoopSize}; x++) {{
                 string tiler = tiling ? $"{typeString} tiled = fmod(cell, {tilingModSize});" : $"{typeString} tiled = cell;";
 
                 string outputFirst = $@"
-{ctx[inner]} += moduloSeed;
+{ctx[inner]} += modulo_seed;
 {typeString} posCell = floor({ctx[inner]});
 {typeString} posFrac = frac({ctx[inner]});
 

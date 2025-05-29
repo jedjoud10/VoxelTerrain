@@ -637,6 +637,14 @@ PrefabInstance:
       propertyPath: detailAmplitude.value
       value: 0.6
       objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: transform1.position.y
+      value: 40
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: transform1.rotation.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: size
       value: 128
@@ -646,12 +654,28 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: scale.x
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: scale.y
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: scale.z
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: offset.x
-      value: -44.4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: offset.y
-      value: -2485
+      value: -1120.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5248115962012205478, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: flatshaded
@@ -661,6 +685,14 @@ PrefabInstance:
       propertyPath: useHeightSimplification
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: dirty
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: shader
+      value: 
+      objectReference: {fileID: 7200000, guid: 3e5d4d57dc1604242bcb3c3004388a2a, type: 3}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: debugTex
       value: 

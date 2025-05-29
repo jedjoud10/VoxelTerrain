@@ -1,4 +1,4 @@
-# New Features Features:
+# New Features compared to the main branch:
 - Chunk size of 32, with some pros:
   - Faster meshing (sub 1ms on 14 threads for 1-2 chunks, pretty darn good, though could be fasteerrrrr).
   - We can now compute 64 chunks on the GPU all at *once* in the same compute dispatch instead of 8. This speeds up meshing a lot since we catch empty chunks and discard them early.
@@ -7,6 +7,20 @@
 - Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues.
 - Proper Surface Nets Skirts by running 2D and 1D S.N on the chunk boundary. Skirt entities are enabled/disabled based on the direction that they face relative to the octree loader position.
   - Implemented fallback normals system for flat shading so that skirts aren't as visible when you use DDY/DDX normals
+- Graph system. You can write the voxel generation code in C# and a *transplire* will compile it to HLSL in the editor which will then compile to GPU executable code.Basically a preprocessor "find and replace" but on steroids
+  - Allows you to simply define layers of noise that you add on top of each other like so:
+  ```cs
+  // Create simplex and fractal noise
+  Simplex<float2> simplex = new Simplex<float2>(scale, amplitude);
+  Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, others);
+
+  // Execute fractal noise as 2D function
+  Variable<float> density = fractal.Evaluate(xz) + y;
+
+  // Create some extra "detail" voronoi noise
+  Voronoi<float3> voronoi = new Voronoi<float3>(voronoiScale, voronoiAmplitude);
+  density += voronoi.Evaluate(projected);
+  ```
 
 - Better optimized meshing jobs:
   - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled).

@@ -1,5 +1,5 @@
-int3 permuationSeed = int3(684, 2325, 31);
-int3 moduloSeed = int3(423, 4543, -23423);
+int3 permutation_seed = int3(684, 2325, 31);
+int3 modulo_seed = int3(423, 4543, -23423);
 
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/common.cginc"

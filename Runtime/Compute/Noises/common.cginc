@@ -1,18 +1,18 @@
 #define PI 3.14159265358979
 
 float3 mod289(float3 x) {
-    x += moduloSeed.x;
+    x += modulo_seed.x;
     return x - floor(x * (1.0 / 289.0)) * 289.0;
 }
 
 // Modulo 289 without a division (only multiplications)
 float2 mod289(float2 x) {
-    x += moduloSeed.y;
+    x += modulo_seed.y;
     return x - floor(x * (1.0 / 289.0)) * 289.0;
 }
 
 float4 mod289(float4 x) {
-    x += moduloSeed.z;
+    x += modulo_seed.z;
     return x - floor(x * (1.0 / 289.0)) * 289.0;
 }
 

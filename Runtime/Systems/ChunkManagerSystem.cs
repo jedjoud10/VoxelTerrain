@@ -104,7 +104,6 @@ namespace jedjoud.VoxelTerrain {
             RefRW<TerrainOctree> _octree = SystemAPI.GetSingletonRW<TerrainOctree>();
             ref TerrainOctree octree = ref _octree.ValueRW;
 
-
             if (!octree.pending && octree.handle.IsCompleted && octree.readyToSpawn) {
                 nextEndOfPipeCounts = SystemAPI.QueryBuilder().WithAll<TerrainChunk>().WithAbsent<Prefab>().Build().CalculateEntityCount();
                 

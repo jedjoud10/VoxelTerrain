@@ -3,14 +3,16 @@ using System.Collections.Generic;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class KernelBuilder {
-        public string dispatchIndexIdentifier;
-        public string scopeName;
+        public string name;
         public ScopeArgument[] arguments;
         public Action<TreeContext> customCallback;
         public KernelDispatch dispatch;
         public KeywordGuards keywordGuards;
 
         public void Build(TreeContext ctx, Dictionary<string, int> dispatchIndices) {
+            // get rid of the 'CS' at the start
+            string scopeName = name.Substring(2);
+
             int idx = ctx.scopes.Count;
             ctx.currentScope = idx;
             ctx.scopes.Add(new TreeScope(0));
@@ -28,7 +30,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             customCallback?.Invoke(ctx);
 
-            dispatch.name = $"CS{scopeName}";
+            dispatch.name = name;
             dispatch.depth = 0;
             dispatch.scopeName = scopeName;
             dispatch.scopeIndex = idx;
@@ -36,7 +38,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             int dspIdx = ctx.dispatches.Count;
             ctx.dispatches.Add(dispatch);
-            dispatchIndices.Add(dispatchIndexIdentifier, dspIdx);
+            dispatchIndices.Add(name, dspIdx);
         }
     }
 }

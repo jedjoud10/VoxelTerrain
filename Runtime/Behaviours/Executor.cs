@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract class ExecutorParameters {
-        public string dispatchName;
+        public string kernelName;
         public string commandBufferName;
         public bool updateInjected;
         public ManagedTerrainCompiler compiler;
@@ -48,11 +48,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             CreateMainResources();
         }
 
-        public GraphicsFence Execute(P parameters) {
+        public GraphicsFence Execute(P parameters, GraphicsFence? previous = null) {
             ManagedTerrainCompiler compiler = parameters.compiler;
             ManagedTerrainSeeder seeder = parameters.seeder;
 
-            int dispatchIndex = compiler.DispatchIndices[parameters.dispatchName];
+            int dispatchIndex = compiler.DispatchIndices[parameters.kernelName];
             bool updateInjected = parameters.updateInjected;
 
             if (compiler.ctx == null) {
@@ -61,19 +61,27 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             if (textures == null || buffers == null) {
                 CreateResources(compiler);
+
+                // Initializing the values will force us to update them
+                updateInjected = true;
             }
 
             CommandBuffer commands = new CommandBuffer();
             commands.name = parameters.commandBufferName;
             commands.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
+
+            if (previous != null) {
+                commands.WaitOnAsyncGraphicsFence(previous.Value);
+            }
+
             ComputeShader shader = compiler.shader;
 
             ExecuteSetCommands(commands, shader, parameters, dispatchIndex);
 
 
             commands.SetComputeIntParam(shader, "size", size);
-            commands.SetComputeIntParams(shader, "permuationSeed", new int[] { seeder.permutationSeed.x, seeder.permutationSeed.y, seeder.permutationSeed.z });
-            commands.SetComputeIntParams(shader, "moduloSeed", new int[] { seeder.moduloSeed.x, seeder.moduloSeed.y, seeder.moduloSeed.z });
+            commands.SetComputeIntParams(shader, "permutation_seed", new int[] { seeder.permutationSeed.x, seeder.permutationSeed.y, seeder.permutationSeed.z });
+            commands.SetComputeIntParams(shader, "modulo_seed", new int[] { seeder.moduloSeed.x, seeder.moduloSeed.y, seeder.moduloSeed.z });
 
             if (updateInjected) {
                 compiler.ctx.injector.UpdateInjected(commands, shader, textures);

@@ -18,9 +18,9 @@ namespace jedjoud.VoxelTerrain.Generation {
         protected override void CreateMainResources() {
             textures.Add("voxels", new ExecutorTexture {
                 name = "voxels",
-                readKernels = new List<string>() { "CSProp" },
+                readKernels = new List<string>() { },
                 texture = TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt),
-                writeKernel = "CSVoxel",
+                writeKernel = "CSVoxels",
                 requestingNodeHash = -1,
             });
         }
@@ -29,8 +29,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             LocalKeyword keyword = shader.keywordSpace.FindKeyword(ComputeDispatchUtils.OCTAL_READBACK_KEYWORD);
             commands.DisableKeyword(shader, keyword);
 
-            commands.SetComputeVectorParam(shader, "simpleOffset", parameters.offset);
-            commands.SetComputeVectorParam(shader, "simpleScale", parameters.scale);
+            commands.SetComputeVectorParam(shader, "simple_offset", parameters.offset);
+            commands.SetComputeVectorParam(shader, "simple_scale", parameters.scale);
         }
     }
 }

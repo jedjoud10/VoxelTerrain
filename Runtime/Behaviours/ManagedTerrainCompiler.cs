@@ -151,8 +151,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Create the scope and kernel for the voxel generation step
             // This will be used by the terrain previewer, terrain async readback system, and terrain segmentation system
             KernelBuilder voxelKernelBuilder = new KernelBuilder {
-                scopeName = "Voxel",
-                dispatchIndexIdentifier = "voxels",
+                name = "CSVoxels",
                 arguments = new ScopeArgument[] {
                     position, id,
                     ScopeArgument.AsOutput<float>("voxel", voxelOutput.density),
@@ -175,13 +174,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
             ManagedTerrainGraph.PropContext propContext = new ManagedTerrainGraph.PropContext();
 
+            // Run the graph for the props pass
             graph.Props(propInput, propContext);
-
 
             // Create the scope and kernel for the prop generation step
             KernelBuilder propKernelBuilder = new KernelBuilder {
-                scopeName = "Prop",
-                dispatchIndexIdentifier = "props",
+                name = "CSProps",
                 arguments = new ScopeArgument[] {
                     position, id,
                 },
@@ -192,52 +190,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 dispatch = new PropKernelDispatch {
                 },
                 keywordGuards = new KeywordGuards(ComputeDispatchUtils.OCTAL_READBACK_KEYWORD, true),
-
-                /*
-                preDefinedVars = new Dictionary<(UntypedVariable, VariableType), string> {
-                    { (outputs.density, VariableType.TypeOf<float>()), "sfad" },
-                }
-                */
             };
 
             voxelKernelBuilder.Build(ctx, DispatchIndices);
             propKernelBuilder.Build(ctx, DispatchIndices);
-
-
-            //Variable<int> noOpPropSpawn = context.noOp;
-            //ScopeArgument noOpPropSpawnArgument = new ScopeArgument("prop", VariableType.StrictType.Int, noOpPropSpawn, true);
-
-            //noOpPropSpawn.Handle(ctx);
-
-            /*
-            ctx.currentScope = 1;
-            ctx.Add(position, "position");
-            ctx.scopes[1].name = "Props";
-            ctx.scopes[1].arguments = new ScopeArgument[] {
-                tempPos, tempId, propArgument
-            };
-            outputs.prop.Handle(ctx);
-            */
-
-            /*
-            // Prop kernel dispatcher
-            ctx.dispatches.Add(new KernelDispatch {
-                name = $"CSProps",
-                depth = 0,
-                sizeReductionPower = 0,
-                threeDimensions = true,
-                scopeName = "Props",
-                frac = 1.0f,
-                scopeIndex = 1,
-                mortonate = true,
-                numThreads = new Vector3Int(8, 8, 8),
-                remappedCoords = "id.xyz",
-                writeCoords = "xyz",
-                outputs = new KernelOutput[] {
-                    new KernelOutput { setter = "prop", outputBufferName = "props", buffer = true }
-                }
-            });
-            */
 
             ctx.dispatches.Sort((KernelDispatch a, KernelDispatch b) => { return b.depth.CompareTo(a.depth); });
         }

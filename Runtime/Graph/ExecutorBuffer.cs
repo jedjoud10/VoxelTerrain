@@ -5,12 +5,12 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     public class ExecutorBuffer {
         public string name;
-        public List<string> readKernels;
+        public List<string> kernels;
         public ComputeBuffer buffer;
 
-        public ExecutorBuffer(string name, List<string> readKernels, ComputeBuffer buffer) {
+        public ExecutorBuffer(string name, List<string> kernels, ComputeBuffer buffer) {
             this.name = name;
-            this.readKernels = readKernels;
+            this.kernels = kernels;
             this.buffer = buffer;
         }
 
@@ -19,7 +19,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public virtual void BindToComputeShader(CommandBuffer commands, ComputeShader shader) {
-            foreach (var readKernel in readKernels) {
+            foreach (var readKernel in kernels) {
                 int readKernelId = shader.FindKernel(readKernel);
                 commands.SetComputeBufferParam(shader, readKernelId, name + "_buffer", buffer);
             }

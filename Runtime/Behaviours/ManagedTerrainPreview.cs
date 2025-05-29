@@ -78,13 +78,15 @@ namespace jedjoud.VoxelTerrain.Generation {
             ManagedTerrainCompiler compiler = GetComponent<ManagedTerrainCompiler>();
             ManagedTerrainSeeder seeder = GetComponent<ManagedTerrainSeeder>();
 
-            if (compiler == null || seeder == null || compiler.DispatchIndices == null)
+            if (compiler == null || seeder == null || compiler.DispatchIndices == null) {
+                Debug.LogWarning($"Compiler is null: {compiler == null}, Seeder is null: {seeder == null}, Dispatch Indices is null: {compiler.DispatchIndices == null}");
                 return;
+            }
 
             SimpleExecutorParameters parameters = new SimpleExecutorParameters() {
                 scale = scale,
                 offset = offset,
-                dispatchName = "voxels",
+                kernelName = "CSVoxels",
                 updateInjected = true,
                 compiler = compiler,
                 seeder = seeder,
