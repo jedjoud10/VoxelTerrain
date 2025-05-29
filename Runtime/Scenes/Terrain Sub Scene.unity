@@ -208,14 +208,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1871524687913741539, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
-      propertyPath: maxDepth
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 3986164134260396154, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
-      propertyPath: skipEmptyChunks
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 5863026420594882244, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -256,10 +248,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6385058587415656688, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
-      propertyPath: material
-      value: 
-      objectReference: {fileID: 11400000, guid: 2bfefb5dc2ec0554582ccd900ab84b90, type: 2}
     - target: {fileID: 8238762861437603885, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
       propertyPath: m_Name
       value: Terrain Authoring
@@ -319,15 +307,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: segmentExtent.x
-      value: 10
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: segmentExtent.y
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: segmentExtent.z
-      value: 10
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: octreeNodeFactor

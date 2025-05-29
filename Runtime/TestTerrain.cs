@@ -65,8 +65,14 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         }
 
         public override void Props(PropInput input, PropContext context) {
-            Variable<bool> shouldSpawnProp = input.density > -1 & input.density < 1;
-            context.TrySpawnProp(shouldSpawnProp, default);
+            Variable<bool> shouldSpawnProp = input.density > -0.4f & input.density < 0.4f;
+            shouldSpawnProp &= Random.Uniform(input.position, 0.2f);
+
+            context.SpawnProp(shouldSpawnProp, new Props.GenerationProp {
+                scale = 1f,
+                position = input.position,
+                type = 0,
+            });
         }
     }
 }

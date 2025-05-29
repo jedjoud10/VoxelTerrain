@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-
-
 namespace jedjoud.VoxelTerrain.Generation {
     public class ScopeArgument {
         public VariableType type;

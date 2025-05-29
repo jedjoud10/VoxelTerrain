@@ -1,8 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
@@ -17,10 +15,10 @@ namespace jedjoud.VoxelTerrain.Generation {
         public ComputeBuffer negPosOctalCountersBuffer;
     }
 
-    public class OctalReadbackExecutor : Executor<OctalReadbackExecutorParameters> {
+    public class OctalReadbackExecutor : VolumeExecutor<OctalReadbackExecutorParameters> {
         private ComputeBuffer posScaleOctalBuffer;
 
-        public OctalReadbackExecutor(int size) : base(size) {
+        public OctalReadbackExecutor() : base(VoxelUtils.SIZE * VoxelUtils.OCTAL_CHUNK_SIZE_RATIO) {
         }
 
         public override void DisposeResources() {
@@ -28,20 +26,21 @@ namespace jedjoud.VoxelTerrain.Generation {
             posScaleOctalBuffer?.Dispose();
         }
 
-        protected override void CreateMainResources() {
+        protected override void CreateResources(ManagedTerrainCompiler compiler) {
+            base.CreateResources(compiler);
             posScaleOctalBuffer = new ComputeBuffer(VoxelUtils.OCTAL_CHUNK_COUNT, sizeof(int) * 4, ComputeBufferType.Structured);
             buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxels" }, new ComputeBuffer(VoxelUtils.VOLUME * VoxelUtils.OCTAL_CHUNK_COUNT, Voxel.size, ComputeBufferType.Structured)));
         }
 
-        protected override void ExecuteSetCommands(CommandBuffer commands, ComputeShader shader, OctalReadbackExecutorParameters parameters, int dispatchIndex) {
-            LocalKeyword keyword = shader.keywordSpace.FindKeyword(ComputeDispatchUtils.OCTAL_READBACK_KEYWORD);
-            commands.EnableKeyword(shader, keyword);
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, OctalReadbackExecutorParameters parameters, int kernelIndex) {
+            base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
 
+            ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.OctalReadback);
             commands.SetBufferData(posScaleOctalBuffer, parameters.posScaleOctals);
-            commands.SetComputeBufferParam(shader, dispatchIndex, "pos_scale_octals", posScaleOctalBuffer);
+            commands.SetComputeBufferParam(shader, kernelIndex, "pos_scale_octals", posScaleOctalBuffer);
 
             commands.SetBufferData(parameters.negPosOctalCountersBuffer, new int[VoxelUtils.OCTAL_CHUNK_COUNT]);
-            commands.SetComputeBufferParam(shader, dispatchIndex, "neg_pos_octal_counters", parameters.negPosOctalCountersBuffer);
+            commands.SetComputeBufferParam(shader, kernelIndex, "neg_pos_octal_counters", parameters.negPosOctalCountersBuffer);
         }
     }
 }

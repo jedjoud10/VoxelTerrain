@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using NUnit.Framework.Internal.Execution;
+using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
@@ -16,25 +14,13 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public abstract class Executor<P> where P : ExecutorParameters {
-        protected int size;
         protected Dictionary<string, ExecutorTexture> textures;
         protected Dictionary<string, ExecutorBuffer> buffers;
 
         public Dictionary<string, ExecutorTexture> Textures { get { return textures; } }
         public Dictionary<string, ExecutorBuffer> Buffers { get { return buffers; } }
 
-        public Executor(int size) {
-            if (size <= 0) {
-                throw new ArgumentException("Size must be a positive non-zero number");
-            }
-
-            this.size = size;
-        }
-
-        protected abstract void CreateMainResources();
-        protected abstract void ExecuteSetCommands(CommandBuffer commands, ComputeShader shader, P parameters, int dispatchIndex);
-
-        private void CreateResources(ManagedTerrainCompiler compiler) {
+        protected virtual void CreateResources (ManagedTerrainCompiler compiler) {
             DisposeResources();
 
             // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??
@@ -42,17 +28,26 @@ namespace jedjoud.VoxelTerrain.Generation {
             buffers = new Dictionary<string, ExecutorBuffer>();
 
             foreach (var (name, descriptor) in compiler.ctx.textures) {
-                textures.Add(name, descriptor.Create(size));
+                textures.Add(name, descriptor.Create());
             }
-
-            CreateMainResources();
         }
 
-        public GraphicsFence Execute(P parameters, GraphicsFence? previous = null) {
+        protected virtual void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, P parameters, int kernelIndex) {
+            commands.SetComputeIntParams(shader, "permutation_seed", new int[] { seeder.permutationSeed.x, seeder.permutationSeed.y, seeder.permutationSeed.z });
+            commands.SetComputeIntParams(shader, "modulo_seed", new int[] { seeder.moduloSeed.x, seeder.moduloSeed.y, seeder.moduloSeed.z });
+        }
+
+
+        public GraphicsFence ExecuteWithInvocationCount(int3 invocations, P parameters, GraphicsFence? previous = null) {
             ManagedTerrainCompiler compiler = parameters.compiler;
             ManagedTerrainSeeder seeder = parameters.seeder;
 
-            int dispatchIndex = compiler.DispatchIndices[parameters.kernelName];
+            ComputeShader shader = compiler.shader;
+
+            // dawg...
+            KernelDispatch dispatch = compiler.ctx.dispatches.Find(x => x.name == parameters.kernelName);
+            
+            int id = shader.FindKernel(parameters.kernelName);
             bool updateInjected = parameters.updateInjected;
 
             if (compiler.ctx == null) {
@@ -71,22 +66,15 @@ namespace jedjoud.VoxelTerrain.Generation {
             commands.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
 
             if (previous != null) {
-                commands.WaitOnAsyncGraphicsFence(previous.Value);
+                commands.WaitOnAsyncGraphicsFence(previous.Value, SynchronisationStageFlags.ComputeProcessing);
             }
 
-            ComputeShader shader = compiler.shader;
 
-            ExecuteSetCommands(commands, shader, parameters, dispatchIndex);
-
-
-            commands.SetComputeIntParam(shader, "size", size);
-            commands.SetComputeIntParams(shader, "permutation_seed", new int[] { seeder.permutationSeed.x, seeder.permutationSeed.y, seeder.permutationSeed.z });
-            commands.SetComputeIntParams(shader, "modulo_seed", new int[] { seeder.moduloSeed.x, seeder.moduloSeed.y, seeder.moduloSeed.z });
+            SetComputeParams(commands, shader, seeder, parameters, id);
 
             if (updateInjected) {
                 compiler.ctx.injector.UpdateInjected(commands, shader, textures);
             }
-
 
             foreach (var (name, texture) in textures) {
                 texture.BindToComputeShader(commands, shader);
@@ -96,15 +84,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 buffer.BindToComputeShader(commands, shader);
             }
 
-            // Execute the kernels sequentially
-            // TODO: Add back said kernels since we removed the whole cached node kek
-            KernelDispatch kernel = compiler.ctx.dispatches[dispatchIndex];
-            int id = shader.FindKernel(kernel.name);
-
-            int tempSize = size;
-            tempSize = Mathf.Max(size, 1);
-            int minScaleBase3D = Mathf.CeilToInt((float)tempSize / 8.0f);
-            commands.DispatchCompute(shader, id, minScaleBase3D, minScaleBase3D, minScaleBase3D);
+            float3 numThreads = (float3)dispatch.numThreads;
+            float3 tempSize = (float3)invocations / numThreads;
+            int3 threadGroups = (int3)math.ceil(math.max(tempSize, 1));
+            commands.DispatchCompute(shader, id, threadGroups.x, threadGroups.y, threadGroups.z);
 
             // This works! Only in the builds, but async compute queue is being utilized!!!
             // If the target arch doesn't support async compute this will just revert to the normal queue
@@ -133,6 +116,26 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         ~Executor() {
             DisposeResources();
+        }
+    }
+
+    public abstract class VolumeExecutor<P>: Executor<P> where P : ExecutorParameters {
+        protected int size;
+        public VolumeExecutor(int size) {
+            if (size <= 0) {
+                throw new ArgumentException("Size must be a positive non-zero number");
+            }
+
+            this.size = size;
+        }
+
+        public GraphicsFence Execute(P parameters, GraphicsFence? previous = null) {
+            return ExecuteWithInvocationCount(new int3(size), parameters, previous);
+        }
+
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, P parameters, int kernelIndex) {
+            base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
+            commands.SetComputeIntParam(shader, "size", size);
         }
     }
 }

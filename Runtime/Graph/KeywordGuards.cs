@@ -1,18 +1,27 @@
-using NUnit.Framework;
-
 namespace jedjoud.VoxelTerrain.Generation {
     public class KeywordGuards {
-        public string keyword;
-        public bool invert;
-
-        public KeywordGuards(string keyword, bool invert) {
-            this.keyword = keyword;
-            this.invert = invert;
+        public string[] keywords;
+        
+        public KeywordGuards(params string[] keywords) {
+            this.keywords = keywords;
         }
 
         public string BeginGuard() {
-            string begin = invert ? "ifndef" : "ifdef";
-            return $"#{begin} {keyword}";
+            if (keywords.Length == 0) {
+                throw new System.Exception("erm... what the sigma?");
+            }
+
+            string line = "#if ";
+
+            for (int i = 0; i < keywords.Length; i++) {
+                line += $"defined({keywords[i]})";
+
+                if (i != keywords.Length - 1) {
+                    line += " || ";
+                }
+            }
+
+            return line;
         }
 
         public string EndGuard() {

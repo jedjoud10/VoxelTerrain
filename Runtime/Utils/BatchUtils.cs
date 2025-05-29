@@ -1,6 +1,3 @@
-using jedjoud.VoxelTerrain.Props;
-using Unity.Mathematics;
-
 namespace jedjoud.VoxelTerrain {
     public static class BatchUtils {
         public const int BATCH = VoxelUtils.VOLUME;

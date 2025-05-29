@@ -1,13 +1,6 @@
-using System.Linq;
 using jedjoud.VoxelTerrain.Generation;
-using jedjoud.VoxelTerrain.Octree;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
-using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {
@@ -15,14 +8,14 @@ namespace jedjoud.VoxelTerrain.Segments {
     [UpdateAfter(typeof(SegmentManagerSystem))]
     [RequireMatchingQueriesForUpdate]
     public partial class SegmentVoxelSystem : SystemBase {
-        public SegmentExecutor executor;
+        public SegmentVoxelExecutor voxelExecutor;
         public Entity entity;
         public TerrainSegment segment;
         public GraphicsFence fence;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadySystems>();
-            executor = new SegmentExecutor();
+            voxelExecutor = new SegmentVoxelExecutor();
         }
 
         protected override void OnUpdate() {
@@ -43,20 +36,20 @@ namespace jedjoud.VoxelTerrain.Segments {
             entity = entities[0];
             segment = segments[0];
 
-            fence = executor.Execute(new SegmentExecutorParameters() {
+            fence = voxelExecutor.Execute(new SegmentVoxelExecutorParameters() {
                 commandBufferName = "Terrain Segment Voxels Dispatch",
                 kernelName = "CSVoxels",
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
                 seeder = ManagedTerrain.instance.seeder,
-                position = segment.position,
+                segment = segment,
             });
 
             SystemAPI.SetComponentEnabled<TerrainSegmentRequestVoxelsTag>(entity, false);
         }
 
         protected override void OnDestroy() {
-            executor.DisposeResources();
+            voxelExecutor.DisposeResources();
         }
     }
 }

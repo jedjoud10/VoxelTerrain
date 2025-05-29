@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 4781938216130763360}
   - component: {fileID: 5248115962012205478}
   - component: {fileID: 4893179947538798331}
+  - component: {fileID: 566389634701878972}
   m_Layer: 0
   m_Name: Managed Terrain
   m_TagString: Untagged
@@ -49,7 +50,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   compiler: {fileID: 0}
-  executor: {fileID: 0}
+  seeder: {fileID: 0}
   graph: {fileID: 0}
 --- !u!114 &5790444678521601185
 MonoBehaviour:
@@ -63,12 +64,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hash: 1456969459
-  dirty: 1
-  voxelsDispatchIndex: 0
-  propsDispatchIndex: -1
-  debugTex: {fileID: 0}
-  shader: {fileID: 7200000, guid: 3e5d4d57dc1604242bcb3c3004388a2a, type: 3}
+  hash: 976774944
+  dirty: 0
+  shader: {fileID: 7200000, guid: 55e5bc6630ac7ad4786b230b69a61640, type: 3}
 --- !u!114 &4781938216130763360
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -104,8 +102,8 @@ MonoBehaviour:
   useHeightSimplification: 0
   flatshaded: 0
   size: 128
-  scale: {x: 100, y: 100, z: 100}
-  offset: {x: 0, y: -2060, z: 0}
+  scale: {x: 5, y: 5, z: 5}
+  offset: {x: 0, y: -498, z: 0}
 --- !u!114 &4893179947538798331
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -119,7 +117,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transform1:
-    position: {x: -12.92, y: 19, z: -23.37}
+    position: {x: -12.92, y: 44.7, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 0.02, y: 0.02, z: 0.02}
   flatPlaneHeight:
@@ -147,9 +145,24 @@ MonoBehaviour:
       y: 0.1
       z: 0.1
   detailAmplitude:
-    value: 1
+    value: 0.6
   others:
     value:
       x: 2
       y: 0.2
   octaves: 7
+--- !u!114 &566389634701878972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4296326610441593126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b200131b1e403ca4e882e48a59b95e04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugGui: 1
+  debugChunkBounds: 0
+  debugSegmentBounds: 0

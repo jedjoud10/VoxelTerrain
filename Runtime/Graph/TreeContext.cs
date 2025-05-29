@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public List<KernelDispatch> dispatches;
         public Dictionary<string, int> varNamesToId;
         public PropertyInjector injector;
-        public List<string> properties;
+        public HashSet<string> properties;
         public int hash;
         public int counter;
         public bool debugNames;
@@ -21,9 +21,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int currentScope = 0;
         public int scopeDepth = 0;
         public HashSet<string> dedupe;
-
-        public ScopeArgument position;
-        public ScopeArgument id;
 
         public string this[UntypedVariable node] {
             get => scopes[currentScope].nodesToNames[node];
@@ -34,10 +31,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             set => scopes[currentScope].indent = value;
         }
 
-        public List<string> Properties { get { return properties; } }
+        public HashSet<string> Properties { get { return properties; } }
 
         public TreeContext(bool debugNames) {
-            this.properties = new List<string>();
+            this.properties = new HashSet<string>();
             this.injector = new PropertyInjector();
             this.varNamesToId = new Dictionary<string, int>();
             this.debugNames = debugNames;

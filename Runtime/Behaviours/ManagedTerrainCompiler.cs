@@ -2,8 +2,6 @@ using Unity.Mathematics;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-
-using System;
 using System.IO;
 
 
@@ -23,8 +21,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         [HideInInspector]
         public bool dirty;
 
-        [HideInInspector]
-        public Dictionary<string, int> DispatchIndices {  get; private set; }
         public ComputeShader shader;
 
         // Every time the user updates a field, we will re-transpile (to check for hash-differences) and re-compile if needed
@@ -63,7 +59,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             string source = Transpile();
-            //Debug.Log(source);
+            string name = this.gameObject.name.ToLower().Replace(' ', '_');
 
             if (!AssetDatabase.IsValidFolder("Assets/Voxel Terrain/Compute/")) {
                 // TODO: Use package cache instead? would it work???
@@ -71,8 +67,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 AssetDatabase.CreateFolder("Assets/Voxel Terrain", "Compute");
             }
 
-            string filePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute";
-            string metaFilePath = "Assets/Voxel Terrain/Compute/" + name.ToLower() + ".compute.meta";
+            string filePath = "Assets/Voxel Terrain/Compute/" + name + ".compute";
+            string metaFilePath = "Assets/Voxel Terrain/Compute/" + name + ".compute.meta";
 
             /*
             if (File.Exists(filePath)) {
@@ -135,17 +131,14 @@ namespace jedjoud.VoxelTerrain.Generation {
             // TODO: for SOME fucking reason debug name causes problems
             // unity doesn't seem to be saving the debugNames field or doing some fucky fucky shit with it. pls fix
             ctx = new TreeContext(false);
-            DispatchIndices = new Dictionary<string, int>();
             ctx.scopes = new List<TreeScope>();
 
             // Create the external inputs that we use inside the function scope
             ScopeArgument position = ScopeArgument.AsInput<float3>("position");
-            ScopeArgument id = ScopeArgument.AsInput<int3>("id");
-            ctx.position = position;
-            ctx.id = id;
+            //ScopeArgument id = ScopeArgument.AsInput<int3>("id");
 
             // Run the graph for the voxels pass
-            ManagedTerrainGraph.VoxelInput voxelInput = new ManagedTerrainGraph.VoxelInput() { position = (Variable<float3>)position.node, id = (Variable<int3>)id.node };
+            ManagedTerrainGraph.VoxelInput voxelInput = new ManagedTerrainGraph.VoxelInput() { position = (Variable<float3>)position.node };
             graph.Voxels(voxelInput, out ManagedTerrainGraph.VoxelOutput voxelOutput);
 
             // Create the scope and kernel for the voxel generation step
@@ -153,17 +146,19 @@ namespace jedjoud.VoxelTerrain.Generation {
             KernelBuilder voxelKernelBuilder = new KernelBuilder {
                 name = "CSVoxels",
                 arguments = new ScopeArgument[] {
-                    position, id,
+                    position,
                     ScopeArgument.AsOutput<float>("voxel", voxelOutput.density),
                     ScopeArgument.AsOutput<int>("material", 0)
                 },
                 dispatch = new VoxelKernelDispatch {
-                }
+                },
+                numThreads = new int3(8),
+                keywordGuards = new KeywordGuards(ComputeKeywords.OCTAL_READBACK, ComputeKeywords.PREVIEW, ComputeKeywords.SEGMENT_VOXELS),
             };
 
             // Create a specific new node for sampling from the voxel texture
             Variable<float> cachedDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
-                return $"unpackDensity(voxels_texture_read[{ctx.id.name}])";
+                return @$"unpackDensity(voxels_texture_read[(int3)((({position.name} - segment_offset) / (float3)physical_segment_size) * (float3)segment_size)]);";
             });
 
             // Run the graph for the props pass
@@ -181,7 +176,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             KernelBuilder propKernelBuilder = new KernelBuilder {
                 name = "CSProps",
                 arguments = new ScopeArgument[] {
-                    position, id,
+                    position,
                 },
                 customCallback = (TreeContext ctx) => {
                     cachedDensity.Handle(ctx);
@@ -189,11 +184,12 @@ namespace jedjoud.VoxelTerrain.Generation {
                 },
                 dispatch = new PropKernelDispatch {
                 },
-                keywordGuards = new KeywordGuards(ComputeDispatchUtils.OCTAL_READBACK_KEYWORD, true),
+                keywordGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
+                numThreads = new int3(32, 1, 1),
             };
 
-            voxelKernelBuilder.Build(ctx, DispatchIndices);
-            propKernelBuilder.Build(ctx, DispatchIndices);
+            voxelKernelBuilder.Build(ctx);
+            propKernelBuilder.Build(ctx);
 
             ctx.dispatches.Sort((KernelDispatch a, KernelDispatch b) => { return b.depth.CompareTo(a.depth); });
         }
@@ -206,7 +202,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             List<string> lines = new List<string>();
-            lines.Add($"#pragma multi_compile __ {ComputeDispatchUtils.OCTAL_READBACK_KEYWORD}\n");
+            lines.Add(ComputeKeywords.PRAGMA_MULTI_COMPILE);
+
             lines.AddRange(ctx.Properties);
             lines.Add("#include \"Packages/com.jedjoud.voxelterrain/Runtime/Compute/Imports.cginc\"");
 

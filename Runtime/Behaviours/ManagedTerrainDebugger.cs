@@ -4,12 +4,12 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
-using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class ManagedTerrainDebugger : MonoBehaviour {
         public bool debugGui;
+        public bool debugChunkBounds;
+        public bool debugSegmentBounds;
         private World world;
 
         private void Start() {
@@ -58,24 +58,24 @@ namespace jedjoud.VoxelTerrain.Generation {
             EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMeshReady), typeof(WorldRenderBounds));
             EntityQuery segmentsQuery = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment));
 
-            NativeArray<WorldRenderBounds> chunkBounds = meshedChunks.ToComponentDataArray<WorldRenderBounds>(Allocator.Temp);
-
-            foreach (var chunk in chunkBounds) {
-                Gizmos.DrawWireCube(chunk.Value.Center, chunk.Value.Extents * 2);
+            if (debugChunkBounds) {
+                Gizmos.color = Color.red;
+                NativeArray<WorldRenderBounds> chunkBounds = meshedChunks.ToComponentDataArray<WorldRenderBounds>(Allocator.Temp);
+                foreach (var chunk in chunkBounds) {
+                    Gizmos.DrawWireCube(chunk.Value.Center, chunk.Value.Extents * 2);
+                }
             }
 
-            chunkBounds.Dispose();
+            if (debugSegmentBounds) {
+                Gizmos.color = Color.green;
+                NativeArray<TerrainSegment> segments = segmentsQuery.ToComponentDataArray<TerrainSegment>(Allocator.Temp);
+                foreach (var segment in segments) {
+                    float3 worldPosition = segment.position * SegmentUtils.PHYSICAL_SEGMENT_SIZE;
+                    float3 worldSize = new float3(1) * SegmentUtils.PHYSICAL_SEGMENT_SIZE;
 
-            NativeArray<TerrainSegment> segments = segmentsQuery.ToComponentDataArray<TerrainSegment>(Allocator.Temp);
-
-            foreach (var segment in segments) {
-                float3 worldPosition = segment.position * SegmentUtils.PHYSICAL_SEGMENT_SIZE;
-                float3 worldSize = new float3(1) * SegmentUtils.PHYSICAL_SEGMENT_SIZE;
-
-                Gizmos.DrawWireCube(worldPosition, worldSize);
+                    Gizmos.DrawWireCube(worldPosition, worldSize);
+                }
             }
-
-            segments.Dispose();
         }
     }
 }

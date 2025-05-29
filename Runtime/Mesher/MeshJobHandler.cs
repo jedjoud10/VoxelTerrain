@@ -44,11 +44,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
             return jobHandle.IsCompleted && !Free && manager.Exists(entity);
         }
 
-        public void BeginJob(Entity entity, NativeArray<Voxel> srcVoxels, JobHandle dependency) {
+        public void BeginJob(Entity entity, ref TerrainChunkVoxels chunkVoxels, JobHandle dependency) {
             Free = false;
             this.entity = entity;
 
-            dependency = new AsyncMemCpy<Voxel> { src = srcVoxels, dst = this.voxels }.Schedule(dependency);
+            dependency = new AsyncMemCpy<Voxel> { src = chunkVoxels.inner, dst = this.voxels }.Schedule(dependency);
+            chunkVoxels.asyncReadJob = dependency;
+
             code.Schedule(voxels, dependency);
             normals.Schedule(voxels, dependency);
             core.Schedule(voxels, ref normals, ref code);

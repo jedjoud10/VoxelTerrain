@@ -142,7 +142,9 @@ namespace jedjoud.VoxelTerrain {
 
 
                     state.EntityManager.SetComponentData<TerrainChunkVoxels>(entity, new TerrainChunkVoxels {
-                        inner = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory)
+                        inner = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
+                        asyncWriteJob = default,
+                        asyncReadJob = default,
                     });
 
                     chunksToShow.Add(entity);
@@ -220,7 +222,11 @@ namespace jedjoud.VoxelTerrain {
             chunksToShow.Dispose();
             chunksToDestroy.Dispose();
 
-            foreach (var voxels in SystemAPI.Query<TerrainChunkVoxels>()) {
+            foreach (var _voxels in SystemAPI.Query<RefRW<TerrainChunkVoxels>>()) {
+                ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
+                voxels.disposed = true;
+                voxels.asyncReadJob.Complete();
+                voxels.asyncWriteJob.Complete();
                 if (voxels.inner.IsCreated) {
                     voxels.inner.Dispose();
                 }

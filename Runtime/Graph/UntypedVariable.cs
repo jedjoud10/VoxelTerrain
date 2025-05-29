@@ -1,6 +1,3 @@
-using System;
-
-
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract class UntypedVariable {
         public virtual void Handle(TreeContext context) {

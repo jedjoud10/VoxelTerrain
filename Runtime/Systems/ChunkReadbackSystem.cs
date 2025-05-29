@@ -36,7 +36,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             countersFetched = false;
             disposed = false;
 
-            octalExecutor = new OctalReadbackExecutor(VoxelUtils.SIZE * VoxelUtils.OCTAL_CHUNK_SIZE_RATIO);
+            octalExecutor = new OctalReadbackExecutor();
             negPosOctalCountersBuffer = new ComputeBuffer(VoxelUtils.OCTAL_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
         }
 
@@ -85,9 +85,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             NativeArray<Entity> entitiesArray = query.ToEntityArray(Allocator.Temp);
 
             if (voxelsArray.Length == 0) {
-                voxelsArray.Dispose();
-                entitiesArray.Dispose();
-                chunksArray.Dispose();
                 return;
             }
                 
@@ -159,12 +156,22 @@ namespace jedjoud.VoxelTerrain.Generation {
                             // we can just do parallel copies from the source buffer at the appropriate offset
                             uint* src = pointer + (VoxelUtils.VOLUME * j);
 
-                            uint* dst = (uint*) EntityManager.GetComponentData<TerrainChunkVoxels>(entity).inner.GetUnsafePtr();
-                            copies[j] = new UnsafeAsyncMemCpy {
+                            RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity);
+                            ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
+
+                            if (voxels.disposed)
+                                return;
+
+
+                            uint* dst = (uint*)voxels.inner.GetUnsafePtr();
+                            JobHandle handle = new UnsafeAsyncMemCpy {
                                 src = (void*)src,
                                 dst = (void*)dst,
                                 byteSize = Voxel.size * VoxelUtils.VOLUME,
                             }.Schedule();
+
+                            copies[j] = handle;
+                            voxels.asyncWriteJob = handle;
                         }
 
                         pendingCopies = JobHandle.CombineDependencies(copies.Slice(0, entities.Count));
@@ -186,10 +193,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             );
 
             Graphics.ExecuteCommandBuffer(cmds);
-
-            voxelsArray.Dispose();
-            entitiesArray.Dispose();
-            chunksArray.Dispose();
         }
 
         private void TryCheckIfReadbackComplete() {

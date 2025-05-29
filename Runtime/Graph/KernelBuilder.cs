@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
+using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class KernelBuilder {
@@ -7,9 +9,10 @@ namespace jedjoud.VoxelTerrain.Generation {
         public ScopeArgument[] arguments;
         public Action<TreeContext> customCallback;
         public KernelDispatch dispatch;
+        public int3 numThreads;
         public KeywordGuards keywordGuards;
 
-        public void Build(TreeContext ctx, Dictionary<string, int> dispatchIndices) {
+        public void Build(TreeContext ctx) {
             // get rid of the 'CS' at the start
             string scopeName = name.Substring(2);
 
@@ -35,10 +38,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             dispatch.scopeName = scopeName;
             dispatch.scopeIndex = idx;
             dispatch.keywordGuards = keywordGuards;
-
-            int dspIdx = ctx.dispatches.Count;
+            dispatch.numThreads = numThreads;
             ctx.dispatches.Add(dispatch);
-            dispatchIndices.Add(name, dspIdx);
         }
     }
 }

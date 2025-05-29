@@ -1,15 +1,8 @@
+/*
 struct BlittableProp {
     uint2 packed_position_and_scale;
-    uint2 packed_rotation_dispatch_index_prop_variant_padding;
 };
-
-struct GpuProp {
-    float3 position;
-	float3 rotation;
-    float scale;
-	uint type;
-	uint variant;
-};
+*/
 
 uint2 PackPositionAndScale(float3 position, float scale) {
 	uint x = f32tof16(position.x);
@@ -61,9 +54,11 @@ uint UnpackVariant(uint2 packed) {
 	return packed.y >> 16;
 }
 
+/*
 BlittableProp PackProp(GpuProp input) {
 	BlittableProp packed;
 	packed.packed_position_and_scale = PackPositionAndScale(input.position, input.scale);
 	packed.packed_rotation_dispatch_index_prop_variant_padding = PackRotationAndVariantAndId(input.rotation, input.variant);
 	return packed;
 }
+*/

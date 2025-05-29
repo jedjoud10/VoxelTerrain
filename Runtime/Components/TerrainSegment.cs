@@ -7,6 +7,12 @@ namespace jedjoud.VoxelTerrain.Segments {
         public int3 position;
         public LevelOfDetail lod;
 
+        public float3 WorldPosition => SegmentUtils.PHYSICAL_SEGMENT_SIZE * position;
+        public float Size => SegmentUtils.PHYSICAL_SEGMENT_SIZE;
+        public float3 DispatchScale => (SegmentUtils.PHYSICAL_SEGMENT_SIZE / VoxelUtils.PHYSICAL_CHUNK_SIZE);
+        //public float3 PropScale => (SegmentUtils.PHYSICAL_SEGMENT_SIZE / SegmentUtils.SEGMENT_SIZE);
+
+
         public bool Equals(TerrainSegment other) {
             return math.all(position == other.position) && lod == other.lod;
         }

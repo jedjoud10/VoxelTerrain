@@ -1,4 +1,3 @@
-using jedjoud.VoxelTerrain.Props;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {

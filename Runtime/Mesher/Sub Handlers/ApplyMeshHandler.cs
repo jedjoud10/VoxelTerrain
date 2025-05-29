@@ -4,7 +4,6 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using static jedjoud.VoxelTerrain.VoxelUtils;
-using static jedjoud.VoxelTerrain.BatchUtils;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct ApplyMeshHandler : ISubHandler {

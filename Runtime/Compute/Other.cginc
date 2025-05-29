@@ -99,7 +99,7 @@ float4 Remap(float4 v, float4 minOld, float4 maxOld, float4 minNew, float4 maxNe
 	return minNew + (v - minOld) * (maxNew - minNew) / (maxOld - minOld);
 }
 
-float4 SampleBounded(Texture3D tex, SamplerState test, float3 uv, float lod, float texSize)
+float4 SampleBounded(Texture2D tex, SamplerState test, float2 uv, float lod, float texSize)
 {
 	if (any(uv < 0.0) || any(uv >= 1.0))
 	{
@@ -107,31 +107,5 @@ float4 SampleBounded(Texture3D tex, SamplerState test, float3 uv, float lod, flo
 		return float4(aaa, aaa, aaa, aaa);
 	}
 	
-	//return tex[uint3(uv * texSize + 1.0/texSize)];
 	return tex.SampleLevel(test, uv + (0.5 / texSize), lod);
-}
-
-float4 SampleBounded(Texture2D tex, SamplerState test, float2 uv, float lod, int reduction, uint2 id2)
-{
-	/*
-	if (any(uv < 0.0) || any(uv >= 1.0))
-	{
-		const float aaa = -10000;
-		return float4(aaa, aaa, aaa, aaa);
-	}
-	
-	//return tex[uint3(uv * texSize + 1.0/texSize)];
-	//return tex.SampleLevel(test, uv, lod);
-	*/
-	//return float4(uv.x* 100, 0, 0, 0);
-	//uv -= 0.5;
-	
-	float redfactor = size / reduction;
-	
-	
-	//uv += 0.5;
-
-	uv *= (redfactor / (redfactor + 1));
-	//return tex.SampleLevel(test, uv, lod);
-	return tex.Load(uint3(id2 / 2, 0));
 }

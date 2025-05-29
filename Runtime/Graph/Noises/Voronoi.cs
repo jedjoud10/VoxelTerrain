@@ -1,5 +1,4 @@
 using System;
-using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class VoronoiNode<T> : AbstractNoiseNode<T> {

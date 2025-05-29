@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -28,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Vector3 scale = Vector3.one;
         public Vector3 offset;
 
-        private SimpleExecutor executor;
+        private PreviewExecutor executor;
 
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
@@ -78,12 +77,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             ManagedTerrainCompiler compiler = GetComponent<ManagedTerrainCompiler>();
             ManagedTerrainSeeder seeder = GetComponent<ManagedTerrainSeeder>();
 
-            if (compiler == null || seeder == null || compiler.DispatchIndices == null) {
-                Debug.LogWarning($"Compiler is null: {compiler == null}, Seeder is null: {seeder == null}, Dispatch Indices is null: {compiler.DispatchIndices == null}");
+            if (compiler == null || seeder == null) {
+                Debug.LogWarning($"Compiler is null: {compiler == null}, Seeder is null: {seeder == null}");
                 return;
             }
 
-            SimpleExecutorParameters parameters = new SimpleExecutorParameters() {
+            PreviewExecutorParameters parameters = new PreviewExecutorParameters() {
                 scale = scale,
                 offset = offset,
                 kernelName = "CSVoxels",
@@ -95,7 +94,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (executor != null)
                 executor.DisposeResources();
 
-            executor = new SimpleExecutor(size);
+            executor = new PreviewExecutor(size);
             executor.Execute(parameters);
             
             RenderTexture voxels = (RenderTexture)executor.Textures["voxels"];

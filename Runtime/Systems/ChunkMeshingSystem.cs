@@ -87,32 +87,29 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 }
             }
 
-            NativeArray<TerrainChunkVoxels> voxelsArray = query.ToComponentDataArray<TerrainChunkVoxels>(Allocator.Temp);
             NativeArray<Entity> entitiesArray = query.ToEntityArray(Allocator.Temp);
 
             MeshJobHandler[] freeHandlers = handlers.AsEnumerable().Where(x => x.Free).ToArray();
             int numChunksToProcess = math.min(freeHandlers.Length, entitiesArray.Length);
 
             if (numChunksToProcess == 0) {
-                voxelsArray.Dispose();
-                entitiesArray.Dispose();
                 return;
             }
 
             for (int i = 0; i < numChunksToProcess; i++) {
                 MeshJobHandler handler = freeHandlers[i];
                 Entity chunkEntity = entitiesArray[i];
-                NativeArray<Voxel> voxels = voxelsArray[i].inner;
+
+                RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(chunkEntity);
 
                 Profiler.BeginSample("Begin Mesh Jobs");
-                handler.BeginJob(chunkEntity, voxels, default);
+                handler.BeginJob(chunkEntity, ref _voxels.ValueRW, default);
                 Profiler.EndSample();
 
                 SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, false);
                 SystemAPI.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkEntity, false);
             }
 
-            voxelsArray.Dispose();
             entitiesArray.Dispose();
         }
 

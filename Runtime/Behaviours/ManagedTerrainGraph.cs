@@ -17,11 +17,22 @@ namespace jedjoud.VoxelTerrain.Generation {
                 chain = null;
             }
 
-            public void TrySpawnProp(Variable<bool> shouldSpawn, Props.GenerationProp prop) {
+            public void SpawnProp(Variable<bool> shouldSpawn, Props.GenerationProp prop) {
                 chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
                     Props.GenerationProp copy = prop;
+                    copy.position.Handle(ctx);
+                    copy.scale.Handle(ctx);
                     shouldSpawn.Handle(ctx);
-                    ctx.AddLine("// this is some very cool prop spawning call....");
+                    ctx.AddLine($@"
+// this is some very cool prop spawning call....
+if ({ctx[shouldSpawn]}) {{
+    int index = 0;
+    InterlockedAdd(temp_counters_buffer[{prop.type}], 1, index);
+    index += temp_buffer_offsets_buffer[{prop.type}];
+    temp_buffer[index] = PackPositionAndScale({ctx[prop.position]}, {ctx[prop.scale]});
+}}
+");
+                    
                 });
             }
         }
@@ -34,7 +45,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public class VoxelInput {
             public Variable<float3> position;
-            public Variable<int3> id;
         }
 
         public class VoxelOutput {
