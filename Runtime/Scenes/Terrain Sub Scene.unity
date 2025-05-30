@@ -210,7 +210,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1871524687913741539, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
       propertyPath: maxDepth
-      value: 5
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 5863026420594882244, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
       propertyPath: m_LocalPosition.x

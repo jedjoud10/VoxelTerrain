@@ -4,34 +4,35 @@ using Unity.Rendering;
 using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
     [UpdateAfter(typeof(MeshingSystem))]
     public partial class UnregisterMeshSystem : SystemBase {
         private EntitiesGraphicsSystem graphics;
-
+        
         protected override void OnCreate() {
             graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
         }
-        protected override void OnUpdate() {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<UnregisterMeshCleanup, TerrainChunkMeshReady>().WithAbsent<MaterialMeshInfo>().WithAbsent<LocalToWorld>().Build();
 
-            EntityCommandBuffer buffer = new EntityCommandBuffer(Allocator.Temp);
-
-            NativeArray<Entity> entities = query.ToEntityArray(Allocator.Temp);
-            NativeArray<UnregisterMeshCleanup> cleanup = query.ToComponentDataArray<UnregisterMeshCleanup>(Allocator.Temp);
-
-            buffer.RemoveComponent<UnregisterMeshCleanup>(entities);
-            buffer.DestroyEntity(entities);
-
-            foreach (UnregisterMeshCleanup info in cleanup) {
-                graphics.UnregisterMesh(info.meshId);
+        private void Amogus() {
+            if (!SystemAPI.HasSingleton<TerrainUnregisterMeshBuffer>()) {
+                return;
             }
 
-            buffer.Playback(EntityManager);
-            buffer.Dispose();
+            var buffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
 
-            entities.Dispose();
-            cleanup.Dispose();
+            foreach (var cleanup in buffer) {
+                graphics.UnregisterMesh(cleanup.meshId);
+            }
+
+            buffer.Clear();
+        }
+
+        protected override void OnUpdate() {
+            Amogus();
+        }
+
+        protected override void OnStopRunning() {
+            Amogus();
         }
     }
 }

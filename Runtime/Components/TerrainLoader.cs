@@ -5,6 +5,6 @@ namespace jedjoud.VoxelTerrain {
     public struct TerrainLoader : IComponentData {
         public float octreeNodeFactor;
         public int3 segmentExtent;
-        public float segmentLodFactor;
+        public int3 segmentExtentHigh;
     }
 }

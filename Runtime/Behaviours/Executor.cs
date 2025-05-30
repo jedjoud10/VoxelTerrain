@@ -39,12 +39,23 @@ namespace jedjoud.VoxelTerrain.Generation {
 
 
         public GraphicsFence ExecuteWithInvocationCount(int3 invocations, P parameters, GraphicsFence? previous = null) {
+            if (parameters == null)
+                throw new ArgumentNullException("Missing execution parameters");
+
             ManagedTerrainCompiler compiler = parameters.compiler;
             ManagedTerrainSeeder seeder = parameters.seeder;
 
-            ComputeShader shader = compiler.shader;
+            if (compiler == null)
+                throw new ArgumentNullException("Compiler not set or missing");
+
+            if (seeder == null)
+                throw new ArgumentNullException("Seed not set or missing");
+
+            if (compiler.ctx == null)
+                throw new ArgumentNullException("Compiler context missing (need to add more ParsedTranspilation() guards oops...)");
 
             // dawg...
+            ComputeShader shader = compiler.shader;
             KernelDispatch dispatch = compiler.ctx.dispatches.Find(x => x.name == parameters.kernelName);
             
             int id = shader.FindKernel(parameters.kernelName);

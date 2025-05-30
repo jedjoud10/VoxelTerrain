@@ -113,7 +113,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
                 EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, false);
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, false);
-                EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(entity, false);
             }
 
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
@@ -156,12 +155,13 @@ namespace jedjoud.VoxelTerrain.Generation {
                             // we can just do parallel copies from the source buffer at the appropriate offset
                             uint* src = pointer + (VoxelUtils.VOLUME * j);
 
-                            RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity);
-                            ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
+                            bool enabled = EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity);
 
-                            if (voxels.disposed)
+                            if (!enabled)
                                 return;
 
+                            RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity);
+                            ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
 
                             uint* dst = (uint*)voxels.inner.GetUnsafePtr();
                             JobHandle handle = new UnsafeAsyncMemCpy {
@@ -217,13 +217,13 @@ namespace jedjoud.VoxelTerrain.Generation {
                     // Skip empty chunks!!!
                     if (skipEmptyChunks && skipped) {
                         EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, false);
-                        EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(entity, false);
+                        EntityManager.SetComponentEnabled<TerrainChunkMesh>(entity, false);
 
                         // this chunk will directly go to the end of pipe, no need to deal with it anymore
                         EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, true);
                     } else {
                         EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
-                        EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(entity, false);
+                        EntityManager.SetComponentEnabled<TerrainChunkMesh>(entity, false);
                     }
                 }
 

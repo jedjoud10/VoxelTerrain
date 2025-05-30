@@ -64,8 +64,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hash: 976774944
-  dirty: 0
+  hash: 674370793
+  dirty: 1
   shader: {fileID: 7200000, guid: 55e5bc6630ac7ad4786b230b69a61640, type: 3}
 --- !u!114 &4781938216130763360
 MonoBehaviour:
@@ -151,6 +151,18 @@ MonoBehaviour:
       x: 2
       y: 0.2
   octaves: 7
+  propSpawnProbability:
+    value: 1
+  propMinDotProductVal:
+    value: 0.8
+  propNoiseScale:
+    value: 0.01
+  propNoiseAmplitude:
+    value: 2
+  propNoiseOffset:
+    value: 0
+  propRotationFactor:
+    value: 0.9
 --- !u!114 &566389634701878972
 MonoBehaviour:
   m_ObjectHideFlags: 0

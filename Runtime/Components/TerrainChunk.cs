@@ -1,7 +1,6 @@
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 
 namespace jedjoud.VoxelTerrain {
     public struct TerrainChunk : IComponentData {

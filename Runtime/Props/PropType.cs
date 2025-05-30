@@ -29,6 +29,6 @@ namespace jedjoud.VoxelTerrain.Props {
     [Flags]
     public enum PropSpawnBehavior {
         None = 0,
-        SpawnEntities = 1 << 1,
+        SpawnEntities = 1,
     }
 }

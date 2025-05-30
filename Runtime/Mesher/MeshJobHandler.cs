@@ -73,7 +73,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             entity = this.entity;
 
             int[] temp = skirt.skirtForcedTriangleCounter.ToArray();
-            bool empty = core.vertexCounter.Count == 0 && core.triangleCounter.Count == 0 && temp.All(x => x == 0) && skirt.skirtVertexCounter.Count == 0;
+            bool empty = core.triangleCounter.Count == 0 && temp.All(x => x == 0);
 
             if (empty) {
                 outChunkMesh = null;

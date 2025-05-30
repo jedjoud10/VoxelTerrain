@@ -82,6 +82,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
             }
 
+            if (compiler.ctx == null) {
+                compiler.ParsedTranspilation();
+            }
+
             PreviewExecutorParameters parameters = new PreviewExecutorParameters() {
                 scale = scale,
                 offset = offset,

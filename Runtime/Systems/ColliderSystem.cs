@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public JobHandle dep;
             public NativeArray<Entity> entities;
             public NativeArray<BlobAssetReference<Collider>> colliders;
-            public UnsafeList<TerrainChunkMeshReady> what;
+            public UnsafeList<TerrainChunkMesh> what;
 
             public void Dispose() {
                 dep.Complete();
@@ -29,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [BurstCompile(CompileSynchronously = true)]
         struct BakingJob : IJobParallelFor {
             [ReadOnly]
-            public UnsafeList<TerrainChunkMeshReady> meshes;
+            public UnsafeList<TerrainChunkMesh> meshes;
             [WriteOnly]
             public NativeArray<BlobAssetReference<Collider>> colliders;
 
@@ -79,7 +79,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         private void TryFetchNewBatch(ref SystemState state) {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkRequestCollisionTag, TerrainChunkMeshReady>().Build();
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkRequestCollisionTag, TerrainChunkMesh>().Build();
 
             if (query.CalculateEntityCount() == 0)
                 return;
@@ -88,11 +88,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // we deallocate these later when we complete the jobs
             NativeArray<Entity> entities = query.ToEntityArray(Allocator.Persistent);
             NativeArray<BlobAssetReference<Collider>> colliders = new NativeArray<BlobAssetReference<Collider>>(entities.Length, Allocator.Persistent);
-            UnsafeList<TerrainChunkMeshReady> what = new UnsafeList<TerrainChunkMeshReady>(entities.Length, Allocator.Persistent);
+            UnsafeList<TerrainChunkMesh> what = new UnsafeList<TerrainChunkMesh>(entities.Length, Allocator.Persistent);
 
             // temp allocation so we don't need to dispose of it
             // (we can't anyways, since we can't dispose nested containers in jobs, even the fucking deferred dispose ones)
-            NativeArray<TerrainChunkMeshReady> meshes = query.ToComponentDataArray<TerrainChunkMeshReady>(Allocator.Temp);
+            NativeArray<TerrainChunkMesh> meshes = query.ToComponentDataArray<TerrainChunkMesh>(Allocator.Temp);
             what.Resize(entities.Length);
             what.CopyFrom(meshes);
 

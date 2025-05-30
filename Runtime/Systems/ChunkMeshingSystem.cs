@@ -120,39 +120,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (stats.empty)
                     return;
 
-                {
-                    EntityManager.SetComponentEnabled<TerrainChunkMeshReady>(chunkEntity, true);
-                    NativeArray<float3> vertices = new NativeArray<float3>(stats.vertices.Length, Allocator.Persistent);
-                    NativeArray<int> indices = new NativeArray<int>(stats.indices.Length, Allocator.Persistent);
-
-                    vertices.CopyFrom(stats.vertices);
-                    indices.CopyFrom(stats.indices);
-
-                    EntityManager.SetComponentData<TerrainChunkMeshReady>(chunkEntity, new TerrainChunkMeshReady {
-                        vertices = vertices,
-                        indices = indices
-                    });
-                }
                 // we MUST take a copy of TerrainChunk here (we cannot use GetComponentRW)
                 // because we execute RenderMeshUtility.AddComponents right after
                 // RenderMeshUtility.AddComponents changes the archetype of the chunk entity, invalidating the reference we hold to TerrainChunk
                 TerrainChunk chunk = SystemAPI.GetComponent<TerrainChunk>(chunkEntity);
                 OctreeNode node = chunk.node;
-                EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkEntity, chunk.generateCollisions);
                 
-
                 BatchMeshID meshId = graphics.RegisterMesh(mesh);
                 MaterialMeshInfo materialMeshInfo = new MaterialMeshInfo(mainMeshMaterialId, meshId, 0);
-
-                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
-
-                EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
-
-                EntityManager.AddComponent<UnregisterMeshCleanup>(chunkEntity);
-
-                EntityManager.SetComponentData<UnregisterMeshCleanup>(chunkEntity, new UnregisterMeshCleanup {
-                    meshId = meshId
-                });
 
                 float scalingFactor = node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE;
                 AABB localRenderBounds = new MinMaxAABB {
@@ -164,13 +139,34 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 worldRenderBounds.Center += (float3)node.position;
                 worldRenderBounds.Extents *= scalingFactor;
 
-                EntityManager.SetComponentData<RenderBounds>(chunkEntity, new RenderBounds() {
-                    Value = localRenderBounds,
-                });
+                if (stats.indexCount > 0) {
 
-                EntityManager.SetComponentData<WorldRenderBounds>(chunkEntity, new WorldRenderBounds() {
-                    Value = worldRenderBounds
-                });
+                    EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkEntity, chunk.generateCollisions);
+                    RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
+
+                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+
+                    NativeArray<float3> vertices = new NativeArray<float3>(stats.vertices.Length, Allocator.Persistent);
+                    NativeArray<int> indices = new NativeArray<int>(stats.indices.Length, Allocator.Persistent);
+
+                    vertices.CopyFrom(stats.vertices);
+                    indices.CopyFrom(stats.indices);
+
+                    EntityManager.SetComponentEnabled<TerrainChunkMesh>(chunkEntity, true);
+                    EntityManager.SetComponentData<TerrainChunkMesh>(chunkEntity, new TerrainChunkMesh {
+                        vertices = vertices,
+                        indices = indices,
+                        meshId = meshId,
+                    });
+
+                    EntityManager.SetComponentData<RenderBounds>(chunkEntity, new RenderBounds() {
+                        Value = localRenderBounds,
+                    });
+
+                    EntityManager.SetComponentData<WorldRenderBounds>(chunkEntity, new WorldRenderBounds() {
+                        Value = worldRenderBounds
+                    });
+                }
 
                 for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
                     if (stats.forcedSkirtFacesTriCount[skirtIndex] == 0)

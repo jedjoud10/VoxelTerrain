@@ -1,7 +1,5 @@
-using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Segments;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {

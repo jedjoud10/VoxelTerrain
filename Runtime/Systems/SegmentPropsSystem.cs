@@ -1,7 +1,6 @@
 using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -50,10 +49,11 @@ namespace jedjoud.VoxelTerrain.Segments {
 
         private bool countersFetched;
         private bool propsFetched;
+        private bool needPropsToBeFetched;
         private bool free;
         private bool disposed;
         private bool initialized;
-        private Entity segmentEntity;
+        private Entity entity;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadySystems>();
@@ -62,6 +62,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             initialized = false;
             free = true;
             disposed = false;
+            propExecutor = new SegmentPropExecutor();
         }
 
         protected override void OnUpdate() {
@@ -80,7 +81,6 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
             _ready.ValueRW.segmentProps = free;
-            propExecutor = new SegmentPropExecutor();
         }
 
 
@@ -140,7 +140,11 @@ namespace jedjoud.VoxelTerrain.Segments {
             if (entity == Entity.Null)
                 return;
 
-            segmentEntity = entity;
+            this.entity = entity;
+            needPropsToBeFetched = segment.lod == TerrainSegment.LevelOfDetail.High;
+            countersFetched = false;
+            propsFetched = false;
+
             int invocations = (int)maxCombinedTempProps;
 
             Texture segmentDensityTexture = dispatcher.voxelExecutor.Textures["densities"];
@@ -171,15 +175,18 @@ namespace jedjoud.VoxelTerrain.Segments {
                 }
             );
 
-            cmds.RequestAsyncReadbackIntoNativeArray(
-                ref tempBufferReadback,
-                tempBuffer,
-                delegate (AsyncGPUReadbackRequest asyncRequest) {
-                    if (disposed)
-                        return;
-                    propsFetched = true;
-                }
-            );
+            if (needPropsToBeFetched) {
+                cmds.RequestAsyncReadbackIntoNativeArray(
+                    ref tempBufferReadback,
+                    tempBuffer,
+                    delegate (AsyncGPUReadbackRequest asyncRequest) {
+                        if (disposed)
+                            return;
+                        propsFetched = true;
+                    }
+                );
+            }
+
 
             free = false;
 
@@ -189,56 +196,58 @@ namespace jedjoud.VoxelTerrain.Segments {
 
 
         private void TryCheckIfReadbackComplete(TerrainPropsConfig config) {
-            if (countersFetched && propsFetched) {
+            if (countersFetched && (propsFetched || !needPropsToBeFetched)) {
                 free = true;
                 countersFetched = false;
                 propsFetched = false;
 
-                int lilSum = 0;
-                for (int i = 0; i < types; i++) {
-                    lilSum += (int)tempCounters[i];
-                }
+                if (needPropsToBeFetched) {
+                    if (!EntityManager.Exists(entity))
+                        return;
 
-                if (!EntityManager.Exists(segmentEntity))
-                    return;
+                    int lilSum = 0;
+                    for (int i = 0; i < types; i++) {
+                        lilSum += (int)tempCounters[i];
+                    }
 
-                EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+                    EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
 
-                int index = 0;
-                for (int i = 0; i < types; i++) {
-                    int tempSubBufferOffset = (int)tempBufferOffsets[i];
-                    int tempSubBufferCount = (int)tempCounters[i];
-                    if (tempSubBufferCount > 0) {
-                        NativeArray<uint4> raw = tempBufferReadback.GetSubArray(tempSubBufferOffset, tempSubBufferCount);
-                        NativeArray<BlittableProp> transmuted = raw.Reinterpret<BlittableProp>();
-                        Entity[] variants = config.baked[i].variants;
+                    int index = 0;
+                    for (int i = 0; i < types; i++) {
+                        int tempSubBufferOffset = (int)tempBufferOffsets[i];
+                        int tempSubBufferCount = (int)tempCounters[i];
+                        if (tempSubBufferCount > 0 && config.props[i].SpawnEntities) {
+                            NativeArray<uint4> raw = tempBufferReadback.GetSubArray(tempSubBufferOffset, tempSubBufferCount);
+                            NativeArray<BlittableProp> transmuted = raw.Reinterpret<BlittableProp>();
+                            Entity[] variants = config.baked[i].variants;
 
-                        for (int j = 0; j < tempSubBufferCount; j++) {
-                            BlittableProp prop = transmuted[j];
-                            float3 position = 0f;
-                            float scale = 1f;
-                            quaternion rotation = quaternion.identity;
-                            byte variant = 0;
-                            
-                            PropUtils.UnpackProp(prop, out position, out scale, out rotation, out variant);
+                            for (int j = 0; j < tempSubBufferCount; j++) {
+                                BlittableProp prop = transmuted[j];
+                                float3 position = 0f;
+                                float scale = 1f;
+                                quaternion rotation = quaternion.identity;
+                                byte variant = 0;
 
-                            if (variant >= variants.Length) {
-                                Debug.LogWarning($"Variant index {variant} exceeds prop type's (type: {i}) defined variant count {variants.Length}");
-                                continue;
+                                PropUtils.UnpackProp(prop, out position, out scale, out rotation, out variant);
+
+                                if (variant >= variants.Length) {
+                                    Debug.LogWarning($"Variant index {variant} exceeds prop type's (type: {i}) defined variant count {variants.Length}");
+                                    continue;
+                                }
+
+                                Entity prototype = variants[variant];
+                                Entity entity = ecb.Instantiate(prototype);
+
+                                ecb.SetComponent<LocalTransform>(entity, LocalTransform.FromPositionRotationScale(position, rotation, scale));
+                                ecb.AppendToBuffer(this.entity, new TerrainSegmentOwnedProp { entity = entity });
+                                index++;
                             }
-
-                            Entity prototype = variants[variant];
-                            Entity entity = ecb.Instantiate(prototype);
-
-                            ecb.SetComponent<LocalTransform>(entity, LocalTransform.FromPositionRotationScale(position, rotation, scale));
-                            ecb.AppendToBuffer(segmentEntity, new TerrainSegmentOwnedProp { entity = entity });
-                            index++;
                         }
                     }
-                }
 
-                ecb.Playback(EntityManager);
-                ecb.Dispose();
+                    ecb.Playback(EntityManager);
+                    ecb.Dispose();
+                }
             }
         }
 

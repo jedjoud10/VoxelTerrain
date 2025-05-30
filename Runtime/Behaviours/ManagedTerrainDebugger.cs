@@ -29,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             EntityQuery totalChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk));
-            EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMeshReady));
+            EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh));
             EntityQuery chunksAwaitingReadback = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestReadbackTag));
             EntityQuery chunksAwaitingMeshing = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestMeshingTag));
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
@@ -55,11 +55,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (world == null)
                 return;
 
-            EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMeshReady), typeof(WorldRenderBounds));
+            EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds));
             EntityQuery segmentsQuery = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment));
 
             if (debugChunkBounds) {
-                Gizmos.color = Color.red;
+                Gizmos.color = Color.grey;
                 NativeArray<WorldRenderBounds> chunkBounds = meshedChunks.ToComponentDataArray<WorldRenderBounds>(Allocator.Temp);
                 foreach (var chunk in chunkBounds) {
                     Gizmos.DrawWireCube(chunk.Value.Center, chunk.Value.Extents * 2);
@@ -67,11 +67,17 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             if (debugSegmentBounds) {
-                Gizmos.color = Color.green;
+
                 NativeArray<TerrainSegment> segments = segmentsQuery.ToComponentDataArray<TerrainSegment>(Allocator.Temp);
                 foreach (var segment in segments) {
-                    float3 worldPosition = segment.position * SegmentUtils.PHYSICAL_SEGMENT_SIZE;
+                    float3 worldPosition = ((float3)(segment.position) + 0.5f) * SegmentUtils.PHYSICAL_SEGMENT_SIZE;
                     float3 worldSize = new float3(1) * SegmentUtils.PHYSICAL_SEGMENT_SIZE;
+
+                    if (segment.lod == TerrainSegment.LevelOfDetail.Low) {
+                        Gizmos.color = Color.green;
+                    } else {
+                        Gizmos.color = Color.red;
+                    }
 
                     Gizmos.DrawWireCube(worldPosition, worldSize);
                 }

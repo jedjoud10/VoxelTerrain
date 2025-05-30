@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices.WindowsRuntime;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {

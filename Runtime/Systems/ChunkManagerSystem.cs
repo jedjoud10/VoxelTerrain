@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 using Unity.Rendering;
 using Unity.Transforms;
 
@@ -35,19 +36,18 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainChunkRequestMeshingTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkRequestCollisionTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkVoxelsReadyTag>(chunkPrototype);
-            mgr.AddComponent<TerrainChunkMeshReady>(chunkPrototype);
+            mgr.AddComponent<TerrainChunkMesh>(chunkPrototype);
             mgr.AddComponent<TerrainChunkEndOfPipeTag>(chunkPrototype);
             mgr.AddComponent<Prefab>(chunkPrototype);
 
-
+            mgr.SetComponentEnabled<TerrainChunkMesh>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkVoxels>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkPrototype, false);
-            mgr.SetComponentEnabled<TerrainChunkMeshReady>(chunkPrototype, false);
-
+            
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
             mgr.AddComponent<TerrainSkirt>(skirtPrototype);
@@ -57,6 +57,7 @@ namespace jedjoud.VoxelTerrain {
             mgr.SetComponentEnabled<TerrainSkirtVisibleTag>(skirtPrototype, false);
 
             state.EntityManager.CreateSingleton<TerrainReadySystems>();
+            state.EntityManager.CreateSingletonBuffer<TerrainUnregisterMeshBuffer>();
 
             chunksToShow = new NativeList<Entity>(Allocator.Persistent);
             chunksToDestroy = new NativeList<Entity>(Allocator.Persistent);
@@ -182,6 +183,7 @@ namespace jedjoud.VoxelTerrain {
                     }
                 }
 
+                NativeList<TerrainUnregisterMeshBuffer> temp = new NativeList<TerrainUnregisterMeshBuffer>(Allocator.Temp);
                 foreach (var entity in chunksToDestroy) {
                     TerrainChunk chunk = state.EntityManager.GetComponentData<TerrainChunk>(entity);
 
@@ -189,18 +191,32 @@ namespace jedjoud.VoxelTerrain {
                     state.EntityManager.DestroyEntity(skirts);
                     skirts.Dispose();
 
-                    TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
-                    voxels.inner.Dispose();
+                    if (state.EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity)) {
+                        TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
+                        voxels.asyncWriteJob.Complete();
+                        voxels.asyncReadJob.Complete();
+                        voxels.inner.Dispose();
+                    }
 
-                    if (state.EntityManager.HasChunkComponent<TerrainChunkMeshReady>(entity)) {
-                        TerrainChunkMeshReady mesh = state.EntityManager.GetComponentData<TerrainChunkMeshReady>(entity);
+                    if (state.EntityManager.IsComponentEnabled<TerrainChunkMesh>(entity)) {
+                        TerrainChunkMesh mesh = state.EntityManager.GetComponentData<TerrainChunkMesh>(entity);
                         mesh.vertices.Dispose();
                         mesh.indices.Dispose();
+                        temp.Add(new TerrainUnregisterMeshBuffer { meshId = mesh.meshId });
+                    }
+
+                    if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {
+                        PhysicsCollider collider = state.EntityManager.GetComponentData<PhysicsCollider>(entity);
+                        collider.Value.Dispose();
                     }
 
                     state.EntityManager.DestroyEntity(entity);
                     chunks.Remove(chunk.node);
                 }
+
+
+                DynamicBuffer<TerrainUnregisterMeshBuffer> unregisterBuffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
+                unregisterBuffer.AddRange(temp.AsArray());
 
                 {
                     foreach (var (chunk, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
@@ -218,26 +234,33 @@ namespace jedjoud.VoxelTerrain {
         [BurstCompile]
         public void OnDestroy(ref SystemState state) {
             chunks.Dispose();
-
             chunksToShow.Dispose();
             chunksToDestroy.Dispose();
 
-            foreach (var _voxels in SystemAPI.Query<RefRW<TerrainChunkVoxels>>()) {
-                ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
-                voxels.disposed = true;
-                voxels.asyncReadJob.Complete();
-                voxels.asyncWriteJob.Complete();
-                if (voxels.inner.IsCreated) {
+            NativeList<TerrainUnregisterMeshBuffer> temp = new NativeList<TerrainUnregisterMeshBuffer>(Allocator.Temp);
+            foreach (var (_, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
+                if (state.EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity)) {
+                    TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
+                    voxels.asyncWriteJob.Complete();
+                    voxels.asyncReadJob.Complete();
                     voxels.inner.Dispose();
+                }
+
+                if (state.EntityManager.IsComponentEnabled<TerrainChunkMesh>(entity)) {
+                    TerrainChunkMesh mesh = state.EntityManager.GetComponentData<TerrainChunkMesh>(entity);
+                    mesh.vertices.Dispose();
+                    mesh.indices.Dispose();
+                    temp.Add(new TerrainUnregisterMeshBuffer { meshId = mesh.meshId });
+                }
+
+                if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {
+                    PhysicsCollider collider = state.EntityManager.GetComponentData<PhysicsCollider>(entity);
+                    collider.Value.Dispose();
                 }
             }
 
-            foreach (var mesh in SystemAPI.Query<TerrainChunkMeshReady>()) {
-                if (mesh.vertices.IsCreated) {
-                    mesh.vertices.Dispose();
-                    mesh.indices.Dispose();
-                }
-            }
+            DynamicBuffer<TerrainUnregisterMeshBuffer> unregisterBuffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
+            unregisterBuffer.AddRange(temp.AsArray());
         }
     }
 }

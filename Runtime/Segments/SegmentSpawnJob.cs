@@ -11,7 +11,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         
         public float3 center;
         public int3 extent;
-        public float lodMultiplier;
+        public int3 extentHigh;
 
         [WriteOnly]
         public NativeList<TerrainSegment> addedSegments;
@@ -35,17 +35,22 @@ namespace jedjoud.VoxelTerrain.Segments {
             for (int x = -c.x; x < c.x; x++) {
                 for (int y = -c.y; y < c.y; y++) {
                     for (int z = -c.z; z < c.z; z++) {
-                        int3 segment = new int3(x, y, z) + offset;
+                        int3 localSegment = new int3(x, y, z);
+                        int3 worldSegment = localSegment + offset;
 
-                        float3 segmentCenter = ((float3)segment + 0.5f) * worldSegmentSize;
+                        float3 segmentCenter = ((float3)worldSegment + 0.5f) * worldSegmentSize;
                         float distance = math.distance(center, segmentCenter) / worldSegmentSize;
 
-                        int lod = (int)math.round(distance / math.max(lodMultiplier, 0.01));
+                        if (math.all(worldSegment >= min) && math.all(worldSegment < max)) {
+                            var lod = TerrainSegment.LevelOfDetail.Low;
 
-                        if (math.all(segment >= min) && math.all(segment < max)) {
+                            if (math.all(localSegment >= -extentHigh) && math.all(localSegment < extentHigh)) {
+                                lod = TerrainSegment.LevelOfDetail.High;
+                            }
+
                             newSegments.Add(new TerrainSegment {
-                                position = segment,
-                                lod = math.clamp(lod, 0, 1) == 1 ? TerrainSegment.LevelOfDetail.High : TerrainSegment.LevelOfDetail.Low,
+                                position = worldSegment,
+                                lod = lod,
                             });
                         }
                     }

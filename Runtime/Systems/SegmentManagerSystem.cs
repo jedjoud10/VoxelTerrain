@@ -95,11 +95,11 @@ namespace jedjoud.VoxelTerrain.Segments {
 
                 center = transform.Position,
                 extent = loader.segmentExtent,
+                extentHigh = loader.segmentExtentHigh,
 
                 newSegments = newSegments,
                 oldSegments = oldSegments,
 
-                lodMultiplier = loader.segmentLodFactor,
 
                 maxSegmentsInWorld = maxSegmentsInWorld,
                 worldSegmentSize = SegmentUtils.PHYSICAL_SEGMENT_SIZE,

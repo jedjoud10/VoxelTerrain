@@ -117,7 +117,8 @@ SamplerState my_linear_clamp_sampler;
         };
 
         const int MAX_ITERATIONS = 8;
-        const float OFFSET_SCALE = 2;
+        const float PRECISION = 0.0001;
+        const float OFFSET_SCALE = 8;
 
         hitPosition = 0;
         hitNormal = 0;
@@ -125,31 +126,44 @@ SamplerState my_linear_clamp_sampler;
         float3 offsetAxis = OFFSETS[axis] * OFFSET_SCALE;
         float3 basePosition = position - offsetAxis;
         float3 otherPosition = position + offsetAxis;
-        float baseDensity = DensityAt(basePosition);
-        float otherDensity = DensityAt(otherPosition);
+        float baseDensity = DensityAtButVeryVerySlowButMuchHigherQuality(basePosition);
+        float otherDensity = DensityAtButVeryVerySlowButMuchHigherQuality(otherPosition);
         
         // Early out if no crossing
-        if (!(baseDensity >= 0.0 ^ otherDensity >= 0.0)) {
+        if ((baseDensity >= 0.0) == (otherDensity >= 0.0)) {
             return false;
         }
 
-        baseDensity = DensityAtButVeryVerySlowButMuchHigherQuality(basePosition);
-        otherDensity = DensityAtButVeryVerySlowButMuchHigherQuality(otherPosition);
-
-        // should probably use binary search... (nah) (yah)
-        for (int i = 0; i <= MAX_ITERATIONS; i++) {
-            float val = ((float)i / MAX_ITERATIONS);
-            float3 midPos = lerp(basePosition, otherPosition, val);
+        float3 lowPos = basePosition;
+        float3 highPos = otherPosition;
+        float lowDensity = baseDensity;
+        float highDensity = otherDensity;
+        float3 bestPos = position;
+        
+        // Perform binary search
+        for (int i = 0; i < MAX_ITERATIONS; i++) {
+            float3 midPos = (lowPos + highPos) * 0.5;
             float midDensity = DensityAtButVeryVerySlowButMuchHigherQuality(midPos);
-
-            if (midDensity >= 0.0 ^ baseDensity >= 0.0) {
-                hitNormal = CalculateFiniteDiffedNormals(midPos);
-                hitPosition = midPos;
-                return true;
+            
+            if (abs(midDensity) < PRECISION) {
+                bestPos = midPos;
+                break;
             }
+            
+            if ((midDensity >= 0.0) != (lowDensity >= 0.0)) {
+                highPos = midPos;
+                highDensity = midDensity;
+            } else {
+                lowPos = midPos;
+                lowDensity = midDensity;
+            }
+            
+            bestPos = midPos;
         }
 
-        return false;
+        hitNormal = CalculateFiniteDiffedNormals(bestPos);
+        hitPosition = bestPos;
+        return true;
     }
 #endif
 

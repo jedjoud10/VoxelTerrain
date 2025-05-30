@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain {
         [Range(0f, 1f)]
         public float octreeNodeFactor = 0.5f;
         public Vector3Int segmentExtent = Vector3Int.one * 10;
-        public float segmentLodFactor = 0.8f;
+        public Vector3Int segmentExtentHigh = Vector3Int.one;
     }
 
     class TerrainOctreeLoaderBaker : Baker<TerrainLoaderAuthoring> {
@@ -15,7 +15,7 @@ namespace jedjoud.VoxelTerrain {
             AddComponent(GetEntity(TransformUsageFlags.Dynamic), new TerrainLoader {
                 octreeNodeFactor = authoring.octreeNodeFactor,
                 segmentExtent = new int3(authoring.segmentExtent.x, authoring.segmentExtent.y, authoring.segmentExtent.z),
-                segmentLodFactor = authoring.segmentLodFactor
+                segmentExtentHigh = new int3(authoring.segmentExtentHigh.x, authoring.segmentExtentHigh.y, authoring.segmentExtentHigh.z),
             });
         }
     }
