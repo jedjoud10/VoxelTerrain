@@ -7,8 +7,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new DefineNode<T> { value = VariableType.ToDefinableString(value), constant = true };
         }
 
+        public static Variable<T> Const(T value) {
+            return new DefineNode<T> { value = VariableType.ToDefinableString(value), constant = true };
+        }
+
         public static Variable<T> New(T value) {
-            return (Variable<T>)(value);
+            return new DefineNode<T> { value = VariableType.ToDefinableString(value), constant = false };
         } 
 
         public static Variable<T> Default() {

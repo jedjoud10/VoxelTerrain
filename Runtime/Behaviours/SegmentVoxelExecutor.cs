@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public class SegmentVoxelExecutor : VolumeExecutor<SegmentVoxelExecutorParameters> {
-        public SegmentVoxelExecutor() : base(SegmentUtils.SEGMENT_SIZE) {
+        public SegmentVoxelExecutor() : base(SegmentUtils.SEGMENT_SIZE_PADDED) {
         }
 
         protected override void CreateResources(ManagedTerrainCompiler compiler) {

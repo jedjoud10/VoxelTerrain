@@ -44,25 +44,39 @@ namespace jedjoud.VoxelTerrain.Segments {
         private void Complete(ref SystemState state) {
             handle.Complete();
 
-
+            EntityCommandBuffer destroyPropsCommands = new EntityCommandBuffer(Allocator.Temp);
             foreach (var segment in removedSegments) {
                 if (map.TryGetValue(segment, out Entity entity)) {
+                    if (state.EntityManager.HasBuffer<TerrainSegmentOwnedProp>(entity)) {
+                        DynamicBuffer<TerrainSegmentOwnedProp> props = SystemAPI.GetBuffer<TerrainSegmentOwnedProp>(entity);
+
+                        foreach (var prop in props) {
+                            destroyPropsCommands.DestroyEntity(prop.entity);
+                        }
+                    }
+
                     state.EntityManager.DestroyEntity(entity);
                     map.Remove(segment);
                 }
             }
+
+            destroyPropsCommands.Playback(state.EntityManager);
+            destroyPropsCommands.Dispose();
 
             foreach (var segment in addedSegments) {
                 Entity entity = state.EntityManager.Instantiate(segmentPrototype);
                 map.Add(segment, entity);
 
                 float4x4 matrix = float4x4.Translate((float3)segment.position * SegmentUtils.PHYSICAL_SEGMENT_SIZE);
-                SystemAPI.SetComponent<LocalToWorld>(entity, new LocalToWorld {
+                state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld {
                     Value = matrix
                 });
 
-                SystemAPI.SetComponent<TerrainSegment>(entity, segment);
+                state.EntityManager.SetComponentData<TerrainSegment>(entity, segment);
+                state.EntityManager.AddBuffer<TerrainSegmentOwnedProp>(entity);
             }
+
+
         }
 
         [BurstCompile]

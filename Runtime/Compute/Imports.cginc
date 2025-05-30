@@ -1,5 +1,6 @@
 int3 permutation_seed;
 int3 modulo_seed;
+SamplerState my_linear_clamp_sampler;
 
 #if defined(_ASYNC_READBACK_OCTAL)
     static const int PHYSICAL_SIZE = 32;
@@ -41,6 +42,7 @@ int3 modulo_seed;
 #elif defined(_SEGMENT_PROPS)
     int physical_segment_size;
     int segment_size;
+    int segment_size_padded;
     Texture3D<uint> voxels_texture_read;
     float3 segment_scale;
     float3 segment_offset;
@@ -70,6 +72,46 @@ int3 modulo_seed;
 #elif defined(_SEGMENT_PROPS)
     float3 ConvertIntoWorldPosition(uint3 id) {
         return hash31((float)id.x) * (float)physical_segment_size + segment_offset;
+    }
+#endif
+
+
+#if defined(_SEGMENT_PROPS)
+    float DensityAt(float3 position) {
+        float3 zero_to_one = (position - segment_offset) / (float3)physical_segment_size;
+        uint3 zero_to_segment_size = (uint3)(zero_to_one * segment_size);
+        return unpackDensity(voxels_texture_read[zero_to_segment_size]);
+
+        // unpackDensity(voxels_texture_read.SampleLevel(test, uv + (0.5 / texSize), lod););
+    }
+    
+    float3 CalculateFiniteDiffedNormals(float3 position) {
+        float base = DensityAt(position);
+        float x = DensityAt(position + float3(1, 0, 0));
+        float y = DensityAt(position + float3(0, 1, 0));
+        float z = DensityAt(position + float3(0, 0, 1));
+        return normalize(float3(base - x, base - y, base - z));
+    }
+
+    bool CheckSurfaceAlongAxis(float3 position, int axis, out float3 hitPosition, out float3 hitNormal) {
+	    const float3 OFFSETS[3] = {
+	        float3(1,0,0), float3(0,0,1), float3(0,0,1),
+	    };
+
+        float base = DensityAt(position);
+        float other = DensityAt(position + OFFSETS[axis]);
+
+        if (base >= 0.0 ^ other >= 0.0) {
+            float v = InvLerp(0.0, base, other);
+            float3 offset = v * OFFSETS[axis];
+            hitPosition = offset + position;
+            hitNormal = 1;
+            return true;
+        }
+
+        hitPosition = 0;
+        hitNormal = 0;
+        return false;
     }
 #endif
 

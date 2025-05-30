@@ -24,7 +24,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public Simplex() {
             amplitude = 1.0f;
-            scale = GraphUtils.One<T>() * (Variable<float>.New(0.01f)).Broadcast<T>();
+            scale = GraphUtils.One<T>() * (Variable<float>.Const(0.01f)).Broadcast<T>();
         }
 
         public Simplex(Variable<float> scale, Variable<float> amplitude) {

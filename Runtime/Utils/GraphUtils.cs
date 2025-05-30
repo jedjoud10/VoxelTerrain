@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new DefineNode<T> { value = VariableType.ToDefinableString(def), constant = true };
         }
 
-        public static Variable<T> One<T>(bool negate = false) {
+        public static Variable<T> One<T>() {
             string Test(VariableType value) {
                 switch (value.strict) {
                     case VariableType.StrictType.Float2:
@@ -59,11 +59,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             string temp = Test(VariableType.TypeOf<T>());
-
-            if (negate) {
-                temp = $"(-{temp})";
-            }
-
             return new DefineNode<T> { value = temp, constant = true };
         }
 

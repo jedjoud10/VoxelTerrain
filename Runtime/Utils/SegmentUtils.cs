@@ -6,11 +6,8 @@ namespace jedjoud.VoxelTerrain {
         // each segment is 256m wide in one axis
         public const int PHYSICAL_SEGMENT_SIZE = 256;
 
-        // how many density values a segment theoretically stores in one axis
-        public const int SEGMENT_SIZE = 32; 
-
-        public static float3 GetWorldPosition(TerrainSegment segment) {
-            return segment.position * PHYSICAL_SEGMENT_SIZE;
-        }
+        // 34 since we need 1 padding voxel to run the edge checks on the boundary and 1 more padding for finite diff normals 
+        public const int SEGMENT_SIZE_PADDED = 34;
+        public const int SEGMENT_SIZE = 32;
     }
 }

@@ -35,6 +35,42 @@ if ({ctx[shouldSpawn]}) {{
                     
                 });
             }
+
+            public struct PossibleSurface {
+                public Variable<bool> hit;
+                public Variable<float3> hitPosition;
+                public Variable<float3> hitNormal;
+            }
+
+            public enum Axis: int {
+                X = 0,
+                Y = 1,
+                Z = 2
+            }
+
+            public PossibleSurface IsSurfaceAlongAxis(Variable<float3> position, Axis axis) {
+                int _axis = (int)axis;
+                Variable<bool> hit = Variable<bool>.New(false);
+                Variable<float3> hitPosition = Variable<float3>.New(float3.zero);
+                Variable<float3> hitNormal = Variable<float3>.New(float3.zero);
+
+                chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
+                    position.Handle(ctx);
+                    hit.Handle(ctx);
+                    hitPosition.Handle(ctx);
+                    hitNormal.Handle(ctx);
+                    ctx.AddLine($@"
+// this is some *extremely* cool possible surface check...
+{ctx[hit]} = CheckSurfaceAlongAxis({ctx[position]}, {_axis}, {ctx[hitPosition]}, {ctx[hitNormal]});
+");
+                });
+
+                return new PossibleSurface {
+                    hit = hit,
+                    hitPosition = hitPosition,
+                    hitNormal = hitNormal
+                };
+            }
         }
 
         public class PropInput {

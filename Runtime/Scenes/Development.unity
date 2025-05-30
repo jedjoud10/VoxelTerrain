@@ -566,6 +566,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Managed Terrain
       objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propSpawnProbability.value
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6566762760026143042, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

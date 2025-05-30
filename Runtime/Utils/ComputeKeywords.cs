@@ -32,9 +32,7 @@ namespace jedjoud.VoxelTerrain {
                 } else {
                     cmds.DisableKeyword(shader, shader.keywordSpace.FindKeyword(keyword));
                 }
-            }
-
-                        
+            }       
         }
     }
 }

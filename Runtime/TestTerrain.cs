@@ -30,6 +30,9 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float2> others;
         public int octaves;
 
+        // Prop settings
+        public Inject<float> propSpawnProbability;
+
         public override void Voxels(VoxelInput input, out VoxelOutput output) {
             // Project the position using the main transformation
             var position = input.position;
@@ -65,12 +68,12 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         }
 
         public override void Props(PropInput input, PropContext context) {
-            Variable<bool> shouldSpawnProp = input.density > -0.4f & input.density < 0.4f;
-            shouldSpawnProp &= Random.Uniform(input.position, 0.2f);
+            Variable<bool> shouldSpawnProp = Random.Uniform(input.position, propSpawnProbability);
+            PropContext.PossibleSurface surface = context.IsSurfaceAlongAxis(input.position, PropContext.Axis.Y);
 
-            context.SpawnProp(shouldSpawnProp, new Props.GenerationProp {
+            context.SpawnProp(shouldSpawnProp & surface.hit, new Props.GenerationProp {
                 scale = 1f,
-                position = input.position,
+                position = surface.hitPosition,
                 type = 0,
             });
         }

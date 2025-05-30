@@ -78,6 +78,13 @@ float4 SampleBicubic(Texture2D tex, SamplerState test, float2 uv, float lod, flo
 	return result;
 }
 
+// https://www.ronja-tutorials.com/post/047-invlerp_remap/
+// but also modified from Remap
+float InvLerp(float v, float minOld, float maxOld)
+{
+	return (v - minOld) / (maxOld - minOld);
+}
+
 // https://gist.github.com/supertask/702439b84a341e5f45c79358135c9df6
 float Remap(float v, float minOld, float maxOld, float minNew, float maxNew)
 {

@@ -27,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             });
         }
 
-        public static Variable<bool> Uniform<I>(Variable<I> input, float probability) {
+        public static Variable<bool> Uniform<I>(Variable<I> input, Variable<float> probability) {
             return Evaluate<I, float>(input, false) > (1 - probability);
         }
     }

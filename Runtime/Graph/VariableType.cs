@@ -84,6 +84,18 @@ namespace jedjoud.VoxelTerrain {
                 case StrictType.Float4:
                     float4 f4 = (float4)temp;
                     return $"float4({f4.x},{f4.y},{f4.z},{f4.w})";
+                case StrictType.Bool:
+                    bool b = (bool)temp;
+                    return b.ToString().ToLower();
+                case StrictType.Bool2:
+                    bool2 b2 = (bool2)temp;
+                    return $"bool2({b2.x.ToString().ToLower()},{b2.y.ToString().ToLower()})";
+                case StrictType.Bool3:
+                    bool3 b3 = (bool3)temp;
+                    return $"bool3({b3.x.ToString().ToLower()},{b3.y.ToString().ToLower()},{b3.z.ToString().ToLower()})";
+                case StrictType.Bool4:
+                    bool4 b4 = (bool4)temp;
+                    return $"float4({b4.x.ToString().ToLower()},{b4.y.ToString().ToLower()},{b4.z.ToString().ToLower()},{b4.w.ToString().ToLower()})";
                 default:
                     return value.ToString();
             }

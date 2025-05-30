@@ -33,6 +33,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             commands.SetComputeIntParam(shader, "physical_segment_size", SegmentUtils.PHYSICAL_SEGMENT_SIZE);
             commands.SetComputeIntParam(shader, "segment_size", SegmentUtils.SEGMENT_SIZE);
+            commands.SetComputeIntParam(shader, "segment_size_padded", SegmentUtils.SEGMENT_SIZE_PADDED);
         }
     }
 }

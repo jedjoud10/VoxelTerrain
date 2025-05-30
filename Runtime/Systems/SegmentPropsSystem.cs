@@ -53,6 +53,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         private bool free;
         private bool disposed;
         private bool initialized;
+        private Entity segmentEntity;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadySystems>();
@@ -139,6 +140,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             if (entity == Entity.Null)
                 return;
 
+            segmentEntity = entity;
             int invocations = (int)maxCombinedTempProps;
 
             Texture segmentVoxelTexture = dispatcher.voxelExecutor.Textures["voxels"];
@@ -192,8 +194,17 @@ namespace jedjoud.VoxelTerrain.Segments {
                 countersFetched = false;
                 propsFetched = false;
 
+                int lilSum = 0;
+                for (int i = 0; i < types; i++) {
+                    lilSum += (int)tempCounters[i];
+                }
+
+                if (!EntityManager.Exists(segmentEntity))
+                    return;
+
                 EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
 
+                int index = 0;
                 for (int i = 0; i < types; i++) {
                     int tempSubBufferOffset = (int)tempBufferOffsets[i];
                     int tempSubBufferCount = (int)tempCounters[i];
@@ -212,6 +223,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                             Entity entity = ecb.Instantiate(prototype);
 
                             ecb.SetComponent<LocalTransform>(entity, LocalTransform.FromPositionRotationScale(position, quaternion.identity, scale));
+                            ecb.AppendToBuffer(segmentEntity, new TerrainSegmentOwnedProp { entity = entity });
+                            index++;
                         }
                     }
                 }
