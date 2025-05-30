@@ -568,7 +568,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: test.value.x
-      value: 1
+      value: -1
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: test.value.y
@@ -576,7 +576,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: test.value.z
-      value: 1
+      value: -1
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: testRot.value.x
@@ -584,15 +584,27 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propNoiseScale.value
-      value: 0.001
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propNoiseAmplitude.value
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propRotationFactor.value
+      value: 0.9
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propMinDotProductVal.value
-      value: -2.4
+      value: 0.8
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propSpawnProbability.value
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: hash
+      value: -1319030953
       objectReference: {fileID: 0}
     - target: {fileID: 6566762760026143042, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_LocalPosition.x
