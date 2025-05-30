@@ -6,6 +6,7 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Props {
     class TerrainPropsConfigAuthoring : MonoBehaviour {
         public List<PropType> props;
+        public ComputeShader copyTempToPermCompute;
     }
 
     class TerrainPropsConfigBaker : Baker<TerrainPropsConfigAuthoring> {
@@ -24,6 +25,7 @@ namespace jedjoud.VoxelTerrain.Props {
             AddComponentObject(self, new TerrainPropsConfig {
                 props = authoring.props,
                 baked = baked,
+                copyTempToPermCompute = authoring.copyTempToPermCompute
             });
         }
     }

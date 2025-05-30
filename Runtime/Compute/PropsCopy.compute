@@ -1,0 +1,20 @@
+#pragma kernel CSCopy
+
+RWStructuredBuffer<uint> temp_counters_buffer;
+RWStructuredBuffer<uint> temp_buffer_offsets_buffer;
+RWStructuredBuffer<uint4> temp_buffer;
+
+RWStructuredBuffer<uint4> perm_buffer;
+RWStructuredBuffer<uint> perm_buffer_dst_copy_offsets_buffer;
+
+[numthreads(32, 1, 1)]
+void CSCopy(uint3 id : SV_DispatchThreadID) {
+	if (id.x >= temp_counters_buffer[id.y]) {
+		return;
+	}
+
+	int temp_buffer_src_offset = temp_buffer_offsets_buffer[id.y];
+	int perm_buffer_dst_offset = perm_buffer_dst_copy_offsets_buffer[id.y];
+
+	perm_buffer[id.x + perm_buffer_dst_offset] = temp_buffer[id.x + temp_buffer_src_offset];
+}

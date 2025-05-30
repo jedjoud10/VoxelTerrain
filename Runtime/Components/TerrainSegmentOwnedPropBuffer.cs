@@ -1,7 +1,7 @@
 using Unity.Entities;
 
 namespace jedjoud.VoxelTerrain.Segments {
-    public struct TerrainSegmentOwnedProp : IBufferElementData {
+    public struct TerrainSegmentOwnedPropBuffer : IBufferElementData {
         public Entity entity;
     }
 }

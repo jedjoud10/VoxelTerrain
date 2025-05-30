@@ -33,35 +33,25 @@ namespace jedjoud.VoxelTerrain.Segments {
             segmentPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(segmentPrototype);
             mgr.AddComponent<TerrainSegment>(segmentPrototype);
-            mgr.AddComponent<Prefab>(segmentPrototype);
             mgr.AddComponent<TerrainSegmentRequestPropsTag>(segmentPrototype);
             mgr.AddComponent<TerrainSegmentRequestVoxelsTag>(segmentPrototype);
             mgr.SetComponentEnabled<TerrainSegmentRequestPropsTag>(segmentPrototype, true);
             mgr.SetComponentEnabled<TerrainSegmentRequestVoxelsTag>(segmentPrototype, true);
+            mgr.AddComponent<Prefab>(segmentPrototype);
         }
 
         [BurstCompile]
         private void Complete(ref SystemState state) {
             handle.Complete();
 
-            EntityCommandBuffer destroyPropsCommands = new EntityCommandBuffer(Allocator.Temp);
             foreach (var segment in removedSegments) {
                 if (map.TryGetValue(segment, out Entity entity)) {
-                    if (state.EntityManager.HasBuffer<TerrainSegmentOwnedProp>(entity)) {
-                        DynamicBuffer<TerrainSegmentOwnedProp> props = SystemAPI.GetBuffer<TerrainSegmentOwnedProp>(entity);
-
-                        foreach (var prop in props) {
-                            destroyPropsCommands.DestroyEntity(prop.entity);
-                        }
-                    }
-
-                    state.EntityManager.DestroyEntity(entity);
+                    state.EntityManager.AddComponentData<TerrainSegmentPendingRemoval>(entity, new TerrainSegmentPendingRemoval {
+                        propsNeedCleanup = false
+                    });
                     map.Remove(segment);
                 }
             }
-
-            destroyPropsCommands.Playback(state.EntityManager);
-            destroyPropsCommands.Dispose();
 
             foreach (var segment in addedSegments) {
                 Entity entity = state.EntityManager.Instantiate(segmentPrototype);
@@ -73,10 +63,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 });
 
                 state.EntityManager.SetComponentData<TerrainSegment>(entity, segment);
-                state.EntityManager.AddBuffer<TerrainSegmentOwnedProp>(entity);
             }
-
-
         }
 
         [BurstCompile]
@@ -114,6 +101,17 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             Complete(ref state);
             Schedule(ref state);
+
+            EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            foreach (var (segment, entity) in SystemAPI.Query<TerrainSegmentPendingRemoval>().WithEntityAccess()) {
+                if (segment.propsNeedCleanup) {
+                    ecb.DestroyEntity(entity);
+                }
+            }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
 
         [BurstCompile]

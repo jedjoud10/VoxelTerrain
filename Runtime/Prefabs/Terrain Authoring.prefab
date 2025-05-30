@@ -103,3 +103,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   props:
   - {fileID: 11400000, guid: 877753c34810a33449994056ab9cd85d, type: 2}
+  copyTempToPermCompute: {fileID: 7200000, guid: 661b6358b82faf64487edb48a2958782, type: 3}

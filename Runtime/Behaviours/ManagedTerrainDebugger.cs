@@ -22,10 +22,16 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             var offset = 0;
 
-            GUI.contentColor = Color.black;
+
             void Label(string text) {
                 GUI.Label(new Rect(0, offset, 300, 30), text);
                 offset += 15;
+            }
+
+            void MakeMyShitFuckingOpaqueHolyShitUnityWhyCantYouSupportThisByDefaultThisIsStupid() {
+                for (int i = 0; i < 3; i++) {
+                    GUI.Box(new Rect(0, 0, 300, 200), "");
+                }
             }
 
             EntityQuery totalChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk));
@@ -34,13 +40,23 @@ namespace jedjoud.VoxelTerrain.Generation {
             EntityQuery chunksAwaitingMeshing = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestMeshingTag));
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
+            SegmentPropsSystem props = world.GetExistingSystemManaged<SegmentPropsSystem>();
 
+            GUI.contentColor = Color.black;
+            GUI.backgroundColor = Color.black;
+
+            MakeMyShitFuckingOpaqueHolyShitUnityWhyCantYouSupportThisByDefaultThisIsStupid();
+
+
+            GUI.contentColor = Color.white;
             Label($"# of total chunk entities: {totalChunks.CalculateEntityCount()}");
             Label($"# of chunks pending GPU voxel data: {chunksAwaitingReadback.CalculateEntityCount()}");
             Label($"# of segments pending GPU dispatch: {segmentsAwaitingDispatch.CalculateEntityCount()}");
             Label($"# of chunks pending meshing: {chunksAwaitingMeshing.CalculateEntityCount()}");
             Label($"# of chunk entities with a mesh: {meshedChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
+            Label($"# of max perm props allowed... ever: {props.MaxPermProps()}");
+            Label($"# of in-use perm props: {props.PermPropsInUse()}");
 
             EntityQuery readySystems = world.EntityManager.CreateEntityQuery(typeof(TerrainReadySystems));
             TerrainReadySystems ready = readySystems.GetSingleton<TerrainReadySystems>();
