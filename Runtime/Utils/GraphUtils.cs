@@ -115,6 +115,21 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
+        public static string SwizzleFromFloat4<T>(float4 value) {
+            switch (VariableType.TypeOf<T>().strict) {
+                case VariableType.StrictType.Float:
+                    return VariableType.ToDefinableString(value.x);
+                case VariableType.StrictType.Float2:
+                    return VariableType.ToDefinableString(value.xy);
+                case VariableType.StrictType.Float3:
+                    return VariableType.ToDefinableString(value.xyz);
+                case VariableType.StrictType.Float4:
+                    return VariableType.ToDefinableString(value);
+                default:
+                    throw new System.Exception();
+            }
+        }
+
         public static string VectorConstructor<T>() {
             switch (VariableType.TypeOf<T>().strict) {
                 case VariableType.StrictType.Float2:

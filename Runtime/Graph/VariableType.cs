@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices.WindowsRuntime;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
@@ -17,6 +18,7 @@ namespace jedjoud.VoxelTerrain {
             Bool2,
             Bool3,
             Bool4,
+            Quaternion,
         }
 
         public VariableType(StrictType strict) {
@@ -29,7 +31,12 @@ namespace jedjoud.VoxelTerrain {
 
 
         public string ToStringType() {
-            return strict.ToString().ToLower();
+            string output = strict switch {
+                StrictType.Quaternion => "float4",
+                var x => x.ToString().ToLower(),
+            };
+
+            return output;
         }
 
         // Convert type data to string
@@ -62,6 +69,8 @@ namespace jedjoud.VoxelTerrain {
                     output = new(StrictType.Bool3); break;
                 case "bool4":
                     output = new(StrictType.Bool4); break;
+                case "quaternion":
+                    output = new(StrictType.Quaternion); break;
 
                 default:
                     throw new System.Exception($"Type {tn} not supported");
@@ -95,7 +104,10 @@ namespace jedjoud.VoxelTerrain {
                     return $"bool3({b3.x.ToString().ToLower()},{b3.y.ToString().ToLower()},{b3.z.ToString().ToLower()})";
                 case StrictType.Bool4:
                     bool4 b4 = (bool4)temp;
-                    return $"float4({b4.x.ToString().ToLower()},{b4.y.ToString().ToLower()},{b4.z.ToString().ToLower()},{b4.w.ToString().ToLower()})";
+                    return $"bool4({b4.x.ToString().ToLower()},{b4.y.ToString().ToLower()},{b4.z.ToString().ToLower()},{b4.w.ToString().ToLower()})";
+                case StrictType.Quaternion:
+                    quaternion q = (quaternion)temp;
+                    return $"float4({q.value.x},{q.value.y},{q.value.z},{q.value.w})";
                 default:
                     return value.ToString();
             }

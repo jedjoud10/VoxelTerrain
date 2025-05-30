@@ -24,7 +24,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             Variable<float> fbm_scale = context.AssignTempVariable<float>($"{context[position]}_fbm_scale", "1.0");
             Variable<float> fbm_amplitude = context.AssignTempVariable<float>($"{context[position]}_fbm_amplitude", "1.0");
 
-            context.AddLine("[unroll]");
+            //context.AddLine("[unroll]");
             context.AddLine($"for(uint i = 0; i < {actualOctaves}; i++) {{");
             context.Indent++;
 

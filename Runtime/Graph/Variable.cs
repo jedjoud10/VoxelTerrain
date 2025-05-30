@@ -58,7 +58,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public static Variable<T> operator -(Variable<T> a) {
-            return new SimpleUnaryNode<T> { a = a, func = "-" };
+            return new SimpleUnaryFunctionNode<T, T> { a = a, func = "-" };
         }
 
         public static Variable<T> operator *(Variable<T> a, Variable<T> b) {
@@ -107,45 +107,38 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public Variable<T> Min(Variable<T> other) {
-            return new SimpleBinaryFunctionNode<T> { a = this, b = other, func = "min" };
+            return new SimpleBinaryFunctionNode<T, T, T> { a = this, b = other, func = "min" };
         }
 
         public Variable<T> Max(Variable<T> other) {
-            return new SimpleBinaryFunctionNode<T> { a = this, b = other, func = "max" };
+            return new SimpleBinaryFunctionNode<T, T, T> { a = this, b = other, func = "max" };
         }
 
         public Variable<T> Abs() {
-            return new SimpleUnaryNode<T> { a = this, func = "abs" };
+            return new SimpleUnaryFunctionNode<T, T> { a = this, func = "abs" };
         }
 
         public Variable<T> SmoothAbs(Variable<T> smoothing) {
             return new SmoothAbs<T> { a = this, smoothing = smoothing };
         }
 
-        public Variable<T> Lerp(Variable<T> a, Variable<T> b, bool clamp = false) {
-            return new LerpNode<T> { a = a, b = b, t = this, clamp = clamp };
-        }
-
-        public Variable<T> Clamp(Variable<T> a, Variable<T> b) {
-            return new ClampNode<T> { a = a, b = b, t = this };
-        }
-
         public Variable<T> Saturate() {
-            return new ClampNode<T> { a = GraphUtils.Zero<T>(), b = GraphUtils.One<T>(), t = this };
+            return VariableExtensions.Clamp(this, GraphUtils.Zero<T>(), GraphUtils.One<T>());
         }
-
 
         public Variable<T> With(params (string, UntypedVariable)[] properties) {
             return new SetPropertiesNode<T>() { owner = this, properties = properties };
         }
 
-        internal Variable<O> Broadcast<O>() {
+        public Variable<O> Broadcast<O>() {
             if (VariableType.Dimensionality<T>() != 1) {
                 throw new Exception("Cannot broadcast value from a vector; must be a scalar");
             }
 
             return new SwizzleNode<T, O> { a = this, swizzle = new string('x', VariableType.Dimensionality<O>()) };
         }
+
+
     }
 
     public static class VariableExtensions {
@@ -193,27 +186,27 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public static Variable<float2> Normalize(this Variable<float2> self) {
-            return new NormalizeNode<float2>() { a = self };
+            return new SimpleUnaryFunctionNode<float2, float2>() { a = self, func = "normalize" };
         }
 
         public static Variable<float3> Normalize(this Variable<float3> self) {
-            return new NormalizeNode<float3>() { a = self };
+            return new SimpleUnaryFunctionNode<float3, float3>() { a = self, func = "normalize" };
         }
 
         public static Variable<float4> Normalize(this Variable<float4> self) {
-            return new NormalizeNode<float4>() { a = self };
+            return new SimpleUnaryFunctionNode<float4, float4>() { a = self, func = "normalize" };
         }
 
         public static Variable<float> Magnitude(this Variable<float2> self) {
-            return new LengthNode<float2>() { a = self };
+            return new SimpleUnaryFunctionNode<float2, float>() { a = self, func = "length" };
         }
 
         public static Variable<float> Magnitude(this Variable<float3> self) {
-            return new LengthNode<float3>() { a = self };
+            return new SimpleUnaryFunctionNode<float3, float>() { a = self, func = "length" };
         }
 
         public static Variable<float> Magnitude(this Variable<float4> self) {
-            return new LengthNode<float4>() { a = self };
+            return new SimpleUnaryFunctionNode<float4, float>() { a = self, func = "length" };
         }
 
         public static Variable<float2> Scaled(this Variable<float2> self, Variable<float> other) {
@@ -226,6 +219,42 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public static Variable<float4> Scaled(this Variable<float4> self, Variable<float> other) {
             return new SimpleBinaryOperatorNode<float4, float, float4>() { a = self, b = other, op = "*" };
+        }
+
+        public static Variable<float> Dot(this Variable<float2> self, Variable<float2> other) {
+            return new SimpleBinaryFunctionNode<float2, float2, float>() { a = self, b = other, func = "dot" };
+        }
+
+        public static Variable<float> Dot(this Variable<float3> self, Variable<float3> other) {
+            return new SimpleBinaryFunctionNode<float3, float3, float>() { a = self, b = other, func = "dot" };
+        }
+
+        public static Variable<float> Dot(this Variable<float4> self, Variable<float4> other) {
+            return new SimpleBinaryFunctionNode<float4, float4, float>() { a = self, b = other, func = "dot" };
+        }
+
+        public static Variable<quaternion> LookAt(this Variable<float3> self, Variable<float3> up = null) {
+            return new SimpleBinaryFunctionNode<float3, float3, quaternion>() { a = self, b = up ?? math.up(), func = "LookAt" };
+        }
+
+        public static Variable<T> Clamp<T>(Variable<T> t, Variable<T> a, Variable<T> b) {
+            return new SimpleTertiaryFunctioNode<T, T, T, T>() { a = a, b = b, c = t, func = "clamp" };
+        }
+
+        public static Variable<T> Lerp<T>(Variable<T> a, Variable<T> b, Variable<T> t, bool saturate = false) {
+            if (saturate) {
+                t = t.Saturate();
+            }
+
+            return new SimpleTertiaryFunctioNode<T, T, T, T>() { a = a, b = b, c = t, func = "lerp" };
+        }
+
+        public static Variable<quaternion> Slerp(Variable<quaternion> a, Variable<quaternion> b, Variable<float> t, bool saturate = false) {
+            if (saturate) {
+                t = Clamp(t, 0f, 1f);
+            }
+
+            return new SimpleTertiaryFunctioNode<quaternion, quaternion, float, quaternion>() { a = a, b = b, c = t, func = "Slerp" };
         }
     }
 }

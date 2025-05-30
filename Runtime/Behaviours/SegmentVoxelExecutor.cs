@@ -15,10 +15,10 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         protected override void CreateResources(ManagedTerrainCompiler compiler) {
             base.CreateResources(compiler);
-            textures.Add("voxels", new ExecutorTexture {
-                name = "voxels",
+            textures.Add("densities", new ExecutorTexture {
+                name = "densities",
                 readKernels = new List<string>() { },
-                texture = TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt),
+                texture = TextureUtils.Create3DRenderTexture(SegmentUtils.SEGMENT_SIZE_PADDED, GraphicsFormat.R16_SFloat),
                 requestingNodeHash = -1,
                 writeKernel = "CSVoxels",
             });

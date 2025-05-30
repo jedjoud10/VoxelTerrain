@@ -9,26 +9,27 @@ namespace jedjoud.VoxelTerrain.Props {
     [StructLayout(LayoutKind.Sequential)]
     public struct BlittableProp {
         // Size in bytes of the blittable prop
-        public const int size = 8;
+        public const int size = 16;
 
         // in WORLD space!!!
-        // you could get around spawning these in segment space but wtv for now. it (should) work...
+        // you could get around spawning these in segment space but wtv for now. it works...
         public half pos_x;
         public half pos_y;
         public half pos_z;
         public half scale;
 
-        /*
-        // 3 bytes for rotation (x,y,z)
+        // 4 bytes for quaternion based rotation (x,y,z,w)
         public byte rot_x;
         public byte rot_y;
         public byte rot_z;
+        public byte rot_w;
 
         // Prop variant type
         public byte variant;
 
-        public uint _padding2;
-        */
+        public byte _padding;
+        public byte _padding2;
+        public byte _padding3;
 
         public static BlittableProp None = new BlittableProp();
     }

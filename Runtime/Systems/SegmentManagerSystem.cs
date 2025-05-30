@@ -87,7 +87,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             TerrainOctreeConfig config = SystemAPI.GetSingleton<TerrainOctreeConfig>();
 
             OctreeNode root = OctreeNode.RootNode(config.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE /* >> (int)terrain.voxelSizeReduction */);
-            int maxSegmentsInWorld = root.size / SegmentUtils.PHYSICAL_SEGMENT_SIZE;
+            int maxSegmentsInWorld = (root.size / SegmentUtils.PHYSICAL_SEGMENT_SIZE) / 2;
 
             SegmentSpawnJob job = new SegmentSpawnJob {
                 addedSegments = addedSegments,

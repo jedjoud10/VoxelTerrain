@@ -32,6 +32,12 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
         // Prop settings
         public Inject<float> propSpawnProbability;
+        public Inject<float> propMinDotProductVal;
+        public Inject<float> propNoiseScale;
+        public Inject<float> propNoiseAmplitude;
+        public Inject<float> propNoiseOffset;
+
+        public Inject<float> propRotationFactor;
 
         public override void Voxels(VoxelInput input, out VoxelOutput output) {
             // Project the position using the main transformation
@@ -68,12 +74,20 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         }
 
         public override void Props(PropInput input, PropContext context) {
-            Variable<bool> shouldSpawnProp = Random.Uniform(input.position, propSpawnProbability);
-            PropContext.PossibleSurface surface = context.IsSurfaceAlongAxis(input.position, PropContext.Axis.Y);
+            Variable<bool> spawn = (Noise.Simplex(input.position, propNoiseScale, propNoiseAmplitude) + propNoiseOffset) > Random.Evaluate<float3, float>(input.position, true);
+            Variable<int> variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1);
 
-            context.SpawnProp(shouldSpawnProp & surface.hit, new Props.GenerationProp {
+            PropContext.PossibleSurface surface = context.IsSurfaceAlongAxis(input.position, PropContext.Axis.Y);
+            Variable<bool> flatSurface = surface.hitNormal.Dot(math.up()) > propMinDotProductVal;
+
+            Variable<quaternion> up = quaternion.identity;
+            Variable<quaternion> rotation = surface.hitNormal.LookAt();
+
+            context.SpawnProp(surface.hit & flatSurface & spawn, new Props.GenerationProp {
                 scale = 1f,
                 position = surface.hitPosition,
+                rotation = VariableExtensions.Slerp(rotation, up, propRotationFactor),
+                variant = variant,
                 type = 0,
             });
         }

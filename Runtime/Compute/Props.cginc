@@ -1,9 +1,3 @@
-/*
-struct BlittableProp {
-    uint2 packed_position_and_scale;
-};
-*/
-
 uint2 PackPositionAndScale(float3 position, float scale) {
 	uint x = f32tof16(position.x);
 	uint y = f32tof16(position.y);
@@ -15,50 +9,18 @@ uint2 PackPositionAndScale(float3 position, float scale) {
 	return uint2(first, second);
 }
 
-uint NormalizeAndPackAngle(float angle) {
-	if (angle < 0) {
-		angle = fmod(360 + angle, 360.0);
-	}
+uint2 PackRotationAndVariant(float4 rotation, int variant) {
+	rotation = normalize(rotation);
+	rotation += 1;
+	rotation *= 0.5;
+	rotation *= 255;
+	uint4 packedRotation = (uint4)rotation;
 
-	angle = fmod(angle, 360.0);
-	return (uint)((angle / 360.0) * 255.0);
-}
+	variant = variant & 0xFF;
 
-float UnpackRotation(uint rot) {
-	return (rot / 255.0) * 360.0;
-}
+	uint first = packedRotation.x | (packedRotation.y << 8) | (packedRotation.z << 16) | (packedRotation.w << 24);
+	uint second = variant;
 
-uint2 PackRotationAndVariantAndId(float3 rotation, uint propVariant) {
-	uint x = NormalizeAndPackAngle(rotation.x);
-	uint y = NormalizeAndPackAngle(rotation.y);
-	uint z = NormalizeAndPackAngle(rotation.z);
-	uint rots = x | (y << 8) | (z << 16) | (propVariant << 24);
-	
-	// TODO: USE THE REMAINING 4 BYTES!!!
-	return uint2(rots, 0);
+	// TODO: USE THE REMAINING 3 BYTES!!!
+	return uint2(first, second);
 }
-
-float3 UnpackRotation(uint2 packed) {
-	return float3(UnpackRotation(packed.x >> 16), UnpackRotation(packed.x >> 8), UnpackRotation(packed.x & 0xFF));
-}
-
-float4 UnpackPositionAndScale(uint2 packed) {
-	float x = f16tof32(packed.x & 0xFFFF);
-	float y = f16tof32(packed.x >> 16);
-	float z = f16tof32(packed.y & 0xFFFF);
-	float w = f16tof32(packed.y >> 16);
-	return float4(x, y, z, w);
-}
-
-uint UnpackVariant(uint2 packed) {
-	return packed.y >> 16;
-}
-
-/*
-BlittableProp PackProp(GpuProp input) {
-	BlittableProp packed;
-	packed.packed_position_and_scale = PackPositionAndScale(input.position, input.scale);
-	packed.packed_rotation_dispatch_index_prop_variant_padding = PackRotationAndVariantAndId(input.rotation, input.variant);
-	return packed;
-}
-*/

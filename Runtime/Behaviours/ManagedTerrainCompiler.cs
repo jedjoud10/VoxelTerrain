@@ -52,7 +52,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         public void Compile(bool force) {
 #if UNITY_EDITOR
             dirty = false;
-            //GetComponent<VoxelExecutor>().DisposeResources();
 
             if (force) {
                 ctx = null;
@@ -62,7 +61,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             string name = this.gameObject.name.ToLower().Replace(' ', '_');
 
             if (!AssetDatabase.IsValidFolder("Assets/Voxel Terrain/Compute/")) {
-                // TODO: Use package cache instead? would it work???
                 AssetDatabase.CreateFolder("Assets", "Voxel Terrain");
                 AssetDatabase.CreateFolder("Assets/Voxel Terrain", "Compute");
             }
@@ -70,20 +68,16 @@ namespace jedjoud.VoxelTerrain.Generation {
             string filePath = "Assets/Voxel Terrain/Compute/" + name + ".compute";
             string metaFilePath = "Assets/Voxel Terrain/Compute/" + name + ".compute.meta";
 
-            /*
-            if (File.Exists(filePath)) {
-                AssetDatabase.DeleteAsset(filePath);
-            }
-            */
-
             using (StreamWriter sw = File.CreateText(filePath)) {
                 sw.Write(source);
             }
 
+            // fix this pls...
             AssetDatabase.ImportAsset(filePath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(filePath);
+            //UnityEngine.Experimental.Rendering.ShaderWarmup.WarmupShader(shader, new UnityEngine.Experimental.Rendering.ShaderWarmupSetup() { vdecl = null });
 
             if (shader == null) {
                 Debug.LogWarning("wut?");
@@ -93,30 +87,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf)
                 return;
 
-            /*
-            var visualizer = GetComponent<VoxelPreview>();
-            visualizer?.InitializeForSize();
-            */
 #else
             throw new System.Exception("Cannot compile code at runtime");
 #endif
 
             return;
         }
-
-#if UNITY_EDITOR
-        // Recompiles the graph every time we reload the domain
-        [InitializeOnLoadMethod]
-        static void RecompileOnDomainReload() {
-
-            /*
-            VoxelGenerator[] graph = Object.FindObjectsByType<VoxelGenerator>(FindObjectsSortMode.None);
-            foreach (var item in graph) {
-                //item.Compile();
-            }
-            */
-        }
-#endif
 
         // Parses the voxel graph into a tree context with all required nodes and everything!!!
         // TODO: PLEASE FOR THE LOVE OF GOD. PLEASE. PLEASE I BEG YOU PLEASE REWRITE THIS!!! THIS SHIT IS ASS!!!!!
@@ -135,7 +111,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Create the external inputs that we use inside the function scope
             ScopeArgument position = ScopeArgument.AsInput<float3>("position");
-            //ScopeArgument id = ScopeArgument.AsInput<int3>("id");
 
             // Run the graph for the voxels pass
             ManagedTerrainGraph.VoxelInput voxelInput = new ManagedTerrainGraph.VoxelInput() { position = (Variable<float3>)position.node };
@@ -147,13 +122,14 @@ namespace jedjoud.VoxelTerrain.Generation {
                 name = "CSVoxels",
                 arguments = new ScopeArgument[] {
                     position,
-                    ScopeArgument.AsOutput<float>("voxel", voxelOutput.density),
+                    ScopeArgument.AsOutput<float>("density", voxelOutput.density),
                     ScopeArgument.AsOutput<int>("material", 0)
                 },
                 dispatch = new VoxelKernelDispatch {
                 },
                 numThreads = new int3(8),
-                keywordGuards = new KeywordGuards(ComputeKeywords.OCTAL_READBACK, ComputeKeywords.PREVIEW, ComputeKeywords.SEGMENT_VOXELS),
+                dispatchGuards = new KeywordGuards(ComputeKeywords.OCTAL_READBACK, ComputeKeywords.PREVIEW, ComputeKeywords.SEGMENT_VOXELS),
+                scopeGuards = null,
             };
 
             // Create a specific new node for sampling from the voxel texture
@@ -180,11 +156,12 @@ namespace jedjoud.VoxelTerrain.Generation {
                 },
                 customCallback = (TreeContext ctx) => {
                     cachedDensity.Handle(ctx);
-                    propContext.chain.Handle(ctx);
+                    propContext.chain?.Handle(ctx);
                 },
                 dispatch = new PropKernelDispatch {
                 },
-                keywordGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
+                dispatchGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
+                scopeGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
                 numThreads = new int3(32, 1, 1),
             };
 
@@ -203,6 +180,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             List<string> lines = new List<string>();
             lines.Add(ComputeKeywords.PRAGMA_MULTI_COMPILE);
+            lines.Add("#pragma use_dxc");
 
             lines.AddRange(ctx.Properties);
             lines.Add("#include \"Packages/com.jedjoud.voxelterrain/Runtime/Compute/Imports.cginc\"");

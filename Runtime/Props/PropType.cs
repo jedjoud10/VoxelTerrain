@@ -17,8 +17,8 @@ namespace jedjoud.VoxelTerrain.Props {
 
         [Header("Behavior")]
         public List<Variant> variants;
-        public PropSpawnBehavior propSpawnBehavior = PropSpawnBehavior.SpawnPrefabs;
-        public bool WillSpawnPrefab => propSpawnBehavior.HasFlag(PropSpawnBehavior.SpawnPrefabs);
+        public PropSpawnBehavior propSpawnBehavior = PropSpawnBehavior.SpawnEntities;
+        public bool SpawnEntities => propSpawnBehavior.HasFlag(PropSpawnBehavior.SpawnEntities);
 
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
         [Min(1)] public int maxPropsInTotal = 32 * 32 * 32 * 32;
@@ -29,19 +29,6 @@ namespace jedjoud.VoxelTerrain.Props {
     [Flags]
     public enum PropSpawnBehavior {
         None = 0,
-
-        // Enables/disables rendering far away billboards/instances
-        //RenderIndirectInstanced = 1 << 0,
-
-        // Enables/disables spawning in actual prefabs
-        SpawnPrefabs = 1 << 1,
-
-        // Replaces EVERYTHING with prefabs
-        //SwapForPrefabs = 1 << 2,
-
-        // Swaps out everything for instanced meshes
-        // (useful for small rocks or stuff not to be interacted with that we don't want as a gameobject)
-        // Only works when we have NO prop prefabs!!!
-        //SwapForInstancedMeshes = 1 << 3,
+        SpawnEntities = 1 << 1,
     }
 }

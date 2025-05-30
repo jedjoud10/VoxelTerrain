@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   variants:
   - prefab: {fileID: 2094315427237674077, guid: 299877e1a2ebe174aabed1b12f06a690, type: 3}
+  - prefab: {fileID: 2094315427237674077, guid: 0311276cc97063c4d83678ace6d55f44, type: 3}
   propSpawnBehavior: -1
   maxPropsPerSegment: 65536
   maxPropsInTotal: 1048576

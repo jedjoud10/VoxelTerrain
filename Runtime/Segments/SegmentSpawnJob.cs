@@ -26,8 +26,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             newSegments.Clear();
 
             int3 c = (int3)extent;
-            int3 min = new int3(-maxSegmentsInWorld, -maxSegmentsInWorld, -maxSegmentsInWorld);
-            int3 max = new int3(maxSegmentsInWorld, maxSegmentsInWorld, maxSegmentsInWorld);
+            int3 min = new int3(-maxSegmentsInWorld);
+            int3 max = new int3(maxSegmentsInWorld);
 
             int3 offset = (int3)math.round(center / worldSegmentSize);
 

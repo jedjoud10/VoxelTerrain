@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain {
         public const int PHYSICAL_SEGMENT_SIZE = 256;
 
         // 34 since we need 1 padding voxel to run the edge checks on the boundary and 1 more padding for finite diff normals 
-        public const int SEGMENT_SIZE_PADDED = 34;
-        public const int SEGMENT_SIZE = 32;
+        public const int SEGMENT_SIZE_PADDED = 66;
+        public const int SEGMENT_SIZE = 64;
     }
 }

@@ -1,14 +1,20 @@
+using Unity.Mathematics;
+
 namespace jedjoud.VoxelTerrain.Generation {
     public class RandomNode<I, O> : Variable<O> {
         public Variable<I> input;
         public bool signed;
+        public uint seed;
 
         public override void HandleInternal(TreeContext ctx) {
             input.Handle(ctx);
             int inputDims = VariableType.Dimensionality<I>();
             int outputDims = VariableType.Dimensionality<O>();
 
-            string code = $"hash{outputDims}{inputDims}({ctx[input]})";
+            float4 compilerTimeOffset = ctx.GetRngVarOffset(seed);
+            string compilerTimeOffsetCode = GraphUtils.SwizzleFromFloat4<I>(compilerTimeOffset);
+
+            string code = $"hash{outputDims}{inputDims}({ctx[input]} + {compilerTimeOffsetCode})";
 
             if (signed) {
                 code = $"(2.0 * ({code} - 0.5))";
@@ -18,17 +24,17 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    // TODO: implement random seed system that will keep a local "rng" seed that we can use so that subsequent random() call give different results (without forcing the user to add an offset themselves)
     public class Random {
-        public static Variable<O> Evaluate<I, O>(Variable<I> input, bool signed) {
+        public static Variable<O> Evaluate<I, O>(Variable<I> input, bool signed, uint seed = uint.MaxValue) {
             return (new RandomNode<I, O> {
                 input = input,
-                signed = signed
+                signed = signed,
+                seed = seed
             });
         }
 
-        public static Variable<bool> Uniform<I>(Variable<I> input, Variable<float> probability) {
-            return Evaluate<I, float>(input, false) > (1 - probability);
+        public static Variable<bool> Uniform<I>(Variable<I> input, Variable<float> probability, uint seed = uint.MaxValue) {
+            return Evaluate<I, float>(input, false, seed) > (1 - probability);
         }
     }
 }

@@ -52,7 +52,7 @@ void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
         }
 
         public override string InjectAfterScopeCalls(TreeContext ctx) {
-            return "    StoreVoxel(id, voxel, material);";
+            return "    StoreVoxel(id, density, material);";
         }
     }
 

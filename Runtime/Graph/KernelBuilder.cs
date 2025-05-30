@@ -10,7 +10,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Action<TreeContext> customCallback;
         public KernelDispatch dispatch;
         public int3 numThreads;
-        public KeywordGuards keywordGuards;
+        public KeywordGuards dispatchGuards;
+        public KeywordGuards scopeGuards;
 
         public void Build(TreeContext ctx) {
             // get rid of the 'CS' at the start
@@ -21,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             ctx.scopes.Add(new TreeScope(0));
             ctx.scopes[idx].name = scopeName;
             ctx.scopes[idx].arguments = arguments;
-            ctx.scopes[idx].keywordGuards = keywordGuards;
+            ctx.scopes[idx].keywordGuards = scopeGuards;
 
             foreach (var arg in arguments) {
                 if (arg.output) {
@@ -37,7 +38,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             dispatch.depth = 0;
             dispatch.scopeName = scopeName;
             dispatch.scopeIndex = idx;
-            dispatch.keywordGuards = keywordGuards;
+            dispatch.keywordGuards = dispatchGuards;
             dispatch.numThreads = numThreads;
             ctx.dispatches.Add(dispatch);
         }

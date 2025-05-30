@@ -18,18 +18,25 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             public void SpawnProp(Variable<bool> shouldSpawn, Props.GenerationProp prop) {
+                if (prop.position == null || prop.rotation == null || prop.variant == null || prop.scale == null || prop.type == null)
+                    throw new System.NullReferenceException("One of the prop variables is null");
+
                 chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
-                    Props.GenerationProp copy = prop;
-                    copy.position.Handle(ctx);
-                    copy.scale.Handle(ctx);
+                    prop.position.Handle(ctx);
+                    prop.scale.Handle(ctx);
+                    prop.rotation.Handle(ctx);
+                    prop.variant.Handle(ctx);
+                    prop.type.Handle(ctx);
                     shouldSpawn.Handle(ctx);
                     ctx.AddLine($@"
 // this is some very cool prop spawning call....
-if ({ctx[shouldSpawn]}) {{
+if ({ctx[shouldSpawn]} && {ctx[prop.type]} < max_total_prop_types) {{
     int index = 0;
-    InterlockedAdd(temp_counters_buffer[{prop.type}], 1, index);
-    index += temp_buffer_offsets_buffer[{prop.type}];
-    temp_buffer[index] = PackPositionAndScale({ctx[prop.position]}, {ctx[prop.scale]});
+    InterlockedAdd(temp_counters_buffer[{ctx[prop.type]}], 1, index);
+    index += temp_buffer_offsets_buffer[{ctx[prop.type]}];
+    uint2 first = PackPositionAndScale({ctx[prop.position]}, {ctx[prop.scale]});
+    uint2 second = PackRotationAndVariant({ctx[prop.rotation]}, {ctx[prop.variant]});
+    temp_buffer[index] = uint4(first, second);
 }}
 ");
                     

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,6 +16,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public PropertyInjector injector;
         public HashSet<string> properties;
         public int hash;
+        public uint rngSeed;
         public int counter;
         public bool debugNames;
         public List<TreeScope> scopes;
@@ -57,6 +59,22 @@ namespace jedjoud.VoxelTerrain.Generation {
             hash = HashCode.Combine(hash, val.GetHashCode());
         }
 
+        public float4 GetRngVarOffset(uint seed) {
+            Unity.Mathematics.Random randomizer;
+            if (seed != uint.MaxValue) {
+                randomizer = new Unity.Mathematics.Random(seed);
+            } else {
+                // fuck it bro...
+                rngSeed = (uint)math.abs(HashCode.Combine(rngSeed, seed));
+
+                // create x,y,z in range using the rng seed... pls
+                randomizer = new Unity.Mathematics.Random(rngSeed);
+            }
+
+            // doesn't need to be *that* big of an offset since this will be applied to rng hashes, not noise or anything like that
+            return randomizer.NextFloat4(-1000f, 1000f);
+        }
+
         public void Inject<T>(InjectedNode<T> node, string name, Func<object> func) {
             if (!Contains(node)) {
                 string newName = GenId(name);
@@ -68,11 +86,32 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
+        public TreeScope AddScope(string name, int depth, KeywordGuards guards, params ScopeArgument[] arguments) {
+            int idx = scopes.Count;
+            currentScope = idx;
+            var scope = new TreeScope(1);
+            scopes.Add(scope);
+            scopes[idx].name = name;
+            scopes[idx].arguments = arguments;
+            scopes[idx].keywordGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS);
+
+            foreach (var arg in scopes[idx].arguments) {
+                if (arg.output) {
+                    arg.node.Handle(this);
+                } else {
+                    Add(arg.node, arg.name);
+                }
+            }
+
+            return scope;
+        }
+
         public void Inject(Action<CommandBuffer, ComputeShader, Dictionary<string, ExecutorTexture>> func) {
             injector.injected.Add(func);
         }
 
         public void Add(UntypedVariable node, string name) {
+            Hash(node);
             scopes[currentScope].nodesToNames.Add(node, name);
         }
 

@@ -78,7 +78,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         public List<string> CreateScope(int scopeIndex) {
             List<string> outputLines = new List<string>();
             outputLines.Add($"// defined nodes: {nodesToNames.Count}, depth: {depth}, index: {scopeIndex}, total lines: {lines.Count}, argument count: {arguments.Length} ");
-
             // Create a string containing all the required arguments and stuff
             string argumentsCode = "";
             for (int i = 0; i < arguments.Length; i++) {

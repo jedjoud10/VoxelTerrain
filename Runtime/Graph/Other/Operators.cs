@@ -37,25 +37,39 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class SimpleBinaryFunctionNode<T> : Variable<T> {
-        public Variable<T> a;
-        public Variable<T> b;
+    public class SimpleBinaryFunctionNode<I1, I2, O> : Variable<O> {
+        public Variable<I1> a;
+        public Variable<I2> b;
         public string func;
 
         public override void HandleInternal(TreeContext ctx) {
             a.Handle(ctx);
             b.Handle(ctx);
-            ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_func_{ctx[b]}", $"{func}({ctx[a]},{ctx[b]})");
+            ctx.DefineAndBindNode<O>(this, $"{ctx[a]}_func_{ctx[b]}", $"{func}({ctx[a]},{ctx[b]})");
         }
     }
 
-    public class SimpleUnaryNode<T> : Variable<T> {
-        public Variable<T> a;
+    public class SimpleTertiaryFunctioNode<I1, I2, I3, O> : Variable<O> {
+        public Variable<I1> a;
+        public Variable<I2> b;
+        public Variable<I3> c;
         public string func;
 
         public override void HandleInternal(TreeContext ctx) {
             a.Handle(ctx);
-            ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_func", $"({func}({ctx[a]}))");
+            b.Handle(ctx);
+            c.Handle(ctx);
+            ctx.DefineAndBindNode<O>(this, $"{ctx[a]}_func_{ctx[b]}", $"{func}({ctx[a]},{ctx[b]},{ctx[c]})");
+        }
+    }
+
+    public class SimpleUnaryFunctionNode<I, O> : Variable<O> {
+        public Variable<I> a;
+        public string func;
+
+        public override void HandleInternal(TreeContext ctx) {
+            a.Handle(ctx);
+            ctx.DefineAndBindNode<O>(this, $"{ctx[a]}_func", $"({func}({ctx[a]}))");
         }
     }
 
@@ -71,62 +85,12 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class LerpNode<T> : Variable<T> {
-        public Variable<T> a;
-        public Variable<T> b;
-        public Variable<T> t;
-        public bool clamp;
-
-        public override void HandleInternal(TreeContext ctx) {
-            a.Handle(ctx);
-            b.Handle(ctx);
-            t.Handle(ctx);
-            ctx.Hash(clamp);
-
-            string mixer = clamp ? $"clamp({ctx[t]}, 0.0, 1.0)" : ctx[t];
-
-            ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_lerp_{ctx[b]}", $"lerp({ctx[a]},{ctx[b]},{mixer})");
-        }
-    }
-
-    public class ClampNode<T> : Variable<T> {
-        public Variable<T> a;
-        public Variable<T> b;
-        public Variable<T> t;
-
-        public override void HandleInternal(TreeContext ctx) {
-            a.Handle(ctx);
-            b.Handle(ctx);
-            t.Handle(ctx);
-
-            ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_clamp_{ctx[b]}", $"clamp({ctx[t]},{ctx[a]},{ctx[b]})");
-        }
-    }
-
     public class CastNode<I, O> : Variable<O> {
         public Variable<I> a;
 
         public override void HandleInternal(TreeContext ctx) {
             a.Handle(ctx);
             ctx.DefineAndBindNode<O>(this, $"{ctx[a]}_casted", $"{ctx[a]}");
-        }
-    }
-
-    public class NormalizeNode<T> : Variable<T> {
-        public Variable<T> a;
-
-        public override void HandleInternal(TreeContext ctx) {
-            a.Handle(ctx);
-            ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_normalized", $"normalize({ctx[a]})");
-        }
-    }
-
-    public class LengthNode<T> : Variable<float> {
-        public Variable<T> a;
-
-        public override void HandleInternal(TreeContext ctx) {
-            a.Handle(ctx);
-            ctx.DefineAndBindNode<float>(this, $"{ctx[a]}_length", $"length({ctx[a]})");
         }
     }
 

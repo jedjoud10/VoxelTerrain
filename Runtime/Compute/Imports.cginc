@@ -7,7 +7,6 @@ SamplerState my_linear_clamp_sampler;
     static const int LOGICAL_SIZE = PHYSICAL_SIZE + 2;
 #endif
 
-
 #pragma warning (disable : 3571)
 #pragma warning (disable : 3078)
 
@@ -20,6 +19,7 @@ SamplerState my_linear_clamp_sampler;
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/SDF.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Other.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Rotations.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 
 #if defined(_ASYNC_READBACK_OCTAL)
@@ -36,21 +36,23 @@ SamplerState my_linear_clamp_sampler;
     float3 preview_offset;
 #elif defined(_SEGMENT_VOXELS)
     int size;
-    RWTexture3D<uint> voxels_texture_write;
+    RWTexture3D<float> densities_texture_write;
     float3 segment_scale;
     float3 segment_offset;
 #elif defined(_SEGMENT_PROPS)
+    void Voxels(float3 position, out float density, out int material);
     int physical_segment_size;
     int segment_size;
     int segment_size_padded;
-    Texture3D<uint> voxels_texture_read;
+    Texture3D<float> densities_texture_read;
     float3 segment_scale;
     float3 segment_offset;
 
     int max_combined_temp_props;
+    int max_total_prop_types;
     RWStructuredBuffer<uint> temp_counters_buffer;
     RWStructuredBuffer<uint> temp_buffer_offsets_buffer;
-    RWStructuredBuffer<uint2> temp_buffer;
+    RWStructuredBuffer<uint4> temp_buffer;
 #endif
 
 #if defined(_ASYNC_READBACK_OCTAL)
@@ -77,40 +79,76 @@ SamplerState my_linear_clamp_sampler;
 
 
 #if defined(_SEGMENT_PROPS)
-    float DensityAt(float3 position) {
-        float3 zero_to_one = (position - segment_offset) / (float3)physical_segment_size;
-        uint3 zero_to_segment_size = (uint3)(zero_to_one * segment_size);
-        return unpackDensity(voxels_texture_read[zero_to_segment_size]);
+    float DensityAtButVeryVerySlowButMuchHigherQuality(float3 position) {
+        float density = 0;
+        int mat = 0;
+        Voxels(position, density, mat);
+        return density;
+    }
 
-        // unpackDensity(voxels_texture_read.SampleLevel(test, uv + (0.5 / texSize), lod););
+    float DensityAt(float3 position) {
+        float3 zero_to_size = (position - segment_offset) / segment_scale;
+        float3 zero_to_one = zero_to_size / (float)segment_size;
+        return densities_texture_read.SampleLevel(my_linear_clamp_sampler, zero_to_one, 0);
     }
     
+    // I am torturing/abusing my gpu
+    float3 CalculateFiniteDiffedNormalsSlow(float3 position) {
+        const float EPSILON = 0.01;
+        float base = DensityAtButVeryVerySlowButMuchHigherQuality(position);
+        float x = DensityAtButVeryVerySlowButMuchHigherQuality(position + float3(EPSILON, 0, 0));
+        float y = DensityAtButVeryVerySlowButMuchHigherQuality(position + float3(0, EPSILON, 0));
+        float z = DensityAtButVeryVerySlowButMuchHigherQuality(position + float3(0, 0, EPSILON));
+        return normalize(float3(x - base, y - base, z - base));
+    }
+
     float3 CalculateFiniteDiffedNormals(float3 position) {
+        const float EPSILON = 1;
         float base = DensityAt(position);
-        float x = DensityAt(position + float3(1, 0, 0));
-        float y = DensityAt(position + float3(0, 1, 0));
-        float z = DensityAt(position + float3(0, 0, 1));
-        return normalize(float3(base - x, base - y, base - z));
+        float x = DensityAt(position + float3(EPSILON, 0, 0));
+        float y = DensityAt(position + float3(0, EPSILON, 0));
+        float z = DensityAt(position + float3(0, 0, EPSILON));
+        return normalize(float3(x - base, y - base, z - base));
     }
 
     bool CheckSurfaceAlongAxis(float3 position, int axis, out float3 hitPosition, out float3 hitNormal) {
-	    const float3 OFFSETS[3] = {
-	        float3(1,0,0), float3(0,0,1), float3(0,0,1),
-	    };
+        const float3 OFFSETS[3] = {
+            float3(1,0,0), float3(0,1,0), float3(0,0,1),
+        };
 
-        float base = DensityAt(position);
-        float other = DensityAt(position + OFFSETS[axis]);
-
-        if (base >= 0.0 ^ other >= 0.0) {
-            float v = InvLerp(0.0, base, other);
-            float3 offset = v * OFFSETS[axis];
-            hitPosition = offset + position;
-            hitNormal = 1;
-            return true;
-        }
+        const int MAX_ITERATIONS = 8;
+        const float OFFSET_SCALE = 2;
 
         hitPosition = 0;
         hitNormal = 0;
+        
+        float3 offsetAxis = OFFSETS[axis] * OFFSET_SCALE;
+        float3 basePosition = position - offsetAxis;
+        float3 otherPosition = position + offsetAxis;
+        float baseDensity = DensityAt(basePosition);
+        float otherDensity = DensityAt(otherPosition);
+        
+        // Early out if no crossing
+        if (!(baseDensity >= 0.0 ^ otherDensity >= 0.0)) {
+            return false;
+        }
+
+        baseDensity = DensityAtButVeryVerySlowButMuchHigherQuality(basePosition);
+        otherDensity = DensityAtButVeryVerySlowButMuchHigherQuality(otherPosition);
+
+        // should probably use binary search... (nah) (yah)
+        for (int i = 0; i <= MAX_ITERATIONS; i++) {
+            float val = ((float)i / MAX_ITERATIONS);
+            float3 midPos = lerp(basePosition, otherPosition, val);
+            float midDensity = DensityAtButVeryVerySlowButMuchHigherQuality(midPos);
+
+            if (midDensity >= 0.0 ^ baseDensity >= 0.0) {
+                hitNormal = CalculateFiniteDiffedNormals(midPos);
+                hitPosition = midPos;
+                return true;
+            }
+        }
+
         return false;
     }
 #endif
@@ -125,7 +163,7 @@ SamplerState my_linear_clamp_sampler;
 
 #if defined(_ASYNC_READBACK_OCTAL) || defined(_SEGMENT_VOXELS) || defined(_PREVIEW)
     void StoreVoxel(uint3 id, float density, int material) {
-        #ifdef _ASYNC_READBACK_OCTAL
+        #if defined(_ASYNC_READBACK_OCTAL)
             uint3 zero_to_three = id / LOGICAL_SIZE;
             int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
             uint3 local_id = id % LOGICAL_SIZE;
@@ -136,8 +174,10 @@ SamplerState my_linear_clamp_sampler;
             // contiguous buffer containing 64 chunks worth of data
             voxels_buffer[index] = packVoxelData(density, material);
             CheckVoxelSign(id, density);
-        #else
+        #elif defined(_PREVIEW)
             voxels_texture_write[id] = packVoxelData(density, material);
+        #elif defined(_SEGMENT_VOXELS)
+            densities_texture_write[id] = density;
         #endif
     }
 #endif

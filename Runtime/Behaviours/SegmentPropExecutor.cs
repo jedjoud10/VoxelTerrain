@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public ComputeBuffer tempBufferOffsetsBuffer;
         public ComputeBuffer tempBuffer;
         public ComputeBuffer tempCountersBuffer;
-        public Texture segmentVoxelTexture;
+        public Texture segmentDensityTexture;
     }
 
     public class SegmentPropExecutor : Executor<SegmentPropExecutorParameters> {
@@ -28,8 +28,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             commands.SetComputeBufferParam(shader, kernelIndex, "temp_buffer", parameters.tempBuffer);
             commands.SetComputeBufferParam(shader, kernelIndex, "temp_buffer_offsets_buffer", parameters.tempBufferOffsetsBuffer);
 
-            commands.SetComputeTextureParam(shader, kernelIndex, "voxels_texture_read", parameters.segmentVoxelTexture);
+            commands.SetComputeTextureParam(shader, kernelIndex, "densities_texture_read", parameters.segmentDensityTexture);
             commands.SetComputeIntParam(shader, "max_combined_temp_props", parameters.tempBuffer.count);
+            commands.SetComputeIntParam(shader, "max_total_prop_types", parameters.tempBufferOffsetsBuffer.count);
 
             commands.SetComputeIntParam(shader, "physical_segment_size", SegmentUtils.PHYSICAL_SEGMENT_SIZE);
             commands.SetComputeIntParam(shader, "segment_size", SegmentUtils.SEGMENT_SIZE);
