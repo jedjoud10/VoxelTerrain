@@ -9,6 +9,7 @@ StructuredBuffer<int> copy_type_lookup_buffer;
 StructuredBuffer<uint4> temp_buffer;
 RWStructuredBuffer<uint4> perm_buffer;
 StructuredBuffer<int> perm_buffer_dst_copy_offsets_buffer;
+RWStructuredBuffer<float4x4> perm_matrices_buffer;
 
 int invocations;
 int what;
@@ -49,5 +50,8 @@ void CSCopy(uint3 id : SV_DispatchThreadID) {
 
 	int src = in_type_sub_array_index + temp_buffer_src_offset;
 	int dst = in_type_sub_array_index + perm_buffer_dst_offset;
-	perm_buffer[dst] = temp_buffer[src];
+
+	uint4 prop = temp_buffer[src];
+	perm_buffer[dst] = prop;
+	perm_matrices_buffer[dst] = UnpackPropToMatrix(prop);
 }

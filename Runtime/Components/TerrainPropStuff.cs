@@ -66,6 +66,8 @@ namespace jedjoud.VoxelTerrain.Segments {
         // draw args buffer ykhiibbg
         public GraphicsBuffer drawArgsBuffer;
 
+        public ComputeBuffer permMatricesBuffer;
+
         public ComputeBuffer copyOffsetsBuffer;
         public ComputeBuffer copyTypeLookupBuffer;
 
@@ -131,6 +133,15 @@ namespace jedjoud.VoxelTerrain.Segments {
             // Create a SINGLE HUGE perm allocation that contains ALL the props. EVER
             permBuffer = new ComputeBuffer(maxCombinedPermProps, BlittableProp.size, ComputeBufferType.Structured);
 
+            /*
+            // custom  matrix type that contains only what is necessary for fast reconstruction of a matrix
+            // 3x3 rotation matrix of halfs -> 9 halfs
+            // uniform scale -> 1 half
+            // translation -> 3 halfs
+            // total: 13, add 1 to satisfy 4 byte alignment
+            const int PACKED_MATRIX_SIZE = sizeof(ushort) * (13 + 1);
+            */
+            permMatricesBuffer = new ComputeBuffer(maxCombinedPermProps, sizeof(float) * 16, ComputeBufferType.Structured);
 
             // Create an offsets buffer that will gives us offsets inside the perm buffer
             permBufferOffsetsBuffer = new ComputeBuffer(types, sizeof(uint), ComputeBufferType.Structured);
@@ -191,6 +202,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             permBufferDstCopyOffsetsBuffer.name = "Perm Prop Buffer Dst Copy Offsets Buffer";
             copyOffsetsBuffer.name = "Copy Offsets Buffer (the packed one)";
             copyTypeLookupBuffer.name = "Copy Type Lookup Buffer (the packed one)";
+            permMatricesBuffer.name = "Perm Matrices Buffer";
         }
 
         public void RenderProps(TerrainPropsConfig config) {
@@ -198,34 +210,41 @@ namespace jedjoud.VoxelTerrain.Segments {
             if (cam == null)
                 return;
 
+            CommandBuffer cmds = new CommandBuffer();
+            cmds.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
+            cmds.name = "Compute Cull Props Buffers Dispatch";
+
             permPropsInUseBitsetBuffer.SetData(permPropsInUseBitset.AsNativeArrayExt<uint>());
             visiblePropsCountersBuffer.SetData(new uint[types]);
 
-            SetDebugNames();
-            cullCompute.SetBuffer(0, "perm_buffer", permBuffer);
-            cullCompute.SetBuffer(0, "indirection_buffer", indirectionBuffer);
-            cullCompute.SetBuffer(0, "perm_props_in_use_bitset_buffer", permPropsInUseBitsetBuffer);
-            cullCompute.SetBuffer(0, "visible_props_counters_buffer", visiblePropsCountersBuffer);
-            cullCompute.SetBuffer(0, "perm_buffer_counts_buffer", permBufferCountsBuffer);
-            cullCompute.SetBuffer(0, "perm_buffer_offsets_buffer", permBufferOffsetsBuffer);
-            cullCompute.SetInt("max_combined_perm_props", maxCombinedPermProps);
-            cullCompute.SetInt("types", types);
+            //SetDebugNames();
+            cmds.SetComputeBufferParam(cullCompute, 0, "perm_buffer", permBuffer);
+            cmds.SetComputeBufferParam(cullCompute, 0, "indirection_buffer", indirectionBuffer);
+            cmds.SetComputeBufferParam(cullCompute, 0, "perm_props_in_use_bitset_buffer", permPropsInUseBitsetBuffer);
+            cmds.SetComputeBufferParam(cullCompute, 0, "visible_props_counters_buffer", visiblePropsCountersBuffer);
+            cmds.SetComputeBufferParam(cullCompute, 0, "perm_buffer_counts_buffer", permBufferCountsBuffer);
+            cmds.SetComputeBufferParam(cullCompute, 0, "perm_buffer_offsets_buffer", permBufferOffsetsBuffer);
+            cmds.SetComputeIntParam(cullCompute, "max_combined_perm_props", maxCombinedPermProps);
+            cmds.SetComputeIntParam(cullCompute, "types", types);
 
             Vector3 cameraPosition = cam.transform.position;
             Vector3 camerForward = cam.transform.forward;
-            cullCompute.SetVector("camera_position", cameraPosition);
-            cullCompute.SetVector("camera_forward", camerForward);
+            cmds.SetComputeVectorParam(cullCompute, "camera_position", cameraPosition);
+            cmds.SetComputeVectorParam(cullCompute, "camera_forward", camerForward);
 
 
             const int THREAD_GROUP_SIZE_X = 32;
             const int CULL_INNER_LOOP_SIZE = 32;
             int threadCountX = Mathf.CeilToInt((float)maxCombinedPermProps / (THREAD_GROUP_SIZE_X * CULL_INNER_LOOP_SIZE));
             cullComputeThreadCount = threadCountX;
-            cullCompute.Dispatch(0, threadCountX, 1, 1);
+            cmds.DispatchCompute(cullCompute, 0, threadCountX, 1, 1);
 
-            applyCompute.SetBuffer(0, "draw_args_buffer", drawArgsBuffer);
-            applyCompute.SetBuffer(0, "visible_props_counters_buffer", visiblePropsCountersBuffer);
-            applyCompute.Dispatch(0, types, 1, 1);
+            cmds.SetComputeBufferParam(applyCompute, 0, "draw_args_buffer", drawArgsBuffer);
+            cmds.SetComputeBufferParam(applyCompute, 0, "visible_props_counters_buffer", visiblePropsCountersBuffer);
+            cmds.DispatchCompute(applyCompute, 0, types, 1, 1);
+
+            GraphicsFence fence = cmds.CreateAsyncGraphicsFence();
+            Graphics.ExecuteCommandBufferAsync(cmds, ComputeQueueType.Default);
 
             for (int i = 0; i < types; i++) {
                 if (config.props[i].RenderInstanced) {
@@ -246,7 +265,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             var mat = new MaterialPropertyBlock();
             renderParams.matProps = mat;
-            mat.SetBuffer("_PermBuffer", permBuffer);
+            mat.SetBuffer("_PermMatricesBuffer", permMatricesBuffer);
             mat.SetBuffer("_IndirectionBuffer", indirectionBuffer);
             mat.SetInt("_PropType", i);
             mat.SetInt("_PermBufferOffset", permBufferOffsets[i]);
@@ -334,7 +353,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             });
 
 
-            SetDebugNames();
+            //SetDebugNames();
             cmds.SetBufferData(permBufferDstCopyOffsetsBuffer, permBufferDstCopyOffsets);
             cmds.SetBufferData(copyOffsetsBuffer, copyOffsets);
             cmds.SetBufferData(copyTypeLookupBuffer, copyTypeLookup);
@@ -350,11 +369,11 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeBufferParam(copyCompute, 0, "temp_buffer", tempBuffer);
             cmds.SetComputeBufferParam(copyCompute, 0, "perm_buffer", permBuffer);
             cmds.SetComputeBufferParam(copyCompute, 0, "perm_buffer_dst_copy_offsets_buffer", permBufferDstCopyOffsetsBuffer);
+            cmds.SetComputeBufferParam(copyCompute, 0, "perm_matrices_buffer", permMatricesBuffer);
 
             int threadCountX = Mathf.CeilToInt((float)invocations / 32.0f);
             copyComputeThreadCount = threadCountX;
             cmds.DispatchCompute(copyCompute, 0, threadCountX, 1, 1);
-            //Graphics.ExecuteCommandBuffer(cmds);
             Graphics.ExecuteCommandBufferAsync(cmds, ComputeQueueType.Background);
         }
 

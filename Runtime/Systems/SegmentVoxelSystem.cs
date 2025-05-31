@@ -24,7 +24,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainSegment, TerrainSegmentRequestVoxelsTag>().Build();
             
-            if (query.IsEmpty || !_ready.ValueRO.segmentProps) {
+            if (query.IsEmpty || !_ready.ValueRO.segmentPropsDispatch) {
                 entity = Entity.Null;
                 segment = default;
                 fence = default;

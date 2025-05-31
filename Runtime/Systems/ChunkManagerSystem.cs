@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain {
 
         private NativeList<Entity> chunksToShow;
         private NativeList<Entity> chunksToDestroy;
-        private int nextEndOfPipeCounts;
+        private int nextEndOfPipeCount;
 
 
         [BurstCompile]
@@ -61,7 +61,7 @@ namespace jedjoud.VoxelTerrain {
 
             chunksToShow = new NativeList<Entity>(Allocator.Persistent);
             chunksToDestroy = new NativeList<Entity>(Allocator.Persistent);
-            nextEndOfPipeCounts = -1;
+            nextEndOfPipeCount = -1;
         }
 
         public static byte CalculateEnabledSkirtMask(BitField32 inputMask) {
@@ -106,7 +106,7 @@ namespace jedjoud.VoxelTerrain {
             ref TerrainOctree octree = ref _octree.ValueRW;
 
             if (!octree.pending && octree.handle.IsCompleted && octree.readyToSpawn) {
-                nextEndOfPipeCounts = SystemAPI.QueryBuilder().WithAll<TerrainChunk>().WithAbsent<Prefab>().Build().CalculateEntityCount();
+                nextEndOfPipeCount = SystemAPI.QueryBuilder().WithAll<TerrainChunk>().WithAbsent<Prefab>().Build().CalculateEntityCount();
                 
                 foreach (var node in octree.removed) {
                     if (chunks.TryGetValue(node, out var entity)) {
@@ -120,7 +120,7 @@ namespace jedjoud.VoxelTerrain {
 
                     Entity entity = state.EntityManager.Instantiate(chunkPrototype);
                     chunks.Add(node, entity);
-                    nextEndOfPipeCounts++;
+                    nextEndOfPipeCount++;
 
                     FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
                     float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE);
@@ -171,8 +171,8 @@ namespace jedjoud.VoxelTerrain {
 
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkEndOfPipeTag>().WithAbsent<Prefab>().Build();
 
-            if (query.CalculateEntityCount() == nextEndOfPipeCounts) {
-                nextEndOfPipeCounts = -1;
+            if (query.CalculateEntityCount() == nextEndOfPipeCount) {
+                nextEndOfPipeCount = -1;
 
 
                 foreach (var entity in chunksToShow) {

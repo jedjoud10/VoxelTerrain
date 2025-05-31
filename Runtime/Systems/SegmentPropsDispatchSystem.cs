@@ -40,7 +40,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             }
 
             RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
-            _ready.ValueRW.segmentProps = free;
+            _ready.ValueRW.segmentPropsDispatch = free;
 
             EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
 
@@ -134,6 +134,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                 } else {
                     stuff.CopyTempToPermBuffers(segmentEntity, EntityManager, config);
                 }
+
+                EntityManager.SetComponentEnabled<TerrainSegmentEndOfPipeTag>(segmentEntity, true);
             }
         }
 

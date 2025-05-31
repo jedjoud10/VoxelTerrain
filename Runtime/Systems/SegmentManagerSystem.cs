@@ -18,6 +18,13 @@ namespace jedjoud.VoxelTerrain.Segments {
         private JobHandle handle;
         private Entity segmentPrototype;
 
+        private NativeList<Entity> segmentsThatMustBeInEndOfPipe;
+        private NativeList<Entity> segmentsToDestroy;
+
+        private float3 oldPosition;
+        private bool pending;
+
+
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<TerrainLoader>();
@@ -28,6 +35,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             removedSegments = new NativeList<TerrainSegment>(Allocator.Persistent);
             map = new NativeHashMap<TerrainSegment, Entity>(0, Allocator.Persistent);
 
+            oldPosition = 1000000;
+
 
             EntityManager mgr = state.EntityManager;
             segmentPrototype = mgr.CreateEntity();
@@ -35,9 +44,15 @@ namespace jedjoud.VoxelTerrain.Segments {
             mgr.AddComponent<TerrainSegment>(segmentPrototype);
             mgr.AddComponent<TerrainSegmentRequestPropsTag>(segmentPrototype);
             mgr.AddComponent<TerrainSegmentRequestVoxelsTag>(segmentPrototype);
+            mgr.AddComponent<TerrainSegmentEndOfPipeTag>(segmentPrototype);
             mgr.SetComponentEnabled<TerrainSegmentRequestPropsTag>(segmentPrototype, true);
             mgr.SetComponentEnabled<TerrainSegmentRequestVoxelsTag>(segmentPrototype, true);
+            mgr.SetComponentEnabled<TerrainSegmentEndOfPipeTag>(segmentPrototype, false);
             mgr.AddComponent<Prefab>(segmentPrototype);
+
+            segmentsThatMustBeInEndOfPipe = new NativeList<Entity>(Allocator.Persistent);
+            segmentsToDestroy = new NativeList<Entity>(Allocator.Persistent);
+            pending = false;
         }
 
         [BurstCompile]
@@ -46,10 +61,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             foreach (var segment in removedSegments) {
                 if (map.TryGetValue(segment, out Entity entity)) {
-                    state.EntityManager.AddComponentData<TerrainSegmentPendingRemoval>(entity, new TerrainSegmentPendingRemoval {
-                        propsNeedCleanup = false
-                    });
-                    map.Remove(segment);
+                    segmentsToDestroy.Add(entity);
                 }
             }
 
@@ -63,7 +75,10 @@ namespace jedjoud.VoxelTerrain.Segments {
                 });
 
                 state.EntityManager.SetComponentData<TerrainSegment>(entity, segment);
+                segmentsThatMustBeInEndOfPipe.Add(entity);
             }
+
+            pending = false;
         }
 
         [BurstCompile]
@@ -75,6 +90,12 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             OctreeNode root = OctreeNode.RootNode(config.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE /* >> (int)terrain.voxelSizeReduction */);
             int maxSegmentsInWorld = (root.size / SegmentUtils.PHYSICAL_SEGMENT_SIZE) / 2;
+
+            if (math.distance(oldPosition, transform.Position) < 3)
+                return;
+            
+
+            oldPosition = transform.Position;
 
             SegmentSpawnJob job = new SegmentSpawnJob {
                 addedSegments = addedSegments,
@@ -92,24 +113,45 @@ namespace jedjoud.VoxelTerrain.Segments {
                 worldSegmentSize = SegmentUtils.PHYSICAL_SEGMENT_SIZE,
             };
             handle = job.Schedule();
+            pending = true;
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-            if (!handle.IsCompleted)
-                return;
+            if (handle.IsCompleted && pending) {
+                Complete(ref state);
+            } else if (segmentsToDestroy.Length == 0 && segmentsThatMustBeInEndOfPipe.Length == 0 && !pending) {
+                Schedule(ref state);
+            }
 
-            Complete(ref state);
-            Schedule(ref state);
+            bool areAllInEoP = true;
+
+            foreach (var item in segmentsThatMustBeInEndOfPipe) {
+                areAllInEoP &= SystemAPI.IsComponentEnabled<TerrainSegmentEndOfPipeTag>(item);
+            }
+
+            RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
+            _ready.ValueRW.segmentManager = segmentsToDestroy.Length == 0 && segmentsThatMustBeInEndOfPipe.Length == 0 && areAllInEoP && !pending;
+
+            if (areAllInEoP && segmentsThatMustBeInEndOfPipe.Length > 0) {
+                foreach (var entity in segmentsToDestroy) {
+                    TerrainSegment segment = state.EntityManager.GetComponentData<TerrainSegment>(entity);
+                    state.EntityManager.AddComponentData<TerrainSegmentPendingRemoval>(entity, new TerrainSegmentPendingRemoval {
+                        propsNeedCleanup = false
+                    });
+                    map.Remove(segment);
+                }
+
+                segmentsToDestroy.Clear();
+                segmentsThatMustBeInEndOfPipe.Clear();
+            }
 
             EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
-
             foreach (var (segment, entity) in SystemAPI.Query<TerrainSegmentPendingRemoval>().WithEntityAccess()) {
                 if (segment.propsNeedCleanup) {
                     ecb.DestroyEntity(entity);
                 }
             }
-
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
@@ -122,6 +164,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             addedSegments.Dispose();
             removedSegments.Dispose();
             map.Dispose();
+            segmentsToDestroy.Dispose();
         }
     }
 }

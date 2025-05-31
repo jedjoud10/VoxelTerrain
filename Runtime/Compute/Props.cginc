@@ -1,3 +1,13 @@
+struct PackedPropMatrix {
+	uint rot_00_01;
+	uint rot_02_10;
+	uint rot_11_12;
+	uint rot_20_21;
+	uint rot_22_scale;
+	uint pos_x_y;
+	uint pos_z_padding;
+};
+
 uint2 PackPositionAndScale(float3 position, float scale) {
 	uint x = f32tof16(position.x);
 	uint y = f32tof16(position.y);

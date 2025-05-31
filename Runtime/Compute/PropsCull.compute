@@ -54,7 +54,7 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		position_scale = UnpackPositionAndScale(prop.xy);
 		rotation = UnpackRotation(prop.zw);
 
-		visible = dot(normalize(position_scale.xyz - camera_position), camera_forward) > 0.6;
+		visible = dot(normalize(position_scale.xyz - camera_position), camera_forward) > 0;
 		
 		if (valid && visible) {
 			uint dst_index;

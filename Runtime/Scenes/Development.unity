@@ -671,6 +671,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 566389634701878972, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: debugGui
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4296326610441593126, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_Name
       value: Managed Terrain
@@ -682,6 +686,10 @@ PrefabInstance:
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: voronoiseAmplitude.value
       value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propDensityRangeSpawn.value.x
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: hash

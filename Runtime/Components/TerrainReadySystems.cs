@@ -7,6 +7,7 @@ namespace jedjoud.VoxelTerrain {
         public bool mesher;
 
         public bool segmentVoxels;
-        public bool segmentProps;
+        public bool segmentPropsDispatch;
+        public bool segmentManager;
     }
 }

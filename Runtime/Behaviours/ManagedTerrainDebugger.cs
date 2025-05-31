@@ -29,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             void MakeMyShitFuckingOpaqueHolyShitUnityWhyCantYouSupportThisByDefaultThisIsStupid() {
-                const int LE_AMOUNT = 15;
+                const int LE_AMOUNT = 16;
                 for (int i = 0; i < 3; i++) {
                     GUI.Box(new Rect(0, 0, 300, 15 * LE_AMOUNT + 20), "");
                 }
@@ -72,8 +72,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             Label($"Manager System Ready: " + ready.manager);
             Label($"Readback System Ready: " + ready.readback);
             Label($"Mesher System Ready: " + ready.mesher);
+            Label($"Segment Manager System Ready: " + ready.segmentManager);
             Label($"Segment Voxels System Ready: " + ready.segmentVoxels);
-            Label($"Segment Props System Ready: " + ready.segmentProps);
+            Label($"Segment Props System Ready: " + ready.segmentPropsDispatch);
         }
 
         private void OnDrawGizmos() {
