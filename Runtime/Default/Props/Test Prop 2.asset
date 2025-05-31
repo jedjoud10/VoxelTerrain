@@ -10,17 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 812a0afee8139e54db49ed7682d6760d, type: 3}
-  m_Name: Test Prop
+  m_Name: Test Prop 2
   m_EditorClassIdentifier: 
   variants:
-  - prefab: {fileID: 2094315427237674077, guid: 299877e1a2ebe174aabed1b12f06a690, type: 3}
-    cullingCenter: {x: 0, y: 0, z: 0}
-    cullingRadius: 1
-  - prefab: {fileID: 2094315427237674077, guid: 0311276cc97063c4d83678ace6d55f44, type: 3}
+  - prefab: {fileID: 4090421211949882616, guid: 90cc405673511cf4b85630edb7dbaebb, type: 3}
     cullingCenter: {x: 0, y: 0, z: 0}
     cullingRadius: 1
   propSpawnBehavior: 1
   maxPropsPerSegment: 65536
   maxPropsInTotal: 1048576
-  instancedMesh: {fileID: -1550514412580984892, guid: b50439a4803f8a442853cd5b9e5981de, type: 3}
+  instancedMesh: {fileID: -5495902117074765545, guid: 45aaeac8c2db58444ac86e0bbc1ce002, type: 3}
   material: {fileID: 2100000, guid: c63c9cf6fb569b047b26fc72cad62140, type: 2}

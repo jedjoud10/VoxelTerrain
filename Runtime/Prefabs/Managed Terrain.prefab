@@ -64,7 +64,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hash: 674370793
+  hash: -385913687
   dirty: 1
   shader: {fileID: 7200000, guid: 55e5bc6630ac7ad4786b230b69a61640, type: 3}
 --- !u!114 &4781938216130763360
@@ -102,8 +102,8 @@ MonoBehaviour:
   useHeightSimplification: 0
   flatshaded: 0
   size: 128
-  scale: {x: 5, y: 5, z: 5}
-  offset: {x: 0, y: -498, z: 0}
+  scale: {x: 100, y: 100, z: 100}
+  offset: {x: 0, y: -2367, z: 0}
 --- !u!114 &4893179947538798331
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -117,17 +117,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transform1:
-    position: {x: -12.92, y: 44.7, z: -23.37}
+    position: {x: -12.92, y: 23, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 0.02, y: 0.02, z: 0.02}
   flatPlaneHeight:
-    value: 36
+    value: 20.4
   flatPlaneUnionSmooth:
-    value: 40
+    value: 10
   scale:
-    value: 0.005
+    value: 0.01
   amplitude:
-    value: 40
+    value: 20
   voronoiScale:
     value:
       x: 0.02
@@ -152,7 +152,7 @@ MonoBehaviour:
       y: 0.2
   octaves: 7
   propSpawnProbability:
-    value: 1
+    value: 0.2
   propMinDotProductVal:
     value: 0.8
   propNoiseScale:
@@ -162,7 +162,7 @@ MonoBehaviour:
   propNoiseOffset:
     value: 0
   propRotationFactor:
-    value: 0.9
+    value: 0.8
 --- !u!114 &566389634701878972
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -6,6 +6,9 @@ namespace jedjoud.VoxelTerrain.Props {
     public class TerrainPropsConfig : IComponentData {
         public List<PropType> props;
         public List<PropType.Baked> baked;
-        public ComputeShader compute;
+        public ComputeShader copy;
+        public ComputeShader cull;
+        public ComputeShader apply;
+
     }
 }

@@ -118,6 +118,7 @@ namespace jedjoud.VoxelTerrain {
                 case StrictType.Float2: return 2;
                 case StrictType.Float3: return 3;
                 case StrictType.Float4: return 4;
+                case StrictType.Quaternion: return 4;
 
                 case StrictType.Int: return 1;
                 case StrictType.Int2: return 2;

@@ -12,9 +12,9 @@ GameObject:
   - component: {fileID: 2139536341228549593}
   - component: {fileID: 4648646879267579889}
   - component: {fileID: 6216437403641692524}
-  - component: {fileID: 6135894366507981322}
+  - component: {fileID: 1967510164383014247}
   m_Layer: 0
-  m_Name: Test Prop Variant 2
+  m_Name: Test Prop 1 Variant 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -70,7 +70,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 44088753294a87e49bebc72a7fb04ec0, type: 2}
+  - {fileID: 2100000, guid: f6221e2e98735194b835a5a3452cf428, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -100,7 +100,7 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2094315427237674077}
   m_Mesh: {fileID: -1550514412580984892, guid: b50439a4803f8a442853cd5b9e5981de, type: 3}
---- !u!65 &6135894366507981322
+--- !u!65 &1967510164383014247
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

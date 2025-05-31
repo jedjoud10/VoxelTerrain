@@ -36,6 +36,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> propNoiseScale;
         public Inject<float> propNoiseAmplitude;
         public Inject<float> propNoiseOffset;
+        public Inject<float2> propDensityRangeSpawn;
 
         public Inject<float> propRotationFactor;
 
@@ -89,6 +90,16 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
                 rotation = VariableExtensions.Slerp(rotation, up, propRotationFactor),
                 variant = variant,
                 type = 0,
+            });
+
+            var d = input.density;
+            Variable<float2> range = propDensityRangeSpawn;
+            context.SpawnProp(d > range.x & d < range.y & Random.Uniform(input.position, 0.1f), new Props.GenerationProp {
+                scale = 2f,
+                position = input.position,
+                rotation = Random.Evaluate<float3, quaternion>(input.position, true).Normalize(),
+                variant = 0,
+                type = 1,
             });
         }
     }

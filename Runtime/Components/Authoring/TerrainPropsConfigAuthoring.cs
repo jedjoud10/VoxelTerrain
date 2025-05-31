@@ -6,7 +6,9 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Props {
     class TerrainPropsConfigAuthoring : MonoBehaviour {
         public List<PropType> props;
-        public ComputeShader copyTempToPermCompute;
+        public ComputeShader copyCompute;
+        public ComputeShader cullCompute;
+        public ComputeShader applyCompute;
     }
 
     class TerrainPropsConfigBaker : Baker<TerrainPropsConfigAuthoring> {
@@ -17,8 +19,8 @@ namespace jedjoud.VoxelTerrain.Props {
             List<PropType.Baked> baked = authoring.props.Select(type => {
                 int count = type.variants.Count;
                 Entity[] prototypes = new Entity[count];
-                Mesh[] meshes = new Mesh[count];
                 /*
+                Mesh[] meshes = new Mesh[count];
                 Texture2D[] diffuse = new Texture2D[count];
                 Texture2D[] normal = new Texture2D[count];
                 Texture2D[] mask = new Texture2D[count];
@@ -27,10 +29,10 @@ namespace jedjoud.VoxelTerrain.Props {
                 for (int i = 0; i < count; i++) {
                     PropType.Variant variant = type.variants[i];
                     prototypes[i] = GetEntity(variant.prefab, TransformUsageFlags.Renderable);
-                    meshes[i] = GetComponent<MeshFilter>(variant.prefab).sharedMesh;
 
 
                     /*
+                    meshes[i] = GetComponent<MeshFilter>(variant.prefab).sharedMesh;
                     Material material = GetComponent<MeshRenderer>(variant.prefab).sharedMaterial;
                     diffuse[i] = Texture2D.whiteTexture;
                     if (material.HasTexture("_DiffuseMap"))
@@ -60,7 +62,9 @@ namespace jedjoud.VoxelTerrain.Props {
             AddComponentObject(self, new TerrainPropsConfig {
                 props = authoring.props,
                 baked = baked,
-                compute = authoring.copyTempToPermCompute
+                copy = authoring.copyCompute,
+                cull = authoring.cullCompute,
+                apply = authoring.applyCompute,
             });
         }
     }

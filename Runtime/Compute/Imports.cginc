@@ -79,7 +79,7 @@ SamplerState my_linear_clamp_sampler;
 
 
 #if defined(_SEGMENT_PROPS)
-    float DensityAtButVeryVerySlowButMuchHigherQuality(float3 position) {
+    float DensityAtSlow(float3 position) {
         float density = 0;
         int mat = 0;
         Voxels(position, density, mat);
@@ -95,10 +95,10 @@ SamplerState my_linear_clamp_sampler;
     // I am torturing/abusing my gpu
     float3 CalculateFiniteDiffedNormalsSlow(float3 position) {
         const float EPSILON = 0.01;
-        float base = DensityAtButVeryVerySlowButMuchHigherQuality(position);
-        float x = DensityAtButVeryVerySlowButMuchHigherQuality(position + float3(EPSILON, 0, 0));
-        float y = DensityAtButVeryVerySlowButMuchHigherQuality(position + float3(0, EPSILON, 0));
-        float z = DensityAtButVeryVerySlowButMuchHigherQuality(position + float3(0, 0, EPSILON));
+        float base = DensityAtSlow(position);
+        float x = DensityAtSlow(position + float3(EPSILON, 0, 0));
+        float y = DensityAtSlow(position + float3(0, EPSILON, 0));
+        float z = DensityAtSlow(position + float3(0, 0, EPSILON));
         return normalize(float3(x - base, y - base, z - base));
     }
 
@@ -126,8 +126,8 @@ SamplerState my_linear_clamp_sampler;
         float3 offsetAxis = OFFSETS[axis] * OFFSET_SCALE;
         float3 basePosition = position;
         float3 otherPosition = position + offsetAxis;
-        float baseDensity = DensityAtButVeryVerySlowButMuchHigherQuality(basePosition);
-        float otherDensity = DensityAtButVeryVerySlowButMuchHigherQuality(otherPosition);
+        float baseDensity = DensityAtSlow(basePosition);
+        float otherDensity = DensityAtSlow(otherPosition);
         
         // Early out if no crossing
         if ((baseDensity >= 0.0) == (otherDensity >= 0.0)) {
@@ -143,7 +143,7 @@ SamplerState my_linear_clamp_sampler;
         // Perform binary search
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             float3 midPos = (lowPos + highPos) * 0.5;
-            float midDensity = DensityAtButVeryVerySlowButMuchHigherQuality(midPos);
+            float midDensity = DensityAtSlow(midPos);
             
             if (abs(midDensity) < PRECISION) {
                 bestPos = midPos;

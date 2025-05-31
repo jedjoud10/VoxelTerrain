@@ -134,7 +134,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Create a specific new node for sampling from the voxel texture
             Variable<float> cachedDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
-                return @$"DensityAt({position.name})";
+                return @$"DensityAtSlow({position.name})";
             });
 
             // Run the graph for the props pass

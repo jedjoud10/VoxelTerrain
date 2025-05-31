@@ -4,11 +4,13 @@
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 
 StructuredBuffer<uint4> _PermBuffer;
-StructuredBuffer<float4x4> _PermMatricesBuffer;
 StructuredBuffer<uint> _IndirectionBuffer;
 StructuredBuffer<uint> _PermBufferOffsetsBuffer;
 int _PropType;
+int _PermBufferOffset;
 
+// came in clutch bro gg
+// https://gist.github.com/Cyanilux/4046e7bf3725b8f64761bf6cf54a16eb
 #if UNITY_ANY_INSTANCING_ENABLED
 
 	// Updates the unity_ObjectToWorld / unity_WorldToObject matrices so our matrix is taken into account
@@ -18,17 +20,12 @@ int _PropType;
 	// and/or
 	// https://github.com/TwoTailsGames/Unity-Built-in-Shaders/blob/master/CGIncludes/UnityStandardParticleInstancing.cginc
 
-	void vertInstancingMatrices(inout float4x4 objectToWorld, out float4x4 worldToObject) {
-		float4x4 data = _PermMatricesBuffer[unity_InstanceID];
+	void vertInstancingMatrices(out float4x4 objectToWorld, out float4x4 worldToObject) {
+		int propIndex = _IndirectionBuffer[_PermBufferOffset + unity_InstanceID];
+		uint4 prop = _PermBuffer[propIndex];
 
-		objectToWorld = mul(objectToWorld, data);
-
-		// Transform matrix (override current)
-		// I prefer keeping positions relative to the bounds passed into DrawMeshInstancedIndirect so use the above instead
-		//objectToWorld._11_21_31_41 = float4(data._11_21_31, 0.0f);
-		//objectToWorld._12_22_32_42 = float4(data._12_22_32, 0.0f);
-		//objectToWorld._13_23_33_43 = float4(data._13_23_33, 0.0f);
-		//objectToWorld._14_24_34_44 = float4(data._14_24_34, 1.0f);
+		float4x4 data = UnpackPropToMatrix(prop);
+		objectToWorld = data;
 
 		// Inverse transform matrix
 		float3x3 w2oRotation;

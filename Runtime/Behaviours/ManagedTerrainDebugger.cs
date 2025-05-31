@@ -29,8 +29,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             void MakeMyShitFuckingOpaqueHolyShitUnityWhyCantYouSupportThisByDefaultThisIsStupid() {
+                const int LE_AMOUNT = 15;
                 for (int i = 0; i < 3; i++) {
-                    GUI.Box(new Rect(0, 0, 300, 200), "");
+                    GUI.Box(new Rect(0, 0, 300, 15 * LE_AMOUNT + 20), "");
                 }
             }
 
@@ -40,7 +41,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             EntityQuery chunksAwaitingMeshing = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestMeshingTag));
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
-            TerrainPropStuff stuff = world.EntityManager.CreateEntityQuery(typeof(TerrainPropStuff)).GetSingleton<TerrainPropStuff>();
+
+            TerrainPropStuff stuff = null;
+            world.EntityManager.CreateEntityQuery(typeof(TerrainPropStuff)).TryGetSingleton<TerrainPropStuff>(out stuff);
 
             GUI.contentColor = Color.black;
             GUI.backgroundColor = Color.black;
@@ -55,8 +58,14 @@ namespace jedjoud.VoxelTerrain.Generation {
             Label($"# of chunks pending meshing: {chunksAwaitingMeshing.CalculateEntityCount()}");
             Label($"# of chunk entities with a mesh: {meshedChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
-            Label($"# of max perm props allowed... ever: {stuff.MaxPermProps()}");
-            Label($"# of in-use perm props: {stuff.PermPropsInUse()}");
+
+            if (stuff != null) {
+                Label($"# of max perm props allowed... ever: {stuff.MaxPermProps()}");
+                Label($"# of in-use perm props: {stuff.PermPropsInUse()}");
+                Label($"Prop copy thread count: {stuff.copyComputeThreadCount}");
+                Label($"Prop cull thread count: {stuff.cullComputeThreadCount}");
+            }
+
 
             EntityQuery readySystems = world.EntityManager.CreateEntityQuery(typeof(TerrainReadySystems));
             TerrainReadySystems ready = readySystems.GetSingleton<TerrainReadySystems>();
