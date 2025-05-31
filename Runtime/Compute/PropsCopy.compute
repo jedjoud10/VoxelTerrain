@@ -4,30 +4,50 @@
 
 StructuredBuffer<int> temp_counters_buffer;
 StructuredBuffer<int> temp_buffer_offsets_buffer;
+StructuredBuffer<int> copy_offsets_buffer;
+StructuredBuffer<int> copy_type_lookup_buffer;
 StructuredBuffer<uint4> temp_buffer;
 RWStructuredBuffer<uint4> perm_buffer;
 StructuredBuffer<int> perm_buffer_dst_copy_offsets_buffer;
-StructuredBuffer<uint> temp_buffer_type_indices_buffer;
+
+int invocations;
+int what;
 
 [numthreads(32, 1, 1)]
 void CSCopy(uint3 id : SV_DispatchThreadID) {
 	int index = id.x;
 
-	int type_index_block = index / 4;
-	int type_index_local = index % 4;
-	int type = (temp_buffer_type_indices_buffer[type_index_block] >> (type_index_local * 8)) & 0xFF;
-	
+	if (index >= invocations) {
+		return;
+	}
 
-	if (index >= temp_counters_buffer[type] || perm_buffer_dst_copy_offsets_buffer[type] == -1) {
+	int type = -1;
+	
+	// index: 5
+	// copy_type_lookup_buffer: 0, 10, 15, 20
+	// type => 0
+	for (int j = 0; j < what; j++) {
+		if (index >= copy_offsets_buffer[j]) {
+			type = copy_type_lookup_buffer[j];
+		} else {
+			break;
+		}
+	};
+
+	int in_type_sub_array_index = index - copy_offsets_buffer[type];
+
+	if (type == -1) {
+		return;
+	}
+
+	if (perm_buffer_dst_copy_offsets_buffer[type] == -1) {
 		return;
 	}
 
 	int temp_buffer_src_offset = temp_buffer_offsets_buffer[type];
 	int perm_buffer_dst_offset = perm_buffer_dst_copy_offsets_buffer[type];
 
-	int src = index + temp_buffer_src_offset;
-	int dst = index + perm_buffer_dst_offset;
-
-	uint4 prop = temp_buffer[src];
-	perm_buffer[dst] = prop;
+	int src = in_type_sub_array_index + temp_buffer_src_offset;
+	int dst = in_type_sub_array_index + perm_buffer_dst_offset;
+	perm_buffer[dst] = temp_buffer[src];
 }

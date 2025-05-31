@@ -1,5 +1,4 @@
 using System;
-using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract partial class Variable<T> : UntypedVariable {

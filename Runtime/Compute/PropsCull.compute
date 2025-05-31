@@ -1,7 +1,5 @@
 #pragma kernel CSCull
 
-#define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
-#include "UnityIndirect.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 
 StructuredBuffer<uint4> perm_buffer;
@@ -9,11 +7,11 @@ RWStructuredBuffer<uint> indirection_buffer;
 StructuredBuffer<uint> perm_props_in_use_bitset_buffer;
 StructuredBuffer<int> perm_buffer_counts_buffer;
 StructuredBuffer<int> perm_buffer_offsets_buffer;
-StructuredBuffer<uint> perm_buffer_type_indices_buffer;
 
 RWStructuredBuffer<uint> visible_props_counters_buffer;
 
 int max_combined_perm_props;
+int types;
 float3 camera_position;
 float3 camera_forward;
 
@@ -21,13 +19,26 @@ float3 camera_forward;
 void CSCull(uint3 id : SV_DispatchThreadID) {
 	int block = perm_props_in_use_bitset_buffer[id.x];
 
+	if (block == 0) {
+		return;
+	}
+
 	for (int i = 0; i < 32; i++) {
 		int local = i;
 		int index = id.x * 32 + i;
 
-		int type_index_block = index / 4;
-		int type_index_local = index % 4;
-		int type = (perm_buffer_type_indices_buffer[type_index_block] >> (type_index_local * 8)) & 0xFF;
+		int type = -1;
+		for (int j = 0; j < types; j++) {
+			if (index >= perm_buffer_offsets_buffer[j]) {
+				type = j;
+			} else {
+				break;
+			}
+		}
+
+		if (type == -1) {
+			continue;
+		}
 		
 		if (index >= max_combined_perm_props) {
 			return;
@@ -43,8 +54,7 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		position_scale = UnpackPositionAndScale(prop.xy);
 		rotation = UnpackRotation(prop.zw);
 
-		visible = true;
-		//visible = dot(normalize(position_scale.xyz - camera_position), camera_forward) > 0.0;
+		visible = dot(normalize(position_scale.xyz - camera_position), camera_forward) > 0.6;
 		
 		if (valid && visible) {
 			uint dst_index;

@@ -1,7 +1,5 @@
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Rendering;
-using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]

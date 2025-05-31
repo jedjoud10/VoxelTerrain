@@ -2,9 +2,6 @@ using System.Runtime.InteropServices;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Props {
-    // TODO: Also implement the prop type system
-    // TODO: Also implement the prop variants system
-    // TODO: implement dispatch index
     // Props of the same type are stored in the same GPU buffer, so no need to do any funky stuff with that
     [StructLayout(LayoutKind.Sequential)]
     public struct BlittableProp {
@@ -24,9 +21,8 @@ namespace jedjoud.VoxelTerrain.Props {
         public byte rot_z;
         public byte rot_w;
 
-        // Prop variant type
+        // Prop variant
         public byte variant;
-
         public byte _padding;
         public byte _padding2;
         public byte _padding3;

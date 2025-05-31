@@ -1,13 +1,5 @@
-using System.Linq;
-using Codice.Client.BaseCommands.BranchExplorer.ExplorerTree;
-using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Props;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {

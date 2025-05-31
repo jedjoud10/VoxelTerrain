@@ -1,7 +1,5 @@
-using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
     public static class NativeExtensions {

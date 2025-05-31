@@ -675,6 +675,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Managed Terrain
       objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: amplitude.value
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: voronoiseAmplitude.value
+      value: 4
+      objectReference: {fileID: 0}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: hash
       value: -837449227

@@ -88,10 +88,8 @@ namespace jedjoud.VoxelTerrain.Editor {
 
             PropType propType = (PropType)target;
 
-            if (propType.RenderInstanced) {
-                EditorGUILayout.PropertyField(instancedMeshProp);
-                EditorGUILayout.PropertyField(materialProp);
-            }
+            EditorGUILayout.PropertyField(instancedMeshProp);
+            EditorGUILayout.PropertyField(materialProp);
 
             serializedObject.ApplyModifiedProperties();
         }
