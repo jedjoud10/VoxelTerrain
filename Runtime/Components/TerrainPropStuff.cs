@@ -1,9 +1,7 @@
+using System;
 using System.Linq;
-using Codice.Client.BaseCommands.BranchExplorer.ExplorerTree;
-using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -11,86 +9,65 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(SegmentVoxelSystem))]
-    public partial class SegmentPropsSystem : SystemBase {
-        private int types;
+    public class TerrainPropStuff : IComponentData {
+        public int types;
 
         // contains the prop data for each type stored sequentially, but with gaps, so not contiguously
         // allows us to do a SINGLE async readback for ALL the props in a segment
-        private ComputeBuffer tempBuffer;
+        public ComputeBuffer tempBuffer;
 
         // temp counter buffer
-        private ComputeBuffer tempCountersBuffer;
+        public ComputeBuffer tempCountersBuffer;
 
         // max count per segment dispatch (temp)
-        private int maxCombinedTempProps;
+        public int maxCombinedTempProps;
 
         // max count for the whole world. can't have more props that this
-        private int maxCombinedPermProps;
+        public int maxCombinedPermProps;
 
         // contains offsets for each prop type inside tempPropBuffer
-        private int[] tempBufferOffsets;
-        private ComputeBuffer tempBufferOffsetsBuffer;
+        public int[] tempBufferOffsets;
+        public ComputeBuffer tempBufferOffsetsBuffer;
 
         // contains the prop data for each type stored sequentially, but with gaps, so not contiguously
-        private ComputeBuffer permBuffer;
+        public ComputeBuffer permBuffer;
 
         // contains offsets for each prop type inside permPropBuffer
-        private int[] permBufferOffsets;
+        public int[] permBufferOffsets;
         public ComputeBuffer permBufferOffsetsBuffer;
 
         // contains counts for each prop type inside permPropBuffer
-        private int[] permBufferCounts;
+        public int[] permBufferCounts;
         public ComputeBuffer permBufferCountsBuffer;
 
         // bitset that tells us what elements in permBuffer are in use or are free
         // when we run the compute copy to copy temp to perm buffers we use this beforehand
         // to check for "free" blocks of contiguous memory in the appropriate prop type's region
 
-        private NativeBitArray permPropsInUseBitset;
-        private int paddingBitsetBitsCount;
-        private int bitsetBlocks;
-        private ComputeBuffer permPropsInUseBitsetBuffer;
+        public NativeBitArray permPropsInUseBitset;
+        public int paddingBitsetBitsCount;
+        public int bitsetBlocks;
+        public ComputeBuffer permPropsInUseBitsetBuffer;
 
         // buffer that is CONTINUOUSLY updated right before we submit a compute dispatch call
         // tells us the dst offset in the permBuffer to write our prop data
-        private ComputeBuffer permBufferDstCopyOffsetsBuffer;
+        public ComputeBuffer permBufferDstCopyOffsetsBuffer;
 
-        private NativeArray<int> tempCounters;
-        private NativeArray<uint4> tempBufferReadback;
+        public NativeArray<int> tempCounters;
+        public NativeArray<uint4> tempBufferReadback;
 
         // contains 4x4 matrices for props that are drawn indirectly using billboards or just normal mesh instancing
-        private ComputeBuffer permMatricesBuffer;
+        public ComputeBuffer permMatricesBuffer;
 
         // Counters for the number of visible (non-culled) props for each prop type
-        private ComputeBuffer visiblePropsCountersBuffer;
+        public ComputeBuffer visiblePropsCountersBuffer;
 
         // indirection buffer that we use to read data from permBufferMatrices and permBuffer
         // each value represents an index into those buffers
-        private ComputeBuffer indirectionBuffer;
+        public ComputeBuffer indirectionBuffer;
 
         // draw args buffer ykhiibbg
-        private GraphicsBuffer drawArgsBuffer;
-
-        private bool countersFetched;
-        private bool propsFetched;
-        private bool needPropsToBeFetched;
-        private bool free;
-        private bool disposed;
-        private bool initialized;
-        private Entity entity;
-        private SegmentPropExecutor propExecutor;
-
-        protected override void OnCreate() {
-            RequireForUpdate<TerrainReadySystems>();
-            RequireForUpdate<TerrainPropsConfig>();
-
-            initialized = false;
-            free = true;
-            disposed = false;
-            propExecutor = new SegmentPropExecutor();
-        }
+        public GraphicsBuffer drawArgsBuffer;
 
         public int MaxPermProps() {
             return maxCombinedPermProps;
@@ -100,10 +77,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             return permPropsInUseBitset.CountBits(0, permPropsInUseBitset.Length);
         }
 
-        int copyKernel;
-        int cullKernel;
-        int applyIndirectArgsKernel;
-        private void InitResources(TerrainPropsConfig config) {
+        public void Init(TerrainPropsConfig config) {
             types = config.props.Count;
 
             // Create temp offsets for temp allocation
@@ -187,58 +161,17 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             visiblePropsCountersBuffer = new ComputeBuffer(types, sizeof(uint), ComputeBufferType.Structured);
             visiblePropsCountersBuffer.SetData(new uint[types]);
-
             drawArgsBuffer.SetData(args);
-
-            ComputeShader compute = config.compute;
-            copyKernel = compute.FindKernel("CSCopy");
-            cullKernel = compute.FindKernel("CSCull");
-            applyIndirectArgsKernel = compute.FindKernel("CSApplyIndirectArgs");
         }
 
-        protected override void OnUpdate() {
-            TerrainPropsConfig config = SystemAPI.ManagedAPI.GetSingleton<TerrainPropsConfig>();
-
-            if (!initialized) {
-                initialized = true;
-                InitResources(config);
-            }
-
-            if (free) {
-                TryBeginDispatchAndReadback(config);
-            } else {
-                TryCheckIfReadbackComplete(config);
-            }
-
-            RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
-            _ready.ValueRW.segmentProps = free;
-
-            EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
-
-            foreach (var buffer in SystemAPI.Query<DynamicBuffer<TerrainSegmentOwnedPropBuffer>>().WithAll<TerrainSegmentPendingRemoval>()) {
-                DespawnPropEntities(buffer, ref ecb);
-            }
-
-            foreach (var component in SystemAPI.Query<TerrainSegmentPermPropLookup>().WithAll<TerrainSegmentPendingRemoval>()) {
-                ResetPermBufferForSegment(component);
-            }
-
-            foreach (var _cleanup in SystemAPI.Query<RefRW<TerrainSegmentPendingRemoval>>()) {
-                _cleanup.ValueRW.propsNeedCleanup = true;
-            }
-
-            ecb.Playback(EntityManager);
-            ecb.Dispose();
-
-            RenderProps(config);
-        }
-
-        private void RenderProps(TerrainPropsConfig config) {
+        public void RenderProps(TerrainPropsConfig config) {
             ComputeShader compute = config.compute;
 
             permPropsInUseBitsetBuffer.SetData(permPropsInUseBitset.AsNativeArrayExt<uint>());
             visiblePropsCountersBuffer.SetData(new uint[types]);
 
+            int cullKernel = compute.FindKernel("CSCull");
+            int applyIndirectArgsKernel = compute.FindKernel("CSApplyIndirectArgs");
             compute.SetBuffer(cullKernel, "perm_props_in_use_bitset_buffer", permPropsInUseBitsetBuffer);
             compute.SetBuffer(cullKernel, "perm_buffer_offsets_buffer", permBufferOffsetsBuffer);
             compute.SetBuffer(cullKernel, "perm_buffer_counts_buffer", permBufferCountsBuffer);
@@ -260,7 +193,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             }
         }
 
-        private void RenderPropsOfType(PropType type, int i) {
+        public void RenderPropsOfType(PropType type, int i) {
             Material material = type.material;
 
             RenderParams renderParams = new RenderParams(material);
@@ -287,92 +220,12 @@ namespace jedjoud.VoxelTerrain.Segments {
             Graphics.RenderMeshIndirect(renderParams, mesh, drawArgsBuffer, 1, i);
         }
 
-        private void TryBeginDispatchAndReadback(TerrainPropsConfig config) {
-            SegmentVoxelSystem dispatcher = World.GetExistingSystemManaged<SegmentVoxelSystem>();
-            Entity entity = dispatcher.entity;
-            TerrainSegment segment = dispatcher.segment;
-            GraphicsFence fence = dispatcher.fence;
-
-            if (entity == Entity.Null)
-                return;
-
-            this.entity = entity;
-            needPropsToBeFetched = segment.lod == TerrainSegment.LevelOfDetail.High;
-            countersFetched = false;
-            propsFetched = false;
-
-            int invocations = (int)maxCombinedTempProps;
-
-            Texture segmentDensityTexture = dispatcher.voxelExecutor.Textures["densities"];
-            fence = propExecutor.ExecuteWithInvocationCount(new int3(invocations, 1, 1), new SegmentPropExecutorParameters() {
-                commandBufferName = "Terrain Segment Props Dispatch",
-                kernelName = "CSProps",
-                updateInjected = false,
-                compiler = ManagedTerrain.instance.compiler,
-                seeder = ManagedTerrain.instance.seeder,
-                segment = segment,
-                tempCountersBuffer = tempCountersBuffer,
-                tempBuffer = tempBuffer,
-                tempBufferOffsetsBuffer = tempBufferOffsetsBuffer,
-                segmentDensityTexture = segmentDensityTexture,
-            }, previous: fence);
-
-            CommandBuffer cmds = new CommandBuffer();
-            cmds.name = "Terrain Segment Readback Prop Counts";
-            cmds.WaitOnAsyncGraphicsFence(fence, SynchronisationStageFlags.ComputeProcessing);
-
-            cmds.RequestAsyncReadbackIntoNativeArray(
-                ref tempCounters,
-                tempCountersBuffer,
-                delegate (AsyncGPUReadbackRequest asyncRequest) {
-                    if (disposed)
-                        return;
-                    countersFetched = true;
-                }
-            );
-
-            if (needPropsToBeFetched) {
-                cmds.RequestAsyncReadbackIntoNativeArray(
-                    ref tempBufferReadback,
-                    tempBuffer,
-                    delegate (AsyncGPUReadbackRequest asyncRequest) {
-                        if (disposed)
-                            return;
-                        propsFetched = true;
-                    }
-                );
-            }
-
-
-            free = false;
-
-            Graphics.ExecuteCommandBuffer(cmds);
-            SystemAPI.SetComponentEnabled<TerrainSegmentRequestPropsTag>(entity, false);
-        }
-
-        private void TryCheckIfReadbackComplete(TerrainPropsConfig config) {
-            if (countersFetched && (propsFetched || !needPropsToBeFetched)) {
-                free = true;
-                countersFetched = false;
-                propsFetched = false;
-
-                if (!EntityManager.Exists(entity))
-                    return;
-
-                if (needPropsToBeFetched) {
-                    SpawnPropEntities(config);
-                } else {
-                    CopyTempToPermBuffers(config);
-                }
-            }
-        }
-
-        private void CopyTempToPermBuffers(TerrainPropsConfig config) {
+        public void CopyTempToPermBuffers(Entity segmentEntity, EntityManager manager, TerrainPropsConfig config) {
             int invocations = tempCounters.Select(x => (int)x).Sum();
-            
+
             if (invocations == 0)
                 return;
-            
+
             CommandBuffer cmds = new CommandBuffer();
             cmds.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
             cmds.name = "Compute Copy Props Buffers Dispatch";
@@ -406,7 +259,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             FixedList128Bytes<int> countsList = new FixedList128Bytes<int>();
             offsetsList.AddReplicate(0, types);
             countsList.AddReplicate(0, types);
-            
+
             // set them to used...
             for (int i = 0; i < types; i++) {
                 int tempSubBufferCount = (int)tempCounters[i];
@@ -420,7 +273,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             }
 
             // add component to the segment desu
-            EntityManager.AddComponentData(entity, new TerrainSegmentPermPropLookup {
+            manager.AddComponentData(segmentEntity, new TerrainSegmentPermPropLookup {
                 offsetsList = offsetsList,
                 countsList = countsList
             });
@@ -428,6 +281,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             ComputeShader compute = config.compute;
             cmds.SetBufferData(permBufferDstCopyOffsetsBuffer, permBufferDstCopyOffsets);
 
+            int copyKernel = compute.FindKernel("CSCopy");
             cmds.SetComputeBufferParam(compute, copyKernel, "temp_counters_buffer", tempCountersBuffer);
             cmds.SetComputeBufferParam(compute, copyKernel, "temp_buffer_offsets_buffer", tempBufferOffsetsBuffer);
             cmds.SetComputeBufferParam(compute, copyKernel, "temp_buffer", tempBuffer);
@@ -440,7 +294,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             Graphics.ExecuteCommandBufferAsync(cmds, ComputeQueueType.Background);
         }
 
-        private void ResetPermBufferForSegment(TerrainSegmentPermPropLookup component) {
+        public void ResetPermBufferForSegment(TerrainSegmentPermPropLookup component) {
             for (int i = 0; i < types; i++) {
                 int offset = component.offsetsList[i];
                 int count = component.countsList[i];
@@ -452,14 +306,14 @@ namespace jedjoud.VoxelTerrain.Segments {
             }
         }
 
-        private void SpawnPropEntities(TerrainPropsConfig config) {
+        public void SpawnPropEntities(Entity segmentEntity, EntityManager manager, TerrainPropsConfig config) {
             int lilSum = 0;
             for (int i = 0; i < types; i++) {
                 lilSum += (int)tempCounters[i];
             }
 
-            EntityManager.AddBuffer<TerrainSegmentOwnedPropBuffer>(entity);
-            
+            manager.AddBuffer<TerrainSegmentOwnedPropBuffer>(segmentEntity);
+
             EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
             int index = 0;
             for (int i = 0; i < types; i++) {
@@ -488,45 +342,38 @@ namespace jedjoud.VoxelTerrain.Segments {
                         Entity instantiated = ecb.Instantiate(prototype);
 
                         ecb.SetComponent<LocalTransform>(instantiated, LocalTransform.FromPositionRotationScale(position, rotation, scale));
-                        ecb.AppendToBuffer(this.entity, new TerrainSegmentOwnedPropBuffer { entity = instantiated });
+                        ecb.AppendToBuffer(segmentEntity, new TerrainSegmentOwnedPropBuffer { entity = instantiated });
                         index++;
                     }
                 }
             }
 
-            ecb.Playback(EntityManager);
+            ecb.Playback(manager);
             ecb.Dispose();
         }
 
-        private void DespawnPropEntities(DynamicBuffer<TerrainSegmentOwnedPropBuffer> buffer, ref EntityCommandBuffer ecb) {
+        public void DespawnPropEntities(DynamicBuffer<TerrainSegmentOwnedPropBuffer> buffer, ref EntityCommandBuffer ecb) {
             foreach (var prop in buffer) {
                 ecb.DestroyEntity(prop.entity);
             }
         }
 
-        protected override void OnDestroy() {
-            disposed = true;
-            AsyncGPUReadback.WaitAllRequests();
+        public void Dispose() {
+            tempCountersBuffer.Dispose();
+            tempCounters.Dispose();
+            tempBuffer.Dispose();
+            tempBufferOffsetsBuffer.Dispose();
+            tempBufferReadback.Dispose();
+            permPropsInUseBitset.Dispose();
 
-            if (initialized) {
-                tempCountersBuffer.Dispose();
-                tempCounters.Dispose();
-                tempBuffer.Dispose();
-                tempBufferOffsetsBuffer.Dispose();
-                tempBufferReadback.Dispose();
-                permPropsInUseBitset.Dispose();
+            permBuffer.Dispose();
+            permBufferDstCopyOffsetsBuffer.Dispose();
+            indirectionBuffer.Dispose();
+            permMatricesBuffer.Dispose();
 
-                permBuffer.Dispose();
-                permBufferDstCopyOffsetsBuffer.Dispose();
-                indirectionBuffer.Dispose();
-                permMatricesBuffer.Dispose();
-
-                drawArgsBuffer.Dispose();
-                permPropsInUseBitsetBuffer.Dispose();
-                permBufferCountsBuffer.Dispose();
-            }
-
-            propExecutor.DisposeResources();
+            drawArgsBuffer.Dispose();
+            permPropsInUseBitsetBuffer.Dispose();
+            permBufferCountsBuffer.Dispose();
         }
     }
 }

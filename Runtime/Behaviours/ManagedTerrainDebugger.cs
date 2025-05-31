@@ -40,7 +40,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             EntityQuery chunksAwaitingMeshing = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestMeshingTag));
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
-            SegmentPropsSystem props = world.GetExistingSystemManaged<SegmentPropsSystem>();
+            TerrainPropStuff stuff = world.EntityManager.CreateEntityQuery(typeof(TerrainPropStuff)).GetSingleton<TerrainPropStuff>();
 
             GUI.contentColor = Color.black;
             GUI.backgroundColor = Color.black;
@@ -55,8 +55,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             Label($"# of chunks pending meshing: {chunksAwaitingMeshing.CalculateEntityCount()}");
             Label($"# of chunk entities with a mesh: {meshedChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
-            Label($"# of max perm props allowed... ever: {props.MaxPermProps()}");
-            Label($"# of in-use perm props: {props.PermPropsInUse()}");
+            Label($"# of max perm props allowed... ever: {stuff.MaxPermProps()}");
+            Label($"# of in-use perm props: {stuff.PermPropsInUse()}");
 
             EntityQuery readySystems = world.EntityManager.CreateEntityQuery(typeof(TerrainReadySystems));
             TerrainReadySystems ready = readySystems.GetSingleton<TerrainReadySystems>();
