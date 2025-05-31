@@ -5,7 +5,6 @@
 
 StructuredBuffer<uint4> _PermBuffer;
 StructuredBuffer<uint> _IndirectionBuffer;
-StructuredBuffer<uint> _PermBufferOffsetsBuffer;
 int _PropType;
 int _PermBufferOffset;
 
@@ -21,7 +20,7 @@ int _PermBufferOffset;
 	// https://github.com/TwoTailsGames/Unity-Built-in-Shaders/blob/master/CGIncludes/UnityStandardParticleInstancing.cginc
 
 	void vertInstancingMatrices(out float4x4 objectToWorld, out float4x4 worldToObject) {
-		int propIndex = _IndirectionBuffer[_PermBufferOffset + unity_InstanceID];
+		int propIndex = _IndirectionBuffer[unity_InstanceID + _PermBufferOffset];
 		uint4 prop = _PermBuffer[propIndex];
 
 		float4x4 data = UnpackPropToMatrix(prop);

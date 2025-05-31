@@ -16,7 +16,7 @@ MonoBehaviour:
   - prefab: {fileID: 4090421211949882616, guid: 90cc405673511cf4b85630edb7dbaebb, type: 3}
     cullingCenter: {x: 0, y: 0, z: 0}
     cullingRadius: 1
-  propSpawnBehavior: 1
+  propSpawnBehavior: 3
   maxPropsPerSegment: 65536
   maxPropsInTotal: 1048576
   instancedMesh: {fileID: -5495902117074765545, guid: 45aaeac8c2db58444ac86e0bbc1ce002, type: 3}

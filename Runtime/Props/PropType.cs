@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Props {
         public PropSpawnBehavior propSpawnBehavior = PropSpawnBehavior.SpawnEntities | PropSpawnBehavior.RenderInstanced;
         public bool SpawnEntities => propSpawnBehavior.HasFlag(PropSpawnBehavior.SpawnEntities);
         public bool RenderInstanced => propSpawnBehavior.HasFlag(PropSpawnBehavior.RenderInstanced);
-        public bool InstanceShadow => propSpawnBehavior.HasFlag(PropSpawnBehavior.InstanceShadow);
+        public bool RenderInstancedShadow => propSpawnBehavior.HasFlag(PropSpawnBehavior.RenderInstancedShadow);
 
         [HideInInspector]
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
@@ -45,6 +45,6 @@ namespace jedjoud.VoxelTerrain.Props {
         None = 0,
         SpawnEntities = 1,
         RenderInstanced = 2,
-        InstanceShadow = 4,
+        RenderInstancedShadow = 4,
     }
 }

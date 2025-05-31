@@ -7,15 +7,16 @@ StructuredBuffer<int> temp_buffer_offsets_buffer;
 StructuredBuffer<uint4> temp_buffer;
 RWStructuredBuffer<uint4> perm_buffer;
 StructuredBuffer<int> perm_buffer_dst_copy_offsets_buffer;
-StructuredBuffer<uint> type_indices_buffer;
+StructuredBuffer<uint> temp_buffer_type_indices_buffer;
 
 [numthreads(32, 1, 1)]
 void CSCopy(uint3 id : SV_DispatchThreadID) {
 	int index = id.x;
 
-	int type_index_block = index >> 2;
-	int type_index_local = index & 0x3;
-	int type = (type_indices_buffer[type_index_block] >> (type_index_local * 8)) & 0xFF;
+	int type_index_block = index / 4;
+	int type_index_local = index % 4;
+	int type = (temp_buffer_type_indices_buffer[type_index_block] >> (type_index_local * 8)) & 0xFF;
+	
 
 	if (index >= temp_counters_buffer[type] || perm_buffer_dst_copy_offsets_buffer[type] == -1) {
 		return;

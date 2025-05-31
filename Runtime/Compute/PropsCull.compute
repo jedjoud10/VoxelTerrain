@@ -9,10 +9,11 @@ RWStructuredBuffer<uint> indirection_buffer;
 StructuredBuffer<uint> perm_props_in_use_bitset_buffer;
 StructuredBuffer<int> perm_buffer_counts_buffer;
 StructuredBuffer<int> perm_buffer_offsets_buffer;
-StructuredBuffer<uint> type_indices_buffer;
+StructuredBuffer<uint> perm_buffer_type_indices_buffer;
 
 RWStructuredBuffer<uint> visible_props_counters_buffer;
 
+int max_combined_perm_props;
 float3 camera_position;
 float3 camera_forward;
 
@@ -24,11 +25,11 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		int local = i;
 		int index = id.x * 32 + i;
 
-		int type_index_block = index >> 2;
-		int type_index_local = index & 0x3;
-		int type = (type_indices_buffer[type_index_block] >> (type_index_local * 8)) & 0xFF;
-
-		if (index >= perm_buffer_counts_buffer[type]) {
+		int type_index_block = index / 4;
+		int type_index_local = index % 4;
+		int type = (perm_buffer_type_indices_buffer[type_index_block] >> (type_index_local * 8)) & 0xFF;
+		
+		if (index >= max_combined_perm_props) {
 			return;
 		}
 
@@ -42,7 +43,8 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		position_scale = UnpackPositionAndScale(prop.xy);
 		rotation = UnpackRotation(prop.zw);
 
-		visible = dot(normalize(position_scale.xyz - camera_position), camera_forward) > 0.0;
+		visible = true;
+		//visible = dot(normalize(position_scale.xyz - camera_position), camera_forward) > 0.0;
 		
 		if (valid && visible) {
 			uint dst_index;
