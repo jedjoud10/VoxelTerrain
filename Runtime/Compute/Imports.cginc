@@ -88,7 +88,7 @@ SamplerState my_linear_clamp_sampler;
 
     float DensityAt(float3 position) {
         float3 zero_to_size = (position - segment_offset) / segment_scale;
-        float3 zero_to_one = zero_to_size / (float)segment_size;
+        float3 zero_to_one = zero_to_size / (float)segment_size_padded;
         return densities_texture_read.SampleLevel(my_linear_clamp_sampler, zero_to_one, 0);
     }
     
@@ -124,7 +124,7 @@ SamplerState my_linear_clamp_sampler;
         hitNormal = 0;
         
         float3 offsetAxis = OFFSETS[axis] * OFFSET_SCALE;
-        float3 basePosition = position - offsetAxis;
+        float3 basePosition = position;
         float3 otherPosition = position + offsetAxis;
         float baseDensity = DensityAtButVeryVerySlowButMuchHigherQuality(basePosition);
         float otherDensity = DensityAtButVeryVerySlowButMuchHigherQuality(otherPosition);
@@ -161,7 +161,8 @@ SamplerState my_linear_clamp_sampler;
             bestPos = midPos;
         }
 
-        hitNormal = CalculateFiniteDiffedNormals(bestPos);
+        hitNormal = CalculateFiniteDiffedNormalsSlow(bestPos);
+        //hitNormal = CalculateFiniteDiffedNormals(bestPos);
         hitPosition = bestPos;
         return true;
     }

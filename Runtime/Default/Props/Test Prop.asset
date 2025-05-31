@@ -18,3 +18,5 @@ MonoBehaviour:
   propSpawnBehavior: -1
   maxPropsPerSegment: 65536
   maxPropsInTotal: 1048576
+  instancedMesh: {fileID: -1550514412580984892, guid: b50439a4803f8a442853cd5b9e5981de, type: 3}
+  material: {fileID: 2100000, guid: c63c9cf6fb569b047b26fc72cad62140, type: 2}

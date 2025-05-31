@@ -15,17 +15,52 @@ namespace jedjoud.VoxelTerrain.Props {
 
             // I LOVE LINQ!!!! I LOVE WRITING FUNCTIONAL CODE!!!!!!
             List<PropType.Baked> baked = authoring.props.Select(type => {
-                Entity[] variantEntities = type.variants.Select(variant => {
-                    return GetEntity(variant.prefab, TransformUsageFlags.Renderable);
-                }).ToArray();
+                int count = type.variants.Count;
+                Entity[] prototypes = new Entity[count];
+                Mesh[] meshes = new Mesh[count];
+                /*
+                Texture2D[] diffuse = new Texture2D[count];
+                Texture2D[] normal = new Texture2D[count];
+                Texture2D[] mask = new Texture2D[count];
+                */
 
-                return new PropType.Baked { variants = variantEntities };
+                for (int i = 0; i < count; i++) {
+                    PropType.Variant variant = type.variants[i];
+                    prototypes[i] = GetEntity(variant.prefab, TransformUsageFlags.Renderable);
+                    meshes[i] = GetComponent<MeshFilter>(variant.prefab).sharedMesh;
+
+
+                    /*
+                    Material material = GetComponent<MeshRenderer>(variant.prefab).sharedMaterial;
+                    diffuse[i] = Texture2D.whiteTexture;
+                    if (material.HasTexture("_DiffuseMap"))
+                        diffuse[i] = (Texture2D)material.GetTexture("_DiffuseMap");
+
+                    normal[i] = Texture2D.normalTexture;
+                    if (material.HasTexture("_NormalMap"))
+                        normal[i] = (Texture2D)material.GetTexture("_NormalMap");
+
+                    mask[i] = Texture2D.whiteTexture;
+                    if (material.HasTexture("_MaskMap"))
+                        mask[i] = (Texture2D)material.GetTexture("_MaskMap");
+                    */
+                }
+
+                return new PropType.Baked {
+                    prototypes = prototypes,
+                    /*
+                    meshes = meshes,
+                    diffuseTexs = diffuse,
+                    normalTexs = normal,
+                    maskTexs = mask,
+                    */
+                };
             }).ToList();
 
             AddComponentObject(self, new TerrainPropsConfig {
                 props = authoring.props,
                 baked = baked,
-                copyTempToPermCompute = authoring.copyTempToPermCompute
+                compute = authoring.copyTempToPermCompute
             });
         }
     }
