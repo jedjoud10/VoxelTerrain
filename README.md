@@ -30,6 +30,7 @@
   - Improved surface detection: since we use a graph based system, we can now just fetch the voxel density at any given point, without having to write to a texture first. This allows us to use binary search with prop surface generation to place the props *exactly* on the surface of the terrain. Much better than the previous iteration.
   - Improved normals: Uses finite differences but with the slow density fetch instead of the cached one, so better quality normals!!!
   - Copy and culling compute are now asynchronous! (not like they are slow lol but that's nice anyways)
+  - Free memory block lookup is now on the CPU instead of GPU. Yes this does mean that we *need* to do counts readback, but considering that we're only reading a few ints (only a few) this is fine. Drops the complexity of the prop copy system by a lot by doing this on the CPU, worth the few frames of latency.
 
 # TODO / Ideas
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
