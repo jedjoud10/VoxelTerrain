@@ -9,6 +9,6 @@ namespace jedjoud.VoxelTerrain.Props {
         public ComputeShader copy;
         public ComputeShader cull;
         public ComputeShader apply;
-
+        public Shader shader;
     }
 }

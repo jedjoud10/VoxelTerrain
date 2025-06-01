@@ -20,7 +20,8 @@ namespace jedjoud.VoxelTerrain.Editor {
         private SerializedProperty maxPropsPerSegmentProp;
         private SerializedProperty maxPropsInTotalProp;
         private SerializedProperty instancedMeshProp;
-        private SerializedProperty materialProp;
+        private SerializedProperty overrideInstancedIndirectMaterial;
+        private SerializedProperty instancedIndirectMaterial;
 
         private UnityEditorInternal.ReorderableList variantsList;
 
@@ -32,7 +33,8 @@ namespace jedjoud.VoxelTerrain.Editor {
             maxPropsPerSegmentProp = serializedObject.FindProperty("maxPropsPerSegment");
             maxPropsInTotalProp = serializedObject.FindProperty("maxPropsInTotal");
             instancedMeshProp = serializedObject.FindProperty("instancedMesh");
-            materialProp = serializedObject.FindProperty("material");
+            overrideInstancedIndirectMaterial = serializedObject.FindProperty("overrideInstancedIndirectMaterial");
+            instancedIndirectMaterial = serializedObject.FindProperty("instancedIndirectMaterial");
 
             SerializedProperty variantsProp = serializedObject.FindProperty("variants");
 
@@ -102,8 +104,12 @@ namespace jedjoud.VoxelTerrain.Editor {
             if (propType.renderInstances) {
                 EditorGUILayout.PropertyField(renderInstancesShadow);
                 EditorGUILayout.PropertyField(instancedMeshProp);
-                EditorGUILayout.PropertyField(materialProp);
                 EditorGUILayout.PropertyField(instanceMaxDistance);
+                EditorGUILayout.PropertyField(overrideInstancedIndirectMaterial);
+
+                if (propType.overrideInstancedIndirectMaterial) {
+                    EditorGUILayout.PropertyField(instancedIndirectMaterial);
+                }
             }
 
             EditorGUILayout.PropertyField(maxPropsPerSegmentProp);

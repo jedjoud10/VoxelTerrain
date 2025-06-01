@@ -32,11 +32,12 @@ namespace jedjoud.VoxelTerrain.Props {
         public bool renderInstances;
         public bool renderInstancesShadow;
         public float instanceMaxDistance;
+        public bool overrideInstancedIndirectMaterial;
+        public Material instancedIndirectMaterial;
+        public Mesh instancedMesh;
 
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
         [Min(1)] public int maxPropsInTotal = 32 * 32 * 32 * 32;
 
-        public Mesh instancedMesh;
-        public Material material;
     }
 }

@@ -9,6 +9,7 @@ namespace jedjoud.VoxelTerrain.Props {
         public ComputeShader copy;
         public ComputeShader cull;
         public ComputeShader apply;
+        public Shader shader;
     }
 
     class TerrainPropsConfigBaker : Baker<TerrainPropsConfigAuthoring> {
@@ -62,6 +63,7 @@ namespace jedjoud.VoxelTerrain.Props {
                 copy = authoring.copy,
                 cull = authoring.cull,
                 apply = authoring.apply,
+                shader = authoring.shader
             });
         }
     }

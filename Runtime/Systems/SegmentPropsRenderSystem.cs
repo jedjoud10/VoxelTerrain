@@ -9,6 +9,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         private TerrainPropsConfig config;
         private TerrainPropPermBuffers perm;
         private TerrainPropRenderingBuffers rendering;
+        private Material material;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainPropsConfig>();
@@ -20,6 +21,9 @@ namespace jedjoud.VoxelTerrain.Segments {
             config = SystemAPI.ManagedAPI.GetSingleton<TerrainPropsConfig>();
             perm = SystemAPI.ManagedAPI.GetSingleton<TerrainPropPermBuffers>();
             rendering = SystemAPI.ManagedAPI.GetSingleton<TerrainPropRenderingBuffers>();
+
+            if (material == null)
+                material = new Material(config.shader);
 
             int types = config.props.Count;
             Camera cam = Camera.main;
@@ -63,15 +67,13 @@ namespace jedjoud.VoxelTerrain.Segments {
             // it being in the "middle" causes some issues
             for (int i = 0; i < config.props.Count; i++) {
                 if (config.props[i].renderInstances) {
-                    RenderPropsOfType(config.props[i], i, perm, rendering);
+                    RenderPropsOfType(config.props[i], i);
                 }
             }
         }
 
-        public void RenderPropsOfType(PropType type, int i, TerrainPropPermBuffers perm, TerrainPropRenderingBuffers rendering) {
-            Material material = type.material;
-
-            RenderParams renderParams = new RenderParams(material);
+        public void RenderPropsOfType(PropType type, int i) {
+            RenderParams renderParams = new RenderParams(type.overrideInstancedIndirectMaterial ? type.instancedIndirectMaterial : material);
             renderParams.shadowCastingMode = type.renderInstancesShadow ? ShadowCastingMode.On : ShadowCastingMode.Off;
             renderParams.worldBounds = new Bounds {
                 min = -Vector3.one * 100000,
@@ -92,6 +94,5 @@ namespace jedjoud.VoxelTerrain.Segments {
             Mesh mesh = type.instancedMesh;
             Graphics.RenderMeshIndirect(renderParams, mesh, rendering.drawArgsBuffer, 1, i);
         }
-
     }
 }

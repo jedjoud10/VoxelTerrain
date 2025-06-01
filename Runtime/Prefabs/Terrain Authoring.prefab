@@ -108,3 +108,4 @@ MonoBehaviour:
   copy: {fileID: 7200000, guid: 661b6358b82faf64487edb48a2958782, type: 3}
   cull: {fileID: 7200000, guid: 36068719711b05b4aabd5888c9242d36, type: 3}
   apply: {fileID: 7200000, guid: 40b03aa1223e4884cbe519c38895077d, type: 3}
+  shader: {fileID: -6465566751694194690, guid: b86caac8878443b46af393e44ade8383, type: 3}
