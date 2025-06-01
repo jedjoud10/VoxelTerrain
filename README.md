@@ -31,7 +31,6 @@
   - Improved normals: Uses finite differences but with the slow density fetch instead of the cached one, so better quality normals!!!
   - Copy and culling compute are now asynchronous! (not like they are slow lol but that's nice anyways)
 
-
 # TODO / Ideas
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
   - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices
@@ -52,9 +51,12 @@
 - Do some sort of Minecraft-style spreading lighting calculations
 
 # Current Screenies
-Runtime terrain gen with some simple props
+Runtime terrain gen with some shiddy old props
 ![Screenshot 2025-04-23 162113](https://github.com/user-attachments/assets/69548b73-7dc9-409a-85c0-98f5f2279cc6)
 ![Screenshot 2025-04-23 162127](https://github.com/user-attachments/assets/4e6c4f6e-8cac-418a-8f66-9f0612d59771)
+
+Better pic with the new prop generator + instanced indirect + async GPU culling
+![Screenshot 2025-05-31 202859](https://github.com/user-attachments/assets/9da85ead-e4b7-46e7-8fd7-caf62ca1fd86)
 
 Editor GPU preview & material ID colouring
 ![image](https://github.com/user-attachments/assets/79bbe315-f015-403e-a6d6-1ea756db7128)
