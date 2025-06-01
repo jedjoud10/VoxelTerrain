@@ -15,40 +15,30 @@ namespace jedjoud.VoxelTerrain.Props {
             }
 
             private class PassData {
-                //public TerrainPropStuff stuff;
-                public TerrainPropsConfig config;
+                public SegmentPropsRenderSystem system;
             }
 
             public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData) {
-                /*
                 UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
                 UniversalLightData lights = frameData.Get<UniversalLightData>();
                 UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
 
-                var entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-                var a = entityManager.CreateEntityQuery(typeof(TerrainPropStuff));
-                var b = entityManager.CreateEntityQuery(typeof(TerrainPropsConfig));
-                TerrainPropStuff stuff = null;
-                TerrainPropsConfig config = null;
-                a.TryGetSingleton<TerrainPropStuff>(out stuff);
-                b.TryGetSingleton<TerrainPropsConfig>(out config);
-
-                if (stuff == null || config == null)
+                SegmentPropsRenderSystem system = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<SegmentPropsRenderSystem>();
+                
+                if (system == null)
                     return;
 
                 using (var builder = renderGraph.AddRasterRenderPass<PassData>("amogous", out var passData)) {
                     builder.AllowPassCulling(false);
-                    passData.stuff = stuff;
-                    passData.config = config;
+                    passData.system = system;
 
                     builder.SetRenderAttachment(resourceData.activeColorTexture, 0);
                     builder.SetRenderAttachmentDepth(resourceData.activeDepthTexture);
 
-                    builder.SetRenderFunc((PassData data, RasterGraphContext context) => {
-                        data.stuff.RenderProps(data.config, context);
+                    builder.SetRenderFunc((PassData data, RasterGraphContext ctx) => {
+                        system.RenderPropsOfType(0, ctx);
                     });
                 }
-                */
             }
         }
 
@@ -58,7 +48,7 @@ namespace jedjoud.VoxelTerrain.Props {
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData) {
-            //renderer.EnqueuePass(pass);
+            renderer.EnqueuePass(pass);
         }
     }
 }

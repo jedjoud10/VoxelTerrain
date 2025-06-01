@@ -26,6 +26,9 @@ namespace jedjoud.VoxelTerrain.Segments {
 
         public PropTypeBatchData[] typeBatchData;
 
+        public const int MAX_COMMAND_COUNT_PER_TYPE = 32;
+        public const int MAX_INSTANCES_PER_COMMAND = 1024;
+
         public void Init(int maxCombinedPermProps, TerrainPropsConfig config) {
             int types = config.props.Count;
 
@@ -34,11 +37,17 @@ namespace jedjoud.VoxelTerrain.Segments {
             // do NOT use a struct here / on the GPU!
             // since buffers are aligned to 4 bytes, using a struct on the GPU makes it uh... shit itself... hard
             // just index the raw indices. wtv
-            drawArgsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, types * 5, sizeof(uint));
-            uint[] args = new uint[types * 5];
+
+
+            drawArgsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, types * 5 * MAX_COMMAND_COUNT_PER_TYPE, sizeof(uint));
+            uint[] args = new uint[types * 5 * MAX_COMMAND_COUNT_PER_TYPE];
             for (int i = 0; i < types; i++) {
-                // Set the IndexCountPerInstance value... (first value inside those 5 grouped ints)
-                args[i * 5] = config.props[i].instancedMesh.GetIndexCount(0);
+                for (int j = 0; j < MAX_COMMAND_COUNT_PER_TYPE; j++) {
+
+                    // Set the IndexCountPerInstance value... (first value inside those 5 grouped ints)
+                    args[i * MAX_COMMAND_COUNT_PER_TYPE * 5 + j * 5] = config.props[i].instancedMesh.GetIndexCount(0);
+                    args[i * MAX_COMMAND_COUNT_PER_TYPE * 5 + j * 5 + 4] = (uint)(j * MAX_INSTANCES_PER_COMMAND);
+                }
             }
             drawArgsBuffer.SetData(args);
 

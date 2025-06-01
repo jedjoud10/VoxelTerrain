@@ -4,7 +4,30 @@
 RWStructuredBuffer<uint> draw_args_buffer;
 StructuredBuffer<uint> visible_props_counters_buffer;
 
-[numthreads(1, 1, 1)]
+groupshared int shared_remaining_count;
+
+[numthreads(32, 1, 1)]
 void CSApply(uint3 id : SV_DispatchThreadID) {
-	draw_args_buffer[id.x * 5 + 1] = visible_props_counters_buffer[id.x];
+	// putting these outside makes the shader shit itself. ok I guess
+	const int MAX_COMMAND_COUNT = 32;
+	const int MAX_INSTANCES_PER_COMMAND = 1024;
+
+	if (id.x == 0) {
+		shared_remaining_count = (int)visible_props_counters_buffer[id.y];
+	}
+	GroupMemoryBarrierWithGroupSync();
+
+	int command_index = id.x;
+    int instances_in_this_command = 0;
+	if (command_index * MAX_INSTANCES_PER_COMMAND < shared_remaining_count) {
+        instances_in_this_command = min(
+            MAX_INSTANCES_PER_COMMAND,
+            shared_remaining_count - command_index * MAX_INSTANCES_PER_COMMAND
+        );
+    }
+
+    // Write the draw argument
+    if (command_index < MAX_COMMAND_COUNT) {
+        draw_args_buffer[id.y * MAX_COMMAND_COUNT * 5 + command_index * 5 + 1] = instances_in_this_command;
+    }
 }

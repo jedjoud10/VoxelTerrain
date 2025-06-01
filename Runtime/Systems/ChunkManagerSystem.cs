@@ -257,6 +257,9 @@ namespace jedjoud.VoxelTerrain {
                     PhysicsCollider collider = state.EntityManager.GetComponentData<PhysicsCollider>(entity);
                     collider.Value.Dispose();
                 }
+
+                state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
+                state.EntityManager.SetComponentEnabled<TerrainChunkMesh>(entity, false);
             }
 
             DynamicBuffer<TerrainUnregisterMeshBuffer> unregisterBuffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();

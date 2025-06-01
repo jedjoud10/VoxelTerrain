@@ -8,6 +8,7 @@ StructuredBuffer<float4x4> _PermMatricesBuffer;
 StructuredBuffer<uint> _IndirectionBuffer;
 int _PropType;
 int _PermBufferOffset;
+int _WtfOffset;
 
 // came in clutch bro gg
 // https://gist.github.com/Cyanilux/4046e7bf3725b8f64761bf6cf54a16eb
@@ -20,11 +21,12 @@ int _PermBufferOffset;
 	// and/or
 	// https://github.com/TwoTailsGames/Unity-Built-in-Shaders/blob/master/CGIncludes/UnityStandardParticleInstancing.cginc
 
-	void vertInstancingMatrices(out float4x4 objectToWorld, out float4x4 worldToObject) {
-		int propIndex = _IndirectionBuffer[unity_InstanceID + _PermBufferOffset];
+	void vertInstancingMatrices(out float4x4 objectToWorld, inout float4x4 worldToObject) {
+		int propIndex = _IndirectionBuffer[unity_InstanceID + _WtfOffset + _PermBufferOffset];
 		float4x4 data = _PermMatricesBuffer[propIndex];
 		objectToWorld = data;
 
+		/*
 		// Inverse transform matrix
 		float3x3 w2oRotation;
 		w2oRotation[0] = objectToWorld[1].yzx * objectToWorld[2].zxy - objectToWorld[1].zxy * objectToWorld[2].yzx;
@@ -40,6 +42,7 @@ int _PermBufferOffset;
 		worldToObject._12_22_32_42 = float4(w2oRotation._12_22_32, 0.0f);
 		worldToObject._13_23_33_43 = float4(w2oRotation._13_23_33, 0.0f);
 		worldToObject._14_24_34_44 = float4(w2oPosition, 1.0f);
+		*/
 	}
 
 	void vertInstancingSetup() {
@@ -57,7 +60,7 @@ void Instancing_float(float3 Position, out float3 Out){
 // Just passes the position through, allows us to actually attach this file to the graph.
 // Should be placed somewhere in the vertex stage, e.g. right before connecting the object space position.
 void PropVariantFetch_float(int instance, out float Variant){
-	int propIndex = _IndirectionBuffer[instance + _PermBufferOffset];
+	int propIndex = _IndirectionBuffer[instance + _WtfOffset + _PermBufferOffset];
 	uint4 prop = _PermBuffer[propIndex];
 	uint variant = prop.w & 0xFF;
 	Variant = (float)variant;

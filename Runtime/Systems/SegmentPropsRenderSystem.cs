@@ -2,6 +2,7 @@ using jedjoud.VoxelTerrain.Props;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 
 namespace jedjoud.VoxelTerrain.Segments {
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
@@ -22,8 +23,10 @@ namespace jedjoud.VoxelTerrain.Segments {
             perm = SystemAPI.ManagedAPI.GetSingleton<TerrainPropPermBuffers>();
             rendering = SystemAPI.ManagedAPI.GetSingleton<TerrainPropRenderingBuffers>();
 
-            if (material == null)
+            if (material == null) {
                 material = new Material(config.shader);
+                material.renderQueue = 2500;
+            }
 
             int types = config.props.Count;
             Camera cam = Camera.main;
@@ -59,26 +62,36 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             cmds.SetComputeBufferParam(config.apply, 0, "draw_args_buffer", rendering.drawArgsBuffer);
             cmds.SetComputeBufferParam(config.apply, 0, "visible_props_counters_buffer", rendering.visiblePropsCountersBuffer);
-            cmds.DispatchCompute(config.apply, 0, types, 1, 1);
+            cmds.DispatchCompute(config.apply, 0, Mathf.CeilToInt(TerrainPropRenderingBuffers.MAX_COMMAND_COUNT_PER_TYPE / 32f), types, 1);
 
             Graphics.ExecuteCommandBufferAsync(cmds, ComputeQueueType.Default);
 
-            // TODO: need to figure out how to put this in its own URP pass or at least after all the main opaque objects have rendered
-            // it being in the "middle" causes some issues
+            /*
             for (int i = 0; i < config.props.Count; i++) {
                 if (config.props[i].renderInstances) {
                     RenderPropsOfType(config.props[i], i);
                 }
             }
+            */
         }
 
-        public void RenderPropsOfType(PropType type, int i) {
-            RenderParams renderParams = new RenderParams(type.overrideInstancedIndirectMaterial ? type.instancedIndirectMaterial : material);
+        public void RenderPropsOfType(int i, RasterGraphContext ctx) {
+            if (config == null)
+                return;
+
+            PropType type = config.props[i];
+
+            if (!config.props[i].renderInstances)
+                return;
+
+            Material muhMat = type.overrideInstancedIndirectMaterial ? type.instancedIndirectMaterial : material;
+            RenderParams renderParams = new RenderParams(muhMat);
             renderParams.shadowCastingMode = type.renderInstancesShadow ? ShadowCastingMode.On : ShadowCastingMode.Off;
             renderParams.worldBounds = new Bounds {
                 min = -Vector3.one * 100000,
                 max = Vector3.one * 100000,
             };
+            renderParams.rendererPriority = -300;
 
             var mat = new MaterialPropertyBlock();
             renderParams.matProps = mat;
@@ -92,7 +105,12 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetInt("_PropType", i);
 
             Mesh mesh = type.instancedMesh;
-            Graphics.RenderMeshIndirect(renderParams, mesh, rendering.drawArgsBuffer, 1, i);
+
+            for (int c = 0; c < TerrainPropRenderingBuffers.MAX_COMMAND_COUNT_PER_TYPE; c++) {
+                mat.SetInt("_WtfOffset", c * TerrainPropRenderingBuffers.MAX_INSTANCES_PER_COMMAND);
+                ctx.cmd.DrawMeshInstancedIndirect(mesh, 0, muhMat, 0, rendering.drawArgsBuffer, c * 5 * sizeof(uint), mat);
+            }
+            //Graphics.RenderMeshIndirect(renderParams, mesh, rendering.drawArgsBuffer, TerrainPropRenderingBuffers.MAX_COMMAND_COUNT_PER_TYPE, i * TerrainPropRenderingBuffers.MAX_COMMAND_COUNT_PER_TYPE);
         }
     }
 }
