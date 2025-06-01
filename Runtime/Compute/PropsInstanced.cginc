@@ -10,7 +10,7 @@ int _PermBufferOffset;
 
 // came in clutch bro gg
 // https://gist.github.com/Cyanilux/4046e7bf3725b8f64761bf6cf54a16eb
-#if UNITY_ANY_INSTANCING_ENABLED
+#if PROCEDURAL_INSTANCING_ON
 
 	// Updates the unity_ObjectToWorld / unity_WorldToObject matrices so our matrix is taken into account
 
@@ -19,12 +19,11 @@ int _PermBufferOffset;
 	// and/or
 	// https://github.com/TwoTailsGames/Unity-Built-in-Shaders/blob/master/CGIncludes/UnityStandardParticleInstancing.cginc
 
-	void vertInstancingMatrices(out float4x4 objectToWorld, inout float4x4 worldToObject) {
+	void vertInstancingMatrices(out float4x4 objectToWorld, out float4x4 worldToObject) {
 		int propIndex = _IndirectionBuffer[unity_InstanceID + _PermBufferOffset];
 		float4x4 data = _PermMatricesBuffer[propIndex];
 		objectToWorld = data;
 
-		/*
 		// Inverse transform matrix
 		float3x3 w2oRotation;
 		w2oRotation[0] = objectToWorld[1].yzx * objectToWorld[2].zxy - objectToWorld[1].zxy * objectToWorld[2].yzx;
@@ -40,7 +39,6 @@ int _PermBufferOffset;
 		worldToObject._12_22_32_42 = float4(w2oRotation._12_22_32, 0.0f);
 		worldToObject._13_23_33_43 = float4(w2oRotation._13_23_33, 0.0f);
 		worldToObject._14_24_34_44 = float4(w2oPosition, 1.0f);
-		*/
 	}
 
 	void vertInstancingSetup() {

@@ -2,7 +2,6 @@
 
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 
-StructuredBuffer<int> temp_counters_buffer;
 StructuredBuffer<int> temp_buffer_offsets_buffer;
 StructuredBuffer<int> copy_offsets_buffer;
 StructuredBuffer<int> copy_type_lookup_buffer;

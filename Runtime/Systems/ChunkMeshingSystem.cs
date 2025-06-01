@@ -33,7 +33,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             mainMeshDescription = new RenderMeshDescription {
                 FilterSettings = new RenderFilterSettings {
-                    ShadowCastingMode = ShadowCastingMode.On,
+                    ShadowCastingMode = ShadowCastingMode.TwoSided,
                     ReceiveShadows = true,
                     MotionMode = MotionVectorGenerationMode.ForceNoMotion,
                     StaticShadowCaster = false,

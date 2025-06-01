@@ -4,7 +4,7 @@
   - We can now compute 64 chunks on the GPU all at *once* in the same compute dispatch instead of 8. This speeds up meshing a lot since we catch empty chunks and discard them early.
   - Faster rendering (less triangles). Does make mushy terrain since we don't have any proper terrain-wide normals but I'm only going to use this for low-poly games so whatever lol.
   - MUCH MUCH MUCH FASTER MESH COLLIDER BAKING!!!! (8ms vs 40ms) Why is it so fucking slow with a chunk size of 64??? Unity ECS Physics gotta lock in frfr.
-- Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues.
+- Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues. Used for practically all the new compute shaders
 - Proper Surface Nets Skirts by running 2D and 1D S.N on the chunk boundary. Skirt entities are enabled/disabled based on the direction that they face relative to the octree loader position.
   - Implemented fallback normals system for flat shading so that skirts aren't as visible when you use DDY/DDX normals
 - Graph system. You can write the voxel generation code in C# and a *transplire* will compile it to HLSL in the editor which will then compile to GPU executable code.Basically a preprocessor "find and replace" but on steroids
@@ -26,12 +26,16 @@
   - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled).
   - Optimized normal job by splitting it into a "prefetch" part and a "calculate" part. Prefetcher is vectorized by Burst, but not the calculate part (need to fix).
 
+- Better (but slower) prop generation:
+  - Improved surface detection: since we use a graph based system, we can now just fetch the voxel density at any given point, without having to write to a texture first. This allows us to use binary search with prop surface generation to place the props *exactly* on the surface of the terrain. Much better than the previous iteration.
+  - Improved normals: Uses finite differences but with the slow density fetch instead of the cached one, so better quality normals!!!
+  - Copy and culling compute are now asynchronous! (not like they are slow lol but that's nice anyways)
+
+
 # TODO / Ideas
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
   - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices
 - Figure out how to handle per voxel color (nointerpolation in shader trick)
-- Re-implement props with hopefully better implementation
-  - Currently WIP, got prop readback working, but need to clean up that mess graph wise
 - Biome generation (custom data readback?)
 - Custom graph buffer initialization and readback (material, color, smoothness / metallic, custom user data)
   - Works for props, but I don't know if I should extend it to make it work with custom user input

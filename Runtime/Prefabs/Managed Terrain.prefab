@@ -64,7 +64,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hash: -1953819114
+  hash: 1322834588
   dirty: 1
   shader: {fileID: 7200000, guid: 55e5bc6630ac7ad4786b230b69a61640, type: 3}
 --- !u!114 &4781938216130763360
@@ -117,7 +117,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transform1:
-    position: {x: -12.92, y: 23, z: -23.37}
+    position: {x: -12.92, y: 25, z: -23.37}
     rotation: {x: 0, y: 0, z: 0}
     scale: {x: 0.02, y: 0.02, z: 0.02}
   flatPlaneHeight:
@@ -163,8 +163,8 @@ MonoBehaviour:
     value: 0
   propDensityRangeSpawn:
     value:
-      x: -0.2
-      y: 0
+      x: -0.01
+      y: 0.001
   propRotationFactor:
     value: 0.8
 --- !u!114 &566389634701878972

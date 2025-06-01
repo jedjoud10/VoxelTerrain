@@ -7,6 +7,7 @@ RWStructuredBuffer<uint> indirection_buffer;
 StructuredBuffer<uint> perm_props_in_use_bitset_buffer;
 StructuredBuffer<int> perm_buffer_counts_buffer;
 StructuredBuffer<int> perm_buffer_offsets_buffer;
+StructuredBuffer<float> max_distances_buffer;
 
 RWStructuredBuffer<uint> visible_props_counters_buffer;
 
@@ -54,7 +55,8 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		position_scale = UnpackPositionAndScale(prop.xy);
 		rotation = UnpackRotation(prop.zw);
 
-		visible = dot(normalize(position_scale.xyz - camera_position), camera_forward) > 0;
+		float3 diff = position_scale.xyz - camera_position;
+		visible = dot(normalize(diff), camera_forward) > 0 && length(diff) < max_distances_buffer[type];
 		
 		if (valid && visible) {
 			uint dst_index;

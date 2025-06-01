@@ -131,10 +131,10 @@ namespace jedjoud.VoxelTerrain.Segments {
 
                 if (needPropsToBeFetched) {
                     stuff.SpawnPropEntities(segmentEntity, EntityManager, config);
-                } else {
-                    stuff.CopyTempToPermBuffers(segmentEntity, EntityManager, config);
                 }
-
+                    
+                stuff.CopyTempToPermBuffers(segmentEntity, EntityManager, needPropsToBeFetched, config);
+            
                 EntityManager.SetComponentEnabled<TerrainSegmentEndOfPipeTag>(segmentEntity, true);
             }
         }

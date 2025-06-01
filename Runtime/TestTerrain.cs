@@ -37,6 +37,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> propNoiseAmplitude;
         public Inject<float> propNoiseOffset;
         public Inject<float2> propDensityRangeSpawn;
+        public Inject<float2> propPebbleScale;
 
         public Inject<float> propRotationFactor;
 
@@ -76,7 +77,6 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
 
         public override void Props(PropInput input, PropContext context) {
             Variable<bool> spawn = (Noise.Simplex(input.position, propNoiseScale, propNoiseAmplitude) + propNoiseOffset) > Random.Evaluate<float3, float>(input.position, true);
-            Variable<int> variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1);
 
             PropContext.PossibleSurface surface = context.IsSurfaceAlongAxis(input.position, PropContext.Axis.Y);
             Variable<bool> flatSurface = surface.hitNormal.Dot(math.up()) > propMinDotProductVal;
@@ -88,18 +88,27 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
                 scale = 1f,
                 position = surface.hitPosition,
                 rotation = VariableExtensions.Slerp(rotation, up, propRotationFactor),
-                variant = variant,
+                variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1),
                 type = 0,
             });
 
             var d = input.density;
             Variable<float2> range = propDensityRangeSpawn;
-            context.SpawnProp(d > range.x & d < range.y & Random.Uniform(input.position, 0.1f), new Props.GenerationProp {
+            context.SpawnProp(d > range.x & d < range.y & Random.Uniform(input.position, 0.4f), new Props.GenerationProp {
                 scale = 2f,
                 position = input.position,
                 rotation = Random.Evaluate<float3, quaternion>(input.position, true).Normalize(),
-                variant = 0,
+                variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1),
                 type = 1,
+            });
+
+            Variable<float2> thing = propPebbleScale;
+            context.SpawnProp(surface.hit, new Props.GenerationProp {
+                scale = Random.Range<float3, float>(input.position, thing.x, thing.y),
+                position = surface.hitPosition,
+                rotation = Random.Evaluate<float3, quaternion>(input.position, true).Normalize(),
+                variant = 0,
+                type = 2,
             });
         }
     }

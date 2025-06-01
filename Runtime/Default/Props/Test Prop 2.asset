@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   variants:
   - prefab: {fileID: 4090421211949882616, guid: 90cc405673511cf4b85630edb7dbaebb, type: 3}
-    cullingCenter: {x: 0, y: 0, z: 0}
-    cullingRadius: 1
-  propSpawnBehavior: 3
+  - prefab: {fileID: 4090421211949882616, guid: 1dac05a6773599f4e80af6910ac10f73, type: 3}
+  spawnEntities: 1
+  renderInstances: 1
+  renderInstancesShadow: 0
+  instanceMaxDistance: 10000
   maxPropsPerSegment: 65536
   maxPropsInTotal: 1048576
   instancedMesh: {fileID: -5495902117074765545, guid: 45aaeac8c2db58444ac86e0bbc1ce002, type: 3}

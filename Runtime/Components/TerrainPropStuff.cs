@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 
 namespace jedjoud.VoxelTerrain.Segments {
     public class TerrainPropStuff : IComponentData {
@@ -70,6 +71,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
         public ComputeBuffer copyOffsetsBuffer;
         public ComputeBuffer copyTypeLookupBuffer;
+        public ComputeBuffer maxDistancesBuffer;
 
         private ComputeShader copyCompute, cullCompute, applyCompute;
         public int cullComputeThreadCount;
@@ -183,6 +185,13 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             visiblePropsCountersBuffer = new ComputeBuffer(types, sizeof(uint), ComputeBufferType.Structured);
             visiblePropsCountersBuffer.SetData(new uint[types]);
+
+            maxDistancesBuffer = new ComputeBuffer(types, sizeof(float), ComputeBufferType.Structured);
+            float[] maxDistances = new float[types];
+            for (int i = 0; i < types; i++) {
+                maxDistances[i] = config.props[i].instanceMaxDistance;
+            }
+            maxDistancesBuffer.SetData(maxDistances);
         }
 
         // For some reason Unity doesn't set the names of *some* buffers (probably small scratch upload ones)
@@ -205,7 +214,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             permMatricesBuffer.name = "Perm Matrices Buffer";
         }
 
-        public void RenderProps(TerrainPropsConfig config) {
+        public void CullProps(TerrainPropsConfig config) {
             Camera cam = Camera.main;
             if (cam == null)
                 return;
@@ -224,6 +233,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeBufferParam(cullCompute, 0, "visible_props_counters_buffer", visiblePropsCountersBuffer);
             cmds.SetComputeBufferParam(cullCompute, 0, "perm_buffer_counts_buffer", permBufferCountsBuffer);
             cmds.SetComputeBufferParam(cullCompute, 0, "perm_buffer_offsets_buffer", permBufferOffsetsBuffer);
+            cmds.SetComputeBufferParam(cullCompute, 0, "max_distances_buffer", maxDistancesBuffer);
             cmds.SetComputeIntParam(cullCompute, "max_combined_perm_props", maxCombinedPermProps);
             cmds.SetComputeIntParam(cullCompute, "types", types);
 
@@ -242,12 +252,13 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeBufferParam(applyCompute, 0, "draw_args_buffer", drawArgsBuffer);
             cmds.SetComputeBufferParam(applyCompute, 0, "visible_props_counters_buffer", visiblePropsCountersBuffer);
             cmds.DispatchCompute(applyCompute, 0, types, 1, 1);
-
-            GraphicsFence fence = cmds.CreateAsyncGraphicsFence();
+            
             Graphics.ExecuteCommandBufferAsync(cmds, ComputeQueueType.Default);
+        }
 
+        public void RenderProps(TerrainPropsConfig config) {
             for (int i = 0; i < types; i++) {
-                if (config.props[i].RenderInstanced) {
+                if (config.props[i].renderInstances) {
                     RenderPropsOfType(config.props[i], i);
                 }
             }
@@ -257,7 +268,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             Material material = type.material;
 
             RenderParams renderParams = new RenderParams(material);
-            renderParams.shadowCastingMode = type.RenderInstancedShadow ? ShadowCastingMode.On : ShadowCastingMode.Off;
+            renderParams.shadowCastingMode = type.renderInstancesShadow ? ShadowCastingMode.On : ShadowCastingMode.Off;
             renderParams.worldBounds = new Bounds {
                 min = -Vector3.one * 100000,
                 max = Vector3.one * 100000,
@@ -271,13 +282,22 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetInt("_PermBufferOffset", permBufferOffsets[i]);
 
             Mesh mesh = type.instancedMesh;
+            //context.cmd.DrawMeshInstancedIndirect(mesh, 0, material, 0, drawArgsBuffer, 0, mat);
             Graphics.RenderMeshIndirect(renderParams, mesh, drawArgsBuffer, 1, i);
         }
 
-        public void CopyTempToPermBuffers(Entity segmentEntity, EntityManager manager, TerrainPropsConfig config) {
-            int invocations = 0;
+        public void CopyTempToPermBuffers(Entity segmentEntity, EntityManager manager, bool spawnedPropsAsEntities, TerrainPropsConfig config) {
+            bool[] propTypesWeShouldCopy = new bool[types];
             for (int i = 0; i < types; i++) {
-                invocations += tempCounters[i];
+                propTypesWeShouldCopy[i] = !spawnedPropsAsEntities || !config.props[i].spawnEntities;
+            }
+
+            int invocations = 0;
+
+            for (int i = 0; i < types; i++) {
+                if (propTypesWeShouldCopy[i]) {
+                    invocations += tempCounters[i];
+                }
             }
 
             if (invocations == 0)
@@ -302,9 +322,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             for (int i = 0; i < types; i++) {
                 int tempSubBufferCount = (int)tempCounters[i];
 
-                if (tempSubBufferCount == 0) {
+                if (tempSubBufferCount == 0 || !propTypesWeShouldCopy[i])
                     continue;
-                }
 
                 if (tempSubBufferCount > config.props[i].maxPropsPerSegment)
                     throw new System.Exception("Temp counter exceeded max counter, not possible. Definite poopenfarten moment.");
@@ -315,7 +334,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                 // find free blocks of contiguous tempSubBufferCount elements in permPropsInUseBitset at the appropriate offsets
                 int permSubBufferStartIndex = permPropsInUseBitset.Find(permSubBufferOffset, permSubBufferCount, tempSubBufferCount);
 
-                if (permSubBufferStartIndex == -1)
+                // documentation is fucking lying. it's not -1. it's int.maxvalue
+                if (permSubBufferStartIndex == int.MaxValue)
                     throw new System.Exception("Could not find contiguous sequence of free props. Ran out of perm prop memory!! (either global perm prop memory or specifically for this type)");
 
                 permBufferDstCopyOffsets[i] = permSubBufferStartIndex;
@@ -362,7 +382,6 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeIntParam(copyCompute, "what", what);
 
 
-            cmds.SetComputeBufferParam(copyCompute, 0, "temp_counters_buffer", tempCountersBuffer);
             cmds.SetComputeBufferParam(copyCompute, 0, "copy_offsets_buffer", copyOffsetsBuffer);
             cmds.SetComputeBufferParam(copyCompute, 0, "copy_type_lookup_buffer", copyTypeLookupBuffer);
             cmds.SetComputeBufferParam(copyCompute, 0, "temp_buffer_offsets_buffer", tempBufferOffsetsBuffer);
@@ -397,7 +416,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             for (int i = 0; i < types; i++) {
                 int tempSubBufferOffset = (int)tempBufferOffsets[i];
                 int tempSubBufferCount = (int)tempCounters[i];
-                if (tempSubBufferCount > 0 && config.props[i].SpawnEntities) {
+                if (tempSubBufferCount > 0 && config.props[i].spawnEntities) {
                     NativeArray<uint4> raw = tempBufferReadback.GetSubArray(tempSubBufferOffset, tempSubBufferCount);
                     NativeArray<BlittableProp> transmuted = raw.Reinterpret<BlittableProp>();
                     Entity[] variants = config.baked[i].prototypes;
@@ -452,6 +471,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             permPropsInUseBitsetBuffer.Dispose();
             permBufferCountsBuffer.Dispose();
             copyOffsetsBuffer.Dispose();
+            maxDistancesBuffer.Dispose();
         }
     }
 }

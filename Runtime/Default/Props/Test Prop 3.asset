@@ -10,16 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 812a0afee8139e54db49ed7682d6760d, type: 3}
-  m_Name: Test Prop
+  m_Name: Test Prop 3
   m_EditorClassIdentifier: 
   variants:
-  - prefab: {fileID: 2094315427237674077, guid: 299877e1a2ebe174aabed1b12f06a690, type: 3}
-  - prefab: {fileID: 2094315427237674077, guid: 0311276cc97063c4d83678ace6d55f44, type: 3}
-  spawnEntities: 1
+  - prefab: {fileID: 4090421211949882616, guid: 1dac05a6773599f4e80af6910ac10f73, type: 3}
+  spawnEntities: 0
   renderInstances: 1
   renderInstancesShadow: 0
-  instanceMaxDistance: 10000
-  maxPropsPerSegment: 65536
-  maxPropsInTotal: 1048576
-  instancedMesh: {fileID: -1550514412580984892, guid: b50439a4803f8a442853cd5b9e5981de, type: 3}
+  instanceMaxDistance: 100
+  maxPropsPerSegment: 16384
+  maxPropsInTotal: 524288
+  instancedMesh: {fileID: 4493585093827132993, guid: 33f53ccc42c12c846911d2df960142f9, type: 3}
   material: {fileID: 2100000, guid: c63c9cf6fb569b047b26fc72cad62140, type: 2}

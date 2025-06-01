@@ -13,38 +13,24 @@ namespace jedjoud.VoxelTerrain.Props {
                 
         [Serializable]
         public class Variant {
-            // this field is only visible when SpawnEntities is true
             public GameObject prefab;
-            
-            public Vector3 cullingCenter;
-            public float cullingRadius = 1f;
         }
 
-        [HideInInspector]
         public List<Variant> variants;
-        [HideInInspector]
-        public PropSpawnBehavior propSpawnBehavior = PropSpawnBehavior.SpawnEntities | PropSpawnBehavior.RenderInstanced;
-        public bool SpawnEntities => propSpawnBehavior.HasFlag(PropSpawnBehavior.SpawnEntities);
-        public bool RenderInstanced => propSpawnBehavior.HasFlag(PropSpawnBehavior.RenderInstanced);
-        public bool RenderInstancedShadow => propSpawnBehavior.HasFlag(PropSpawnBehavior.RenderInstancedShadow);
 
-        [HideInInspector]
+        // if true, spawns entities in the high quality segments
+        // if false, spawns instances instead of the entities
+        public bool spawnEntities;
+
+        // enables/disables rendering of instances
+        public bool renderInstances;
+        public bool renderInstancesShadow;
+        public float instanceMaxDistance;
+
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
-        [HideInInspector]
         [Min(1)] public int maxPropsInTotal = 32 * 32 * 32 * 32;
 
-        // these fields is only visible when RenderInstanced is true
-        [HideInInspector]
         public Mesh instancedMesh;
-        [HideInInspector]
         public Material material;
-    }
-
-    [Flags]
-    public enum PropSpawnBehavior {
-        None = 0,
-        SpawnEntities = 1,
-        RenderInstanced = 2,
-        RenderInstancedShadow = 4,
     }
 }

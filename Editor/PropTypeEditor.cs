@@ -13,7 +13,10 @@ namespace jedjoud.VoxelTerrain.Editor {
 
     [CustomEditor(typeof(PropType))]
     public class PropTypeEditor : UnityEditor.Editor {
-        private SerializedProperty propSpawnBehaviorProp;
+        private SerializedProperty spawnEntities;
+        private SerializedProperty renderInstances;
+        private SerializedProperty instanceMaxDistance;
+        private SerializedProperty renderInstancesShadow;
         private SerializedProperty maxPropsPerSegmentProp;
         private SerializedProperty maxPropsInTotalProp;
         private SerializedProperty instancedMeshProp;
@@ -22,7 +25,10 @@ namespace jedjoud.VoxelTerrain.Editor {
         private UnityEditorInternal.ReorderableList variantsList;
 
         private void OnEnable() {
-            propSpawnBehaviorProp = serializedObject.FindProperty("propSpawnBehavior");
+            spawnEntities = serializedObject.FindProperty("spawnEntities");
+            renderInstances = serializedObject.FindProperty("renderInstances");
+            renderInstancesShadow = serializedObject.FindProperty("renderInstancesShadow");
+            instanceMaxDistance = serializedObject.FindProperty("instanceMaxDistance");
             maxPropsPerSegmentProp = serializedObject.FindProperty("maxPropsPerSegment");
             maxPropsInTotalProp = serializedObject.FindProperty("maxPropsInTotal");
             instancedMeshProp = serializedObject.FindProperty("instancedMesh");
@@ -38,8 +44,6 @@ namespace jedjoud.VoxelTerrain.Editor {
             variantsList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) => {
                 SerializedProperty element = variantsProp.GetArrayElementAtIndex(index);
                 SerializedProperty prefabProp = element.FindPropertyRelative("prefab");
-                SerializedProperty cullingCenterProp = element.FindPropertyRelative("cullingCenter");
-                SerializedProperty cullingRadiusProp = element.FindPropertyRelative("cullingRadius");
 
                 PropType propType = (PropType)target;
 
@@ -48,15 +52,10 @@ namespace jedjoud.VoxelTerrain.Editor {
 
                 Rect r = new Rect(rect.x, rect.y, rect.width, lineHeight);
 
-                if (propType.SpawnEntities) {
+                if (propType.spawnEntities) {
                     EditorGUI.PropertyField(r, prefabProp, new GUIContent("Prefab"));
                     r.y += lineHeight + spacing;
                 }
-
-                EditorGUI.PropertyField(r, cullingCenterProp, new GUIContent("Culling Center"));
-                r.y += lineHeight + spacing;
-
-                EditorGUI.PropertyField(r, cullingRadiusProp, new GUIContent("Culling Radius"));
             };
 
             variantsList.elementHeightCallback = (index) => {
@@ -66,7 +65,7 @@ namespace jedjoud.VoxelTerrain.Editor {
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
                 int lines = 2; // cullingCenter and cullingRadius
 
-                if (propType.SpawnEntities)
+                if (propType.spawnEntities)
                     lines++; // prefab field
 
                 return lines * (lineHeight + spacing) + spacing;
@@ -74,22 +73,25 @@ namespace jedjoud.VoxelTerrain.Editor {
         }
 
         public override void OnInspectorGUI() {
+            PropType propType = (PropType)target;
             serializedObject.Update();
 
-            // Draw Variants as a reorderable list
-            variantsList.DoLayoutList();
+            EditorGUILayout.PropertyField(spawnEntities);
+            if (propType.spawnEntities) {
+                // Draw Variants as a reorderable list
+                variantsList.DoLayoutList();
+            }
 
-            // Draw propSpawnBehavior
-            EditorGUILayout.PropertyField(propSpawnBehaviorProp);
+            EditorGUILayout.PropertyField(renderInstances);
+            if (propType.renderInstances) {
+                EditorGUILayout.PropertyField(renderInstancesShadow);
+                EditorGUILayout.PropertyField(instancedMeshProp);
+                EditorGUILayout.PropertyField(materialProp);
+                EditorGUILayout.PropertyField(instanceMaxDistance);
+            }
 
-            // Draw other fields
             EditorGUILayout.PropertyField(maxPropsPerSegmentProp);
             EditorGUILayout.PropertyField(maxPropsInTotalProp);
-
-            PropType propType = (PropType)target;
-
-            EditorGUILayout.PropertyField(instancedMeshProp);
-            EditorGUILayout.PropertyField(materialProp);
 
             serializedObject.ApplyModifiedProperties();
         }
