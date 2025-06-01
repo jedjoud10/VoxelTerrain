@@ -60,6 +60,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new SimpleUnaryFunctionNode<T, T> { a = a, func = "-" };
         }
 
+        public static Variable<T> operator !(Variable<T> a) {
+            return new SimpleUnaryFunctionNode<T, T> { a = a, func = "!" };
+        }
+
         public static Variable<T> operator *(Variable<T> a, Variable<T> b) {
             return new SimpleBinaryOperatorNode<T, T, T> { a = a, b = b, op = "*" };
         }

@@ -88,7 +88,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             context.SpawnProp(surface.hit & flatSurface & spawn, new Props.GenerationProp {
                 scale = 1f,
                 position = surface.hitPosition,
-                rotation = surface.hitNormal.LookAt(new float3(0, 0, -1), roll),
+                rotation = ((Variable<float3>)math.up()).LookAt(new float3(0, 0, -1), roll),
                 variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1),
                 type = 0,
             });
@@ -104,7 +104,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             });
 
             Variable<float2> thing = propPebbleScale;
-            context.SpawnProp(surface.hit, new Props.GenerationProp {
+            context.SpawnProp(surface.hit & !spawn, new Props.GenerationProp {
                 scale = Random.Range<float3, float>(input.position, thing.x, thing.y),
                 position = surface.hitPosition,
                 rotation = surface.hitNormal.LookAt(math.up(), roll),

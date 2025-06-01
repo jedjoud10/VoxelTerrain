@@ -9,11 +9,17 @@ namespace jedjoud.VoxelTerrain.Props {
         [Serializable]
         public class Baked {
             public Entity[] prototypes;
+            public Texture2D[] diffuse;
+            public Texture2D[] normal;
+            public Texture2D[] mask;
         }
                 
         [Serializable]
         public class Variant {
             public GameObject prefab;
+            public Texture2D diffuse;
+            public Texture2D normal;
+            public Texture2D mask;
         }
 
         public List<Variant> variants;

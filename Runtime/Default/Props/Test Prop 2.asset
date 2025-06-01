@@ -14,9 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   variants:
   - prefab: {fileID: 4090421211949882616, guid: 90cc405673511cf4b85630edb7dbaebb, type: 3}
+    diffuse: {fileID: 0}
+    normal: {fileID: 0}
+    mask: {fileID: 0}
   - prefab: {fileID: 4090421211949882616, guid: 1dac05a6773599f4e80af6910ac10f73, type: 3}
+    diffuse: {fileID: 0}
+    normal: {fileID: 0}
+    mask: {fileID: 0}
   spawnEntities: 1
-  renderInstances: 1
+  renderInstances: 0
   renderInstancesShadow: 0
   instanceMaxDistance: 10000
   maxPropsPerSegment: 65536

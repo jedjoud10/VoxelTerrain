@@ -14,7 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   variants:
   - prefab: {fileID: 2094315427237674077, guid: 299877e1a2ebe174aabed1b12f06a690, type: 3}
+    diffuse: {fileID: 0}
+    normal: {fileID: 0}
+    mask: {fileID: 0}
   - prefab: {fileID: 2094315427237674077, guid: 0311276cc97063c4d83678ace6d55f44, type: 3}
+    diffuse: {fileID: 0}
+    normal: {fileID: 0}
+    mask: {fileID: 0}
   spawnEntities: 1
   renderInstances: 1
   renderInstancesShadow: 0

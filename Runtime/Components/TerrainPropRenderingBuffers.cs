@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
 using Unity.Entities;
@@ -9,6 +10,7 @@ using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
 
 namespace jedjoud.VoxelTerrain.Segments {
+    // not really buffers but yk... gpu shii
     public class TerrainPropRenderingBuffers : IComponentData {
         // Counters for the number of visible (non-culled) props for each prop type
         public ComputeBuffer visiblePropsCountersBuffer;
@@ -21,6 +23,8 @@ namespace jedjoud.VoxelTerrain.Segments {
         public GraphicsBuffer drawArgsBuffer;
 
         public ComputeBuffer maxDistancesBuffer;
+
+        public PropTypeBatchData[] typeBatchData;
 
         public void Init(int maxCombinedPermProps, TerrainPropsConfig config) {
             int types = config.props.Count;
@@ -47,6 +51,15 @@ namespace jedjoud.VoxelTerrain.Segments {
                 maxDistances[i] = config.props[i].instanceMaxDistance;
             }
             maxDistancesBuffer.SetData(maxDistances);
+
+            typeBatchData = new PropTypeBatchData[types];
+            for (int i = 0; i < types; i++) {
+                typeBatchData[i] = new PropTypeBatchData(
+                    config.baked[i].diffuse,
+                    config.baked[i].normal,
+                    config.baked[i].mask
+                );
+            }
         }
 
         public void Dispose() {

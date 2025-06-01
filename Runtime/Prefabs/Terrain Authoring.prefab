@@ -105,6 +105,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 877753c34810a33449994056ab9cd85d, type: 2}
   - {fileID: 11400000, guid: 29ebc771b9f09f24b8192bce7a4cf8e7, type: 2}
   - {fileID: 11400000, guid: 507da28263ad9a14d8aedd8b949b456e, type: 2}
-  copyCompute: {fileID: 7200000, guid: 661b6358b82faf64487edb48a2958782, type: 3}
-  cullCompute: {fileID: 7200000, guid: 36068719711b05b4aabd5888c9242d36, type: 3}
-  applyCompute: {fileID: 7200000, guid: 40b03aa1223e4884cbe519c38895077d, type: 3}
+  copy: {fileID: 7200000, guid: 661b6358b82faf64487edb48a2958782, type: 3}
+  cull: {fileID: 7200000, guid: 36068719711b05b4aabd5888c9242d36, type: 3}
+  apply: {fileID: 7200000, guid: 40b03aa1223e4884cbe519c38895077d, type: 3}

@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 2139536341228549593}
   - component: {fileID: 4648646879267579889}
   - component: {fileID: 6216437403641692524}
-  - component: {fileID: 6135894366507981322}
+  - component: {fileID: 6459126261728335196}
   m_Layer: 0
   m_Name: Test Prop 1 Variant 2
   m_TagString: Untagged
@@ -70,7 +70,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 44088753294a87e49bebc72a7fb04ec0, type: 2}
+  - {fileID: 2100000, guid: 4b81cd076c5a8b149a753be1fe330cde, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -100,7 +100,7 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2094315427237674077}
   m_Mesh: {fileID: -1550514412580984892, guid: b50439a4803f8a442853cd5b9e5981de, type: 3}
---- !u!65 &6135894366507981322
+--- !u!65 &6459126261728335196
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -119,5 +119,5 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.6, y: 5.8473783, z: 0.6}
-  m_Center: {x: 0, y: 2.6, z: 0}
+  m_Size: {x: 0.6, y: 0.6, z: 5}
+  m_Center: {x: 0, y: 0, z: 1}

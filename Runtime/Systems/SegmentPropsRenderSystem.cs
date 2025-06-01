@@ -80,8 +80,12 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             var mat = new MaterialPropertyBlock();
             renderParams.matProps = mat;
+            mat.SetBuffer("_PermBuffer", perm.permBuffer);
             mat.SetBuffer("_PermMatricesBuffer", perm.permMatricesBuffer);
             mat.SetBuffer("_IndirectionBuffer", rendering.indirectionBuffer);
+            mat.SetTexture("_DiffuseMapArray", rendering.typeBatchData[i].diffuse);
+            mat.SetTexture("_NormalMapArray", rendering.typeBatchData[i].normal);
+            mat.SetTexture("_MaskMapArray", rendering.typeBatchData[i].mask);
             mat.SetInt("_PermBufferOffset", perm.permBufferOffsets[i]);
             mat.SetInt("_PropType", i);
 

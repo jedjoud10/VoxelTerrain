@@ -6,9 +6,9 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Props {
     class TerrainPropsConfigAuthoring : MonoBehaviour {
         public List<PropType> props;
-        public ComputeShader copyCompute;
-        public ComputeShader cullCompute;
-        public ComputeShader applyCompute;
+        public ComputeShader copy;
+        public ComputeShader cull;
+        public ComputeShader apply;
     }
 
     class TerrainPropsConfigBaker : Baker<TerrainPropsConfigAuthoring> {
@@ -19,52 +19,49 @@ namespace jedjoud.VoxelTerrain.Props {
             List<PropType.Baked> baked = authoring.props.Select(type => {
                 int count = type.variants.Count;
                 Entity[] prototypes = new Entity[count];
-                /*
-                Mesh[] meshes = new Mesh[count];
+
                 Texture2D[] diffuse = new Texture2D[count];
                 Texture2D[] normal = new Texture2D[count];
                 Texture2D[] mask = new Texture2D[count];
-                */
-
+                
                 for (int i = 0; i < count; i++) {
                     PropType.Variant variant = type.variants[i];
-                    prototypes[i] = GetEntity(variant.prefab, TransformUsageFlags.Renderable);
 
+                    if (variant.prefab != null && type.spawnEntities) {
+                        prototypes[i] = GetEntity(variant.prefab, TransformUsageFlags.Renderable);
+                    } else {
+                        prototypes[i] = Entity.Null;
+                    }
 
-                    /*
-                    meshes[i] = GetComponent<MeshFilter>(variant.prefab).sharedMesh;
-                    Material material = GetComponent<MeshRenderer>(variant.prefab).sharedMaterial;
-                    diffuse[i] = Texture2D.whiteTexture;
-                    if (material.HasTexture("_DiffuseMap"))
-                        diffuse[i] = (Texture2D)material.GetTexture("_DiffuseMap");
+                    if (type.renderInstances) {
+                        if (type.spawnEntities) {
+                            Material material = GetComponent<MeshRenderer>(variant.prefab).sharedMaterial;
+                            diffuse[i] = (Texture2D)material.GetTexture("_DiffuseMap");
+                            normal[i] = (Texture2D)material.GetTexture("_NormalMap");
+                            mask[i] = (Texture2D)material.GetTexture("_MaskMap");
+                        } else {
+                            diffuse[i] = variant.diffuse;
+                            normal[i] = variant.normal;
+                            mask[i] = variant.mask;
+                        }
+                    }
 
-                    normal[i] = Texture2D.normalTexture;
-                    if (material.HasTexture("_NormalMap"))
-                        normal[i] = (Texture2D)material.GetTexture("_NormalMap");
-
-                    mask[i] = Texture2D.whiteTexture;
-                    if (material.HasTexture("_MaskMap"))
-                        mask[i] = (Texture2D)material.GetTexture("_MaskMap");
-                    */
                 }
 
                 return new PropType.Baked {
                     prototypes = prototypes,
-                    /*
-                    meshes = meshes,
-                    diffuseTexs = diffuse,
-                    normalTexs = normal,
-                    maskTexs = mask,
-                    */
+                    diffuse = diffuse,
+                    normal = normal,
+                    mask = mask,
                 };
             }).ToList();
 
             AddComponentObject(self, new TerrainPropsConfig {
                 props = authoring.props,
                 baked = baked,
-                copy = authoring.copyCompute,
-                cull = authoring.cullCompute,
-                apply = authoring.applyCompute,
+                copy = authoring.copy,
+                cull = authoring.cull,
+                apply = authoring.apply,
             });
         }
     }

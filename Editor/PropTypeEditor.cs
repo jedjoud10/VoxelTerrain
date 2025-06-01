@@ -44,6 +44,9 @@ namespace jedjoud.VoxelTerrain.Editor {
             variantsList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) => {
                 SerializedProperty element = variantsProp.GetArrayElementAtIndex(index);
                 SerializedProperty prefabProp = element.FindPropertyRelative("prefab");
+                SerializedProperty diffuse = element.FindPropertyRelative("diffuse");
+                SerializedProperty normal = element.FindPropertyRelative("normal");
+                SerializedProperty mask = element.FindPropertyRelative("mask");
 
                 PropType propType = (PropType)target;
 
@@ -56,6 +59,15 @@ namespace jedjoud.VoxelTerrain.Editor {
                     EditorGUI.PropertyField(r, prefabProp, new GUIContent("Prefab"));
                     r.y += lineHeight + spacing;
                 }
+
+                if (propType.renderInstances && !propType.spawnEntities) {
+                    EditorGUI.PropertyField(r, diffuse, new GUIContent("Diffuse Map"));
+                    r.y += lineHeight + spacing;
+                    EditorGUI.PropertyField(r, normal, new GUIContent("Normal Map"));
+                    r.y += lineHeight + spacing;
+                    EditorGUI.PropertyField(r, mask, new GUIContent("Mask Map"));
+                    r.y += lineHeight + spacing;
+                }
             };
 
             variantsList.elementHeightCallback = (index) => {
@@ -63,10 +75,13 @@ namespace jedjoud.VoxelTerrain.Editor {
 
                 float lineHeight = EditorGUIUtility.singleLineHeight;
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
-                int lines = 2; // cullingCenter and cullingRadius
+                int lines = 0;
+
+                if (propType.renderInstances && !propType.spawnEntities)
+                    lines += 3;
 
                 if (propType.spawnEntities)
-                    lines++; // prefab field
+                    lines += 1;
 
                 return lines * (lineHeight + spacing) + spacing;
             };
@@ -77,7 +92,8 @@ namespace jedjoud.VoxelTerrain.Editor {
             serializedObject.Update();
 
             EditorGUILayout.PropertyField(spawnEntities);
-            if (propType.spawnEntities) {
+
+            if (propType.spawnEntities || propType.renderInstances) {
                 // Draw Variants as a reorderable list
                 variantsList.DoLayoutList();
             }

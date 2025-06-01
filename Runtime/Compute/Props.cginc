@@ -1,13 +1,3 @@
-struct PackedPropMatrix {
-	uint rot_00_01;
-	uint rot_02_10;
-	uint rot_11_12;
-	uint rot_20_21;
-	uint rot_22_scale;
-	uint pos_x_y;
-	uint pos_z_padding;
-};
-
 uint2 PackPositionAndScale(float3 position, float scale) {
 	uint x = f32tof16(position.x);
 	uint y = f32tof16(position.y);
@@ -37,7 +27,7 @@ uint2 PackRotationAndVariant(float4 rotation, int variant) {
 	variant = variant & 0xFF;
 
 	uint first = packedRotation.x | (packedRotation.y << 8) | (packedRotation.z << 16) | (packedRotation.w << 24);
-	uint second = variant;
+	uint second = variant & 0xFF;
 
 	// TODO: USE THE REMAINING 3 BYTES!!!
 	return uint2(first, second);

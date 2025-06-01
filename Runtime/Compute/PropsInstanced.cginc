@@ -3,6 +3,7 @@
 
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 
+StructuredBuffer<uint4> _PermBuffer;
 StructuredBuffer<float4x4> _PermMatricesBuffer;
 StructuredBuffer<uint> _IndirectionBuffer;
 int _PropType;
@@ -51,6 +52,15 @@ int _PermBufferOffset;
 // Should be placed somewhere in the vertex stage, e.g. right before connecting the object space position.
 void Instancing_float(float3 Position, out float3 Out){
 	Out = Position;
+}
+
+// Just passes the position through, allows us to actually attach this file to the graph.
+// Should be placed somewhere in the vertex stage, e.g. right before connecting the object space position.
+void PropVariantFetch_float(int instance, out float Variant){
+	int propIndex = _IndirectionBuffer[instance + _PermBufferOffset];
+	uint4 prop = _PermBuffer[propIndex];
+	uint variant = prop.w & 0xFF;
+	Variant = (float)variant;
 }
 
 #endif
