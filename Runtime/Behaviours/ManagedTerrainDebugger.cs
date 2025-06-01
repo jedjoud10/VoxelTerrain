@@ -42,9 +42,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
 
+            /*
             TerrainPropStuff stuff = null;
             world.EntityManager.CreateEntityQuery(typeof(TerrainPropStuff)).TryGetSingleton<TerrainPropStuff>(out stuff);
-
+            */
             GUI.contentColor = Color.black;
             GUI.backgroundColor = Color.black;
 
@@ -59,12 +60,14 @@ namespace jedjoud.VoxelTerrain.Generation {
             Label($"# of chunk entities with a mesh: {meshedChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
 
+                /*
             if (stuff != null) {
                 Label($"# of max perm props allowed... ever: {stuff.MaxPermProps()}");
                 Label($"# of in-use perm props: {stuff.PermPropsInUse()}");
                 Label($"Prop copy thread count: {stuff.copyComputeThreadCount}");
                 Label($"Prop cull thread count: {stuff.cullComputeThreadCount}");
             }
+                */
 
 
             EntityQuery readySystems = world.EntityManager.CreateEntityQuery(typeof(TerrainReadySystems));

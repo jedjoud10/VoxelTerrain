@@ -7,11 +7,14 @@ namespace jedjoud.VoxelTerrain.Segments {
     [UpdateAfter(typeof(SegmentVoxelSystem))]
     public partial class SegmentPropStuffSystem : SystemBase {
         private bool initialized;
-        
-        protected override void OnCreate() {
-            RequireForUpdate<TerrainReadySystems>();
-            RequireForUpdate<TerrainPropsConfig>();
+        private Entity singleton;
 
+        TerrainPropTempBuffers temp;
+        TerrainPropPermBuffers perm;
+        TerrainPropRenderingBuffers render;
+
+        protected override void OnCreate() {
+            RequireForUpdate<TerrainPropsConfig>();
             initialized = false;
         }
 
@@ -20,9 +23,17 @@ namespace jedjoud.VoxelTerrain.Segments {
             
             if (!initialized) {
                 initialized = true;
-                TerrainPropStuff stuff = new TerrainPropStuff();
-                stuff.Init(config);
-                EntityManager.CreateSingleton<TerrainPropStuff>(stuff);
+                temp = new TerrainPropTempBuffers();
+                perm = new TerrainPropPermBuffers();
+                render = new TerrainPropRenderingBuffers();
+
+                temp.Init(config);
+                perm.Init(config);
+                render.Init(perm.maxCombinedPermProps, config);
+                singleton = EntityManager.CreateEntity();
+                EntityManager.AddComponentObject(singleton, temp);
+                EntityManager.AddComponentObject(singleton, perm);
+                EntityManager.AddComponentObject(singleton, render);
             }
         }
 
@@ -30,7 +41,10 @@ namespace jedjoud.VoxelTerrain.Segments {
             AsyncGPUReadback.WaitAllRequests();
 
             if (initialized) {
-                SystemAPI.ManagedAPI.GetSingleton<TerrainPropStuff>().Dispose();
+                EntityManager.DestroyEntity(singleton);
+                temp.Dispose();
+                perm.Dispose();
+                render.Dispose();
             }
         }
     }

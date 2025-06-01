@@ -82,12 +82,13 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<bool> flatSurface = surface.hitNormal.Dot(math.up()) > propMinDotProductVal;
 
             Variable<quaternion> up = quaternion.identity;
-            Variable<quaternion> rotation = surface.hitNormal.LookAt();
+            Variable<float> roll = Random.Range<float3, float>(input.position, 0, 360);
+            Variable<quaternion> rotation = surface.hitNormal.LookAt(new float3(0, 0, -1), roll);
 
             context.SpawnProp(surface.hit & flatSurface & spawn, new Props.GenerationProp {
                 scale = 1f,
                 position = surface.hitPosition,
-                rotation = VariableExtensions.Slerp(rotation, up, propRotationFactor),
+                rotation = surface.hitNormal.LookAt(new float3(0, 0, -1), roll),
                 variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1),
                 type = 0,
             });
@@ -106,7 +107,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             context.SpawnProp(surface.hit, new Props.GenerationProp {
                 scale = Random.Range<float3, float>(input.position, thing.x, thing.y),
                 position = surface.hitPosition,
-                rotation = Random.Evaluate<float3, quaternion>(input.position, true).Normalize(),
+                rotation = surface.hitNormal.LookAt(math.up(), roll),
                 variant = 0,
                 type = 2,
             });

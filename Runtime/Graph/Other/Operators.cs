@@ -49,7 +49,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
     }
 
-    public class SimpleTertiaryFunctioNode<I1, I2, I3, O> : Variable<O> {
+    public class SimpleTertiaryFunctionNode<I1, I2, I3, O> : Variable<O> {
         public Variable<I1> a;
         public Variable<I2> b;
         public Variable<I3> c;

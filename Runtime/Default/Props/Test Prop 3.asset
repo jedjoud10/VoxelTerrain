@@ -20,5 +20,5 @@ MonoBehaviour:
   instanceMaxDistance: 100
   maxPropsPerSegment: 16384
   maxPropsInTotal: 524288
-  instancedMesh: {fileID: 4493585093827132993, guid: 33f53ccc42c12c846911d2df960142f9, type: 3}
+  instancedMesh: {fileID: -5575235835429965844, guid: 36d79a7db51d68c488b4a97b8c592d49, type: 3}
   material: {fileID: 2100000, guid: c63c9cf6fb569b047b26fc72cad62140, type: 2}

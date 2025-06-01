@@ -1,34 +1,89 @@
 // I LOVE VIBE CODING!!!!
-float4 LookAt(float3 a, float3 b) {
-	a = normalize(a);
-    b = normalize(b);
+float4 LookAt(float3 forwardDir, float3 upDir, float rollAngle) {
+    // Normalize input vectors
+    forwardDir = normalize(forwardDir);
+    upDir = normalize(upDir);
+    rollAngle = radians(rollAngle);
 
-	// we need this desu....
-	a.z *= -1;
-    a.x *= -1;
-
-    float dotProd = dot(a, b);
-    float3 crossProd = cross(a, b);
-
-    // Handle special case: 180 degree rotation (opposite vectors)
-    if (dotProd < -0.9999f) {
-        // Pick an arbitrary axis perpendicular to 'a'
-        float3 axis = cross(a, float3(1, 0, 0));
-        if (length(axis) < 0.0001f) // If 'a' is parallel to X, pick Y
-            axis = cross(a, float3(0, 1, 0));
-        axis = normalize(axis);
-        return float4(axis.x, axis.y, axis.z, 0); // 180 degree rotation
+    // --- Edge Case: Forward and Up are parallel ---
+    // If they're nearly colinear, force a different up vector
+    if (abs(dot(forwardDir, upDir)) > 0.9999)
+    {
+        // Try world-up (Y-axis) first
+        upDir = float3(0, 1, 0);
+        if (abs(dot(forwardDir, upDir)) > 0.9999)
+        {
+            // Fall back to Z-axis if Y fails
+            upDir = float3(0, 0, 1);
+        }
     }
 
-    float s = sqrt((1.0f + dotProd) * 2.0f);
-    float invS = 1.0f / s;
+    // --- Construct Orthonormal Basis ---
+    float3 right = normalize(cross(upDir, forwardDir));
+    float3 up = cross(forwardDir, right); // Ensures orthogonality
 
-    return float4(
-        crossProd.x * invS,
-        crossProd.y * invS,
-        crossProd.z * invS,
-        s * 0.5f
-    );
+    // --- Convert Basis to Quaternion ---
+    float trace = right.x + up.y + forwardDir.z;
+    float4 q;
+
+    if (trace > 0.0)
+    {
+        float s = sqrt(trace + 1.0) * 0.5;
+        q.w = s;
+        q.x = (up.z - forwardDir.y) / (4.0 * s);
+        q.y = (forwardDir.x - right.z) / (4.0 * s);
+        q.z = (right.y - up.x) / (4.0 * s);
+    }
+    else if (right.x > up.y && right.x > forwardDir.z)
+    {
+        float s = sqrt(1.0 + right.x - up.y - forwardDir.z) * 2.0;
+        q.w = (up.z - forwardDir.y) / s;
+        q.x = 0.25 * s;
+        q.y = (up.x + right.y) / s;
+        q.z = (forwardDir.x + right.z) / s;
+    }
+    else if (up.y > forwardDir.z)
+    {
+        float s = sqrt(1.0 + up.y - right.x - forwardDir.z) * 2.0;
+        q.w = (forwardDir.x - right.z) / s;
+        q.x = (up.x + right.y) / s;
+        q.y = 0.25 * s;
+        q.z = (forwardDir.y + up.z) / s;
+    }
+    else
+    {
+        float s = sqrt(1.0 + forwardDir.z - right.x - up.y) * 2.0;
+        q.w = (right.y - up.x) / s;
+        q.x = (forwardDir.x + right.z) / s;
+        q.y = (forwardDir.y + up.z) / s;
+        q.z = 0.25 * s;
+    }
+
+    // --- Apply Roll Rotation (if needed) ---
+    if (abs(rollAngle) > 0.0001)
+    {
+        float halfRoll = rollAngle * 0.5;
+        float sinRoll = sin(halfRoll);
+        float cosRoll = cos(halfRoll);
+
+        // Roll quaternion rotates around the forward axis
+        float4 rollQuat = float4(
+            forwardDir.x * sinRoll,
+            forwardDir.y * sinRoll,
+            forwardDir.z * sinRoll,
+            cosRoll
+        );
+
+        // Combine rotations: rollQuat * q (roll happens after look-at)
+        q = float4(
+            rollQuat.w * q.x + rollQuat.x * q.w + rollQuat.y * q.z - rollQuat.z * q.y,
+            rollQuat.w * q.y - rollQuat.x * q.z + rollQuat.y * q.w + rollQuat.z * q.x,
+            rollQuat.w * q.z + rollQuat.x * q.y - rollQuat.y * q.x + rollQuat.z * q.w,
+            rollQuat.w * q.w - rollQuat.x * q.x - rollQuat.y * q.y - rollQuat.z * q.z
+        );
+    }
+
+    return normalize(q);
 }
 
 // VIBE CODING!!!!

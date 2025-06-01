@@ -15,7 +15,7 @@ namespace jedjoud.VoxelTerrain.Props {
             }
 
             private class PassData {
-                public TerrainPropStuff stuff;
+                //public TerrainPropStuff stuff;
                 public TerrainPropsConfig config;
             }
 

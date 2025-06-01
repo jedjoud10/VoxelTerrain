@@ -680,7 +680,47 @@ PrefabInstance:
       value: Managed Terrain
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: roll.value
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: upTest.value.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: upTest.value.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: upTest.value.z
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: amplitude.value
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: fwdTest.value.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: fwdTest.value.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: fwdTest.value.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propPebbleScale.value.x
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propPebbleScale.value.y
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propRotationFactor.value
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
@@ -693,7 +733,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: hash
-      value: -837449227
+      value: 526455706
       objectReference: {fileID: 0}
     - target: {fileID: 6566762760026143042, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_LocalPosition.x
