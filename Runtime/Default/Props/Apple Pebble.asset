@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 812a0afee8139e54db49ed7682d6760d, type: 3}
-  m_Name: Apple
+  m_Name: Apple Pebble
   m_EditorClassIdentifier: 
   variants:
   - prefab: {fileID: 4090421211949882616, guid: 1dac05a6773599f4e80af6910ac10f73, type: 3}
@@ -20,11 +20,11 @@ MonoBehaviour:
   spawnEntities: 0
   alwaysSpawnInstances: 0
   renderInstances: 1
-  renderInstancesShadow: 0
-  instanceMaxDistance: 100000
+  renderInstancesShadow: 1
+  instanceMaxDistance: 200
   overrideInstancedIndirectMaterial: 0
   instancedIndirectMaterial: {fileID: 0}
   instancedMesh: {fileID: -4017790398141553007, guid: 5c97d0aeec24b804cb12b49a145da86b, type: 3}
-  cullingSphere: {x: 0, y: 0, z: 0, w: 100}
+  cullingSphere: {x: 0, y: 0, z: 0, w: 2}
   maxPropsPerSegment: 16384
   maxPropsInTotal: 524288

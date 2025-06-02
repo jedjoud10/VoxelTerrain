@@ -73,12 +73,25 @@ SamplerState my_linear_clamp_sampler;
     }
 #elif defined(_SEGMENT_PROPS)
     float3 ConvertIntoWorldPosition(uint3 id) {
-        return hash31((float)id.x) * (float)physical_segment_size + segment_offset;
+        return hash31((float)id.x * 12.3214123) * (float)physical_segment_size + segment_offset;
     }
 #endif
 
 
 #if defined(_SEGMENT_PROPS)
+    int SearchType(uint dispatch) {
+        int searched = -1;
+    	for (int j = 0; j < max_total_prop_types; j++) {
+		    if (dispatch >= temp_buffer_offsets_buffer[j]) {
+		    	searched = j;
+		    } else {
+		    	return searched;
+            }
+		}
+
+        return searched;
+    }
+
     float DensityAtSlow(float3 position) {
         float density = 0;
         int mat = 0;

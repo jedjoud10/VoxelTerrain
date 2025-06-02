@@ -138,10 +138,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             });
 
             // Run the graph for the props pass
+            ScopeArgument dispatch = ScopeArgument.AsInput<int>("dispatch");
+            ScopeArgument type = ScopeArgument.AsInput<int>("type");
             ManagedTerrainGraph.PropInput propInput = new ManagedTerrainGraph.PropInput() {
                 position = (Variable<float3>)position.node,
                 density = cachedDensity,
-                normal = float3.zero,
+                dispatch = (Variable<int>)dispatch.node,
+                type = (Variable<int>)type.node
             };
             ManagedTerrainGraph.PropContext propContext = new ManagedTerrainGraph.PropContext();
 
@@ -152,7 +155,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             KernelBuilder propKernelBuilder = new KernelBuilder {
                 name = "CSProps",
                 arguments = new ScopeArgument[] {
-                    position,
+                    position, dispatch, type,
                 },
                 customCallback = (TreeContext ctx) => {
                     cachedDensity.Handle(ctx);
@@ -162,7 +165,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 },
                 dispatchGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
                 scopeGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
-                numThreads = new int3(32, 1, 1),
+                numThreads = new int3(64, 1, 1),
             };
 
             voxelKernelBuilder.Build(ctx);

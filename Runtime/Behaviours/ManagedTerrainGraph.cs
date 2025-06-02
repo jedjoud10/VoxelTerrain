@@ -17,8 +17,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 chain = null;
             }
 
-            public void SpawnProp(Variable<bool> shouldSpawn, Props.GenerationProp prop) {
-                if (prop.position == null || prop.rotation == null || prop.variant == null || prop.scale == null || prop.type == null)
+            public void SpawnProp(int type, Variable<bool> shouldSpawn, Props.GenerationProp prop) {
+                if (prop.position == null || prop.rotation == null || prop.variant == null || prop.scale == null)
                     throw new System.NullReferenceException("One of the prop variables is null");
 
                 chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
@@ -26,14 +26,13 @@ namespace jedjoud.VoxelTerrain.Generation {
                     prop.scale.Handle(ctx);
                     prop.rotation.Handle(ctx);
                     prop.variant.Handle(ctx);
-                    prop.type.Handle(ctx);
                     shouldSpawn.Handle(ctx);
                     ctx.AddLine($@"
 // this is some very cool prop spawning call....
-if ({ctx[shouldSpawn]} && {ctx[prop.type]} < max_total_prop_types) {{
+if ({ctx[shouldSpawn]} && {type} < max_total_prop_types && {type} == type) {{
     int index = 0;
-    InterlockedAdd(temp_counters_buffer[{ctx[prop.type]}], 1, index);
-    index += temp_buffer_offsets_buffer[{ctx[prop.type]}];
+    InterlockedAdd(temp_counters_buffer[{type}], 1, index);
+    index += temp_buffer_offsets_buffer[{type}];
     uint2 first = PackPositionAndScale({ctx[prop.position]}, {ctx[prop.scale]});
     uint2 second = PackRotationAndVariant({ctx[prop.rotation]}, {ctx[prop.variant]});
     temp_buffer[index] = uint4(first, second);
@@ -83,7 +82,8 @@ if ({ctx[shouldSpawn]} && {ctx[prop.type]} < max_total_prop_types) {{
         public class PropInput {
             public Variable<float3> position;
             public Variable<float> density;
-            public Variable<float3> normal;
+            public Variable<int> dispatch;
+            public Variable<int> type;
         }
 
         public class VoxelInput {

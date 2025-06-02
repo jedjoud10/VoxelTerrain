@@ -76,7 +76,6 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         }
 
         public override void Props(PropInput input, PropContext context) {
-            Variable<bool> spawn = (Noise.Simplex(input.position, propNoiseScale, propNoiseAmplitude) + propNoiseOffset) > Random.Evaluate<float3, float>(input.position, true);
 
             PropContext.PossibleSurface surface = context.IsSurfaceAlongAxis(input.position, PropContext.Axis.Y);
             Variable<bool> flatSurface = surface.hitNormal.Dot(math.up()) > propMinDotProductVal;
@@ -85,40 +84,37 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<float> roll = Random.Range<float3, float>(input.position, 0, 360);
             Variable<quaternion> rotation = surface.hitNormal.LookAt(new float3(0, 0, -1), roll);
 
-            context.SpawnProp(surface.hit & flatSurface & spawn, new Props.GenerationProp {
+            Variable<bool> spawn = (Noise.Simplex(input.position, propNoiseScale, propNoiseAmplitude) + propNoiseOffset) > Random.Evaluate<float3, float>(input.position, true);
+            context.SpawnProp(0, surface.hit & flatSurface & spawn, new Props.GenerationProp {
                 scale = Random.Range(input.position, propTreeScale),
                 position = surface.hitPosition,
                 rotation = ((Variable<float3>)math.up()).LookAt(new float3(0, 0, -1), roll),
                 variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1),
-                type = 0,
             });
 
             var d = input.density;
             Variable<float2> range = propDensityRangeSpawn;
-            context.SpawnProp(d > range.x & d < range.y & Random.Uniform(input.position, 0.4f), new Props.GenerationProp {
+            context.SpawnProp(1, d > range.x & d < range.y & Random.Uniform(input.position, 0.4f), new Props.GenerationProp {
                 scale = 2f,
                 position = input.position,
                 rotation = Random.Evaluate<float3, quaternion>(input.position, true).Normalize(),
                 variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1),
-                type = 1,
             });
 
             Variable<bool> uhhhh = Random.Uniform(surface.hitPosition);
 
-            context.SpawnProp(surface.hit & !spawn & uhhhh, new Props.GenerationProp {
+            context.SpawnProp(2, surface.hit & !spawn & uhhhh, new Props.GenerationProp {
                 scale = Random.Range(input.position, propRatScale),
                 position = surface.hitPosition,
                 rotation = surface.hitNormal.LookAt(math.up(), roll),
                 variant = 0,
-                type = 2,
             });
 
-            context.SpawnProp(surface.hit & !spawn & !uhhhh, new Props.GenerationProp {
+            context.SpawnProp(3, surface.hit, new Props.GenerationProp {
                 scale = 1f,
                 position = surface.hitPosition + surface.hitNormal.Normalize().Scaled(pushSurfaceAmount),
                 rotation = Random.Evaluate<float3, quaternion>(input.position, true).Normalize(),
                 variant = 0,
-                type = 3,
             });
         }
     }

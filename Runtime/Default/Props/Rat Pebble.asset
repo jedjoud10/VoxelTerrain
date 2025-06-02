@@ -20,8 +20,8 @@ MonoBehaviour:
   spawnEntities: 0
   alwaysSpawnInstances: 0
   renderInstances: 1
-  renderInstancesShadow: 0
-  instanceMaxDistance: 100000
+  renderInstancesShadow: 1
+  instanceMaxDistance: 200
   overrideInstancedIndirectMaterial: 0
   instancedIndirectMaterial: {fileID: 0}
   instancedMesh: {fileID: -5575235835429965844, guid: 36d79a7db51d68c488b4a97b8c592d49, type: 3}

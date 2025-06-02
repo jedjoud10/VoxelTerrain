@@ -88,7 +88,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 }
 
                 var comma = i == arguments.Length - 1 ? "" : ",";
-                var output = item.output ? " out " : "";
+                var output = item.output ? "out " : "";
 
                 argumentsCode += $"{output}{item.type.ToStringType()} {item.name}{comma}";
             }

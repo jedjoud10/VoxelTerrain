@@ -7,6 +7,5 @@ namespace jedjoud.VoxelTerrain.Props {
         public Variable<quaternion> rotation;
         public Variable<float> scale;
         public Variable<int> variant;
-        public Variable<int> type;
     }
 }
