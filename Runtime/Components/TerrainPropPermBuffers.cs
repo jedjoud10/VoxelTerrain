@@ -1,12 +1,10 @@
-using System;
+
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.RenderGraphModule;
 
 namespace jedjoud.VoxelTerrain.Segments {
     public class TerrainPropPermBuffers : IComponentData {
@@ -42,9 +40,29 @@ namespace jedjoud.VoxelTerrain.Segments {
 
         public ComputeBuffer copyOffsetsBuffer;
         public ComputeBuffer copyTypeLookupBuffer;
+        public GraphicsFence? copyFence;
+
+        // x: current perm buffer count
+        // y: max perm buffer count
+        // z: visible count (SLOW!!!!!!! does a lil readback to the cpu uwu...)
+        public int3[] GetCounts(TerrainPropsConfig config, TerrainPropRenderingBuffers rendering) {
+            int3[] values = new int3[config.props.Count];
+
+            int[] visibleCounts = new int[config.props.Count];
+            rendering.visiblePropsCountersBuffer.GetData(visibleCounts);
+
+            for (int i = 0; i < config.props.Count; i++) {
+                values[i].x = permPropsInUseBitset.CountBits(permBufferOffsets[i], permBufferCounts[i]);
+                values[i].y = permBufferCounts[i];
+                values[i].z = visibleCounts[i];
+            }
+
+            return values;
+        }
 
         public void Init(TerrainPropsConfig config) {
             int types = config.props.Count;
+            copyFence = null;
 
             // Create perm offsets for perm allocation
             maxCombinedPermProps = 0;
@@ -79,6 +97,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         public void Dispose() {
             permBuffer.Dispose();
             permMatricesBuffer.Dispose();
+            permPropsInUseBitset.Dispose();
             permPropsInUseBitsetBuffer.Dispose();
             permBufferOffsetsBuffer.Dispose();
             permBufferCountsBuffer.Dispose();

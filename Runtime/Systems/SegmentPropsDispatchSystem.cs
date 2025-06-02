@@ -14,9 +14,9 @@ namespace jedjoud.VoxelTerrain.Segments {
     public partial class SegmentPropsDispatchSystem : SystemBase {
         private bool countersFetched;
         private bool propsFetched;
-        private bool needPropsToBeFetched;
         private bool free;
         private Entity segmentEntity;
+        private TerrainSegment.LevelOfDetail lod;
         private SegmentPropExecutor propExecutor;
 
         private TerrainPropsConfig config;
@@ -78,7 +78,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 return;
 
             this.segmentEntity = entity;
-            needPropsToBeFetched = segment.lod == TerrainSegment.LevelOfDetail.High;
+            lod = segment.lod;
             countersFetched = false;
             propsFetched = false;
 
@@ -109,7 +109,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 }
             );
 
-            if (needPropsToBeFetched) {
+            if (lod == TerrainSegment.LevelOfDetail.High) {
                 cmds.RequestAsyncReadbackIntoNativeArray(
                     ref temp.tempBufferReadback,
                     temp.tempBuffer,
@@ -117,6 +117,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                         propsFetched = true;
                     }
                 );
+            } else {
+                propsFetched = true;
             }
 
 
@@ -127,7 +129,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         }
 
         private void TryCheckIfReadbackComplete() {
-            if (countersFetched && (propsFetched || !needPropsToBeFetched)) {
+            if (countersFetched && propsFetched) {
                 free = true;
                 countersFetched = false;
                 propsFetched = false;
@@ -135,7 +137,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 if (!EntityManager.Exists(segmentEntity))
                     return;
 
-                if (needPropsToBeFetched) {
+                if (lod == TerrainSegment.LevelOfDetail.High) {
                     SpawnPropEntities();
                 }
                     
@@ -146,10 +148,31 @@ namespace jedjoud.VoxelTerrain.Segments {
         }
 
 
-        public void CopyTempToPermBuffers() {
+        public void CopyTempToPermBuffers() {            
             bool[] propTypesWeShouldCopy = new bool[types];
             for (int i = 0; i < types; i++) {
-                propTypesWeShouldCopy[i] = !needPropsToBeFetched || !config.props[i].spawnEntities;
+                PropType prop = config.props[i];
+
+                // most of the time, instances will be spawned for low LOD segments
+                // however, if we swap instances for entities, then we need another check
+                if (lod == TerrainSegment.LevelOfDetail.Low) {
+                    if (prop.spawnEntities) {
+                        // means that we will not swap instaces for entities
+                        propTypesWeShouldCopy[i] = true;
+                    } else {
+                        // means that we WILL swap instances for entities, need extra check for avoiding cluttering the map with rats
+                        if (prop.alwaysSpawnInstances) {
+                            propTypesWeShouldCopy[i] = true;
+                        }
+                    }
+                }
+
+                // if entities are disabled and this is a high LOD segment, generate instances
+                if (!prop.spawnEntities) {
+                    if (lod == TerrainSegment.LevelOfDetail.High) {
+                        propTypesWeShouldCopy[i] = true;
+                    }
+                }
             }
 
             int invocations = 0;
@@ -248,8 +271,10 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeBufferParam(config.copy, 0, "perm_buffer_dst_copy_offsets_buffer", perm.permBufferDstCopyOffsetsBuffer);
             cmds.SetComputeBufferParam(config.copy, 0, "perm_matrices_buffer", perm.permMatricesBuffer);
 
-            int threadCountX = Mathf.CeilToInt((float)invocations / 32.0f);
+            int threadCountX = Mathf.CeilToInt((float)invocations / 64.0f);
             cmds.DispatchCompute(config.copy, 0, threadCountX, 1, 1);
+
+            perm.copyFence = cmds.CreateAsyncGraphicsFence();
             Graphics.ExecuteCommandBufferAsync(cmds, ComputeQueueType.Background);
         }
 

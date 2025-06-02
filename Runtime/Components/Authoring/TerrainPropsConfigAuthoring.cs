@@ -45,8 +45,11 @@ namespace jedjoud.VoxelTerrain.Props {
                             normal[i] = variant.normal;
                             mask[i] = variant.mask;
                         }
+                    } else {
+                        diffuse[i] = null;
+                        normal[i] = null;
+                        mask[i] = null;
                     }
-
                 }
 
                 return new PropType.Baked {
@@ -63,7 +66,7 @@ namespace jedjoud.VoxelTerrain.Props {
                 copy = authoring.copy,
                 cull = authoring.cull,
                 apply = authoring.apply,
-                shader = authoring.shader
+                shader = authoring.shader,
             });
         }
     }

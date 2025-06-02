@@ -165,6 +165,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             removedSegments.Dispose();
             map.Dispose();
             segmentsToDestroy.Dispose();
+            segmentsThatMustBeInEndOfPipe.Dispose();
         }
     }
 }

@@ -7,22 +7,50 @@ RWStructuredBuffer<uint> indirection_buffer;
 StructuredBuffer<uint> perm_props_in_use_bitset_buffer;
 StructuredBuffer<int> perm_buffer_counts_buffer;
 StructuredBuffer<int> perm_buffer_offsets_buffer;
-StructuredBuffer<float> max_distances_buffer;
 
 RWStructuredBuffer<uint> visible_props_counters_buffer;
 
+#define MAX_PROP_TYPE_COUNT 32
+
 int max_combined_perm_props;
 int types;
-float3 camera_position;
-float3 camera_forward;
 
-[numthreads(32, 1, 1)]
+float4 camera_frustum_planes[6];
+float4 culling_spheres[MAX_PROP_TYPE_COUNT];
+float max_distances[MAX_PROP_TYPE_COUNT];
+
+float3 camera_position;
+
+[numthreads(64, 1, 1)]
 void CSCull(uint3 id : SV_DispatchThreadID) {
 	int block = perm_props_in_use_bitset_buffer[id.x];
 
 	if (block == 0) {
 		return;
 	}
+
+	/*
+	float3 max_bounds = -100000;
+	float3 min_bounds = 100000;
+	for (int i = 0; i < 32; i++) {
+		int local = i;
+		int index = id.x * 32 + i;
+		uint4 prop = perm_buffer[index];
+		float4 position_scale = UnpackPositionAndScale(prop.xy);
+		bool valid = ((block >> local) & 1) == 1;
+				
+		if (valid && index < max_combined_perm_props) {
+			max_bounds = max(position_scale.xyz, max_bounds);
+			min_bounds = min(position_scale.xyz, min_bounds);
+		}
+	}
+
+	float3 center = (max_bounds + min_bounds) / 2;
+
+	if (dot(normalize(center - camera_position), camera_forward) < 0.5) {
+		return;
+	}
+	*/
 
 	for (int i = 0; i < 32; i++) {
 		int local = i;
@@ -46,19 +74,26 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		}
 
 		bool valid = ((block >> local) & 1) == 1;
-		bool visible = false;
-
-		float4 position_scale;
-		float4 rotation;
 
 		uint4 prop = perm_buffer[index];
-		position_scale = UnpackPositionAndScale(prop.xy);
-		rotation = UnpackRotation(prop.zw);
+		float3 position = UnpackPositionAndScale(prop.xy).xyz;
 
-		float3 diff = position_scale.xyz - camera_position;
-		visible = dot(normalize(diff), camera_forward) > 0 && length(diff) < max_distances_buffer[type];
+		bool visible_in_frustum = true;
+		float3 culling_sphere_position = culling_spheres[type].xyz + position;
+		float culling_sphere_radius = culling_spheres[type].w;
+		for (int f = 0; f < 6; f++) {
+			float3 plane_normal = camera_frustum_planes[f].xyz;
+			float plane_distance = camera_frustum_planes[f].w;
+
+			if ((dot(plane_normal, culling_sphere_position) + plane_distance) < -culling_sphere_radius) {
+				visible_in_frustum = false;
+				break;
+			}
+		}
+
+		bool visible_in_range = distance(position, camera_position) < max_distances[type];
 		
-		if (valid && visible) {
+		if (valid && visible_in_frustum && visible_in_range) {
 			uint dst_index;
 			InterlockedAdd(visible_props_counters_buffer[type], 1u, dst_index);
 			dst_index += (uint)perm_buffer_offsets_buffer[type];

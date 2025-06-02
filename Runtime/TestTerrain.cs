@@ -37,9 +37,9 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
         public Inject<float> propNoiseAmplitude;
         public Inject<float> propNoiseOffset;
         public Inject<float2> propDensityRangeSpawn;
-        public Inject<float2> propPebbleScale;
-
-        public Inject<float> propRotationFactor;
+        public Inject<float2> propRatScale;
+        public Inject<float2> propTreeScale;
+        public Inject<float> pushSurfaceAmount;
 
         public override void Voxels(VoxelInput input, out VoxelOutput output) {
             // Project the position using the main transformation
@@ -86,7 +86,7 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<quaternion> rotation = surface.hitNormal.LookAt(new float3(0, 0, -1), roll);
 
             context.SpawnProp(surface.hit & flatSurface & spawn, new Props.GenerationProp {
-                scale = 1f,
+                scale = Random.Range(input.position, propTreeScale),
                 position = surface.hitPosition,
                 rotation = ((Variable<float3>)math.up()).LookAt(new float3(0, 0, -1), roll),
                 variant = Random.Uniform(input.position, 0.5f).Select<int>(0, 1),
@@ -103,13 +103,22 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
                 type = 1,
             });
 
-            Variable<float2> thing = propPebbleScale;
-            context.SpawnProp(surface.hit & !spawn, new Props.GenerationProp {
-                scale = Random.Range<float3, float>(input.position, thing.x, thing.y),
+            Variable<bool> uhhhh = Random.Uniform(surface.hitPosition);
+
+            context.SpawnProp(surface.hit & !spawn & uhhhh, new Props.GenerationProp {
+                scale = Random.Range(input.position, propRatScale),
                 position = surface.hitPosition,
                 rotation = surface.hitNormal.LookAt(math.up(), roll),
                 variant = 0,
                 type = 2,
+            });
+
+            context.SpawnProp(surface.hit & !spawn & !uhhhh, new Props.GenerationProp {
+                scale = 1f,
+                position = surface.hitPosition + surface.hitNormal.Normalize().Scaled(pushSurfaceAmount),
+                rotation = Random.Evaluate<float3, quaternion>(input.position, true).Normalize(),
+                variant = 0,
+                type = 3,
             });
         }
     }

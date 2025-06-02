@@ -76,4 +76,4 @@ vehicle demo test (posted on subreddit a few days ago)
 
 
 # Credits
-- PolyHaven for their awesome PBR 4k textures. I used these in the "Default" folder for default testing materials
+- PolyHaven for their free awesome PBR 4k textures and models. I used these in the "Default" folder for default testing materials and some default props (non shiddy)

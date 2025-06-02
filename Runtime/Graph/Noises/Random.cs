@@ -34,15 +34,19 @@ namespace jedjoud.VoxelTerrain.Generation {
             });
         }
 
-        public static Variable<bool> Uniform<I>(Variable<I> input, Variable<float> probability, uint seed = uint.MaxValue) {
-            return Evaluate<I, float>(input, false, seed) > (1 - probability);
+        public static Variable<bool> Uniform<I>(Variable<I> input, Variable<float> probability = null, uint seed = uint.MaxValue) {
+            return Evaluate<I, float>(input, false, seed) > (1 - (probability ?? 0.5f));
         }
 
-        internal static Variable<O> Range<I, O>(Variable<I> input, Variable<O> lower, Variable<O> upper) {
+        public static Variable<O> Range<I, O>(Variable<I> input, Variable<O> lower, Variable<O> upper) {
             var ampl = upper - lower;
             var offset = lower;
             var temp = Evaluate<I, O>(input, false);
             return temp * ampl + offset;
+        }
+
+        internal static Variable<float> Range<I>(Variable<I> input, Variable<float2> range) {
+            return Range<I, float>(input, range.x, range.y);
         }
     }
 }

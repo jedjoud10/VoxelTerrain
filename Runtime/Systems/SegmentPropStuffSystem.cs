@@ -6,16 +6,22 @@ namespace jedjoud.VoxelTerrain.Segments {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [UpdateAfter(typeof(SegmentVoxelSystem))]
     public partial class SegmentPropStuffSystem : SystemBase {
-        private bool initialized;
+        public bool initialized;
         private Entity singleton;
 
-        TerrainPropTempBuffers temp;
-        TerrainPropPermBuffers perm;
-        TerrainPropRenderingBuffers render;
+        public TerrainPropsConfig config;
+        public TerrainPropTempBuffers temp;
+        public TerrainPropPermBuffers perm;
+        public TerrainPropRenderingBuffers render;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainPropsConfig>();
             initialized = false;
+
+            config = null;
+            temp = null;
+            perm = null;
+            render = null;
         }
 
         protected override void OnUpdate() {
@@ -23,6 +29,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             
             if (!initialized) {
                 initialized = true;
+                this.config = config;
                 temp = new TerrainPropTempBuffers();
                 perm = new TerrainPropPermBuffers();
                 render = new TerrainPropRenderingBuffers();
@@ -45,6 +52,9 @@ namespace jedjoud.VoxelTerrain.Segments {
                 temp.Dispose();
                 perm.Dispose();
                 render.Dispose();
+                temp = null;
+                perm = null;
+                render = null;
             }
         }
     }

@@ -673,7 +673,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 566389634701878972, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: debugGui
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4296326610441593126, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_Name
@@ -712,12 +712,32 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propRatScale.value.x
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propRatScale.value.y
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propTreeScale.value.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propTreeScale.value.y
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propPebbleScale.value.x
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propPebbleScale.value.y
       value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: pushSurfaceAmount.value
+      value: 0.25
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propRotationFactor.value
@@ -729,11 +749,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propDensityRangeSpawn.value.x
-      value: 0
+      value: -0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propDensityRangeSpawn.value.y
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: hash
-      value: 526455706
+      value: 1841410869
       objectReference: {fileID: 0}
     - target: {fileID: 6566762760026143042, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_LocalPosition.x

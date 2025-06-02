@@ -22,6 +22,8 @@ namespace jedjoud.VoxelTerrain.Editor {
         private SerializedProperty instancedMeshProp;
         private SerializedProperty overrideInstancedIndirectMaterial;
         private SerializedProperty instancedIndirectMaterial;
+        private SerializedProperty alwaysSpawnInstances;
+        private SerializedProperty cullingSphere;
 
         private UnityEditorInternal.ReorderableList variantsList;
 
@@ -35,6 +37,8 @@ namespace jedjoud.VoxelTerrain.Editor {
             instancedMeshProp = serializedObject.FindProperty("instancedMesh");
             overrideInstancedIndirectMaterial = serializedObject.FindProperty("overrideInstancedIndirectMaterial");
             instancedIndirectMaterial = serializedObject.FindProperty("instancedIndirectMaterial");
+            alwaysSpawnInstances = serializedObject.FindProperty("alwaysSpawnInstances");
+            cullingSphere = serializedObject.FindProperty("cullingSphere");
 
             SerializedProperty variantsProp = serializedObject.FindProperty("variants");
 
@@ -106,6 +110,11 @@ namespace jedjoud.VoxelTerrain.Editor {
                 EditorGUILayout.PropertyField(instancedMeshProp);
                 EditorGUILayout.PropertyField(instanceMaxDistance);
                 EditorGUILayout.PropertyField(overrideInstancedIndirectMaterial);
+                EditorGUILayout.PropertyField(cullingSphere);
+
+                if (!propType.spawnEntities) {
+                    EditorGUILayout.PropertyField(alwaysSpawnInstances);
+                }
 
                 if (propType.overrideInstancedIndirectMaterial) {
                     EditorGUILayout.PropertyField(instancedIndirectMaterial);

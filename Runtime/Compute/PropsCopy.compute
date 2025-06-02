@@ -13,7 +13,7 @@ RWStructuredBuffer<float4x4> perm_matrices_buffer;
 int invocations;
 int what;
 
-[numthreads(32, 1, 1)]
+[numthreads(64, 1, 1)]
 void CSCopy(uint3 id : SV_DispatchThreadID) {
 	int index = id.x;
 

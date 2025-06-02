@@ -10,25 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 812a0afee8139e54db49ed7682d6760d, type: 3}
-  m_Name: Test Prop 2
+  m_Name: Rat Pebble
   m_EditorClassIdentifier: 
   variants:
-  - prefab: {fileID: 4090421211949882616, guid: 90cc405673511cf4b85630edb7dbaebb, type: 3}
-    diffuse: {fileID: 0}
-    normal: {fileID: 0}
-    mask: {fileID: 0}
   - prefab: {fileID: 4090421211949882616, guid: 1dac05a6773599f4e80af6910ac10f73, type: 3}
-    diffuse: {fileID: 0}
-    normal: {fileID: 0}
-    mask: {fileID: 0}
-  spawnEntities: 1
-  alwaysSpawnInstances: 1
+    diffuse: {fileID: 2800000, guid: ea225ad25829b6d40afd32ae2e65dff1, type: 3}
+    normal: {fileID: 2800000, guid: 36bea835cfd304e4eba00c1cfbcb09dc, type: 3}
+    mask: {fileID: 2800000, guid: 4ed2b0a7325700f41bd79c43d4811e51, type: 3}
+  spawnEntities: 0
+  alwaysSpawnInstances: 0
   renderInstances: 1
   renderInstancesShadow: 0
-  instanceMaxDistance: 1000
+  instanceMaxDistance: 100000
   overrideInstancedIndirectMaterial: 0
   instancedIndirectMaterial: {fileID: 0}
-  instancedMesh: {fileID: -5495902117074765545, guid: 45aaeac8c2db58444ac86e0bbc1ce002, type: 3}
-  cullingSphere: {x: 0, y: 0, z: 0, w: 2}
-  maxPropsPerSegment: 65536
-  maxPropsInTotal: 1048576
+  instancedMesh: {fileID: -5575235835429965844, guid: 36d79a7db51d68c488b4a97b8c592d49, type: 3}
+  cullingSphere: {x: 0, y: 0, z: 0, w: 1}
+  maxPropsPerSegment: 16384
+  maxPropsInTotal: 524288

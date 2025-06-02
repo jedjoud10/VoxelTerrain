@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Segments;
 using Unity.Collections;
 using Unity.Entities;
@@ -21,17 +22,15 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
 
             var offset = 0;
-
-
+            List<string> cachedLabels = new List<string>();
             void Label(string text) {
-                GUI.Label(new Rect(0, offset, 300, 30), text);
+                cachedLabels.Add(text);
                 offset += 15;
             }
 
             void MakeMyShitFuckingOpaqueHolyShitUnityWhyCantYouSupportThisByDefaultThisIsStupid() {
-                const int LE_AMOUNT = 16;
-                for (int i = 0; i < 3; i++) {
-                    GUI.Box(new Rect(0, 0, 300, 15 * LE_AMOUNT + 20), "");
+                for (int i = 0; i < 5; i++) {
+                    GUI.Box(new Rect(0, 0, 300, offset + 20), "");
                 }
             }
 
@@ -42,15 +41,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
 
-            /*
-            TerrainPropStuff stuff = null;
-            world.EntityManager.CreateEntityQuery(typeof(TerrainPropStuff)).TryGetSingleton<TerrainPropStuff>(out stuff);
-            */
-            GUI.contentColor = Color.black;
-            GUI.backgroundColor = Color.black;
-
-            MakeMyShitFuckingOpaqueHolyShitUnityWhyCantYouSupportThisByDefaultThisIsStupid();
-
+            SegmentPropStuffSystem system = world.GetExistingSystemManaged<SegmentPropStuffSystem>();
 
             GUI.contentColor = Color.white;
             Label($"# of total chunk entities: {totalChunks.CalculateEntityCount()}");
@@ -60,14 +51,20 @@ namespace jedjoud.VoxelTerrain.Generation {
             Label($"# of chunk entities with a mesh: {meshedChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
 
-                /*
-            if (stuff != null) {
-                Label($"# of max perm props allowed... ever: {stuff.MaxPermProps()}");
-                Label($"# of in-use perm props: {stuff.PermPropsInUse()}");
-                Label($"Prop copy thread count: {stuff.copyComputeThreadCount}");
-                Label($"Prop cull thread count: {stuff.cullComputeThreadCount}");
+            if (system.initialized) {
+                int3[] counts = system.perm.GetCounts(system.config, system.render);
+                for (int i = 0; i < counts.Length; i++) {
+                    Label($"--- Prop Type {i} ---");
+                    Label($"Perm Buffer Count: {system.perm.permBufferCounts[i]}");
+                    Label($"Perm Buffer Offset: {system.perm.permBufferOffsets[i]}");
+                    Label($"Temp Buffer Offset: {system.temp.tempBufferOffsets[i]}");
+
+                    Label($"# of in-use perm props: {counts[i].x}");
+                    Label($"# of perm props allowed: {counts[i].y}");
+                    Label($"# of visible perm props: {counts[i].z}");
+                    Label($"");
+                }
             }
-                */
 
 
             EntityQuery readySystems = world.EntityManager.CreateEntityQuery(typeof(TerrainReadySystems));
@@ -78,6 +75,16 @@ namespace jedjoud.VoxelTerrain.Generation {
             Label($"Segment Manager System Ready: " + ready.segmentManager);
             Label($"Segment Voxels System Ready: " + ready.segmentVoxels);
             Label($"Segment Props System Ready: " + ready.segmentPropsDispatch);
+
+
+            MakeMyShitFuckingOpaqueHolyShitUnityWhyCantYouSupportThisByDefaultThisIsStupid();
+
+            offset = 0;
+            foreach (var item in cachedLabels) {
+                GUI.Label(new Rect(0, offset, 300, 30), item);
+                offset += 15;
+            }
+
         }
 
         private void OnDrawGizmos() {
