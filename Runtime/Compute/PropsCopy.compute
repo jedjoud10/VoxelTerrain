@@ -22,23 +22,29 @@ void CSCopy(uint3 id : SV_DispatchThreadID) {
 	}
 
 	int type = -1;
-	
+	int sub_array_index = -1;
+
 	// index: 5
 	// copy_type_lookup_buffer: 0, 10, 15, 20
 	// type => 0
 	for (int j = 0; j < what; j++) {
+		if (copy_offsets_buffer[j] == -1) {
+			return;
+		}
+
 		if (index >= copy_offsets_buffer[j]) {
+			sub_array_index = j;
 			type = copy_type_lookup_buffer[j];
 		} else {
 			break;
 		}
 	};
 
-	int in_type_sub_array_index = index - copy_offsets_buffer[type];
-
-	if (type == -1) {
+	if (type == -1 || sub_array_index == -1) {
 		return;
 	}
+
+	int in_type_sub_array_index = index - copy_offsets_buffer[sub_array_index];
 
 	if (perm_buffer_dst_copy_offsets_buffer[type] == -1) {
 		return;

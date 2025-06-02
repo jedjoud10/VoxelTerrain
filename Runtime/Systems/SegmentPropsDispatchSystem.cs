@@ -210,11 +210,14 @@ namespace jedjoud.VoxelTerrain.Segments {
                 int permSubBufferOffset = perm.permBufferOffsets[i];
                 int permSubBufferCount = perm.permBufferCounts[i];
 
+                Debug.Log($"P: {config.props[i].name} O: {permSubBufferOffset}, C: {permSubBufferCount}");
+
                 // find free blocks of contiguous tempSubBufferCount elements in permPropsInUseBitset at the appropriate offsets
                 int permSubBufferStartIndex = perm.permPropsInUseBitset.Find(permSubBufferOffset, permSubBufferCount, tempSubBufferCount);
+                Debug.Log($"FOUND!!! : {permSubBufferStartIndex}");
 
-                // documentation is fucking lying. it's not -1. it's int.maxvalue
-                if (permSubBufferStartIndex == int.MaxValue)
+                // wtf?
+                if (permSubBufferStartIndex == -1 || permSubBufferStartIndex == int.MaxValue)
                     throw new System.Exception("Could not find contiguous sequence of free props. Ran out of perm prop memory!! (either global perm prop memory or specifically for this type)");
 
                 permBufferDstCopyOffsets[i] = permSubBufferStartIndex;
@@ -226,6 +229,16 @@ namespace jedjoud.VoxelTerrain.Segments {
                 contiguousOffset += tempSubBufferCount;
                 what++;
                 //Debug.Log($"type {i} found n-bit free bits sequence starting at {permSubBufferStartIndex}");
+            }
+
+            Debug.Log("Copy offsets: ");
+            foreach (var item in copyOffsets) {
+                Debug.Log(item);
+            }
+
+            Debug.Log("Copy Type Lookup: ");
+            foreach (var item in copyTypeLookup) {
+                Debug.Log(item);
             }
 
             FixedList128Bytes<int> offsetsList = new FixedList128Bytes<int>();
