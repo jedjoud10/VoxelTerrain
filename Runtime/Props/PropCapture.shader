@@ -24,6 +24,10 @@ Shader "Custom/PropCapture"
             sampler2D _CaptureMaskMap;
             int _CaptureMapSelector;
 
+            int _NormalXSwizzle;
+            int _NormalYSwizzle;
+            int _NormalZSwizzle;
+
             // Structs
             struct appdata
             {
@@ -37,10 +41,20 @@ Shader "Custom/PropCapture"
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float3 worldNormal : TEXCOORD1;
-                float3 worldTangent : TEXCOORD2;
-                float3 worldBinormal : TEXCOORD3;
+                float3 tspace0 : TEXCOORD1; // tangent.x, bitangent.x, normal.x
+                float3 tspace1 : TEXCOORD2; // tangent.y, bitangent.y, normal.y
+                float3 tspace2 : TEXCOORD3; // tangent.z, bitangent.z, normal.z
             };
+
+            float SwizzleNormalAxis(float3 normal, int mode) {
+                if (mode < 3) {
+                    return normal[mode];
+                } else {
+                    return -normal[mode % 3];
+                }    
+
+                return 0;
+            }
 
             // Vertex shader
             v2f vert (appdata v)
@@ -52,11 +66,11 @@ Shader "Custom/PropCapture"
                 // Build world-space TBN matrix
                 float3 worldNormal = UnityObjectToWorldNormal(v.normal);
                 float3 worldTangent = UnityObjectToWorldDir(v.tangent.xyz);
-                float3 worldBinormal = cross(worldNormal, worldTangent) * v.tangent.w;
+                float3 worldBitangent = cross(worldNormal, worldTangent) * v.tangent.w;
 
-                o.worldNormal = worldNormal;
-                o.worldTangent = worldTangent;
-                o.worldBinormal = worldBinormal;
+                o.tspace0 = float3(worldTangent.x, worldBitangent.x, worldNormal.x);
+                o.tspace1 = float3(worldTangent.y, worldBitangent.y, worldNormal.y);
+                o.tspace2 = float3(worldTangent.z, worldBitangent.z, worldNormal.z);
 
                 return o;
             }
@@ -69,18 +83,27 @@ Shader "Custom/PropCapture"
                 fixed4 mask = tex2D(_CaptureMaskMap, i.uv);
 
                 // Sample normal map and unpack
-                fixed3 normalTS = tex2D(_CaptureNormalMap, i.uv).xyz * 2.0 - 1.0;
+                fixed3 normalTS = UnpackNormal(tex2D(_CaptureNormalMap, i.uv));
+                normalTS.z = sqrt(1.0 - saturate(dot(normalTS.xy, normalTS.xy)));
 
                 // Transform normal to world space
-                float3x3 TBN = float3x3(i.worldTangent, i.worldBinormal, i.worldNormal);
-                float3 normal = normalize(mul(normalTS, TBN));
+                half3 worldNormal;
+                worldNormal.x = dot(i.tspace0, normalTS);
+                worldNormal.y = dot(i.tspace1, normalTS);
+                worldNormal.z = dot(i.tspace2, normalTS);
+                worldNormal = normalize(worldNormal);
 
                 fixed4 finalColor = 0;
 
                 if (_CaptureMapSelector == 0) {
                     finalColor = fixed4(albedo.rgb, 1);
                 } else if (_CaptureMapSelector == 1) {
-                    finalColor = fixed4(normal * 0.5 + 0.5, 1);
+                    float3 tempNormal = 0;
+                    tempNormal.x = SwizzleNormalAxis(worldNormal, _NormalXSwizzle);
+                    tempNormal.y = SwizzleNormalAxis(worldNormal, _NormalYSwizzle);
+                    tempNormal.z = SwizzleNormalAxis(worldNormal, _NormalZSwizzle);
+
+                    finalColor = fixed4(tempNormal * 0.5 + 0.5, 1);
                 } else if (_CaptureMapSelector == 2) {
                     finalColor = fixed4(mask.rgb, 1); 
                 }

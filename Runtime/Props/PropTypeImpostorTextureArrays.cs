@@ -13,7 +13,10 @@ namespace jedjoud.VoxelTerrain.Props {
         public Texture2DArray normal;
         public Texture2DArray mask;
 
-        public PropTypeImpostorTextureArrays(TerrainPropsConfig config, PropType type) {
+        public PropTypeImpostorTextureArrays(PropType type) {
+            diffuse = type.impostorDiffuseMaps;
+            normal = type.impostorNormalMaps;
+            mask = type.impostorMaskMaps;
         }
     }
 }

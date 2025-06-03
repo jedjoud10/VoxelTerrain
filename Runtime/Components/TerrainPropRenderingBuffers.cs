@@ -67,7 +67,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             typeImpostorsTextureArrays = new PropTypeImpostorTextureArrays[types];
             for (int i = 0; i < types; i++) {
                 if (config.props[i].renderInstances && config.props[i].renderImpostors) {
-                    typeImpostorsTextureArrays[i] = new PropTypeImpostorTextureArrays(config, config.props[i]);
+                    typeImpostorsTextureArrays[i] = new PropTypeImpostorTextureArrays(config.props[i]);
                 } else {
                     typeImpostorsTextureArrays[i] = null;
                 }

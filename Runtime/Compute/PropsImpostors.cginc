@@ -21,29 +21,37 @@ float3 _ImpostorOffset;
 	// VIBe!!!!
 	float4x4 BillboardLookAtMatrix(float3 billboardPosition, float scale, float3 cameraPosition, float3 cameraUp)
 	{
-	    // Forward vector: from billboard to camera
-	    float3 forward = normalize(cameraPosition - billboardPosition);
-		cameraUp = float3(0, 1, 0);
+		// Forward vector: from billboard to camera
+		float3 forward = normalize(cameraPosition - billboardPosition);
 		forward.y = 0;
-	
-	    // Right vector: perpendicular to forward and up
-	    float3 right = normalize(cross(cameraUp, forward));
-	
-	    // Recompute up to ensure orthogonality
-	    float3 up = cross(forward, right);
+		cameraUp = float3(0,1,0);
 
-		right *= scale;
-		up *= scale;
+		// Right vector
+		float3 right = normalize(cross(cameraUp, forward));
+
+		// Recompute up vector to ensure orthonormality
+		float3 up = cross(forward, right);
+
+		// Apply local roll: rotate right and up around forward
+		float rollRadians = 3.14 / 2;
+		float cosRoll = cos(rollRadians);
+		float sinRoll = sin(rollRadians);
+
+		float3 rolledRight = cosRoll * right + sinRoll * up;
+		float3 rolledUp = cosRoll * up - sinRoll * right;
+
+		rolledRight *= scale;
+		rolledUp *= scale;
 		forward *= scale;
 
-	
-	    // Compose the 4x4 matrix (rotation + translation)
-	    return float4x4(
-	        right.x, up.x, forward.x, billboardPosition.x,
-	        right.y, up.y, forward.y, billboardPosition.y,
-	        right.z, up.z, forward.z, billboardPosition.z,
-	        0,         0,           0,           1
-	    );
+		float4x4 what = float4x4(
+		    rolledRight.x, rolledUp.x, forward.x, billboardPosition.x,
+		    rolledRight.y, rolledUp.y,    forward.y,    billboardPosition.y,
+		    rolledRight.z, rolledUp.z,     forward.z,     billboardPosition.z,
+		    0, 0, 0, 1.0
+		);
+
+		return what;
 	}
 
 	// Updates the unity_ObjectToWorld / unity_WorldToObject matrices so our matrix is taken into account

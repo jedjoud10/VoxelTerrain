@@ -148,9 +148,9 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetBuffer("_ImpostorIndirectionBuffer", rendering.impostorIndirectionBuffer);
 
             // temp...
-            mat.SetTexture("_DiffuseMapArray", rendering.typeInstanceTextureArrays[i].diffuse);
-            mat.SetTexture("_NormalMapArray", rendering.typeInstanceTextureArrays[i].normal);
-            mat.SetTexture("_MaskMapArray", rendering.typeInstanceTextureArrays[i].mask);
+            mat.SetTexture("_DiffuseMapArray", rendering.typeImpostorsTextureArrays[i].diffuse);
+            mat.SetTexture("_NormalMapArray", rendering.typeImpostorsTextureArrays[i].normal);
+            mat.SetTexture("_MaskMapArray", rendering.typeImpostorsTextureArrays[i].mask);
             
             mat.SetInt("_PermBufferOffset", perm.permBufferOffsets[i]);
             mat.SetInt("_PropType", i);

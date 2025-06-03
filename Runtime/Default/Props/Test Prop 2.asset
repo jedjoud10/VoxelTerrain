@@ -14,23 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   variants:
   - prefab: {fileID: 4090421211949882616, guid: 90cc405673511cf4b85630edb7dbaebb, type: 3}
-    textures:
-      diffuse: {fileID: 2800000, guid: 8e383534ee36a12418bb91784fbdd550, type: 3}
-      normal: {fileID: 2800000, guid: c0814fb9f4543f74ebb47bae8de2ce47, type: 3}
-      mask: {fileID: 2800000, guid: 56983737e79290c43a4ea56c4b463661, type: 3}
-    billboardCapture:
-      cameraScale: 10
-      rotation: {x: 0, y: 0, z: 0}
-      position: {x: 0, y: 0, z: 5}
   - prefab: {fileID: 4090421211949882616, guid: 1dac05a6773599f4e80af6910ac10f73, type: 3}
-    textures:
-      diffuse: {fileID: 2800000, guid: a3a0d659f0117ca4c9943e44b77e0459, type: 3}
-      normal: {fileID: 2800000, guid: 6ab84d585bfd840408d949de35022965, type: 3}
-      mask: {fileID: 2800000, guid: 02b965aa044262e438cec0d9ed602942, type: 3}
-    billboardCapture:
-      cameraScale: 10
-      rotation: {x: 0, y: 0, z: 0}
-      position: {x: 0, y: 0, z: 5}
   spawnEntities: 1
   alwaysSpawnInstances: 1
   renderInstances: 1
@@ -41,5 +25,14 @@ MonoBehaviour:
   impostorDistancePercentage: 1
   impostorOffset: {x: 0, y: 3.04, z: 0}
   impostorScale: 8.78
+  impostorTextureWidth: 128
+  impostorTextureHeight: 128
+  impostorCaptureAxis: 0
+  impostorDiffuseMaps: {fileID: 18700000, guid: 6cfcfa85bb8b94d4197d3a97bdce3119, type: 2}
+  impostorNormalMaps: {fileID: 18700000, guid: 97442dd6ace69254d87c77f986b135a2, type: 2}
+  impostorMaskMaps: {fileID: 18700000, guid: 84cdaf54afab6594b96a937b222ef092, type: 2}
+  impostorNormalX: 0
+  impostorNormalY: 1
+  impostorNormalZ: 2
   maxPropsPerSegment: 65536
   maxPropsInTotal: 1048576

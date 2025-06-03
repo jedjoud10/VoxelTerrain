@@ -70,8 +70,8 @@ namespace jedjoud.VoxelTerrain.Editor {
             bool mips = false;
 
             var rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
-            rt.autoGenerateMips = false;
-            rt.useMipMap = false;
+            rt.autoGenerateMips = mips;
+            rt.useMipMap = mips;
             rt.depthStencilFormat = GraphicsFormat.D24_UNorm;
             rt.depth = 24;
             cam.targetTexture = rt;
@@ -96,10 +96,19 @@ namespace jedjoud.VoxelTerrain.Editor {
                 string maskMapPath = $"Assets/Voxel Terrain/Captured Prop Textures/{name}_mask.asset";
                 AssetDatabase.CreateAsset(maskMapOut, maskMapPath);
 
+                type.impostorDiffuseMaps = diffuseMapOut;
+                type.impostorNormalMaps = normalMapOut;
+                type.impostorMaskMaps = maskMapOut;
+
+                EditorUtility.SetDirty(type);
+
                 AssetDatabase.SaveAssets();
+                
                 AssetDatabase.ImportAsset(diffuseMapPath);
                 AssetDatabase.ImportAsset(normalMapPath);
                 AssetDatabase.ImportAsset(maskMapPath);
+                
+                AssetDatabase.Refresh();
             } finally {
                 DestroyImmediate(cameraGO);
                 rt.Release();
@@ -140,18 +149,22 @@ namespace jedjoud.VoxelTerrain.Editor {
                 captureMaterial.SetTexture("_CaptureNormalMap", normal);
                 captureMaterial.SetTexture("_CaptureMaskMap", mask);
 
+                captureMaterial.SetInt("_NormalXSwizzle", (int)type.impostorNormalX);
+                captureMaterial.SetInt("_NormalYSwizzle", (int)type.impostorNormalY);
+                captureMaterial.SetInt("_NormalZSwizzle", (int)type.impostorNormalZ);
+
                 faker.transform.position = Vector3.zero;
                 faker.transform.rotation = Quaternion.identity;
 
                 for (int map = 0; map < 3; map++) {
-                    CaptureMap(bounds, cam, rt, tempOut[map], variant, map);
+                    CaptureMap(type.impostorCaptureAxis, bounds, cam, rt, tempOut[map], variant, map);
                 }
             } finally {
                 DestroyImmediate(faker);
             }
         }
 
-        private void CaptureMap(Bounds bounds, Camera cam, RenderTexture rt, Texture2DArray output, int variant, int map) {
+        private void CaptureMap(PropType.ImpostorCapturePolarAxis mode, Bounds bounds, Camera cam, RenderTexture rt, Texture2DArray output, int variant, int map) {
             captureMaterial.SetInt("_CaptureMapSelector", map);
 
             for (int azimuth = 0; azimuth < AZIMUTH_ITERS; azimuth++) {
@@ -159,31 +172,26 @@ namespace jedjoud.VoxelTerrain.Editor {
                 GL.Clear(true, true, Color.clear);
                 Graphics.SetRenderTarget(null);
 
-                (Vector3 camPos, Quaternion camRot) = CalculateCameraOrbit(bounds, (azimuth / (float)AZIMUTH_ITERS) * 360f);
+                (Vector3 camPos, Quaternion camRot) = CalculateCameraOrbit(mode, bounds, (azimuth / (float)AZIMUTH_ITERS) * 360f);
                 cam.transform.position = camPos;
                 cam.transform.rotation = camRot;
                 cam.Render();
 
-                Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.ARGB32, false);
+                Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.ARGB32, rt.useMipMap);
                 RenderTexture.active = rt;
                 GL.Flush();
                 tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-                output.CopyPixels(tex, 0, 0, variant * AZIMUTH_ITERS + azimuth, 0);               
+
+                for (int m = 0; m < tex.mipmapCount; m++) {
+                    output.CopyPixels(tex, 0, m, variant * AZIMUTH_ITERS + azimuth, m);
+                }
+
                 tex.Apply();
                 RenderTexture.active = null;
-
-                //EditorUtility.DisplayProgressBar("Simple Progress Bar", "Doing some work...", azimuth / (float)AZIMUTH_ITERS);
             }
 
 
             rt.Release();
-
-
-            /*
-            for (int mipmap = 0; mipmap < rt.mipmapCount; mipmap++) {
-                Graphics.CopyTexture(rt, 0, mipmap, tempOut[map], variant, mipmap);
-            }
-            */
         }
 
         private Bounds CalculateBounds(GameObject obj) {
@@ -195,18 +203,37 @@ namespace jedjoud.VoxelTerrain.Editor {
             return bounds;
         }
 
-        private (Vector3, Quaternion) CalculateCameraOrbit(Bounds bounds, float azimuthAngle) {
+        private (Vector3, Quaternion) CalculateCameraOrbit(PropType.ImpostorCapturePolarAxis mode, Bounds bounds, float azimuthAngle) {
             float distance = 10f;
 
             float rad = azimuthAngle * Mathf.Deg2Rad;
+            Vector3 position = mode switch {
+                PropType.ImpostorCapturePolarAxis.XZ => new Vector3(
+                    Mathf.Cos(rad) * distance,
+                    0f,
+                    Mathf.Sin(rad) * distance
+                ),
+                PropType.ImpostorCapturePolarAxis.XY => new Vector3(
+                    Mathf.Cos(rad) * distance,
+                    Mathf.Sin(rad) * distance,
+                    0f
+                ),
+                PropType.ImpostorCapturePolarAxis.YZ => new Vector3(
+                    0f,
+                    Mathf.Cos(rad) * distance,
+                    Mathf.Sin(rad) * distance
+                ),
+                _ => throw new Exception("what"),
+            };
 
-            Vector3 position = new Vector3(
-                Mathf.Cos(rad) * distance,
-                0f,
-                Mathf.Sin(rad) * distance
-            );
+            Vector3 up = mode switch {
+                PropType.ImpostorCapturePolarAxis.XZ => Vector3.up,
+                PropType.ImpostorCapturePolarAxis.XY => Vector3.forward,
+                PropType.ImpostorCapturePolarAxis.YZ => Vector3.right,
+                _ => throw new Exception("what"),
+            };
 
-            Quaternion rotation = Quaternion.LookRotation(-position, Vector3.up);
+            Quaternion rotation = Quaternion.LookRotation(-position, up);
 
             return (position + bounds.center, rotation);
         }

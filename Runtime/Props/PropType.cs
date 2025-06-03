@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Entities;
 using Unity.Mathematics;
 using Mono.Cecil;
+using Codice.CM.Client.Differences;
 
 namespace jedjoud.VoxelTerrain.Props {
     [CreateAssetMenu(menuName = "Voxel Terrain/Create new Voxel Prop")]
@@ -48,6 +49,26 @@ namespace jedjoud.VoxelTerrain.Props {
         public float impostorScale = 1f;
         public int impostorTextureWidth = 128;
         public int impostorTextureHeight = 128;
+        public ImpostorCapturePolarAxis impostorCaptureAxis = ImpostorCapturePolarAxis.XZ;
+
+        [HideInInspector]
+        public Texture2DArray impostorDiffuseMaps = null;
+        [HideInInspector]
+        public Texture2DArray impostorNormalMaps = null;
+        [HideInInspector]
+        public Texture2DArray impostorMaskMaps = null;
+
+        public enum ImpostorCapturePolarAxis {
+            XZ,
+            XY,
+            YZ
+        }
+
+        public enum Axis: int { X = 0, Y = 1, Z = 2, NegativeX = 3, NegativeY = 4, NegativeZ = 5 }
+
+        public Axis impostorNormalX = Axis.X;
+        public Axis impostorNormalY = Axis.Y;
+        public Axis impostorNormalZ = Axis.Z;
 
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
         [Min(1)] public int maxPropsInTotal = 32 * 32 * 32 * 32;
