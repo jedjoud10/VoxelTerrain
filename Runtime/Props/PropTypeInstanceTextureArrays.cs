@@ -2,14 +2,19 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using Unity.Entities;
+using System.Linq;
 
 namespace jedjoud.VoxelTerrain.Props {
-    public struct PropTypeBatchData {
+    public class PropTypeInstanceTextureArrays {
         public Texture2DArray diffuse;
         public Texture2DArray normal;
         public Texture2DArray mask;
 
-        public PropTypeBatchData(Texture2D[] diffuse, Texture2D[] normal, Texture2D[] mask) {
+        public PropTypeInstanceTextureArrays(PropType type) {
+            Texture2D[] diffuse = type.variants.Select(variant => variant.textures.diffuse).ToArray();
+            Texture2D[] normal = type.variants.Select(variant => variant.textures.normal).ToArray();
+            Texture2D[] mask = type.variants.Select(variant => variant.textures.mask).ToArray();
+
             this.diffuse = CreateTexArray(diffuse, false, Texture2D.whiteTexture);
             this.normal = CreateTexArray(normal, true, Texture2D.normalTexture);
             this.mask = CreateTexArray(mask, true, Texture2D.whiteTexture);

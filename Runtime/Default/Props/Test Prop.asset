@@ -14,21 +14,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   variants:
   - prefab: {fileID: 2094315427237674077, guid: 299877e1a2ebe174aabed1b12f06a690, type: 3}
-    diffuse: {fileID: 0}
-    normal: {fileID: 0}
-    mask: {fileID: 0}
+    textures:
+      diffuse: {fileID: 2800000, guid: 8e383534ee36a12418bb91784fbdd550, type: 3}
+      normal: {fileID: 2800000, guid: c0814fb9f4543f74ebb47bae8de2ce47, type: 3}
+      mask: {fileID: 2800000, guid: 56983737e79290c43a4ea56c4b463661, type: 3}
+    billboardCapture:
+      cameraScale: 10
+      rotation: {x: 0, y: 0, z: 0}
+      position: {x: 0, y: 0, z: 5}
   - prefab: {fileID: 2094315427237674077, guid: 0311276cc97063c4d83678ace6d55f44, type: 3}
-    diffuse: {fileID: 0}
-    normal: {fileID: 0}
-    mask: {fileID: 0}
+    textures:
+      diffuse: {fileID: 2800000, guid: a3a0d659f0117ca4c9943e44b77e0459, type: 3}
+      normal: {fileID: 2800000, guid: 6ab84d585bfd840408d949de35022965, type: 3}
+      mask: {fileID: 2800000, guid: 02b965aa044262e438cec0d9ed602942, type: 3}
+    billboardCapture:
+      cameraScale: 10
+      rotation: {x: 0, y: 0, z: 0}
+      position: {x: 0, y: 0, z: 5}
   spawnEntities: 1
   alwaysSpawnInstances: 1
   renderInstances: 1
   renderInstancesShadow: 0
-  instanceMaxDistance: 10000
-  overrideInstancedIndirectMaterial: 0
-  instancedIndirectMaterial: {fileID: 0}
+  instanceMaxDistance: 1000
   instancedMesh: {fileID: -1550514412580984892, guid: b50439a4803f8a442853cd5b9e5981de, type: 3}
-  cullingSphere: {x: 0, y: 4.5, z: 0, w: 4.5}
+  renderImpostors: 1
+  impostorDistancePercentage: 0.5
+  impostorOffset: {x: 0, y: 2, z: 0}
+  impostorScale: 5
   maxPropsPerSegment: 65536
   maxPropsInTotal: 1048576

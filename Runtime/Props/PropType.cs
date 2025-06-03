@@ -2,25 +2,40 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Props {
     [CreateAssetMenu(menuName = "Voxel Terrain/Create new Voxel Prop")]
     public class PropType : ScriptableObject {
         [Serializable]
-        public class Baked {
-            public Entity[] prototypes;
-            public Texture2D[] diffuse;
-            public Texture2D[] normal;
-            public Texture2D[] mask;
-            public Vector4 cullingSphere;
+        public class BillboardCaptureSettings {
+            public float cameraScale = 10.0f;
+            public Vector3 rotation = Vector3.zero;
+            public Vector3 position = new Vector3(0, 0, 5);
         }
-                
+
+        [Serializable]
+        public class CullingSphereSettings {
+            public Vector3 position = Vector3.zero;
+            public float radius = 5;
+
+            public Vector4 ToVec4() {
+                return new Vector4(position.x, position.y, position.z, radius);
+            }
+        }
+
+        [Serializable]
+        public class InstancedTextures {
+            public Texture2D diffuse = null;
+            public Texture2D normal = null;
+            public Texture2D mask = null;
+        }
+
         [Serializable]
         public class Variant {
-            public GameObject prefab;
-            public Texture2D diffuse;
-            public Texture2D normal;
-            public Texture2D mask;
+            public GameObject prefab = null;
+            public InstancedTextures textures = null;
+            public BillboardCaptureSettings billboardCapture = null;
         }
 
         public List<Variant> variants;
@@ -37,11 +52,16 @@ namespace jedjoud.VoxelTerrain.Props {
         public bool renderInstances = true;
         public bool renderInstancesShadow = false;
         public float instanceMaxDistance = 100;
-        public bool overrideInstancedIndirectMaterial = false;
-        public Material instancedIndirectMaterial = null;
         public Mesh instancedMesh = null;
-        public Vector4 cullingSphere = new Vector4(0,0,0, 5);
-        
+
+        // le sus
+        public bool renderImpostors = true;
+
+        // at what percent of the total distance should we start rendering impostors 
+        public float impostorDistancePercentage = 0.5f;
+        public Vector3 impostorOffset = Vector3.zero;
+        public float impostorScale = 1f;
+
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
         [Min(1)] public int maxPropsInTotal = 32 * 32 * 32 * 32;
     }

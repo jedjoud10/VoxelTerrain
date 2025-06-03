@@ -84,7 +84,8 @@ namespace jedjoud.VoxelTerrain.Generation.Demo {
             Variable<float> roll = Random.Range<float3, float>(input.position, 0, 360);
             Variable<quaternion> rotation = surface.hitNormal.LookAt(new float3(0, 0, -1), roll);
 
-            Variable<bool> spawn = (Noise.Simplex(input.position, propNoiseScale, propNoiseAmplitude) + propNoiseOffset) > Random.Evaluate<float3, float>(input.position, true);
+            Variable<bool> biomeSpawn = Noise.Simplex(input.position, 0.002f, 1f) > 0;
+            Variable<bool> spawn = (Noise.Simplex(input.position, propNoiseScale, propNoiseAmplitude) + propNoiseOffset) > Random.Evaluate<float3, float>(input.position, true) & biomeSpawn;
             context.SpawnProp(0, surface.hit & flatSurface & spawn, new Props.GenerationProp {
                 scale = Random.Range(input.position, propTreeScale),
                 position = surface.hitPosition,

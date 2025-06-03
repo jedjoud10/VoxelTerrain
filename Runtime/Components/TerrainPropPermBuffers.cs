@@ -42,19 +42,35 @@ namespace jedjoud.VoxelTerrain.Segments {
         public ComputeBuffer copyTypeLookupBuffer;
         public GraphicsFence? copyFence;
 
+        public struct DebugCounts {
+            public int maxPerm;
+            public int permOffset;
+            public int maxTemp;
+            public int tempOffset;
+            public int currentInUse;
+            public int visibleInstances;
+            public int visibleImpostors;
+        }
+
         // x: current perm buffer count
         // y: max perm buffer count
         // z: visible count (SLOW!!!!!!! does a lil readback to the cpu uwu...)
-        public int3[] GetCounts(TerrainPropsConfig config, TerrainPropRenderingBuffers rendering) {
-            int3[] values = new int3[config.props.Count];
+        public DebugCounts[] GetCounts(TerrainPropsConfig config, TerrainPropTempBuffers temp, TerrainPropRenderingBuffers rendering) {
+            DebugCounts[] values = new DebugCounts[config.props.Count];
 
-            int[] visibleCounts = new int[config.props.Count];
-            rendering.visiblePropsCountersBuffer.GetData(visibleCounts);
+            int[] visibleCountsInterleaved = new int[config.props.Count * 2];
+            rendering.visibilityCountersBuffer.GetData(visibleCountsInterleaved);
 
             for (int i = 0; i < config.props.Count; i++) {
-                values[i].x = permPropsInUseBitset.CountBits(permBufferOffsets[i], permBufferCounts[i]);
-                values[i].y = permBufferCounts[i];
-                values[i].z = visibleCounts[i];
+                values[i] = new DebugCounts {
+                    maxPerm = permBufferCounts[i],
+                    permOffset = permBufferOffsets[i],
+                    maxTemp = config.props[i].maxPropsPerSegment,
+                    tempOffset = temp.tempBufferOffsets[i],
+                    currentInUse = permPropsInUseBitset.CountBits(permBufferOffsets[i], permBufferCounts[i]),
+                    visibleInstances = visibleCountsInterleaved[i * 2],
+                    visibleImpostors = visibleCountsInterleaved[i * 2 + 1]
+                };
             }
 
             return values;

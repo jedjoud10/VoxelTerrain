@@ -210,11 +210,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                 int permSubBufferOffset = perm.permBufferOffsets[i];
                 int permSubBufferCount = perm.permBufferCounts[i];
 
-                Debug.Log($"P: {config.props[i].name} O: {permSubBufferOffset}, C: {permSubBufferCount}");
-
                 // find free blocks of contiguous tempSubBufferCount elements in permPropsInUseBitset at the appropriate offsets
                 int permSubBufferStartIndex = perm.permPropsInUseBitset.Find(permSubBufferOffset, permSubBufferCount, tempSubBufferCount);
-                Debug.Log($"FOUND!!! : {permSubBufferStartIndex}");
 
                 // wtf?
                 if (permSubBufferStartIndex == -1 || permSubBufferStartIndex == int.MaxValue)
@@ -228,17 +225,6 @@ namespace jedjoud.VoxelTerrain.Segments {
 
                 contiguousOffset += tempSubBufferCount;
                 what++;
-                //Debug.Log($"type {i} found n-bit free bits sequence starting at {permSubBufferStartIndex}");
-            }
-
-            Debug.Log("Copy offsets: ");
-            foreach (var item in copyOffsets) {
-                Debug.Log(item);
-            }
-
-            Debug.Log("Copy Type Lookup: ");
-            foreach (var item in copyTypeLookup) {
-                Debug.Log(item);
             }
 
             FixedList128Bytes<int> offsetsList = new FixedList128Bytes<int>();
@@ -314,7 +300,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 if (tempSubBufferCount > 0 && config.props[i].spawnEntities) {
                     NativeArray<uint4> raw = temp.tempBufferReadback.GetSubArray(tempSubBufferOffset, tempSubBufferCount);
                     NativeArray<BlittableProp> transmuted = raw.Reinterpret<BlittableProp>();
-                    Entity[] variants = config.baked[i].prototypes;
+                    Entity[] variants = config.baked[i];
 
                     for (int j = 0; j < tempSubBufferCount; j++) {
                         BlittableProp prop = transmuted[j];

@@ -52,16 +52,18 @@ namespace jedjoud.VoxelTerrain.Generation {
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
 
             if (system.initialized) {
-                int3[] counts = system.perm.GetCounts(system.config, system.render);
+                TerrainPropPermBuffers.DebugCounts[] counts = system.perm.GetCounts(system.config, system.temp, system.render);
                 for (int i = 0; i < counts.Length; i++) {
-                    Label($"--- Prop Type {i} ---");
-                    Label($"Perm Buffer Count: {system.perm.permBufferCounts[i]}");
-                    Label($"Perm Buffer Offset: {system.perm.permBufferOffsets[i]}");
-                    Label($"Temp Buffer Offset: {system.temp.tempBufferOffsets[i]}");
+                    TerrainPropPermBuffers.DebugCounts debug = counts[i];
+                    Label($"--- Prop Type {i}: {system.config.props[i].name} ---");
+                    Label($"Perm buffer count: {debug.maxPerm}");
+                    Label($"Perm buffer offset: {debug.permOffset}");
+                    Label($"Temp buffer offset: {debug.maxTemp}");
+                    Label($"Temp buffer offset: {debug.tempOffset}");
 
-                    Label($"# of in-use perm props: {counts[i].x}");
-                    Label($"# of perm props allowed: {counts[i].y}");
-                    Label($"# of visible perm props: {counts[i].z}");
+                    Label($"In-use perm props: {debug.currentInUse}");
+                    Label($"Visible instances: {debug.visibleInstances}");
+                    Label($"Visible impostors: {debug.visibleImpostors}");
                     Label($"");
                 }
             }

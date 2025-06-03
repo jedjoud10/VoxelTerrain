@@ -5,9 +5,10 @@
 
 StructuredBuffer<uint4> _PermBuffer;
 StructuredBuffer<float4x4> _PermMatricesBuffer;
-StructuredBuffer<uint> _IndirectionBuffer;
+StructuredBuffer<uint> _InstancedIndirectionBuffer;
 int _PropType;
 int _PermBufferOffset;
+int _MaxVariantCountForType;
 
 // came in clutch bro gg
 // https://gist.github.com/Cyanilux/4046e7bf3725b8f64761bf6cf54a16eb
@@ -21,7 +22,7 @@ int _PermBufferOffset;
 	// https://github.com/TwoTailsGames/Unity-Built-in-Shaders/blob/master/CGIncludes/UnityStandardParticleInstancing.cginc
 
 	void vertInstancingMatrices(out float4x4 objectToWorld, out float4x4 worldToObject) {
-		int propIndex = _IndirectionBuffer[unity_InstanceID + _PermBufferOffset];
+		int propIndex = _InstancedIndirectionBuffer[unity_InstanceID + _PermBufferOffset];
 		float4x4 data = _PermMatricesBuffer[propIndex];
 		objectToWorld = data;
 
@@ -54,12 +55,16 @@ void Instancing_float(float3 Position, out float3 Out){
 	Out = Position;
 }
 
-// Just passes the position through, allows us to actually attach this file to the graph.
-// Should be placed somewhere in the vertex stage, e.g. right before connecting the object space position.
 void PropVariantFetch_float(int instance, out float Variant){
-	int propIndex = _IndirectionBuffer[instance + _PermBufferOffset];
+	int propIndex = _InstancedIndirectionBuffer[instance + _PermBufferOffset];
 	uint4 prop = _PermBuffer[propIndex];
 	uint variant = prop.w & 0xFF;
+
+	// check...
+	if (variant >= _MaxVariantCountForType) {
+		variant = 0;
+	} 
+
 	Variant = (float)variant;
 }
 

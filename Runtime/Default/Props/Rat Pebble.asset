@@ -13,18 +13,23 @@ MonoBehaviour:
   m_Name: Rat Pebble
   m_EditorClassIdentifier: 
   variants:
-  - prefab: {fileID: 4090421211949882616, guid: 1dac05a6773599f4e80af6910ac10f73, type: 3}
-    diffuse: {fileID: 2800000, guid: ea225ad25829b6d40afd32ae2e65dff1, type: 3}
-    normal: {fileID: 2800000, guid: 36bea835cfd304e4eba00c1cfbcb09dc, type: 3}
-    mask: {fileID: 2800000, guid: 4ed2b0a7325700f41bd79c43d4811e51, type: 3}
+  - prefab: {fileID: 0}
+    textures:
+      diffuse: {fileID: 2800000, guid: ea225ad25829b6d40afd32ae2e65dff1, type: 3}
+      normal: {fileID: 2800000, guid: 36bea835cfd304e4eba00c1cfbcb09dc, type: 3}
+      mask: {fileID: 2800000, guid: 4ed2b0a7325700f41bd79c43d4811e51, type: 3}
+    billboardCapture:
+      cameraScale: 10
+      rotation: {x: 0, y: 0, z: 0}
+      position: {x: 0, y: 0, z: 5}
   spawnEntities: 0
   alwaysSpawnInstances: 0
   renderInstances: 1
-  renderInstancesShadow: 1
+  renderInstancesShadow: 0
   instanceMaxDistance: 200
-  overrideInstancedIndirectMaterial: 0
-  instancedIndirectMaterial: {fileID: 0}
   instancedMesh: {fileID: -5575235835429965844, guid: 36d79a7db51d68c488b4a97b8c592d49, type: 3}
-  cullingSphere: {x: 0, y: 0, z: 0, w: 1}
+  renderImpostors: 1
+  impostorOffset: {x: 0, y: 0, z: 0}
+  impostorScale: 0.05
   maxPropsPerSegment: 16384
   maxPropsInTotal: 524288

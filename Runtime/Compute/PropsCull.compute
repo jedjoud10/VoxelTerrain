@@ -3,12 +3,13 @@
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 
 StructuredBuffer<uint4> perm_buffer;
-RWStructuredBuffer<uint> indirection_buffer;
 StructuredBuffer<uint> perm_props_in_use_bitset_buffer;
 StructuredBuffer<int> perm_buffer_counts_buffer;
 StructuredBuffer<int> perm_buffer_offsets_buffer;
 
-RWStructuredBuffer<uint> visible_props_counters_buffer;
+RWStructuredBuffer<uint> instanced_indirection_buffer;
+RWStructuredBuffer<uint> impostor_indirection_buffer;
+RWStructuredBuffer<uint> visibility_counters_buffer;
 
 #define MAX_PROP_TYPE_COUNT 32
 
@@ -18,6 +19,7 @@ int types;
 float4 camera_frustum_planes[6];
 float4 culling_spheres[MAX_PROP_TYPE_COUNT];
 float max_distances[MAX_PROP_TYPE_COUNT];
+float impostor_distance_percentage[MAX_PROP_TYPE_COUNT];
 
 float3 camera_position;
 
@@ -28,29 +30,6 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 	if (block == 0) {
 		return;
 	}
-
-	/*
-	float3 max_bounds = -100000;
-	float3 min_bounds = 100000;
-	for (int i = 0; i < 32; i++) {
-		int local = i;
-		int index = id.x * 32 + i;
-		uint4 prop = perm_buffer[index];
-		float4 position_scale = UnpackPositionAndScale(prop.xy);
-		bool valid = ((block >> local) & 1) == 1;
-				
-		if (valid && index < max_combined_perm_props) {
-			max_bounds = max(position_scale.xyz, max_bounds);
-			min_bounds = min(position_scale.xyz, min_bounds);
-		}
-	}
-
-	float3 center = (max_bounds + min_bounds) / 2;
-
-	if (dot(normalize(center - camera_position), camera_forward) < 0.5) {
-		return;
-	}
-	*/
 
 	for (int i = 0; i < 32; i++) {
 		int local = i;
@@ -76,11 +55,13 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		bool valid = ((block >> local) & 1) == 1;
 
 		uint4 prop = perm_buffer[index];
-		float3 position = UnpackPositionAndScale(prop.xy).xyz;
+		float4 position_scale = UnpackPositionAndScale(prop.xy);
+		float3 position = position_scale.xyz;
+		float scale = position_scale.w;
 
 		bool visible_in_frustum = true;
 		float3 culling_sphere_position = culling_spheres[type].xyz + position;
-		float culling_sphere_radius = culling_spheres[type].w;
+		float culling_sphere_radius = culling_spheres[type].w * scale;
 		for (int f = 0; f < 6; f++) {
 			float3 plane_normal = camera_frustum_planes[f].xyz;
 			float plane_distance = camera_frustum_planes[f].w;
@@ -91,13 +72,22 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 			}
 		}
 
-		bool visible_in_range = distance(position, camera_position) < max_distances[type];
+		float dist =  distance(position, camera_position);
+		float max_dist = max_distances[type];
+		float max_instance_dist = max_dist * impostor_distance_percentage[type];
+		float max_impostor_dist = max_dist;
 		
-		if (valid && visible_in_frustum && visible_in_range) {
-			uint dst_index;
-			InterlockedAdd(visible_props_counters_buffer[type], 1u, dst_index);
-			dst_index += (uint)perm_buffer_offsets_buffer[type];
-			indirection_buffer[dst_index] = index;
+		if (valid && visible_in_frustum) {
+			uint dst_index_offset = (uint)perm_buffer_offsets_buffer[type];
+			uint local_dst_index;
+
+			if (dist < max_instance_dist) {
+				InterlockedAdd(visibility_counters_buffer[type * 2], 1u, local_dst_index);
+				instanced_indirection_buffer[local_dst_index + dst_index_offset] = index;
+			} else if (dist < max_impostor_dist) {
+				InterlockedAdd(visibility_counters_buffer[type * 2 + 1], 1u, local_dst_index);
+				impostor_indirection_buffer[local_dst_index + dst_index_offset] = index;
+			}
 		}
 	}
 }
