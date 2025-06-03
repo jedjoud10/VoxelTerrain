@@ -1,7 +1,4 @@
-using System.Collections.Generic;
-using System;
 using UnityEngine;
-using Unity.Entities;
 
 namespace jedjoud.VoxelTerrain.Props {
     // STOP POSTING ABOUT AMONG US! I'M TIRED OF SEEING IT! MY FRIENDS ON TIKTOK SEND ME MEMES, ON DISCORD IT'S FUCKING MEMES!

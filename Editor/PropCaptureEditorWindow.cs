@@ -65,8 +65,6 @@ namespace jedjoud.VoxelTerrain.Editor {
 
             int width = type.impostorTextureWidth;
             int height = type.impostorTextureHeight;
-            width = 256;
-            height = 256;
             bool mips = false;
 
             var rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);

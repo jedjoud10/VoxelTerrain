@@ -259,13 +259,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 475019482}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.25000006, y: -0.24999997, z: 0.066987306, w: 0.9330127}
+  m_LocalRotation: {x: 0.2588191, y: 0, z: 0, w: 0.9659258}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 30, y: -30, z: 0}
+  m_LocalEulerAnglesHint: {x: 30, y: 0, z: 0}
 --- !u!114 &475019485
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -673,11 +673,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 566389634701878972, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: debugGui
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4296326610441593126, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_Name
       value: Managed Terrain
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propNoiseOffset.value
+      value: -0.2
       objectReference: {fileID: 0}
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propTreeScale.value.x
@@ -686,6 +690,10 @@ PrefabInstance:
     - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: propTreeScale.value.y
       value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
+      propertyPath: propNoiseAmplitude.value
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: hash

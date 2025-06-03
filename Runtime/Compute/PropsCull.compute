@@ -71,7 +71,6 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 				break;
 			}
 		}
-		visible_in_frustum = true;
 
 		float dist =  distance(position, camera_position);
 		float max_dist = max_distances[type];

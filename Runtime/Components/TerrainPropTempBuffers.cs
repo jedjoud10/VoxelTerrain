@@ -1,12 +1,8 @@
-using System;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Transforms;
 using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.RenderGraphModule;
 
 namespace jedjoud.VoxelTerrain.Segments {
     public class TerrainPropTempBuffers : IComponentData {

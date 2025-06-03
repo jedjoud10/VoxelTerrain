@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using System;
 using UnityEngine;
-using Unity.Entities;
-using Unity.Mathematics;
-using Mono.Cecil;
-using Codice.CM.Client.Differences;
 
 namespace jedjoud.VoxelTerrain.Props {
     [CreateAssetMenu(menuName = "Voxel Terrain/Create new Voxel Prop")]
