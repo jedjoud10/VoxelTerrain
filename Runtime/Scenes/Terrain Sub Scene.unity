@@ -252,6 +252,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: Terrain Authoring
       objectReference: {fileID: 0}
+    - target: {fileID: 8273521940356345146, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8273521940356345146, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
+      propertyPath: 'props.Array.data[2]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 507da28263ad9a14d8aedd8b949b456e, type: 2}
+    - target: {fileID: 8273521940356345146, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
+      propertyPath: 'props.Array.data[3]'
+      value: 
+      objectReference: {fileID: 11400000, guid: c2b0a9f5536ff7f4d9fd4c6390342791, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

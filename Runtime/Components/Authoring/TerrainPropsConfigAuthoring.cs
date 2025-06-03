@@ -19,24 +19,42 @@ namespace jedjoud.VoxelTerrain.Props {
             Entity self = GetEntity(TransformUsageFlags.None);
 
             // I LOVE LINQ!!!! I LOVE WRITING FUNCTIONAL CODE!!!!!!
-            List<Entity[]> baked = authoring.props.Select(type => {
+            List<TerrainPropsConfig.BakedPropVariant[]> baked = authoring.props.Select(type => {
                 int count = type.variants.Count;
-                Entity[] prototypes = new Entity[count];
+                TerrainPropsConfig.BakedPropVariant[] baked = new TerrainPropsConfig.BakedPropVariant[count];
 
                 for (int i = 0; i < count; i++) {
+                    baked[i] = new TerrainPropsConfig.BakedPropVariant();
                     PropType.Variant variant = type.variants[i];
 
-                    if (type.spawnEntities) {
-                        if (variant.prefab == null)
-                            throw new NullReferenceException("Variant missing prefab!!!");
+                    if (variant.prefab == null)
+                        throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing prefab (always needed, even for instanced rendering or impostors)");
 
-                        prototypes[i] = GetEntity(variant.prefab, TransformUsageFlags.Renderable);
-                    } else {
-                        prototypes[i] = Entity.Null;
-                    }
+                    baked[i].prototype = GetEntity(variant.prefab, TransformUsageFlags.Renderable);
+
+                    MeshRenderer renderer = GetComponent<MeshRenderer>(variant.prefab);
+                    if (renderer == null)
+                        throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing mesh renderer");
+
+                    Material material = renderer.sharedMaterial;
+
+                    if (material == null)
+                        throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing main material");
+
+                    if (!material.HasTexture("_DiffuseMap"))
+                        throw new NullReferenceException($"Missing _DiffuseMap at material from type '{type.name}' at variant {i}");
+                    baked[i].diffuse = (Texture2D)material.GetTexture("_DiffuseMap");
+
+                    if (!material.HasTexture("_NormalMap"))
+                        throw new NullReferenceException($"Missing _NormalMap at material from type '{type.name}' at variant {i}");
+                    baked[i].normal = (Texture2D)material.GetTexture("_NormalMap");
+
+                    if (!material.HasTexture("_MaskMap"))
+                        throw new NullReferenceException($"Missing _MaskMap at material from type '{type.name}' at variant {i}");
+                    baked[i].mask = (Texture2D)material.GetTexture("_MaskMap");
                 }
 
-                return prototypes;
+                return baked;
             }).ToList();
 
             AddComponentObject(self, new TerrainPropsConfig {

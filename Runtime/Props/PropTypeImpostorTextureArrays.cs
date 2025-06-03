@@ -13,8 +13,7 @@ namespace jedjoud.VoxelTerrain.Props {
         public Texture2DArray normal;
         public Texture2DArray mask;
 
-        public PropTypeImpostorTextureArrays(PropType type) {
-            
+        public PropTypeImpostorTextureArrays(TerrainPropsConfig config, PropType type) {
         }
     }
 }

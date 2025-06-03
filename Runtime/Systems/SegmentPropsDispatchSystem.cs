@@ -300,7 +300,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 if (tempSubBufferCount > 0 && config.props[i].spawnEntities) {
                     NativeArray<uint4> raw = temp.tempBufferReadback.GetSubArray(tempSubBufferOffset, tempSubBufferCount);
                     NativeArray<BlittableProp> transmuted = raw.Reinterpret<BlittableProp>();
-                    Entity[] variants = config.baked[i];
+                    TerrainPropsConfig.BakedPropVariant[] variants = config.baked[i];
 
                     for (int j = 0; j < tempSubBufferCount; j++) {
                         BlittableProp prop = transmuted[j];
@@ -316,7 +316,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                             continue;
                         }
 
-                        Entity prototype = variants[variant];
+                        Entity prototype = variants[variant].prototype;
                         Entity instantiated = ecb.Instantiate(prototype);
 
                         ecb.SetComponent<LocalTransform>(instantiated, LocalTransform.FromPositionRotationScale(position, rotation, scale));

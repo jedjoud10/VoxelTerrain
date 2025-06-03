@@ -10,10 +10,10 @@ namespace jedjoud.VoxelTerrain.Props {
         public Texture2DArray normal;
         public Texture2DArray mask;
 
-        public PropTypeInstanceTextureArrays(PropType type) {
-            Texture2D[] diffuse = type.variants.Select(variant => variant.textures.diffuse).ToArray();
-            Texture2D[] normal = type.variants.Select(variant => variant.textures.normal).ToArray();
-            Texture2D[] mask = type.variants.Select(variant => variant.textures.mask).ToArray();
+        public PropTypeInstanceTextureArrays(TerrainPropsConfig.BakedPropVariant[] variants) {
+            Texture2D[] diffuse = variants.Select(variant => variant.diffuse).ToArray();
+            Texture2D[] normal = variants.Select(variant => variant.normal).ToArray();
+            Texture2D[] mask = variants.Select(variant => variant.mask).ToArray();
 
             this.diffuse = CreateTexArray(diffuse, false, Texture2D.whiteTexture);
             this.normal = CreateTexArray(normal, true, Texture2D.normalTexture);
