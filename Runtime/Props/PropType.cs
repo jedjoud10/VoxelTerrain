@@ -53,6 +53,8 @@ namespace jedjoud.VoxelTerrain.Props {
         public Texture2DArray impostorNormalMaps = null;
         [HideInInspector]
         public Texture2DArray impostorMaskMaps = null;
+        [HideInInspector]
+        public Texture2DArray impostorAlphaMaps = null;
 
         public enum ImpostorCapturePolarAxis {
             XZ,
@@ -65,6 +67,7 @@ namespace jedjoud.VoxelTerrain.Props {
         public Axis impostorNormalX = Axis.X;
         public Axis impostorNormalY = Axis.Y;
         public Axis impostorNormalZ = Axis.Z;
+        public bool impostorInvertAzimuth = false;
 
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
         [Min(1)] public int maxPropsInTotal = 32 * 32 * 32 * 32;

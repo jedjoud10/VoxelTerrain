@@ -134,7 +134,7 @@ void ImpostorAngleFetch_float(int instance, out float AngleFactor) {
 
 	float2 forwardFlat = forward.xz;
 	float2 rightFlat = right.xz;
-	AngleFactor = 1 - (fmod(CalculateAngle2D(forwardFlat, rightFlat) + TAU + PI * 0.5, TAU) / TAU);
+	AngleFactor = (fmod(CalculateAngle2D(forwardFlat, rightFlat) + TAU + PI * 0.5, TAU) / TAU);
 }
 
 #endif

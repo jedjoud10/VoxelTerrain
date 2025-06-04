@@ -111,7 +111,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public void Add(UntypedVariable node, string name) {
-            Hash(node);
+            //Hash(node);
             scopes[currentScope].nodesToNames.Add(node, name);
         }
 

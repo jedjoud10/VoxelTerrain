@@ -30,8 +30,10 @@ MonoBehaviour:
   impostorDiffuseMaps: {fileID: 18700000, guid: 3fa470fc856b42d4bbbde54d1149f955, type: 2}
   impostorNormalMaps: {fileID: 18700000, guid: b6f698099692c3542af5e0155ead2657, type: 2}
   impostorMaskMaps: {fileID: 18700000, guid: 851cd6bbd0f8e4b4d933bc6c72e8cf86, type: 2}
+  impostorAlphaMaps: {fileID: 18700000, guid: c6927c4b4cb23034cad7e118d0ea7eca, type: 2}
   impostorNormalX: 0
-  impostorNormalY: 1
-  impostorNormalZ: 2
+  impostorNormalY: 2
+  impostorNormalZ: 4
+  impostorInvertAzimuth: 0
   maxPropsPerSegment: 16384
   maxPropsInTotal: 524288
