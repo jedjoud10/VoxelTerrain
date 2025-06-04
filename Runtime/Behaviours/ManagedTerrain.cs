@@ -21,7 +21,7 @@ namespace jedjoud.VoxelTerrain {
             compiler = GetComponent<Generation.ManagedTerrainCompiler>();
             seeder = GetComponent<Generation.ManagedTerrainSeeder>();
             graph = GetComponent<Generation.ManagedTerrainGraph>();
-            compiler.ParsedTranspilation();
+            compiler.Parse();
             instance = this;
         }
 

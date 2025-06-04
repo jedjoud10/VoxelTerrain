@@ -32,6 +32,8 @@
   - Copy and culling compute are now asynchronous! (not like they are slow lol but that's nice anyways)
   - Free memory block lookup is now on the CPU instead of GPU. Yes this does mean that we *need* to do counts readback, but considering that we're only reading a few ints (only a few) this is fine. Drops the complexity of the prop copy system by a lot by doing this on the CPU, worth the few frames of latency.
 
+- Uses HLSL DXC compiler when possible, but reverts to FXC if not supported. Only reason I use DXC is for faster compile times, as the prop gen shader expands out to something HUGE (lots of density function calls to inline) 
+
 # TODO / Ideas
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
   - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices

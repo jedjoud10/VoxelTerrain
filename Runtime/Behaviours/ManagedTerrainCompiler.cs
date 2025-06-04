@@ -3,6 +3,8 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using UnityEngine.Rendering;
+
 
 
 
@@ -39,7 +41,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf)
                 return;
 
-            ParsedTranspilation();
+            Parse();
 
             if (hash != ctx.hash) {
                 hash = ctx.hash;
@@ -96,7 +98,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         // Parses the voxel graph into a tree context with all required nodes and everything!!!
         // TODO: PLEASE FOR THE LOVE OF GOD. PLEASE. PLEASE I BEG YOU PLEASE REWRITE THIS!!! THIS SHIT IS ASS!!!!!
-        public void ParsedTranspilation() {
+        public void Parse() {
             ManagedTerrainGraph graph = GetComponent<ManagedTerrainGraph>();
 
             if (graph == null) {
@@ -174,16 +176,26 @@ namespace jedjoud.VoxelTerrain.Generation {
             ctx.dispatches.Sort((KernelDispatch a, KernelDispatch b) => { return b.depth.CompareTo(a.depth); });
         }
 
+        // Gotta add a check as it seems like adding the pragma just makes the shader un-compilable???
+        public bool SupportsDXC() {
+            return SystemInfo.graphicsDeviceType == GraphicsDeviceType.Vulkan || SystemInfo.graphicsDeviceType == GraphicsDeviceType.Metal || SystemInfo.graphicsDeviceType == GraphicsDeviceType.Direct3D12;
+        }
+
         // This transpile the voxel graph into HLSL code that can be executed on the GPU
         // This can be done outside the editor, but shader compilation MUST be done in editor
         private string Transpile() {
             if (ctx == null) {
-                ParsedTranspilation();
+                Parse();
             }
 
             List<string> lines = new List<string>();
             lines.Add(ComputeKeywords.PRAGMA_MULTI_COMPILE);
-            lines.Add("#pragma use_dxc");
+
+            // DXC helps compile times by a LOT, albeit it isn't supported on DX11...
+            // Gonna add a simple check instead, so that we fallback to FXC just in case
+            if (SupportsDXC()) {
+                lines.Add("#pragma use_dxc");
+            }
 
             lines.AddRange(ctx.Properties);
             lines.Add("#include \"Packages/com.jedjoud.voxelterrain/Runtime/Compute/Imports.cginc\"");

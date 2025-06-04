@@ -222,8 +222,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 data.indices.z = uniques[flip ? 2 : 0];
                 return true;
             }
-
-            return false;
         }
 
         public void Execute(int index) {

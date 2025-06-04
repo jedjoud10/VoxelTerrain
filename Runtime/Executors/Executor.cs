@@ -62,7 +62,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             bool updateInjected = parameters.updateInjected;
 
             if (compiler.ctx == null) {
-                compiler.ParsedTranspilation();
+                compiler.Parse();
             }
 
             if (textures == null || buffers == null) {

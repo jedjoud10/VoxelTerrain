@@ -305,6 +305,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
+      propertyPath: segmentExtent.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
+      propertyPath: segmentExtent.z
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7735598465189242063, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: m_Name
       value: Loader

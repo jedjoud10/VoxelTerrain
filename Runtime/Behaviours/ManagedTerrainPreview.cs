@@ -6,7 +6,6 @@ namespace jedjoud.VoxelTerrain.Generation {
     [ExecuteInEditMode]
     public class ManagedTerrainPreview : MonoBehaviour {
         public ComputeShader surfaceNetsCompute;
-        public ComputeShader heightMapCompute;
         private GraphicsBuffer indexBuffer;
         private GraphicsBuffer vertexBuffer;
         private GraphicsBuffer normalsBuffer;
@@ -14,12 +13,10 @@ namespace jedjoud.VoxelTerrain.Generation {
         private GraphicsBuffer commandBuffer;
         private GraphicsBuffer atomicCounters;
         private RenderTexture tempVertexTexture;
-        private RenderTexture maxHeightAtomic;
         public Material customRenderingMaterial;
         private GraphicsBuffer.IndirectDrawIndexedArgs defaultArgs;
         public bool materialId;
         public bool blocky;
-        public bool useHeightSimplification;
         public bool flatshaded;
         public int size = 64;
         private int initSize = -1;
@@ -45,6 +42,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             colorsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, volume, sizeof(float) * 3);
             commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, GraphicsBuffer.IndirectDrawIndexedArgs.size);
             atomicCounters = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 2, sizeof(uint));
+            tempVertexTexture = TextureUtils.Create3DRenderTexture(initSize, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
 
             defaultArgs = new GraphicsBuffer.IndirectDrawIndexedArgs {
                 baseVertexIndex = 0,
@@ -55,9 +53,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
 
             commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { defaultArgs });
-
-            tempVertexTexture = TextureUtils.Create3DRenderTexture(initSize, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
-            maxHeightAtomic = TextureUtils.Create2DRenderTexture(initSize, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
         }
 
         private void OnDisable() {
@@ -83,7 +78,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             if (compiler.ctx == null) {
-                compiler.ParsedTranspilation();
+                compiler.Parse();
             }
 
             PreviewExecutorParameters parameters = new PreviewExecutorParameters() {
@@ -116,7 +111,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 atomicCounters.Dispose();
                 colorsBuffer.Dispose();
                 tempVertexTexture.Release();
-                maxHeightAtomic.Release();
             }
         }
 
@@ -125,11 +119,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 InitializeForSize();
             }
 
-            if (useHeightSimplification) {
-                ExecuteHeightMapMesher(voxels, -1, Vector3Int.zero);
-            } else {
-                ExecuteSurfaceNetsMesher(voxels);
-            }
+            ExecuteSurfaceNetsMesher(voxels);
         }
 
         public void ExecuteSurfaceNetsMesher(RenderTexture voxels) {
@@ -145,60 +135,25 @@ namespace jedjoud.VoxelTerrain.Generation {
             shader.SetBool("materialId", materialId);
             shader.SetInt("size", size);
 
-            int minDispatch = Mathf.CeilToInt((float)size / 8.0f);
+            int minDispatchVertex = Mathf.CeilToInt((float)size / 4.0f);
             int id = shader.FindKernel("CSVertex");
             shader.SetTexture(id, "voxels", voxels);
             shader.SetBuffer(id, "atomicCounters", atomicCounters);
             shader.SetBuffer(id, "vertices", vertexBuffer);
             shader.SetBuffer(id, "normals", normalsBuffer);
             shader.SetBuffer(id, "colors", colorsBuffer);
-            shader.SetBuffer(id, "cmdBuffer", commandBuffer);
             shader.SetTexture(id, "vertexIds", tempVertexTexture);
-            shader.Dispatch(id, minDispatch, minDispatch, minDispatch);
+            shader.SetBuffer(id, "cmdBuffer", commandBuffer);
+            shader.Dispatch(id, minDispatchVertex, minDispatchVertex, minDispatchVertex);
 
+            int minDispatchQuad = Mathf.CeilToInt((float)size / 8.0f);
             id = shader.FindKernel("CSQuad");
+            shader.SetTexture(id, "vertexIds", tempVertexTexture);
             shader.SetTexture(id, "voxels", voxels);
             shader.SetBuffer(id, "indices", indexBuffer);
-            shader.SetTexture(id, "vertexIds", tempVertexTexture);
             shader.SetBuffer(id, "cmdBuffer", commandBuffer);
             shader.SetBuffer(id, "atomicCounters", atomicCounters);
-
-            shader.Dispatch(id, minDispatch, minDispatch, minDispatch);
-        }
-
-        public void ExecuteHeightMapMesher(RenderTexture voxels, int indexed, Vector3Int chunkOffset) {
-            if (atomicCounters == null || !atomicCounters.IsValid())
-                return;
-
-            int size = voxels.width;
-
-            if (indexed == -1)
-                commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { defaultArgs });
-
-            var shader = heightMapCompute;
-            shader.SetInt("size", size);
-            shader.SetBool("materialId", materialId);
-            shader.SetVector("vertexOffset", (Vector3)chunkOffset * size);
-
-            Graphics.SetRenderTarget(maxHeightAtomic);
-            GL.Clear(false, true, Color.clear);
-            Graphics.SetRenderTarget(null);
-
-            int id = shader.FindKernel("CSFlatten");
-            shader.SetTexture(id, "voxels", voxels);
-            shader.SetTexture(id, "maxHeight", maxHeightAtomic);
-            shader.Dispatch(id, size / 8, size / 8, size / 8);
-
-            id = shader.FindKernel("CSVertex");
-            shader.SetInt("indexOffset", indexed == -1 ? 0 : indexed);
-            shader.SetTexture(id, "voxels", voxels);
-            shader.SetTexture(id, "maxHeight", maxHeightAtomic);
-            shader.SetBuffer(id, "indices", indexBuffer);
-            shader.SetBuffer(id, "vertices", vertexBuffer);
-            shader.SetBuffer(id, "normals", normalsBuffer);
-            shader.SetBuffer(id, "colors", colorsBuffer);
-            shader.SetBuffer(id, "cmdBuffer", commandBuffer);
-            shader.Dispatch(id, size / 32, size / 32, 1);
+            shader.Dispatch(id, minDispatchQuad, minDispatchQuad, minDispatchQuad);
         }
 
         public void Update() {
@@ -221,7 +176,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             mat.SetBuffer("_Vertices", vertexBuffer);
             mat.SetBuffer("_Normals", normalsBuffer);
             mat.SetBuffer("_Colors", colorsBuffer);
-            mat.SetInt("_Flatshaded", (flatshaded || (blocky && !useHeightSimplification)) ? 1 : 0);
+            mat.SetInt("_Flatshaded", (flatshaded || blocky) ? 1 : 0);
 
             // FIXME: Why do I need to use this instead of just render mesh primitives indexed inderect???
             // Also why do I need to handle the indexing myself???
