@@ -19,7 +19,7 @@ MonoBehaviour:
   alwaysSpawnInstances: 1
   renderInstances: 1
   renderInstancesShadow: 0
-  instanceMaxDistance: 2500
+  instanceMaxDistance: 25000
   instancedMesh: {fileID: -5495902117074765545, guid: 45aaeac8c2db58444ac86e0bbc1ce002, type: 3}
   renderImpostors: 1
   impostorDistancePercentage: 0.15

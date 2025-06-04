@@ -502,8 +502,8 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 1
-  far clip plane: 30000
+  near clip plane: 0.5
+  far clip plane: 5000
   field of view: 90
   orthographic: 0
   orthographic size: 5
@@ -671,41 +671,9 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 566389634701878972, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: debugGui
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 4296326610441593126, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_Name
       value: Managed Terrain
-      objectReference: {fileID: 0}
-    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: amplitude.value
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: propNoiseOffset.value
-      value: 0.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: propTreeScale.value.x
-      value: 1.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: propTreeScale.value.y
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: propNoiseAmplitude.value
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4893179947538798331, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: flatPlaneUnionSmooth.value
-      value: 5
-      objectReference: {fileID: 0}
-    - target: {fileID: 5790444678521601185, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
-      propertyPath: hash
-      value: -47652595
       objectReference: {fileID: 0}
     - target: {fileID: 6566762760026143042, guid: acc2dbdd692c47b40af8788c582cd633, type: 3}
       propertyPath: m_LocalPosition.x

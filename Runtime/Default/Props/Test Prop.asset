@@ -18,11 +18,11 @@ MonoBehaviour:
   spawnEntities: 1
   alwaysSpawnInstances: 1
   renderInstances: 1
-  renderInstancesShadow: 1
-  instanceMaxDistance: 2500
+  renderInstancesShadow: 0
+  instanceMaxDistance: 25000
   instancedMesh: {fileID: -1550514412580984892, guid: b50439a4803f8a442853cd5b9e5981de, type: 3}
   renderImpostors: 1
-  impostorDistancePercentage: 0.15
+  impostorDistancePercentage: 0.015
   impostorOffset: {x: 0, y: 4.5, z: 0}
   impostorScale: 6.25
   impostorTextureWidth: 64
@@ -36,4 +36,4 @@ MonoBehaviour:
   impostorNormalZ: 4
   impostorInvertAzimuth: 1
   maxPropsPerSegment: 65536
-  maxPropsInTotal: 1048576
+  maxPropsInTotal: 4194304

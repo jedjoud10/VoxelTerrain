@@ -44,6 +44,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11976dabb38d8a249b3805238f767c26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  octreeNodeFactor: 0.5
-  segmentExtent: {x: 10, y: 10, z: 10}
-  segmentLodFactor: 0.8
+  octreeNodeFactor: 0.7
+  segmentExtent: {x: 4, y: 1, z: 4}
+  segmentExtentHigh: {x: 1, y: 1, z: 1}

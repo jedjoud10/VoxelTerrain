@@ -48,7 +48,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 016d67e6a5967a14eb3ab83688f57532, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxDepth: 7
+  maxDepth: 8
 --- !u!114 &1126607872178056002
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111,4 +111,3 @@ MonoBehaviour:
   apply: {fileID: 7200000, guid: 40b03aa1223e4884cbe519c38895077d, type: 3}
   instancedShader: {fileID: -6465566751694194690, guid: b86caac8878443b46af393e44ade8383, type: 3}
   impostorShader: {fileID: -6465566751694194690, guid: c1c0412cd6a41ca4a9268b9f01fb5805, type: 3}
-  quad: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}

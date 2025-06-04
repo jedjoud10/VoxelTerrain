@@ -208,10 +208,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1871524687913741539, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
-      propertyPath: maxDepth
-      value: 9
-      objectReference: {fileID: 0}
     - target: {fileID: 5863026420594882244, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -256,18 +252,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Terrain Authoring
       objectReference: {fileID: 0}
-    - target: {fileID: 8273521940356345146, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
-      propertyPath: m_Enabled
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8273521940356345146, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
-      propertyPath: 'props.Array.data[2]'
-      value: 
-      objectReference: {fileID: 11400000, guid: 507da28263ad9a14d8aedd8b949b456e, type: 2}
-    - target: {fileID: 8273521940356345146, guid: 1691e4a99832c0340a075cd99f84a3b0, type: 3}
-      propertyPath: 'props.Array.data[3]'
-      value: 
-      objectReference: {fileID: 11400000, guid: c2b0a9f5536ff7f4d9fd4c6390342791, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -320,30 +304,6 @@ PrefabInstance:
     - target: {fileID: 5510648870137231599, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
-      propertyPath: segmentExtent.x
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
-      propertyPath: segmentExtent.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
-      propertyPath: segmentExtent.z
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
-      propertyPath: octreeNodeFactor
-      value: 0.7
-      objectReference: {fileID: 0}
-    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
-      propertyPath: segmentExtentHigh.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6621018945112771849, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
-      propertyPath: segmentExtentHigh.z
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7735598465189242063, guid: 835ea035a6e46544ab23e1a59f553681, type: 3}
       propertyPath: m_Name

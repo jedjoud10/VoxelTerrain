@@ -22,10 +22,10 @@ MonoBehaviour:
   instancedMesh: {fileID: -5575235835429965844, guid: 36d79a7db51d68c488b4a97b8c592d49, type: 3}
   renderImpostors: 1
   impostorDistancePercentage: 0.5
-  impostorOffset: {x: 0, y: 0.1, z: 0}
+  impostorOffset: {x: 0, y: 0.4, z: 0}
   impostorScale: 0.1
-  impostorTextureWidth: 128
-  impostorTextureHeight: 128
+  impostorTextureWidth: 32
+  impostorTextureHeight: 32
   impostorCaptureAxis: 1
   impostorDiffuseMaps: {fileID: 18700000, guid: 2d6dbbd2869843c4bb6214977640ad32, type: 2}
   impostorNormalMaps: {fileID: 18700000, guid: b04c6a1cab8a862498e8964f7092f375, type: 2}
