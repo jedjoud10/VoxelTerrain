@@ -53,8 +53,6 @@ namespace jedjoud.VoxelTerrain.Props {
         public Texture2DArray impostorNormalMaps = null;
         [HideInInspector]
         public Texture2DArray impostorMaskMaps = null;
-        [HideInInspector]
-        public Texture2DArray impostorAlphaMaps = null;
 
         public enum ImpostorCapturePolarAxis {
             XZ,

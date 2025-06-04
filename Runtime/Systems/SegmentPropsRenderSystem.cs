@@ -150,7 +150,6 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetTexture("_DiffuseMapArray", rendering.typeImpostorsTextureArrays[i].diffuse);
             mat.SetTexture("_NormalMapArray", rendering.typeImpostorsTextureArrays[i].normal);
             mat.SetTexture("_MaskMapArray", rendering.typeImpostorsTextureArrays[i].mask);
-            mat.SetTexture("_AlphaMapArray", rendering.typeImpostorsTextureArrays[i].alpha);
 
             mat.SetInt("_PermBufferOffset", perm.permBufferOffsets[i]);
             mat.SetInt("_PropType", i);

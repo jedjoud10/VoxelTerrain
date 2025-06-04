@@ -31,7 +31,6 @@ MonoBehaviour:
   impostorDiffuseMaps: {fileID: 18700000, guid: 6cfcfa85bb8b94d4197d3a97bdce3119, type: 2}
   impostorNormalMaps: {fileID: 18700000, guid: 97442dd6ace69254d87c77f986b135a2, type: 2}
   impostorMaskMaps: {fileID: 18700000, guid: 84cdaf54afab6594b96a937b222ef092, type: 2}
-  impostorAlphaMaps: {fileID: 18700000, guid: 98a71a851c94fc04ca23a981197e3687, type: 2}
   impostorNormalX: 0
   impostorNormalY: 1
   impostorNormalZ: 2

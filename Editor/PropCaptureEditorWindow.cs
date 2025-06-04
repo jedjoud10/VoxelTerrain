@@ -68,16 +68,15 @@ namespace jedjoud.VoxelTerrain.Editor {
 
             var rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
             rt.autoGenerateMips = false;
-            rt.useMipMap = true;
+            rt.useMipMap = false;
             rt.depthStencilFormat = GraphicsFormat.D24_UNorm;
             rt.depth = 24;
             cam.targetTexture = rt;
 
-            Texture2DArray diffuseMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, true);
-            Texture2DArray normalMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, true);
-            Texture2DArray maskMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, true);
-            Texture2DArray alphaMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, false);
-            Texture2DArray[] tempOut = new Texture2DArray[4] { diffuseMapOut, normalMapOut, maskMapOut, alphaMapOut };
+            Texture2DArray diffuseMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, false);
+            Texture2DArray normalMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, false);
+            Texture2DArray maskMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, false);
+            Texture2DArray[] tempOut = new Texture2DArray[3] { diffuseMapOut, normalMapOut, maskMapOut };
 
             try {
                 for (int i = 0; i < type.variants.Count; i++) {
@@ -93,13 +92,10 @@ namespace jedjoud.VoxelTerrain.Editor {
                 AssetDatabase.CreateAsset(normalMapOut, normalMapPath);
                 string maskMapPath = $"Assets/Voxel Terrain/Captured Prop Textures/{name}_mask.asset";
                 AssetDatabase.CreateAsset(maskMapOut, maskMapPath);
-                string alphaMapPath = $"Assets/Voxel Terrain/Captured Prop Textures/{name}_alpha.asset";
-                AssetDatabase.CreateAsset(alphaMapOut, alphaMapPath);
 
                 type.impostorDiffuseMaps = diffuseMapOut;
                 type.impostorNormalMaps = normalMapOut;
                 type.impostorMaskMaps = maskMapOut;
-                type.impostorAlphaMaps = alphaMapOut;
 
                 EditorUtility.SetDirty(type);
 
@@ -108,7 +104,6 @@ namespace jedjoud.VoxelTerrain.Editor {
                 AssetDatabase.ImportAsset(diffuseMapPath);
                 AssetDatabase.ImportAsset(normalMapPath);
                 AssetDatabase.ImportAsset(maskMapPath);
-                AssetDatabase.ImportAsset(alphaMapPath);
 
                 AssetDatabase.Refresh();
             } finally {
@@ -157,7 +152,7 @@ namespace jedjoud.VoxelTerrain.Editor {
                 faker.transform.position = Vector3.zero;
                 faker.transform.rotation = Quaternion.identity;
 
-                for (int map = 0; map < 4; map++) {
+                for (int map = 0; map < 3; map++) {
                     CaptureMap(type, bounds, cam, rt, tempOut[map], variant, map);
                 }
             } finally {
@@ -165,51 +160,27 @@ namespace jedjoud.VoxelTerrain.Editor {
             }
         }
 
-        private void CaptureMap(PropType type, Bounds bounds, Camera cam, RenderTexture rtWtf, Texture2DArray output, int variant, int map) {
+        private void CaptureMap(PropType type, Bounds bounds, Camera cam, RenderTexture rt, Texture2DArray output, int variant, int map) {
             captureMaterial.SetInt("_CaptureMapSelector", map);
 
-            /*
-            Graphics.SetRenderTarget(rt);
-            GL.Clear(true, true, Color.clear);
-            Graphics.SetRenderTarget(null);
-            */
-
-
-
             for (int azimuth = 0; azimuth < AZIMUTH_ITERS; azimuth++) {
-                float angle = (azimuth / (float)AZIMUTH_ITERS) * 360f;
+                Graphics.SetRenderTarget(rt);
+                GL.Clear(true, true, Color.clear);
+                Graphics.SetRenderTarget(null);
 
-                (Vector3 camPos, Quaternion camRot) = CalculateCameraOrbit(type, bounds, angle);
+                (Vector3 camPos, Quaternion camRot) = CalculateCameraOrbit(type, bounds, (azimuth / (float)AZIMUTH_ITERS) * 360f);
                 cam.transform.position = camPos;
                 cam.transform.rotation = camRot;
+                cam.Render();
 
-                for (int m = 0; m < output.mipmapCount; m++) {
-                    int div = 1 << m;
-                    int w = output.width / div;
-                    int h = output.height / div;
+                Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.ARGB32, rt.useMipMap);
+                RenderTexture.active = rt;
+                GL.Flush();
+                tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+                output.CopyPixels(tex, 0, 0, variant * AZIMUTH_ITERS + azimuth, 0);
 
-                    var rt = new RenderTexture(w, h, 0, RenderTextureFormat.ARGB32);
-                    rt.autoGenerateMips = false;
-                    rt.useMipMap = false;
-                    rt.depthStencilFormat = GraphicsFormat.D24_UNorm;
-                    rt.depth = 24;
-                    cam.targetTexture = rt;
-
-                    cam.Render();
-                    GL.Flush();
-
-
-
-                    // texture readback (GPU -> CPU) for specific mi[
-                    RenderTexture.active = rt;
-                    Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.ARGB32, false);
-                    tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-                    output.CopyPixels(tex, 0, 0, variant * AZIMUTH_ITERS + azimuth, m);
-                    tex.Apply();
-                    RenderTexture.active = null;
-
-                    rt.Release();
-                }
+                tex.Apply();
+                RenderTexture.active = null;
             }
         }
 
