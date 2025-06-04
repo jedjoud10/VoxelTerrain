@@ -13,6 +13,8 @@ Shader "Custom/PropCapture"
 
         Pass
         {
+            Conservative True
+
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -106,6 +108,8 @@ Shader "Custom/PropCapture"
                     finalColor = fixed4(tempNormal * 0.5 + 0.5, 1);
                 } else if (_CaptureMapSelector == 2) {
                     finalColor = fixed4(mask.rgb, 1); 
+                } else if (_CaptureMapSelector == 3) {
+                    finalColor = 1;
                 }
 
                 return finalColor;

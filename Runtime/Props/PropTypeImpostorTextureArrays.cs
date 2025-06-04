@@ -9,11 +9,13 @@ namespace jedjoud.VoxelTerrain.Props {
         public Texture2DArray diffuse;
         public Texture2DArray normal;
         public Texture2DArray mask;
+        public Texture2DArray alpha;
 
         public PropTypeImpostorTextureArrays(PropType type) {
             diffuse = type.impostorDiffuseMaps;
             normal = type.impostorNormalMaps;
             mask = type.impostorMaskMaps;
+            alpha = type.impostorAlphaMaps;
         }
     }
 }

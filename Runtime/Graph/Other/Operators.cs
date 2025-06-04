@@ -6,7 +6,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         public bool constant;
 
         public override void HandleInternal(TreeContext ctx) {
-            ctx.Hash(value);
             ctx.DefineAndBindNode(this, VariableType.TypeOf<T>(), "c", value, constant);
         }
     }
