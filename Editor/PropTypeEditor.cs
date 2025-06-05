@@ -1,11 +1,5 @@
-using System;
-using System.Collections;
-using System.Linq;
-using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Props;
-using NUnit.Framework;
 using UnityEditor;
-using UnityEngine;
 
 
 namespace jedjoud.VoxelTerrain.Editor {

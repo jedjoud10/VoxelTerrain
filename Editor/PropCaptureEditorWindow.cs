@@ -4,7 +4,6 @@ using jedjoud.VoxelTerrain.Props;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
-using UnityEngine.Rendering;
 
 
 namespace jedjoud.VoxelTerrain.Editor {
