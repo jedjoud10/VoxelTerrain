@@ -20,11 +20,14 @@ namespace jedjoud.VoxelTerrain.Editor {
                 return;
             }
 
-            if (!script.SupportsDXC()) {
-                EditorGUILayout.LabelField($"DXC HLSL compiler not supported. Fallbacking to FXC.", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField($"This will cause longer shader compile times. Sowwy", EditorStyles.boldLabel);
+            if (script.GetComponent<ManagedTerrainGraph>() == null) {
+                EditorGUILayout.LabelField($"Missing ManagedTerrainGraph on ManagedTerrain!!!", EditorStyles.boldLabel);
+                return;
             }
 
+            if (!script.SupportsDXC()) {
+                EditorGUILayout.LabelField($"DXC HLSL compiler not supported. Fallbacking to FXC.");
+            }
 
             if (GUILayout.Button("Recompile")) {
                 script.Compile(true);

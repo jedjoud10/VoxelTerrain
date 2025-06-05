@@ -22,7 +22,7 @@ int _MaxVariantCountForType;
 	// https://github.com/TwoTailsGames/Unity-Built-in-Shaders/blob/master/CGIncludes/UnityStandardParticleInstancing.cginc
 
 	void vertInstancingMatrices(out float4x4 objectToWorld, out float4x4 worldToObject) {
-		int propIndex = _InstancedIndirectionBuffer[unity_InstanceID + _PermBufferOffset];
+		uint propIndex = _InstancedIndirectionBuffer[unity_InstanceID + _PermBufferOffset];
 		float4x4 data = _PermMatricesBuffer[propIndex];
 		objectToWorld = data;
 
@@ -56,7 +56,7 @@ void Instancing_float(float3 Position, out float3 Out){
 }
 
 void PropVariantFetch_float(int instance, out float Variant){
-	int propIndex = _InstancedIndirectionBuffer[instance + _PermBufferOffset];
+	uint propIndex = _InstancedIndirectionBuffer[instance + _PermBufferOffset];
 	uint4 prop = _PermBuffer[propIndex];
 	uint variant = prop.w & 0xFF;
 

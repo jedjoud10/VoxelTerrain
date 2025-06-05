@@ -19,7 +19,14 @@ namespace jedjoud.VoxelTerrain.Props {
             Entity self = GetEntity(TransformUsageFlags.None);
 
             // I LOVE LINQ!!!! I LOVE WRITING FUNCTIONAL CODE!!!!!!
-            List<TerrainPropsConfig.BakedPropVariant[]> baked = authoring.props.Select(type => {
+            List<TerrainPropsConfig.BakedPropVariant[]> baked = authoring.props.Where(x => {
+                if (x == null) {
+                    UnityEngine.Debug.LogWarning("Prop type in TerrainPropsConfigAuthoring is null. Probably not what you want");
+                    return false;
+                } else {
+                    return true;
+                }
+            }).Select(type => {
                 int count = type.variants.Count;
                 TerrainPropsConfig.BakedPropVariant[] baked = new TerrainPropsConfig.BakedPropVariant[count];
 

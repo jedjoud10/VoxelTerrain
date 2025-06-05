@@ -41,6 +41,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf)
                 return;
 
+            if (GetComponent<ManagedTerrainGraph>() == null) {
+                return;
+            }
+
             Parse();
 
             if (hash != ctx.hash) {
@@ -100,11 +104,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         // TODO: PLEASE FOR THE LOVE OF GOD. PLEASE. PLEASE I BEG YOU PLEASE REWRITE THIS!!! THIS SHIT IS ASS!!!!!
         public void Parse() {
             ManagedTerrainGraph graph = GetComponent<ManagedTerrainGraph>();
-
-            if (graph == null) {
-                Debug.LogError("Can't transpile the graph since we don't have one to begin with! Add a ManagedTerrainGraph component...");
-                return;
-            }
 
             // TODO: for SOME fucking reason debug name causes problems
             // unity doesn't seem to be saving the debugNames field or doing some fucky fucky shit with it. pls fix

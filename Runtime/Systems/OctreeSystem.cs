@@ -11,7 +11,8 @@ namespace jedjoud.VoxelTerrain.Octree {
     public partial struct OctreeSystem : ISystem {
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
-        private float3 oldPosition;
+        private NativeArray<LocalTransform> loaders;
+
         private bool initialized;
 
 
@@ -24,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             oldNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             newNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             initialized = false;
-            oldPosition = -100000;
+            loaders = default;
         }
 
         private TerrainOctree InitOctree() {
@@ -66,6 +67,8 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             if (octree.handle.IsCompleted && octree.pending) {
                 octree.handle.Complete();
+                loaders.Dispose();
+                loaders = default;
                 octree.continuous = false;
                 octree.pending = false;
                 octree.readyToSpawn = true;
@@ -76,23 +79,15 @@ namespace jedjoud.VoxelTerrain.Octree {
                 return;
             }
 
-            Entity entity = SystemAPI.GetSingletonEntity<TerrainLoader>();
-            TerrainLoader loader = SystemAPI.GetComponent<TerrainLoader>(entity);
-            LocalTransform transform = SystemAPI.GetComponent<LocalTransform>(entity);
-
-            if (math.distance(transform.Position, oldPosition) < 1) {
-                return;
-            }
-
+            EntityQuery loadersQuery = SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalTransform>().Build();
+            loaders = loadersQuery.ToComponentDataArray<LocalTransform>(Allocator.Persistent);
             TerrainReadySystems ready = SystemAPI.GetSingleton<TerrainReadySystems>();
 
-            
             if (!ready.manager || !ready.mesher || !ready.readback) {
                 return;
             }
 
 
-            oldPosition = transform.Position;
             octree.nodes.Clear();
             octree.neighbourMasks.Clear();
             octree.added.Clear();
@@ -110,8 +105,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                 nodes = octree.nodes,
                 neighbourMasks = octree.neighbourMasks,
                 
-                center = transform.Position,
-                factor = math.clamp(loader.octreeNodeFactor + 1f, 1, 1.999f),                
+                loaders = loaders,
             };
 
             NeighbourJob neighbourJob = new NeighbourJob {
@@ -151,6 +145,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             JobHandle temp = JobHandle.CombineDependencies(addedJobHandle, removedJobHandle);
             JobHandle swapJobHandle = swapJob.Schedule(temp);
             octree.handle = JobHandle.CombineDependencies(swapJobHandle, neighbourJobHandle);
+
             octree.pending = true;
             octree.readyToSpawn = false;
         }

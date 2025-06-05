@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 5790444678521601185}
   - component: {fileID: 4781938216130763360}
   - component: {fileID: 5248115962012205478}
-  - component: {fileID: 4893179947538798331}
   - component: {fileID: 566389634701878972}
   m_Layer: 0
   m_Name: Managed Terrain
@@ -64,8 +63,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  hash: 1689694690
-  dirty: 1
+  hash: -1761390008
+  dirty: 0
   shader: {fileID: 7200000, guid: 55e5bc6630ac7ad4786b230b69a61640, type: 3}
 --- !u!114 &4781938216130763360
 MonoBehaviour:
@@ -79,9 +78,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6dcce6796ecd274594a6a37e20cf884, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: 1234
-  permutationSeed: {x: 0, y: 0, z: 0}
-  moduloSeed: {x: 0, y: 0, z: 0}
+  seed: 1794
+  permutationSeed: {x: -664, y: -891, z: -5}
+  moduloSeed: {x: -999, y: 103, z: 44}
 --- !u!114 &5248115962012205478
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -101,78 +100,7 @@ MonoBehaviour:
   flatshaded: 0
   size: 128
   scale: {x: 1, y: 1, z: 1}
-  offset: {x: 0, y: -301.5, z: 0}
---- !u!114 &4893179947538798331
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4296326610441593126}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1964f9915237e104bbf6a80ee84a37c6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  transform1:
-    position: {x: -12.92, y: 25, z: -23.37}
-    rotation: {x: 0, y: 0, z: 0}
-    scale: {x: 0.02, y: 0.02, z: 0.02}
-  flatPlaneHeight:
-    value: 20.4
-  flatPlaneUnionSmooth:
-    value: 5
-  scale:
-    value: 0.01
-  amplitude:
-    value: 15
-  voronoiScale:
-    value:
-      x: 0.02
-      y: 0.05
-      z: 0.02
-  voronoiAmplitude:
-    value: -40
-  voronoiseScale:
-    value: 0.04
-  voronoiseAmplitude:
-    value: 4
-  detailScale:
-    value:
-      x: 0.1
-      y: 0.1
-      z: 0.1
-  detailAmplitude:
-    value: 0.6
-  others:
-    value:
-      x: 2
-      y: 0.2
-  octaves: 7
-  propSpawnProbability:
-    value: 0.2
-  propMinDotProductVal:
-    value: 0.8
-  propNoiseScale:
-    value: 0.01
-  propNoiseAmplitude:
-    value: 0
-  propNoiseOffset:
-    value: 1
-  propDensityRangeSpawn:
-    value:
-      x: -0.01
-      y: 0.01
-  propRatScale:
-    value:
-      x: 15
-      y: 20
-  propTreeScale:
-    value:
-      x: 1.4
-      y: 1.5
-  pushSurfaceAmount:
-    value: 0.25
+  offset: {x: 0, y: -35.8, z: 0}
 --- !u!114 &566389634701878972
 MonoBehaviour:
   m_ObjectHideFlags: 0

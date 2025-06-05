@@ -101,11 +101,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0bcf7f7ad9c1f34096793489a0ead41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  props:
-  - {fileID: 11400000, guid: 877753c34810a33449994056ab9cd85d, type: 2}
-  - {fileID: 11400000, guid: 29ebc771b9f09f24b8192bce7a4cf8e7, type: 2}
-  - {fileID: 11400000, guid: 507da28263ad9a14d8aedd8b949b456e, type: 2}
-  - {fileID: 11400000, guid: c2b0a9f5536ff7f4d9fd4c6390342791, type: 2}
+  props: []
   copy: {fileID: 7200000, guid: 661b6358b82faf64487edb48a2958782, type: 3}
   cull: {fileID: 7200000, guid: 36068719711b05b4aabd5888c9242d36, type: 3}
   apply: {fileID: 7200000, guid: 40b03aa1223e4884cbe519c38895077d, type: 3}

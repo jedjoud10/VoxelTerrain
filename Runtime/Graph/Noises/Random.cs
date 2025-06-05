@@ -44,7 +44,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             return temp * ampl + offset;
         }
 
-        internal static Variable<float> Range<I>(Variable<I> input, Variable<float2> range) {
+        public static Variable<float> Range<I>(Variable<I> input, Variable<float2> range) {
             return Range<I, float>(input, range.x, range.y);
         }
     }

@@ -68,6 +68,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!gameObject.activeSelf || !this.isActiveAndEnabled)
                 return;
 
+            if (GetComponent<ManagedTerrainGraph>() == null) {
+                return;
+            }
+
 #if UNITY_EDITOR
             ManagedTerrainCompiler compiler = GetComponent<ManagedTerrainCompiler>();
             ManagedTerrainSeeder seeder = GetComponent<ManagedTerrainSeeder>();

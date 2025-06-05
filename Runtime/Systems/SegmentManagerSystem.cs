@@ -21,7 +21,9 @@ namespace jedjoud.VoxelTerrain.Segments {
         private NativeList<Entity> segmentsThatMustBeInEndOfPipe;
         private NativeList<Entity> segmentsToDestroy;
 
-        private float3 oldPosition;
+        private NativeArray<LocalTransform> loaderTransforms;
+        private NativeArray<TerrainLoader> loaders;
+
         private bool pending;
 
 
@@ -34,9 +36,6 @@ namespace jedjoud.VoxelTerrain.Segments {
             addedSegments = new NativeList<TerrainSegment>(Allocator.Persistent);
             removedSegments = new NativeList<TerrainSegment>(Allocator.Persistent);
             map = new NativeHashMap<TerrainSegment, Entity>(0, Allocator.Persistent);
-
-            oldPosition = 1000000;
-
 
             EntityManager mgr = state.EntityManager;
             segmentPrototype = mgr.CreateEntity();
@@ -53,11 +52,16 @@ namespace jedjoud.VoxelTerrain.Segments {
             segmentsThatMustBeInEndOfPipe = new NativeList<Entity>(Allocator.Persistent);
             segmentsToDestroy = new NativeList<Entity>(Allocator.Persistent);
             pending = false;
+
+            loaders = default;
+            loaderTransforms = default;
         }
 
         [BurstCompile]
         private void Complete(ref SystemState state) {
             handle.Complete();
+            loaders.Dispose();
+            loaderTransforms.Dispose();
 
             foreach (var segment in removedSegments) {
                 if (map.TryGetValue(segment, out Entity entity)) {
@@ -83,27 +87,21 @@ namespace jedjoud.VoxelTerrain.Segments {
 
         [BurstCompile]
         private void Schedule(ref SystemState state) {
-            Entity entity = SystemAPI.GetSingletonEntity<TerrainLoader>();
-            TerrainLoader loader = SystemAPI.GetComponent<TerrainLoader>(entity);
-            LocalTransform transform = SystemAPI.GetComponent<LocalTransform>(entity);
             TerrainOctreeConfig config = SystemAPI.GetSingleton<TerrainOctreeConfig>();
 
             OctreeNode root = OctreeNode.RootNode(config.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE /* >> (int)terrain.voxelSizeReduction */);
             int maxSegmentsInWorld = (root.size / SegmentUtils.PHYSICAL_SEGMENT_SIZE) / 2;
 
-            if (math.distance(oldPosition, transform.Position) < 3)
-                return;
-            
-
-            oldPosition = transform.Position;
+            EntityQuery query =  SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalTransform>().Build();
+            loaders = query.ToComponentDataArray<TerrainLoader>(Allocator.Persistent);
+            loaderTransforms = query.ToComponentDataArray<LocalTransform>(Allocator.Persistent);
 
             SegmentSpawnJob job = new SegmentSpawnJob {
                 addedSegments = addedSegments,
                 removedSegments = removedSegments,
 
-                center = transform.Position,
-                extent = loader.segmentExtent,
-                extentHigh = loader.segmentExtentHigh,
+                loaders = loaders,
+                loaderTransforms = loaderTransforms,
 
                 newSegments = newSegments,
                 oldSegments = oldSegments,

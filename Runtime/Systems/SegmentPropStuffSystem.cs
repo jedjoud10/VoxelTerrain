@@ -30,17 +30,22 @@ namespace jedjoud.VoxelTerrain.Segments {
             if (!initialized) {
                 initialized = true;
                 this.config = config;
-                temp = new TerrainPropTempBuffers();
-                perm = new TerrainPropPermBuffers();
-                render = new TerrainPropRenderingBuffers();
 
-                temp.Init(config);
-                perm.Init(config);
-                render.Init(perm.maxCombinedPermProps, config);
-                singleton = EntityManager.CreateEntity();
-                EntityManager.AddComponentObject(singleton, temp);
-                EntityManager.AddComponentObject(singleton, perm);
-                EntityManager.AddComponentObject(singleton, render);
+                if (config.props.Count > 0 && config.baked.Count > 0) {
+                    temp = new TerrainPropTempBuffers();
+                    perm = new TerrainPropPermBuffers();
+                    render = new TerrainPropRenderingBuffers();
+
+                    temp.Init(config);
+                    perm.Init(config);
+                    render.Init(perm.maxCombinedPermProps, config);
+                    singleton = EntityManager.CreateEntity();
+                    EntityManager.AddComponentObject(singleton, temp);
+                    EntityManager.AddComponentObject(singleton, perm);
+                    EntityManager.AddComponentObject(singleton, render);
+                } else {
+                    singleton = Entity.Null;
+                }
             }
         }
 
@@ -48,13 +53,15 @@ namespace jedjoud.VoxelTerrain.Segments {
             AsyncGPUReadback.WaitAllRequests();
 
             if (initialized) {
-                EntityManager.DestroyEntity(singleton);
-                temp.Dispose();
-                perm.Dispose();
-                render.Dispose();
-                temp = null;
-                perm = null;
-                render = null;
+                if (singleton != Entity.Null) {
+                    EntityManager.DestroyEntity(singleton);
+                    temp.Dispose();
+                    perm.Dispose();
+                    render.Dispose();
+                    temp = null;
+                    perm = null;
+                    render = null;
+                }
             }
         }
     }

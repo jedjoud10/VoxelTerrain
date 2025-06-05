@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain {
         public Vector3Int segmentExtentHigh = Vector3Int.one;
     }
 
-    class TerrainOctreeLoaderBaker : Baker<TerrainLoaderAuthoring> {
+    class TerrainLoaderBaker : Baker<TerrainLoaderAuthoring> {
         public override void Bake(TerrainLoaderAuthoring authoring) {
             AddComponent(GetEntity(TransformUsageFlags.Dynamic), new TerrainLoader {
                 octreeNodeFactor = authoring.octreeNodeFactor,
