@@ -25,6 +25,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         public void Execute() {
             newSegments.Clear();
 
+            // TODO: implement clustering algorithm to make this faster...
             for (int l = 0; l < loaders.Length; l++) {
                 TerrainLoader loader = loaders[l];
                 LocalTransform transform = loaderTransforms[l];
@@ -39,7 +40,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
                 int3 offset = (int3)math.round(center / worldSegmentSize);
 
-                // pls ooptimuze...
+                // TODO: pls ooptimuze...
                 for (int x = -c.x; x < c.x; x++) {
                     for (int y = -c.y; y < c.y; y++) {
                         for (int z = -c.z; z < c.z; z++) {

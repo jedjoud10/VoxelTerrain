@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using UnityEngine.Rendering;
+using UnityEditor.SceneManagement;
+
 
 
 
@@ -79,10 +81,15 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             // fix this pls...
-            AssetDatabase.ImportAsset(filePath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
             AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(filePath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
             AssetDatabase.Refresh();
+
             shader = AssetDatabase.LoadAssetAtPath<ComputeShader>(filePath);
+            EditorUtility.SetDirty(gameObject);
+            AssetDatabase.SaveAssets();
+            EditorSceneManager.SaveOpenScenes();
+
             //UnityEngine.Experimental.Rendering.ShaderWarmup.WarmupShader(shader, new UnityEngine.Experimental.Rendering.ShaderWarmupSetup() { vdecl = null });
 
             if (shader == null) {

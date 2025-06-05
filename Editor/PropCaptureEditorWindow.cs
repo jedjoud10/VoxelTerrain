@@ -4,6 +4,7 @@ using jedjoud.VoxelTerrain.Props;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Rendering;
 
 
 namespace jedjoud.VoxelTerrain.Editor {
@@ -55,6 +56,7 @@ namespace jedjoud.VoxelTerrain.Editor {
 
         const int AZIMUTH_ITERS = PropUtils.IMPOSTOR_CAPTURE_AZIMUTH_ITERATIONS;
 
+        // SHITS ITSELF WHEN URP RENDER SCALE IS LOWER!!!!
         private void CaptureMaps(PropType type) {
             GameObject cameraGO = new GameObject("TempCamera");
             cameraGO.layer = 31;
@@ -62,6 +64,9 @@ namespace jedjoud.VoxelTerrain.Editor {
             cam.backgroundColor = new Color(0,0,0,0);
             cam.clearFlags = CameraClearFlags.Color;
             cam.orthographic = true;
+            cam.targetDisplay = -1;
+            cam.cullingMask = 1 << 31;
+            cam.forceIntoRenderTexture = true;
 
             int width = type.impostorTextureWidth;
             int height = type.impostorTextureHeight;

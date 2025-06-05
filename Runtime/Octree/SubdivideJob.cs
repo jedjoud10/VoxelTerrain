@@ -26,9 +26,6 @@ namespace jedjoud.VoxelTerrain.Octree {
             }
         }
 
-
-        // Offsets used for octree generation
-        // Also mortonated!!!
         public static readonly int3[] OCTREE_CHILD_OFFSETS = new int3[] {
             new int3(0, 0, 0),
             new int3(1, 0, 0),
@@ -41,6 +38,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         };
 
         private bool InRangeOfLoaders(ref OctreeNode node) {
+            // TODO: implement clustering algorithm to make this faster...
             foreach (LocalTransform loader in loaders) {
                 float3 center = loader.Position;
 

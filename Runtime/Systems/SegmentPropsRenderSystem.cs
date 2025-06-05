@@ -130,10 +130,21 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetInt("_MaxVariantCountForType", type.variants.Count);
 
             Mesh mesh = type.instancedMesh;
+
+            if (mesh == null) {
+                Debug.LogWarning($"Missing instanced mesh for prop '{type.name}'");
+                return;
+            }
+
             Graphics.RenderMeshIndirect(renderParams, mesh, rendering.instancedDrawArgsBuffer, 1, i);
         }
 
         public void RenderImpostorPropsOfType(Camera cam, PropType type, int i) {
+            if (rendering.typeImpostorsTextureArrays[i].diffuse == null || rendering.typeImpostorsTextureArrays[i].normal == null || rendering.typeImpostorsTextureArrays[i].mask == null) {
+                Debug.LogWarning($"Missing captured impostor textures for prop '{type.name}' variant {i}");
+                return;
+            }
+
             RenderParams renderParams = new RenderParams(impostorMaterial);
             renderParams.shadowCastingMode = ShadowCastingMode.Off;
             renderParams.rendererPriority = -100;

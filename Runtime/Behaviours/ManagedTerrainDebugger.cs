@@ -6,7 +6,7 @@ using Unity.Mathematics;
 using Unity.Rendering;
 using UnityEngine;
 
-namespace jedjoud.VoxelTerrain.Generation {
+namespace jedjoud.VoxelTerrain {
     public class ManagedTerrainDebugger : MonoBehaviour {
         public bool debugGui;
         public bool debugChunkBounds;

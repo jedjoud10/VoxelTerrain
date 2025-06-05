@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace jedjoud.VoxelTerrain.Demo {
-    public class MainCameraGameObject : MonoBehaviour {
-        public static MainCameraGameObject instance;
+namespace jedjoud.VoxelTerrain {
+    public class ManagedTerrainMainCamera : MonoBehaviour {
+        public static ManagedTerrainMainCamera instance;
         void Awake() {
             instance = this;
         }
