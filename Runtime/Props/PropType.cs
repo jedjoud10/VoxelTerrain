@@ -6,16 +6,6 @@ namespace jedjoud.VoxelTerrain.Props {
     [CreateAssetMenu(menuName = "Voxel Terrain/Create new Voxel Prop")]
     public class PropType : ScriptableObject {
         [Serializable]
-        public class CullingSphereSettings {
-            public Vector3 position = Vector3.zero;
-            public float radius = 5;
-
-            public Vector4 ToVec4() {
-                return new Vector4(position.x, position.y, position.z, radius);
-            }
-        }
-
-        [Serializable]
         public class Variant {
             public GameObject prefab = null;
         }

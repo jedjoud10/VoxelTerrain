@@ -79,14 +79,14 @@ namespace jedjoud.VoxelTerrain.Octree {
                 return;
             }
 
-            EntityQuery loadersQuery = SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalTransform>().Build();
-            loaders = loadersQuery.ToComponentDataArray<LocalTransform>(Allocator.Persistent);
             TerrainReadySystems ready = SystemAPI.GetSingleton<TerrainReadySystems>();
 
             if (!ready.manager || !ready.mesher || !ready.readback) {
                 return;
             }
 
+            EntityQuery loadersQuery = SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalTransform>().Build();
+            loaders = loadersQuery.ToComponentDataArray<LocalTransform>(Allocator.Persistent);
 
             octree.nodes.Clear();
             octree.neighbourMasks.Clear();
@@ -164,6 +164,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             oldNodesSet.Dispose();
             newNodesSet.Dispose();
+            loaders.Dispose();
         }
     }
 }

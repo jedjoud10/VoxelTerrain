@@ -21,8 +21,8 @@ namespace jedjoud.VoxelTerrain.Segments {
         private NativeList<Entity> segmentsThatMustBeInEndOfPipe;
         private NativeList<Entity> segmentsToDestroy;
 
-        private NativeArray<LocalTransform> loaderTransforms;
-        private NativeArray<TerrainLoader> loaders;
+        private NativeList<LocalTransform> loaderTransforms;
+        private NativeList<TerrainLoader> loaders;
 
         private bool pending;
 
@@ -53,15 +53,13 @@ namespace jedjoud.VoxelTerrain.Segments {
             segmentsToDestroy = new NativeList<Entity>(Allocator.Persistent);
             pending = false;
 
-            loaders = default;
-            loaderTransforms = default;
+            loaders = new NativeList<TerrainLoader>(Allocator.Persistent);
+            loaderTransforms = new NativeList<LocalTransform>(Allocator.Persistent);
         }
 
         [BurstCompile]
         private void Complete(ref SystemState state) {
             handle.Complete();
-            loaders.Dispose();
-            loaderTransforms.Dispose();
 
             foreach (var segment in removedSegments) {
                 if (map.TryGetValue(segment, out Entity entity)) {
@@ -93,15 +91,18 @@ namespace jedjoud.VoxelTerrain.Segments {
             int maxSegmentsInWorld = (root.size / SegmentUtils.PHYSICAL_SEGMENT_SIZE) / 2;
 
             EntityQuery query =  SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalTransform>().Build();
-            loaders = query.ToComponentDataArray<TerrainLoader>(Allocator.Persistent);
-            loaderTransforms = query.ToComponentDataArray<LocalTransform>(Allocator.Persistent);
+
+            loaders.Clear();
+            loaderTransforms.Clear();
+            loaders.AddRange(query.ToComponentDataArray<TerrainLoader>(Allocator.Temp));
+            loaderTransforms.AddRange(query.ToComponentDataArray<LocalTransform>(Allocator.Temp));
 
             SegmentSpawnJob job = new SegmentSpawnJob {
                 addedSegments = addedSegments,
                 removedSegments = removedSegments,
 
-                loaders = loaders,
-                loaderTransforms = loaderTransforms,
+                loaders = loaders.AsArray(),
+                loaderTransforms = loaderTransforms.AsArray(),
 
                 newSegments = newSegments,
                 oldSegments = oldSegments,
@@ -164,6 +165,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             map.Dispose();
             segmentsToDestroy.Dispose();
             segmentsThatMustBeInEndOfPipe.Dispose();
+            loaderTransforms.Dispose();
+            loaders.Dispose();
         }
     }
 }

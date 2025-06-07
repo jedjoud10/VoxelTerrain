@@ -53,5 +53,9 @@ namespace jedjoud.VoxelTerrain.Props {
 
             return array;
         }
+
+        public bool IsValid() {
+            return diffuse != null && normal != null && mask != null;
+        }
     }
 }

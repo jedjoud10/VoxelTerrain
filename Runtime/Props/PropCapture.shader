@@ -13,6 +13,43 @@ Shader "Custom/PropCapture"
 
         Pass
         {
+            Name "DepthOnly"
+            Tags { "LightMode" = "DepthOnly" }
+
+            ZWrite On
+            ColorMask 0  // Disable color output
+
+            CGPROGRAM
+            #pragma vertex vert_depth
+            #pragma fragment frag_depth
+            #include "UnityCG.cginc"
+
+            struct appdata_depth
+            {
+                float4 vertex : POSITION;
+            };
+
+            struct v2f_depth
+            {
+                float4 pos : SV_POSITION;
+            };
+
+            v2f_depth vert_depth(appdata_depth v)
+            {
+                v2f_depth o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                return o;
+            }
+
+            half4 frag_depth(v2f_depth i) : SV_Target
+            {
+                return 0; // No color output
+            }
+            ENDCG
+        }
+
+        Pass
+        {
 
             CGPROGRAM
             #pragma vertex vert

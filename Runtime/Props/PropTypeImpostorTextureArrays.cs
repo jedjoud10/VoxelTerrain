@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Props {
@@ -14,6 +15,10 @@ namespace jedjoud.VoxelTerrain.Props {
             diffuse = type.impostorDiffuseMaps;
             normal = type.impostorNormalMaps;
             mask = type.impostorMaskMaps;
+        }
+
+        public bool IsValid() {
+            return diffuse != null && normal != null && mask != null;
         }
     }
 }

@@ -1,4 +1,5 @@
 using System.Linq;
+using Codice.Client.BaseCommands;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Entities;
 using UnityEngine;
@@ -41,6 +42,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             if (cam == null)
                 return;
 
+
             CommandBuffer cmds = new CommandBuffer();
             cmds.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
 
@@ -78,6 +80,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             // https://discussions.unity.com/t/setcomputefloatparams-does-not-work-with-commandbuffer/1650792
             float[] maxDistances = config.props.Select(type => type.instanceMaxDistance).ToArray();
             cmds.SetGlobalFloatArray("max_distances", maxDistances);
+            //cmds.SetComputeFloatParams(config.cull, "max_distances", maxDistances);
 
             float[] impostorDistancePercentage = config.props.Select(type => type.impostorDistancePercentage).ToArray();
             cmds.SetGlobalFloatArray("impostor_distance_percentage", impostorDistancePercentage);
@@ -109,6 +112,11 @@ namespace jedjoud.VoxelTerrain.Segments {
         }
 
         public void RenderInstancedPropsOfType(PropType type, int i) {
+            if (!rendering.typeInstanceTextureArrays[i].IsValid()) {
+                Debug.LogWarning($"Missing instanced textures for prop '{type.name}' variant {i}");
+                return;
+            }
+
             RenderParams renderParams = new RenderParams(instancedMaterial);
             renderParams.shadowCastingMode = type.renderInstancesShadow ? ShadowCastingMode.On : ShadowCastingMode.Off;
             renderParams.rendererPriority = -100;
@@ -140,7 +148,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         }
 
         public void RenderImpostorPropsOfType(Camera cam, PropType type, int i) {
-            if (rendering.typeImpostorsTextureArrays[i].diffuse == null || rendering.typeImpostorsTextureArrays[i].normal == null || rendering.typeImpostorsTextureArrays[i].mask == null) {
+            if (!rendering.typeImpostorsTextureArrays[i].IsValid()) {
                 Debug.LogWarning($"Missing captured impostor textures for prop '{type.name}' variant {i}");
                 return;
             }

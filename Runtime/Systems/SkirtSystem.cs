@@ -31,10 +31,12 @@ namespace jedjoud.VoxelTerrain {
                 float centerToCameraDot = math.dot(skirtCenterToCamera, skirtDirection);
                 bool frontFaceVisible = centerToCameraDot > 0f;
 
+                /*
                 float skirtNormalToCameraForwardDot = math.dot(skirtDirection, cameraForward);
                 bool visibleByCamera = skirtNormalToCameraForwardDot < 0f;
+                */
 
-                SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, frontFaceVisible && visibleByCamera);
+                SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, frontFaceVisible);
             }
 
             foreach (var (_, skirtEntity) in SystemAPI.Query<TerrainSkirt>().WithPresent<MaterialMeshInfo>().WithDisabled<TerrainSkirtVisibleTag>().WithEntityAccess()) {

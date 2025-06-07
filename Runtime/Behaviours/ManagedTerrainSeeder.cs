@@ -7,6 +7,11 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Vector3Int permutationSeed;
         public Vector3Int moduloSeed;
 
+        private void OnValidate() {
+            ComputeSecondarySeeds();
+            GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
+        }
+
         private void ComputeSecondarySeeds() {
             var random = new System.Random(seed);
             permutationSeed.x = random.Next(-1000, 1000);
