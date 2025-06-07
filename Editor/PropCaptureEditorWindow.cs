@@ -77,9 +77,9 @@ namespace jedjoud.VoxelTerrain.Editor {
             rt.depth = 24;
             cam.targetTexture = rt;
 
-            Texture2DArray diffuseMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, false);
-            Texture2DArray normalMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, false);
-            Texture2DArray maskMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.ARGB32, false);
+            Texture2DArray diffuseMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.DXT5, false);
+            Texture2DArray normalMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.DXT1, false);
+            Texture2DArray maskMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.DXT1, false);
             Texture2DArray[] tempOut = new Texture2DArray[3] { diffuseMapOut, normalMapOut, maskMapOut };
 
             try {
@@ -177,14 +177,14 @@ namespace jedjoud.VoxelTerrain.Editor {
                 cam.transform.rotation = camRot;
                 cam.Render();
 
-                Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.ARGB32, rt.useMipMap);
+                Texture2D compressed = new Texture2D(rt.width, rt.height, TextureFormat.ARGB32, false);
                 RenderTexture.active = rt;
-                GL.Flush();
-                tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-                output.CopyPixels(tex, 0, 0, variant * AZIMUTH_ITERS + azimuth, 0);
-
-                tex.Apply();
+                compressed.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+                compressed.Apply();
                 RenderTexture.active = null;
+                EditorUtility.CompressTexture(compressed, output.format, 5);
+                
+                output.CopyPixels(compressed, 0, 0, variant * AZIMUTH_ITERS + azimuth, 0);
             }
         }
 

@@ -4,7 +4,7 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain {
     public static class PropUtils {
         public const int IMPOSTOR_CAPTURE_AZIMUTH_ITERATIONS = 32;
-        
+
         public static void UnpackProp(BlittableProp prop, out float3 position, out float scale, out quaternion rotation, out byte variant) {
             position = new half3(prop.pos_x, prop.pos_y, prop.pos_z);
             scale = prop.scale;
