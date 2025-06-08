@@ -95,6 +95,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 tempBuffer = temp.tempBuffer,
                 tempBufferOffsetsBuffer = temp.tempBufferOffsetsBuffer,
                 segmentDensityTexture = segmentDensityTexture,
+                enabledPropsTypesFlag = (int)config.enabledPropTypesFlag,
             }, previous: fence);
 
             CommandBuffer cmds = new CommandBuffer();

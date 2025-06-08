@@ -65,7 +65,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hash: -1761390008
   dirty: 0
-  shader: {fileID: 7200000, guid: 55e5bc6630ac7ad4786b230b69a61640, type: 3}
+  shader: {fileID: 0}
 --- !u!114 &4781938216130763360
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -79,8 +79,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   seed: 1794
-  permutationSeed: {x: -664, y: -891, z: -5}
-  moduloSeed: {x: -999, y: 103, z: 44}
+  permutationSeed: {x: 914, y: -580, z: 504}
+  moduloSeed: {x: -51, y: -658, z: -337}
 --- !u!114 &5248115962012205478
 MonoBehaviour:
   m_ObjectHideFlags: 0

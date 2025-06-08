@@ -11,7 +11,6 @@ namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [UpdateAfter(typeof(OctreeSystem))]
     public partial struct ManagerSystem : ISystem {
-        private NativeHashMap<OctreeNode, Entity> chunks;
         private Entity chunkPrototype;
         private Entity skirtPrototype;
 
@@ -24,7 +23,6 @@ namespace jedjoud.VoxelTerrain {
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<TerrainManagerConfig>();
             state.RequireForUpdate<TerrainOctree>();
-            chunks = new NativeHashMap<OctreeNode, Entity>(0, Allocator.Persistent);
 
             EntityManager mgr = state.EntityManager;
             chunkPrototype = mgr.CreateEntity();
@@ -41,12 +39,14 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<Prefab>(chunkPrototype);
 
             mgr.SetComponentEnabled<TerrainChunkMesh>(chunkPrototype, false);
-            mgr.SetComponentEnabled<TerrainChunkVoxels>(chunkPrototype, false);
-            mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunkPrototype, false);
-            mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkPrototype, false);
+
+            // initial starting conditions: readback from GPU
+            mgr.SetComponentEnabled<TerrainChunkVoxels>(chunkPrototype, true);
+            mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunkPrototype, true);
             
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
@@ -93,23 +93,25 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-            RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
-            _ready.ValueRW.manager = chunksToShow.IsEmpty && chunksToDestroy.IsEmpty;
+            if (!SystemAPI.HasSingleton<TerrainManager>()) {
+                state.EntityManager.CreateSingleton<TerrainManager>(new TerrainManager {
+                    chunks = new NativeHashMap<OctreeNode, Entity>(0, Allocator.Persistent),
+                });
+            }
 
-            RefRW<TerrainManagerConfig> managerConfig = SystemAPI.GetSingletonRW<TerrainManagerConfig>();
-            managerConfig.ValueRW.chunkPrototype = chunkPrototype;
-            managerConfig.ValueRW.skirtPrototype = skirtPrototype;
+            ref TerrainManager manager = ref SystemAPI.GetSingletonRW<TerrainManager>().ValueRW;
 
+            ref TerrainReadySystems ready = ref SystemAPI.GetSingletonRW<TerrainReadySystems>().ValueRW;
+            ready.manager = chunksToShow.IsEmpty && chunksToDestroy.IsEmpty;
 
             TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
-            RefRW<TerrainOctree> _octree = SystemAPI.GetSingletonRW<TerrainOctree>();
-            ref TerrainOctree octree = ref _octree.ValueRW;
+            ref TerrainOctree octree = ref SystemAPI.GetSingletonRW<TerrainOctree>().ValueRW;
 
             if (!octree.pending && octree.handle.IsCompleted && octree.readyToSpawn) {
                 nextEndOfPipeCount = SystemAPI.QueryBuilder().WithAll<TerrainChunk>().WithAbsent<Prefab>().Build().CalculateEntityCount();
                 
                 foreach (var node in octree.removed) {
-                    if (chunks.TryGetValue(node, out var entity)) {
+                    if (manager.chunks.TryGetValue(node, out var entity)) {
                         chunksToDestroy.Add(entity);
                     }
                 }
@@ -119,7 +121,7 @@ namespace jedjoud.VoxelTerrain {
                         continue;
 
                     Entity entity = state.EntityManager.Instantiate(chunkPrototype);
-                    chunks.Add(node, entity);
+                    manager.chunks.Add(node, entity);
                     nextEndOfPipeCount++;
 
                     FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
@@ -137,10 +139,8 @@ namespace jedjoud.VoxelTerrain {
                         skirts = skirts,
                         generateCollisions = node.depth == octreeConfig.maxDepth,
                     });
-                    state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, true);
-                    state.EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, true);
-                    state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld() { Value = localToWorld });
 
+                    state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld() { Value = localToWorld });
 
                     state.EntityManager.SetComponentData<TerrainChunkVoxels>(entity, new TerrainChunkVoxels {
                         inner = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
@@ -155,7 +155,7 @@ namespace jedjoud.VoxelTerrain {
                     if (node.childBaseIndex != -1)
                         continue;
 
-                    if (chunks.TryGetValue(node, out var entity)) {
+                    if (manager.chunks.TryGetValue(node, out var entity)) {
                         RefRW<TerrainChunk> _chunk = SystemAPI.GetComponentRW<TerrainChunk>(entity);
                         ref TerrainChunk chunk = ref _chunk.ValueRW;
                         chunk.neighbourMask = octree.neighbourMasks[node.index];
@@ -176,8 +176,6 @@ namespace jedjoud.VoxelTerrain {
 
 
                 foreach (var entity in chunksToShow) {
-                    TerrainChunk chunk = state.EntityManager.GetComponentData<TerrainChunk>(entity);
-
                     if (SystemAPI.HasComponent<MaterialMeshInfo>(entity)) {
                         SystemAPI.SetComponentEnabled<MaterialMeshInfo>(entity, true);
                     }
@@ -211,7 +209,7 @@ namespace jedjoud.VoxelTerrain {
                     }
 
                     state.EntityManager.DestroyEntity(entity);
-                    chunks.Remove(chunk.node);
+                    manager.chunks.Remove(chunk.node);
                 }
 
 
@@ -233,7 +231,7 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state) {
-            chunks.Dispose();
+            SystemAPI.GetSingleton<TerrainManager>().chunks.Dispose();
             chunksToShow.Dispose();
             chunksToDestroy.Dispose();
 

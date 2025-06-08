@@ -2,10 +2,7 @@ using Unity.Entities;
 
 namespace jedjoud.VoxelTerrain {
     public struct TerrainManagerConfig : IComponentData {
-        public float ditherTransitionTime;
-        public int voxelSizeReduction;
-
-        public Entity chunkPrototype;
-        public Entity skirtPrototype;
+        //public float ditherTransitionTime;
+        //public int voxelSizeReduction;
     }
 }

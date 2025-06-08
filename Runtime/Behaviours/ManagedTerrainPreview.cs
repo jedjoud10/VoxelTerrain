@@ -72,6 +72,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
             }
 
+            if (Application.isPlaying) {
+                return;
+            }
+
 #if UNITY_EDITOR
             ManagedTerrainCompiler compiler = GetComponent<ManagedTerrainCompiler>();
             ManagedTerrainSeeder seeder = GetComponent<ManagedTerrainSeeder>();
@@ -83,6 +87,10 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             if (compiler.ctx == null) {
                 compiler.Parse();
+            }
+
+            if (compiler.shader == null) {
+                return;
             }
 
             PreviewExecutorParameters parameters = new PreviewExecutorParameters() {

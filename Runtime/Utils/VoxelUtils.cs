@@ -1,6 +1,4 @@
 using System.Runtime.CompilerServices;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
@@ -73,12 +71,11 @@ namespace jedjoud.VoxelTerrain {
             }
         }
 
-        // Convert an index to a 3D position
         // Order of increments: X, Z, Y
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint3 IndexToPos(int index, int size) {
             DebugCheckIndex(index, size);
-            
+
             // N(ABC) -> N(A) x N(BC)
             int y = index / (size * size);   // x in N(A)
             int w = index % (size * size);  // w in N(BC)
@@ -89,7 +86,6 @@ namespace jedjoud.VoxelTerrain {
             return (uint3)new int3(x, y, z);
         }
 
-        // Convert a 3D position into an index
         // Order of increments: X, Z, Y
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int PosToIndex(uint3 position, int size) {
@@ -97,7 +93,6 @@ namespace jedjoud.VoxelTerrain {
             return (int)(position.y * size * size + (position.z * size) + position.x);
         }
 
-        // Convert an index to a 2D position
         // Order of increments: X, Y
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint2 IndexToPos2D(int index, int size) {
@@ -105,7 +100,6 @@ namespace jedjoud.VoxelTerrain {
             return new uint2((uint)(index % size), (uint)(index / size));
         }
 
-        // Convert a 2D position into an index
         // Order of increments: X, Y
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int PosToIndex2D(uint2 position, int size) {
@@ -113,95 +107,10 @@ namespace jedjoud.VoxelTerrain {
             return (int)(position.x + position.y * size);
         }
 
-        // Custom modulo operator to discard negative numbers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint3 Mod(int3 val, int size) {
             int3 r = val % size;
             return (uint3)math.select(r, r + size, r < 0);
-        }
-
-
-        // Fetch the Voxels with neighbour data fallback, but consider ALL 26 neighbours, not just the ones in the positive axii
-        // Solely used for AO, since that needs to fetch data from all the neighbours
-        public static Voxel FetchVoxelNeighbours(int3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
-            // remap -1,1 to 0,2
-            position += new int3(PHYSICAL_CHUNK_SIZE);
-            int3 chunkPosition = position / PHYSICAL_CHUNK_SIZE;
-            int chunkIndex = PosToIndex((uint3)chunkPosition, 3);
-            int voxelIndex = PosToIndex((uint3)Mod(position, PHYSICAL_CHUNK_SIZE), SIZE);
-
-            unsafe {
-                Voxel* ptr = neighbours[chunkIndex];
-
-                if (chunkIndex == 13) {
-                    ptr = (Voxel*)voxels.GetUnsafeReadOnlyPtr<Voxel>();
-                }
-
-                if (ptr != null) {
-                    Voxel* offset = (ptr + voxelIndex);
-                    return *offset;
-                } else {
-                    //Debug.Log("Not good");
-                    //Debug.Log($"{chunkIndex}, {position}, {voxelIndex}");
-                    return Voxel.Empty;
-                }
-            }
-        }
-
-        // Check if a 2x2x2 region starting from a specific voxel is accessible
-        // Required for vertex job, corner job, quad job. Yk, meshing stuff
-        // TODO: PLEASE IMPROVE PERFORMANCE THIS IS HORRID. There's definitely a smarter way to tackle this lol
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckCubicVoxelPosition(int3 position, BitField32 mask) {
-            bool all = true;
-            for (int i = 0; i < 8; i++) {
-                all &= CheckPosition(position + (int3)IndexToPos(i, 2), mask);
-            }
-            return all;
-        }
-
-        // Checks if the given GLOBAL position (could be negative) is valid with the given neighbours
-        // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckPosition(int3 position, BitField32 mask) {
-            int3 temp1 = position + PHYSICAL_CHUNK_SIZE;
-
-            DebugCheckBounds(temp1, PHYSICAL_CHUNK_SIZE * 3);
-
-            int3 chunkPosition = temp1 / SIZE;
-
-            //Debug.Log(chunkPosition);
-            int index1 = PosToIndex((uint3)chunkPosition, 3);
-
-            return mask.IsSet(index1);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static half SampleDensityInterpolated(float3 position, ref NativeArray<Voxel> voxels, ref UnsafePtrList<Voxel> neighbours) {
-            float3 frac = math.frac(position);
-            int3 voxPos = (int3)math.floor(position);
-
-            float d000 = FetchVoxelNeighbours(voxPos, ref voxels, ref neighbours).density;
-            float d100 = FetchVoxelNeighbours(voxPos + math.int3(1, 0, 0), ref voxels, ref neighbours).density;
-            float d010 = FetchVoxelNeighbours(voxPos + math.int3(0, 1, 0), ref voxels, ref neighbours).density;
-            float d110 = FetchVoxelNeighbours(voxPos + math.int3(1, 1, 0), ref voxels, ref neighbours).density;
-
-            float d001 = FetchVoxelNeighbours(voxPos + math.int3(0, 0, 1), ref voxels, ref neighbours).density;
-            float d101 = FetchVoxelNeighbours(voxPos + math.int3(1, 0, 1), ref voxels, ref neighbours).density;
-            float d011 = FetchVoxelNeighbours(voxPos + math.int3(0, 1, 1), ref voxels, ref neighbours).density;
-            float d111 = FetchVoxelNeighbours(voxPos + math.int3(1, 1, 1), ref voxels, ref neighbours).density;
-
-            float mixed0 = math.lerp(d000, d100, frac.x);
-            float mixed1 = math.lerp(d010, d110, frac.x);
-            float mixed2 = math.lerp(d001, d101, frac.x);
-            float mixed3 = math.lerp(d011, d111, frac.x);
-
-            float mixed4 = math.lerp(mixed0, mixed2, frac.z);
-            float mixed5 = math.lerp(mixed1, mixed3, frac.z);
-
-            float mixed6 = math.lerp(mixed4, mixed5, frac.y);
-
-            return (half)mixed6;
         }
     }
 }

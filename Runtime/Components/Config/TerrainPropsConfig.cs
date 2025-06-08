@@ -18,6 +18,6 @@ namespace jedjoud.VoxelTerrain.Props {
         public ComputeShader apply;
         public Shader instancedShader;
         public Shader impostorShader;
-        public Mesh quad;
+        public EnabledTerrainPropsFlags enabledPropTypesFlag;
     }
 }

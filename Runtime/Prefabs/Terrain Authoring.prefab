@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 1126607872178056002}
   - component: {fileID: 6385058587415656688}
   - component: {fileID: 3986164134260396154}
+  - component: {fileID: 2353808753231899350}
   - component: {fileID: 8273521940356345146}
   m_Layer: 0
   m_Name: Terrain Authoring
@@ -48,7 +49,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 016d67e6a5967a14eb3ab83688f57532, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxDepth: 8
+  maxDepth: 4
 --- !u!114 &1126607872178056002
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -75,7 +76,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b8bba05c948cf264880aaf13a49e1f8d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  material: {fileID: 11400000, guid: 2bfefb5dc2ec0554582ccd900ab84b90, type: 2}
+  material: {fileID: 0}
 --- !u!114 &3986164134260396154
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -89,6 +90,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skipEmptyChunks: 1
+--- !u!114 &2353808753231899350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8238762861437603885}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4bf4005cb9de57499f94d166229a194, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &8273521940356345146
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -101,9 +114,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0bcf7f7ad9c1f34096793489a0ead41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  props: []
+  propTypes: []
   copy: {fileID: 7200000, guid: 661b6358b82faf64487edb48a2958782, type: 3}
   cull: {fileID: 7200000, guid: 36068719711b05b4aabd5888c9242d36, type: 3}
   apply: {fileID: 7200000, guid: 40b03aa1223e4884cbe519c38895077d, type: 3}
   instancedShader: {fileID: -6465566751694194690, guid: b86caac8878443b46af393e44ade8383, type: 3}
   impostorShader: {fileID: -6465566751694194690, guid: c1c0412cd6a41ca4a9268b9f01fb5805, type: 3}
+  enabledPropTypesFlag: -1

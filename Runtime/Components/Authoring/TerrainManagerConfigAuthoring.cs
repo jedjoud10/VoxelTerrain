@@ -15,8 +15,8 @@ namespace jedjoud.VoxelTerrain {
             Entity self = GetEntity(TransformUsageFlags.None);
 
             AddComponent(self, new TerrainManagerConfig {
-                voxelSizeReduction = authoring.voxelSizeReduction,
-                ditherTransitionTime = authoring.ditherTransitionTime
+                //voxelSizeReduction = authoring.voxelSizeReduction,
+                //ditherTransitionTime = authoring.ditherTransitionTime
             });
         }
     }

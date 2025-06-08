@@ -62,9 +62,14 @@ void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
         return;
     }
 
+
     float3 position = ConvertIntoWorldPosition(id);
     int dispatch = id.x;
     int type = SearchType(dispatch);
+
+    if (((enabled_props_flags >> type) & 1) == 0) {
+        return;
+    }
 ";
         }
     }

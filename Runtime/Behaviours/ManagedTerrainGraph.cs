@@ -27,18 +27,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                     prop.rotation.Handle(ctx);
                     prop.variant.Handle(ctx);
                     shouldSpawn.Handle(ctx);
-                    ctx.AddLine($@"
-// this is some very cool prop spawning call....
-if ({ctx[shouldSpawn]} && {type} < max_total_prop_types && {type} == type) {{
-    int index = 0;
-    InterlockedAdd(temp_counters_buffer[{type}], 1, index);
-    index += temp_buffer_offsets_buffer[{type}];
-    uint2 first = PackPositionAndScale({ctx[prop.position]}, {ctx[prop.scale]});
-    uint2 second = PackRotationAndVariant({ctx[prop.rotation]}, {ctx[prop.variant]});
-    temp_buffer[index] = uint4(first, second);
-}}
-");
-                    
+                    ctx.AddLine("// this is some very cool prop spawning call....");
+                    ctx.AddLine($"ConditionalSpawnPropOfType({ctx[shouldSpawn]}, type, {type}, {ctx[prop.position]}, {ctx[prop.scale]}, {ctx[prop.rotation]}, {ctx[prop.variant]});");                    
                 });
             }
 

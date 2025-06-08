@@ -44,6 +44,7 @@ SamplerState my_linear_clamp_sampler;
     int physical_segment_size;
     int segment_size;
     int segment_size_padded;
+    int enabled_props_flags;
     Texture3D<float> densities_texture_read;
     float3 segment_scale;
     float3 segment_offset;
@@ -178,6 +179,17 @@ SamplerState my_linear_clamp_sampler;
         //hitNormal = CalculateFiniteDiffedNormals(bestPos);
         hitPosition = bestPos;
         return true;
+    }
+
+    void ConditionalSpawnPropOfType(bool shouldSpawn, int targetType, int type, float3 position, float scale, float4 rotation, int variant) {
+        if (shouldSpawn && type < max_total_prop_types && targetType == type) {
+            int index = 0;
+            InterlockedAdd(temp_counters_buffer[type], 1, index);
+            index += temp_buffer_offsets_buffer[type];
+            uint2 first = PackPositionAndScale(position, scale);
+            uint2 second = PackRotationAndVariant(rotation, variant);
+            temp_buffer[index] = uint4(first, second);
+        }
     }
 #endif
 
