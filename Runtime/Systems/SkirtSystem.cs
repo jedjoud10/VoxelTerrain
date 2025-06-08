@@ -18,9 +18,9 @@ namespace jedjoud.VoxelTerrain {
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             Entity mainCamera = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
-            LocalTransform transform = SystemAPI.GetComponent<LocalTransform>(mainCamera);
-            float3 cameraCenter = transform.Position;
-            float3 cameraForward = transform.Forward();
+            LocalToWorld worldTransform = SystemAPI.GetComponent<LocalToWorld>(mainCamera);
+            float3 cameraCenter = worldTransform.Position;
+            float3 cameraForward = worldTransform.Forward;
             float chunkSize = VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
             foreach (var (localToWorld, skirt, skirtEntity) in SystemAPI.Query<LocalToWorld, TerrainSkirt>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisibleTag>().WithEntityAccess()) {
