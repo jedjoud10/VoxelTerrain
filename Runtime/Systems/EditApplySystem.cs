@@ -34,24 +34,29 @@ namespace jedjoud.VoxelTerrain.Edits {
         public void OnUpdate(ref SystemState state) {
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
 
-            TerrainEdits backing = SystemAPI.GetSingleton<TerrainEdits>();
-            ref NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = ref backing.chunkPositionsToChunkEditIndices;
-            ref UnsafeList<NativeArray<Voxel>> chunkEdits = ref backing.chunkEdits;
-            NativeArray<int3> editChunkPositions = chunkPositionsToChunkEditIndices.GetKeyArray(Allocator.Temp);
+            ref TerrainEdits backing = ref SystemAPI.GetSingletonRW<TerrainEdits>().ValueRW;
 
+            NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = backing.chunkPositionsToChunkEditIndices;
+            UnsafePtrList<Voxel> chunkEditsCopyRaw = new UnsafePtrList<Voxel>(backing.chunkPositionsToChunkEditIndices.Count, Allocator.Persistent);
+            unsafe {
+                foreach (var arr in backing.chunkEdits) {
+                    chunkEditsCopyRaw.Add(arr.GetUnsafeReadOnlyPtr());
+                }
+            }
 
             NativeArray<TerrainChunk> chunks = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
             NativeArray<Entity> chunkEntities = query.ToEntityArray(Allocator.Temp);
-            NativeList<Entity> modifiedChunkEntities = new NativeList<Entity>(Allocator.Temp);
+            NativeHashSet<Entity> modifiedChunkEntities = new NativeHashSet<Entity>(0, Allocator.Temp);
 
             // loop over all the chunks that are going to be meshed and check if we need to inject the custom edit data into them
             // stupid double for loop, should work tho
+            NativeArray<int3> editChunkPositions = chunkPositionsToChunkEditIndices.GetKeyArray(Allocator.Temp);
             for (int i = 0; i < chunks.Length; i++) {
                 MinMaxAABB chunkBounds = chunks[i].node.Bounds;
 
                 foreach (var editChunkPosition in editChunkPositions) {
                     float3 min = editChunkPosition * VoxelUtils.PHYSICAL_CHUNK_SIZE;
-                    float3 max = editChunkPosition * VoxelUtils.PHYSICAL_CHUNK_SIZE;
+                    float3 max = min + VoxelUtils.PHYSICAL_CHUNK_SIZE;
                     MinMaxAABB editChunkBounds = new MinMaxAABB(min, max);
 
                     if (chunkBounds.Overlaps(editChunkBounds))
@@ -59,35 +64,34 @@ namespace jedjoud.VoxelTerrain.Edits {
                 }
             }
 
-            UnsafePtrList<Voxel> chunkEditsRaw = new UnsafePtrList<Voxel>(chunkEdits.Length, Allocator.TempJob);
-            unsafe {
-                foreach (var what in chunkEdits) {
-                    chunkEditsRaw.Add(what.GetUnsafeReadOnlyPtr());
-                }
-            }
+            NativeList<JobHandle> allDependencies = new NativeList<JobHandle>(Allocator.Temp);
 
-            TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             foreach (var entity in modifiedChunkEntities) {
                 OctreeNode node = SystemAPI.GetComponent<TerrainChunk>(entity).node;
 
-                Debug.LogWarning($"Apply edit to chunk... {entity}");
-                NativeArray<Voxel> voxels = SystemAPI.GetComponent<TerrainChunkVoxels>(entity).inner;
-                //dstVoxels.CopyFrom(srcVoxels);
+                ref TerrainChunkVoxels voxels = ref SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity).ValueRW;
+                voxels.asyncWriteJob.Complete();
 
                 EditApplyJob job = new EditApplyJob {
                     chunkPositionsToChunkEditIndices = chunkPositionsToChunkEditIndices,
-                    chunkEditsRaw = chunkEditsRaw,
+                    chunkEditsRaw = chunkEditsCopyRaw,
 
                     chunkScale = node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE,
                     chunkOffset = node.position,
 
-                    voxels = voxels
+                    voxels = voxels.inner
                 };
 
-                job.Schedule(VoxelUtils.VOLUME, BatchUtils.REALLY_SMALLEST_BATCH).Complete();
+                JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.REALLY_SMALLEST_BATCH, voxels.asyncReadJob);
+                voxels.asyncReadJob = handle;
+                allDependencies.Add(voxels.asyncReadJob);
             }
 
-            chunkEditsRaw.Dispose();
+            JobHandle final = JobHandle.CombineDependencies(allDependencies.AsArray());
+            chunkEditsCopyRaw.Dispose(final);
+
+            JobHandle finalPlusLast = JobHandle.CombineDependencies(backing.applySystemHandle, final);
+            backing.applySystemHandle = finalPlusLast;
         }
     }
 }

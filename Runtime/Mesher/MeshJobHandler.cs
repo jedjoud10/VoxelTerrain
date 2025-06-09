@@ -44,12 +44,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             return jobHandle.IsCompleted && !Free && manager.Exists(entity);
         }
 
-        public void BeginJob(Entity entity, ref TerrainChunkVoxels chunkVoxels, JobHandle dependency) {
+        public void BeginJob(Entity entity, ref TerrainChunkVoxels chunkVoxels) {
             Free = false;
             this.entity = entity;
 
+            JobHandle dependency = chunkVoxels.asyncReadJob;
             dependency = new AsyncMemCpy<Voxel> { src = chunkVoxels.inner, dst = this.voxels }.Schedule(dependency);
             chunkVoxels.asyncReadJob = dependency;
+            chunkVoxels.meshingInProgress = true;
 
             code.Schedule(voxels, dependency);
             normals.Schedule(voxels, dependency);
@@ -82,6 +84,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 outChunkMesh = new Mesh();
                 Mesh.ApplyAndDisposeWritableMeshData(apply.array, outChunkMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
             }
+
+            TerrainChunkVoxels tmp = mgr.GetComponentData<TerrainChunkVoxels>(entity);
+            tmp.meshingInProgress = false;
+            mgr.SetComponentData(entity, tmp);
 
             stats = new Stats {
                 bounds = new Bounds() {

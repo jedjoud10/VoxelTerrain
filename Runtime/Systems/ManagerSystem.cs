@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Rendering;
 using Unity.Transforms;
+using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
@@ -182,13 +183,20 @@ namespace jedjoud.VoxelTerrain {
                     }
                 }
 
-                NativeList<TerrainUnregisterMeshBuffer> temp = new NativeList<TerrainUnregisterMeshBuffer>(Allocator.Temp);
+                NativeList<BatchMeshID> temp = new NativeList<BatchMeshID>(Allocator.Temp);
                 foreach (var entity in chunksToDestroy) {
                     TerrainChunk chunk = state.EntityManager.GetComponentData<TerrainChunk>(entity);
 
-                    NativeArray<Entity> skirts = chunk.skirts.ToNativeArray(Allocator.Temp);
-                    state.EntityManager.DestroyEntity(skirts);
-                    skirts.Dispose();
+                    for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
+                        Entity skirtEntity = chunk.skirts[skirtIndex];
+
+                        if (state.EntityManager.HasComponent<MaterialMeshInfo>(skirtEntity)) {
+                            MaterialMeshInfo matMeshInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(skirtEntity);
+                            temp.Add(matMeshInfo.MeshID);
+                        }
+
+                        state.EntityManager.DestroyEntity(skirtEntity);
+                    }
 
                     if (state.EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity)) {
                         TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
@@ -201,7 +209,11 @@ namespace jedjoud.VoxelTerrain {
                         TerrainChunkMesh mesh = state.EntityManager.GetComponentData<TerrainChunkMesh>(entity);
                         mesh.vertices.Dispose();
                         mesh.indices.Dispose();
-                        temp.Add(new TerrainUnregisterMeshBuffer { meshId = mesh.meshId });
+                    }
+
+                    if (state.EntityManager.HasComponent<MaterialMeshInfo>(entity)) {
+                        MaterialMeshInfo matMeshInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(entity);
+                        temp.Add(matMeshInfo.MeshID);
                     }
 
                     if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {
@@ -215,7 +227,10 @@ namespace jedjoud.VoxelTerrain {
 
 
                 DynamicBuffer<TerrainUnregisterMeshBuffer> unregisterBuffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
-                unregisterBuffer.AddRange(temp.AsArray());
+
+                foreach (var item in temp) {
+                    unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = item });
+                }
 
                 {
                     foreach (var (chunk, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
@@ -236,7 +251,6 @@ namespace jedjoud.VoxelTerrain {
             chunksToShow.Dispose();
             chunksToDestroy.Dispose();
 
-            NativeList<TerrainUnregisterMeshBuffer> temp = new NativeList<TerrainUnregisterMeshBuffer>(Allocator.Temp);
             foreach (var (_, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
                 if (state.EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity)) {
                     TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
@@ -249,7 +263,6 @@ namespace jedjoud.VoxelTerrain {
                     TerrainChunkMesh mesh = state.EntityManager.GetComponentData<TerrainChunkMesh>(entity);
                     mesh.vertices.Dispose();
                     mesh.indices.Dispose();
-                    temp.Add(new TerrainUnregisterMeshBuffer { meshId = mesh.meshId });
                 }
 
                 if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {
@@ -257,9 +270,6 @@ namespace jedjoud.VoxelTerrain {
                     collider.Value.Dispose();
                 }
             }
-
-            DynamicBuffer<TerrainUnregisterMeshBuffer> unregisterBuffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
-            unregisterBuffer.AddRange(temp.AsArray());
         }
     }
 }

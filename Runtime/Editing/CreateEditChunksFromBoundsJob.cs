@@ -12,8 +12,8 @@ namespace jedjoud.VoxelTerrain.Edits {
         public NativeArray<Unity.Mathematics.Geometry.MinMaxAABB> boundsArray;
 
         public NativeHashMap<int3, int> chunkPositionsToChunkEditIndices;
+        public NativeHashSet<int3> modifiedChunkEditPositions;
         public NativeList<int3> addedChunkEditPositions;
-        public NativeList<int3> modifiedChunkEditPositions;
 
         public void Execute() {
             int count = chunkPositionsToChunkEditIndices.Count;

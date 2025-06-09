@@ -7,5 +7,6 @@ namespace jedjoud.VoxelTerrain {
         public NativeArray<Voxel> inner;
         public JobHandle asyncWriteJob;
         public JobHandle asyncReadJob;
+        public bool meshingInProgress;
     }
 }

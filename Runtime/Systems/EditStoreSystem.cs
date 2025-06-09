@@ -15,6 +15,8 @@ namespace jedjoud.VoxelTerrain.Edits {
     [UpdateAfter(typeof(OctreeSystem))]
     [UpdateBefore(typeof(ManagerSystem))]
     public partial struct EditStoreSystem : ISystem {
+        const int MAX_EDITS_PER_TICK = 4;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<TerrainOctree>();
@@ -33,10 +35,15 @@ namespace jedjoud.VoxelTerrain.Edits {
             state.CompleteDependency();
             state.EntityManager.CompleteDependencyBeforeRO<TerrainOctree>();
 
-            TerrainEdits terrainEdits = SystemAPI.GetSingleton<TerrainEdits>();
+            TerrainEdits backing = SystemAPI.GetSingleton<TerrainEdits>();
 
-            ref NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = ref terrainEdits.chunkPositionsToChunkEditIndices;
-            ref UnsafeList<NativeArray<Voxel>> chunkEdits = ref terrainEdits.chunkEdits;
+            if (!backing.applySystemHandle.IsCompleted)
+                return;
+            
+            backing.applySystemHandle.Complete();
+
+            ref NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = ref backing.chunkPositionsToChunkEditIndices;
+            ref UnsafeList<NativeArray<Voxel>> chunkEdits = ref backing.chunkEdits;
 
             TerrainReadySystems ready = SystemAPI.GetSingleton<TerrainReadySystems>();
             TerrainManager manager = SystemAPI.GetSingleton<TerrainManager>();
@@ -46,36 +53,43 @@ namespace jedjoud.VoxelTerrain.Edits {
             if (!ready.readback || !ready.manager)
                 return;
 
-            NativeArray<MinMaxAABB> aabbs = new NativeArray<MinMaxAABB>(query.CalculateEntityCount(), Allocator.TempJob);
-            NativeArray<TerrainEdit> edits = query.ToComponentDataArray<TerrainEdit>(Allocator.Temp);
+            int numEdits = math.min(query.CalculateEntityCount(), MAX_EDITS_PER_TICK);
 
-            for (int i = 0; i < edits.Length; i++) {
+            NativeArray<MinMaxAABB> aabbs = new NativeArray<MinMaxAABB>(numEdits, Allocator.TempJob);
+            NativeArray<TerrainEdit> edits = query.ToComponentDataArray<TerrainEdit>(Allocator.Temp).GetSubArray(0, numEdits);
+            NativeArray<Entity> editEntities = query.ToEntityArray(Allocator.Temp).GetSubArray(0, numEdits);
+
+            for (int i = 0; i < numEdits; i++) {
                 aabbs[i] = MinMaxAABB.CreateFromCenterAndExtents(edits[i].center, 10);
             }
 
             // create edit chunks that will contain modified chunk data
             int previousCount = chunkPositionsToChunkEditIndices.Count;
-            NativeList<int3> modifiedChunkEditsPosition = new NativeList<int3>(Allocator.TempJob);
+            NativeHashSet<int3> modifiedChunkEditsPositionDedupped = new NativeHashSet<int3>(0, Allocator.TempJob);
             NativeList<int3> addedChunkEditPositions = new NativeList<int3>(Allocator.TempJob);
             CreateEditChunksFromBoundsJob createEditChunksJob = new CreateEditChunksFromBoundsJob {
                 boundsArray = aabbs,
                 chunkPositionsToChunkEditIndices = chunkPositionsToChunkEditIndices,
                 addedChunkEditPositions = addedChunkEditPositions,
-                modifiedChunkEditPositions = modifiedChunkEditsPosition
+                modifiedChunkEditPositions = modifiedChunkEditsPositionDedupped
             };
             createEditChunksJob.Schedule().Complete();
             aabbs.Dispose();
+
+
+            NativeArray<int3> modifiedChunkEditsPosition = modifiedChunkEditsPositionDedupped.ToNativeArray(Allocator.Temp);
+            modifiedChunkEditsPositionDedupped.Dispose();
 
             // add chunk edit backing native arrays (using LOD 0 chunks' voxel data as source)
             int addedCount = chunkPositionsToChunkEditIndices.Count - previousCount;
             for (int i = 0; i < addedCount; i++) {
                 int3 addedEditChunkPosition = addedChunkEditPositions[i];
-                Debug.Log($"Creating edit chunk {addedEditChunkPosition}");
+                //Debug.Log($"Creating edit chunk {addedEditChunkPosition}");
                 NativeArray<Voxel> editVoxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent);
                 OctreeNode node = OctreeNode.LeafLodZeroNode(addedEditChunkPosition, octreeConfig.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE);
 
                 if (manager.chunks.TryGetValue(node, out Entity chunk)) {
-                    Debug.Log($"Fetch voxel data of chunk... {chunk}");
+                    //Debug.Log($"Fetch voxel data of chunk... {chunk}");
                     TerrainChunkVoxels tmp = SystemAPI.GetComponent<TerrainChunkVoxels>(chunk);
                     NativeArray<Voxel> chunkVoxels = tmp.inner;
                     editVoxels.CopyFrom(chunkVoxels);
@@ -87,13 +101,17 @@ namespace jedjoud.VoxelTerrain.Edits {
                 chunkEdits.Add(editVoxels);
             }
 
+            addedChunkEditPositions.Dispose();
+
             // modify the editted terrain voxels with the new terrain edits
+            NativeArray<JobHandle> deps = new NativeArray<JobHandle>(modifiedChunkEditsPosition.Length, Allocator.Temp);
+            
             for (int i = 0; i < modifiedChunkEditsPosition.Length; i++) {
                 int3 editChunkPosition = modifiedChunkEditsPosition[i];
                 NativeArray<Voxel> editVoxels = chunkEdits[chunkPositionsToChunkEditIndices[editChunkPosition]];
 
                 // apply each edit for this *tick* in sequence
-                // in most cases, we won't have more than one edit per tick, but in case we do, we support it at least
+                JobHandle sequence = default;
                 for (int j = 0; j < edits.Length; j++) {
                     EditStoreJob editJob = new EditStoreJob {
                         center = edits[j].center,
@@ -101,11 +119,16 @@ namespace jedjoud.VoxelTerrain.Edits {
                         voxels = editVoxels,
                     };
 
-                    editJob.Schedule(VoxelUtils.VOLUME, BatchUtils.REALLY_SMALLEST_BATCH).Complete();
+                    // like a linked list kek
+                    sequence = editJob.Schedule(VoxelUtils.VOLUME, BatchUtils.REALLY_SMALLEST_BATCH, sequence);
                 }
 
-                Debug.Log($"Modfying edit chunk {editChunkPosition}");
+                deps[i] = sequence;
+
+                //Debug.Log($"Modfying edit chunk {editChunkPosition}");
             }
+
+            JobHandle.CompleteAll(deps);
 
             // notify the underlying chunks that contain these values
             // the EditApplySystem automatically applies the modified voxel values to the chunks, so we don't have to worry abt that
@@ -126,11 +149,9 @@ namespace jedjoud.VoxelTerrain.Edits {
                 }
             }
 
-            modifiedChunkEditsPosition.Dispose();
-            addedChunkEditPositions.Dispose();
-            state.EntityManager.DestroyEntity(query);
+            state.EntityManager.DestroyEntity(editEntities);
 
-            SystemAPI.SetSingleton<TerrainEdits>(terrainEdits);
+            SystemAPI.SetSingleton<TerrainEdits>(backing);
         }
     }
 }

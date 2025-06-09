@@ -16,7 +16,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateAfter(typeof(ReadbackSystem))]
     public partial class MeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
-        const int MESH_JOBS_PER_TICK = 2;
+        const int MAX_MESH_JOBS_PER_TICK = 2;
         private RenderMeshDescription mainMeshDescription;
         private RenderMeshDescription skirtsMeshDescription;
         private EntitiesGraphicsSystem graphics;
@@ -26,8 +26,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainMesherConfig>();
-            handlers = new List<MeshJobHandler>(MESH_JOBS_PER_TICK);
-            for (int i = 0; i < MESH_JOBS_PER_TICK; i++) {
+            handlers = new List<MeshJobHandler>(MAX_MESH_JOBS_PER_TICK);
+            for (int i = 0; i < MAX_MESH_JOBS_PER_TICK; i++) {
                 handlers.Add(new MeshJobHandler());
             }
 
@@ -66,16 +66,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             _ready.ValueRW.mesher = ready;
 
             if (SystemAPI.ManagedAPI.TryGetSingleton<TerrainMesherConfig>(out TerrainMesherConfig config) && graphics == null) {
-                Material mainMeshMaterial = new Material(config.material.material);
-
+                //Material mainMeshMaterial = new Material(config.material.material);
+                /*
                 Material skirtMeshMaterial = new Material(config.material.material);
 
                 LocalKeyword keyword = skirtMeshMaterial.shader.keywordSpace.FindKeyword("_SKIRT");
                 skirtMeshMaterial.SetKeyword(keyword, true);
+                */
 
                 graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
-                mainMeshMaterialId = graphics.RegisterMaterial(mainMeshMaterial);
-                skirtMeshMaterialId = graphics.RegisterMaterial(skirtMeshMaterial);
+                mainMeshMaterialId = graphics.RegisterMaterial(config.material.material);
+                skirtMeshMaterialId = graphics.RegisterMaterial(config.material.material);
             }
 
             foreach (var handler in handlers) {
@@ -96,6 +97,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
             }
 
+            
             for (int i = 0; i < numChunksToProcess; i++) {
                 MeshJobHandler handler = freeHandlers[i];
                 Entity chunkEntity = entitiesArray[i];
@@ -103,7 +105,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(chunkEntity);
 
                 Profiler.BeginSample("Begin Mesh Jobs");
-                handler.BeginJob(chunkEntity, ref _voxels.ValueRW, default);
+                handler.BeginJob(chunkEntity, ref _voxels.ValueRW);
                 Profiler.EndSample();
 
                 SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, false);
@@ -126,6 +128,29 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity))
                         SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
                     return;
+                }
+
+                if (EntityManager.HasComponent<TerrainChunkMesh>(chunkEntity)) {
+                    DynamicBuffer<TerrainUnregisterMeshBuffer> unregisterBuffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
+                    TerrainChunkMesh tmpMesh = EntityManager.GetComponentData<TerrainChunkMesh>(chunkEntity);
+                    tmpMesh.vertices.Dispose();
+                    tmpMesh.indices.Dispose();
+
+                    if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity)) {
+                        MaterialMeshInfo matMeshInf = SystemAPI.GetComponent<MaterialMeshInfo>(chunkEntity);
+                        unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = matMeshInf.MeshID });
+                        EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+                    }
+
+                    for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
+                        Entity skirtEntity = chunk.skirts[skirtIndex];
+
+                        if (SystemAPI.HasComponent<MaterialMeshInfo>(skirtEntity)) {
+                            MaterialMeshInfo matMeshInf = SystemAPI.GetComponent<MaterialMeshInfo>(skirtEntity);
+                            unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = matMeshInf.MeshID });
+                            EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                        }
+                    }
                 }
 
                 OctreeNode node = chunk.node;
@@ -158,7 +183,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     EntityManager.SetComponentData<TerrainChunkMesh>(chunkEntity, new TerrainChunkMesh {
                         vertices = vertices,
                         indices = indices,
-                        meshId = meshId,
                     });
 
                     EntityManager.SetComponentData<RenderBounds>(chunkEntity, new RenderBounds() {

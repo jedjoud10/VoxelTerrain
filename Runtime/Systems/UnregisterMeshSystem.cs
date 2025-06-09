@@ -19,7 +19,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             var buffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
 
             foreach (var cleanup in buffer) {
-                graphics.UnregisterMesh(cleanup.meshId);
+                if (graphics.GetMesh(cleanup.meshId) != null) {
+                    graphics.UnregisterMesh(cleanup.meshId);
+                }
             }
 
             buffer.Clear();
