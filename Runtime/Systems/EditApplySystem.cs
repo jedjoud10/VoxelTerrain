@@ -1,4 +1,3 @@
-using System;
 using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
@@ -8,8 +7,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
 using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {

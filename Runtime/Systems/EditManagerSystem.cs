@@ -1,14 +1,8 @@
-using System;
-using jedjoud.VoxelTerrain.Octree;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
-using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]

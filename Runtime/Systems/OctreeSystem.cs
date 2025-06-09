@@ -83,8 +83,12 @@ namespace jedjoud.VoxelTerrain.Octree {
             }
 
             EntityQuery loadersQuery = SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalToWorld>().Build();
-
             NativeArray<LocalToWorld> transforms = loadersQuery.ToComponentDataArray<LocalToWorld>(Allocator.Temp);
+            bool shouldUpdate = MultiLoaderUtils.ShouldUpdateDueToChangedTransforms(transforms, loaders);
+
+            if (!shouldUpdate)
+                return;
+
             loaders.Clear();
             foreach (var transform in transforms) {
                 loaders.Add(transform.Position);
@@ -139,7 +143,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             };
 
             JobHandle subdivideJobHandle = job.Schedule();
-            JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(octree.nodes, 64, subdivideJobHandle);
+            JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(octree.nodes, 256, subdivideJobHandle);
 
             JobHandle setJobHandle = toHashSetJob.Schedule(neighbourJobHandle);
             JobHandle addedJobHandle = addedDiffJob.Schedule(setJobHandle);

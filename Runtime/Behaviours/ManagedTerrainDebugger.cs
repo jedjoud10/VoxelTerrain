@@ -51,6 +51,7 @@ namespace jedjoud.VoxelTerrain {
             Label($"# of chunk entities with a mesh: {meshedChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
 
+            /*
             if (system.initialized) {
                 TerrainPropPermBuffers.DebugCounts[] counts = system.perm.GetCounts(system.config, system.temp, system.render);
                 for (int i = 0; i < counts.Length; i++) {
@@ -67,6 +68,7 @@ namespace jedjoud.VoxelTerrain {
                     Label($"");
                 }
             }
+            */
 
 
             EntityQuery readySystems = world.EntityManager.CreateEntityQuery(typeof(TerrainReadySystems));

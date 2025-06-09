@@ -45,10 +45,12 @@ namespace jedjoud.VoxelTerrain {
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkPrototype, false);
 
-            // initial starting conditions: readback from GPU
+            // initial starting conditions: readback from GPU, then do meshing, then do collisions
             mgr.SetComponentEnabled<TerrainChunkVoxels>(chunkPrototype, true);
             mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunkPrototype, true);
-            
+            mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, true);
+            mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkPrototype, true);
+
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
             mgr.AddComponent<TerrainSkirt>(skirtPrototype);
@@ -138,9 +140,18 @@ namespace jedjoud.VoxelTerrain {
                     state.EntityManager.SetComponentData<TerrainChunk>(entity, new TerrainChunk {
                         node = node,
                         skirts = skirts,
-                        generateCollisions = node.depth == octreeConfig.maxDepth,
+                    });
+
+
+                    state.EntityManager.SetComponentData<TerrainChunkRequestReadbackTag>(entity, new TerrainChunkRequestReadbackTag {
+                        skipMeshingIfEmpty = true,
+                    });
+
+                    state.EntityManager.SetComponentData<TerrainChunkRequestMeshingTag>(entity, new TerrainChunkRequestMeshingTag {
                         deferredVisibility = true,
                     });
+
+                    state.EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, node.depth == octreeConfig.maxDepth);
 
                     state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld() { Value = localToWorld });
 

@@ -111,8 +111,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                 // Disable the tag component since we won't need to readback anymore
                 EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
-                EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, false);
-                EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, false);
             }
 
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
@@ -199,8 +197,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (pendingCopies.HasValue && pendingCopies.Value.IsCompleted && countersFetched && voxelsFetched) {
                 pendingCopies.Value.Complete();
 
-                bool skipEmptyChunks = SystemAPI.GetSingleton<TerrainReadbackConfig>().skipEmptyChunks;
-
                 // Since we now fetch n+2 voxels (66^3) we can actually use the pos/neg optimizations
                 // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
                 // heheheha....
@@ -209,21 +205,20 @@ namespace jedjoud.VoxelTerrain.Generation {
                     Entity entity = entities[j];
 
                     int max = VoxelUtils.VOLUME;
-                    bool skipped = count == max || count == -max;
-
+                    bool empty = count == max || count == -max;
+                    bool skipIfEmpty = EntityManager.GetComponentData<TerrainChunkRequestReadbackTag>(entity).skipMeshingIfEmpty;
+                    
                     // Voxel data is always ready no matter what
                     EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
 
                     // Skip empty chunks!!!
-                    if (skipEmptyChunks && skipped) {
+                    if (empty && skipIfEmpty) {
                         EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, false);
-                        EntityManager.SetComponentEnabled<TerrainChunkMesh>(entity, false);
 
                         // this chunk will directly go to the end of pipe, no need to deal with it anymore
                         EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, true);
                     } else {
                         EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
-                        EntityManager.SetComponentEnabled<TerrainChunkMesh>(entity, false);
                     }
                 }
 

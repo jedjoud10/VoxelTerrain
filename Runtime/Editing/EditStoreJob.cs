@@ -21,11 +21,8 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             float sphere = math.length(worldPosition - center) - 5;
 
-            if (sphere < 0) {
-                density = -sphere;
-            }
-
-            //density = -math.max(density, -sphere);
+            density = math.max(density, -sphere);
+            
 
 
             voxel.density = (half)(density);

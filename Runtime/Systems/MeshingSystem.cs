@@ -16,7 +16,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateAfter(typeof(ReadbackSystem))]
     public partial class MeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
-        const int MAX_MESH_JOBS_PER_TICK = 2;
+        const int MAX_MESH_JOBS_PER_TICK = 8;
         private RenderMeshDescription mainMeshDescription;
         private RenderMeshDescription skirtsMeshDescription;
         private EntitiesGraphicsSystem graphics;
@@ -117,6 +117,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         private void FinishJob(MeshJobHandler handler) {
             if (handler.TryComplete(EntityManager, out Mesh mesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
+               
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, true);
 
                 // we MUST take a copy of TerrainChunk here (we cannot use GetComponentRW)
@@ -168,48 +169,41 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 worldRenderBounds.Center += (float3)node.position;
                 worldRenderBounds.Extents *= scalingFactor;
 
-                if (stats.indexCount > 0) {
-                    EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkEntity, chunk.generateCollisions);
-                    RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
-                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, !chunk.deferredVisibility);
+                bool deferredVisibility = EntityManager.GetComponentData<TerrainChunkRequestMeshingTag>(chunkEntity).deferredVisibility;
+                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
+                EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, !deferredVisibility);
 
-                    NativeArray<float3> vertices = new NativeArray<float3>(stats.vertices.Length, Allocator.Persistent);
-                    NativeArray<int> indices = new NativeArray<int>(stats.indices.Length, Allocator.Persistent);
+                NativeArray<float3> vertices = new NativeArray<float3>(stats.vertices.Length, Allocator.Persistent);
+                NativeArray<int> indices = new NativeArray<int>(stats.indices.Length, Allocator.Persistent);
 
-                    vertices.CopyFrom(stats.vertices);
-                    indices.CopyFrom(stats.indices);
+                vertices.CopyFrom(stats.vertices);
+                indices.CopyFrom(stats.indices);
 
-                    EntityManager.SetComponentEnabled<TerrainChunkMesh>(chunkEntity, true);
-                    EntityManager.SetComponentData<TerrainChunkMesh>(chunkEntity, new TerrainChunkMesh {
-                        vertices = vertices,
-                        indices = indices,
-                    });
+                EntityManager.SetComponentEnabled<TerrainChunkMesh>(chunkEntity, true);
+                EntityManager.SetComponentData<TerrainChunkMesh>(chunkEntity, new TerrainChunkMesh {
+                    vertices = vertices,
+                    indices = indices,
+                });
 
-                    EntityManager.SetComponentData<RenderBounds>(chunkEntity, new RenderBounds() {
-                        Value = localRenderBounds,
-                    });
+                EntityManager.SetComponentData<RenderBounds>(chunkEntity, new RenderBounds() {
+                    Value = localRenderBounds,
+                });
 
-                    EntityManager.SetComponentData<WorldRenderBounds>(chunkEntity, new WorldRenderBounds() {
-                        Value = worldRenderBounds
-                    });
-                } else {
-                    if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity))
-                        SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+                EntityManager.SetComponentData<WorldRenderBounds>(chunkEntity, new WorldRenderBounds() {
+                    Value = worldRenderBounds
+                });
+
+                if (stats.indexCount == 0) {
+                    SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
                 }
 
                 for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
                     Entity skirtEntity = chunk.skirts[skirtIndex];
 
-                    if (stats.forcedSkirtFacesTriCount[skirtIndex] == 0) {
-                        if (SystemAPI.HasComponent<MaterialMeshInfo>(skirtEntity))
-                            SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
-                        continue;
-                    }
-
                     MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(skirtMeshMaterialId, meshId, (ushort)(skirtIndex + 1));
                     RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
 
-                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, !chunk.deferredVisibility);
+                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, !deferredVisibility);
 
                     EntityManager.SetComponentData<RenderBounds>(skirtEntity, new RenderBounds() {
                         Value = localRenderBounds,
@@ -218,6 +212,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     EntityManager.SetComponentData<WorldRenderBounds>(skirtEntity, new WorldRenderBounds() {
                         Value = worldRenderBounds
                     });
+
+                    if (stats.forcedSkirtFacesTriCount[skirtIndex] == 0) {
+                        SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                    }
                 }
             }
         }

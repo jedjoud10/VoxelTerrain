@@ -1,4 +1,3 @@
-using System;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Burst;
 using Unity.Collections;
@@ -6,7 +5,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Transforms;
 using UnityEngine;
 using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
@@ -144,8 +142,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                     SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, false);
                     SystemAPI.SetComponentEnabled<TerrainChunkVoxels>(entity, true);
                     SystemAPI.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
-                    ref TerrainChunk chunk = ref SystemAPI.GetComponentRW<TerrainChunk>(entity).ValueRW;
-                    chunk.deferredVisibility = false;
+                    SystemAPI.GetComponentRW<TerrainChunkRequestMeshingTag>(entity).ValueRW.deferredVisibility = false;
                 }
             }
 

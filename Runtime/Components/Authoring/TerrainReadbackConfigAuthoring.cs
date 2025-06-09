@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
     class TerrainReadbackConfigAuthoring : MonoBehaviour {
-        public bool skipEmptyChunks;
     }
 
     class TerrainReadbackConfigBaker : Baker<TerrainReadbackConfigAuthoring> {
@@ -11,7 +10,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             Entity self = GetEntity(TransformUsageFlags.None);
 
             AddComponent(self, new TerrainReadbackConfig {
-                skipEmptyChunks = authoring.skipEmptyChunks,
             });
         }
     }
