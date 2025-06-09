@@ -36,6 +36,17 @@ namespace jedjoud.VoxelTerrain.Octree {
             return node;
         }
 
+        public static OctreeNode LeafLodZeroNode(int3 chunkPosition, int maxDepth, int chunkSize) {
+            return new OctreeNode {
+                size = chunkSize,
+                childBaseIndex = -1,
+                depth = maxDepth,
+                index = -1,
+                parentIndex = -1,
+                position = chunkPosition * chunkSize,
+            };
+        }
+
         public bool Equals(OctreeNode other) {
             return math.all(this.position == other.position) &&
                 this.depth == other.depth &&

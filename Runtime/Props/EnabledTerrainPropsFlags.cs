@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.InteropServices;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Props {
     [Flags]

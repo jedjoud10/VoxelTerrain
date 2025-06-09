@@ -43,15 +43,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-
+        [BurstCompile]
         public void OnCreate(ref SystemState state) {
             batches = new NativeList<PendingBatchBakeRequest>(Allocator.Persistent);
         }
 
         [BurstCompile]
         public  void OnUpdate(ref SystemState state) {
+            /*
             TryCompleteOldBatches(ref state);
             TryFetchNewBatch(ref state);
+            */
         }
 
         [BurstCompile]

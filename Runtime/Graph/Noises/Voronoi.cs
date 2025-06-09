@@ -11,7 +11,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
         }
 
-        public Voronoi<T>.Type type;
+        public VoronoiType type;
 
 
         public override void HandleInternal(TreeContext context) {
@@ -21,11 +21,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             string fn = "";
 
             switch (type) {
-                case Voronoi<T>.Type.F1:
+                case VoronoiType.F1:
                     fn = "cellular";
                     suffix = ".x - 0.5";
                     break;
-                case Voronoi<T>.Type.F2:
+                case VoronoiType.F2:
                     fn = "cellular";
                     suffix = ".y - 0.5";
                     break;
@@ -36,29 +36,30 @@ namespace jedjoud.VoxelTerrain.Generation {
             context.DefineAndBindNode<float>(this, $"{context[position]}_noised", value);
         }
     }
+
+    public enum VoronoiType {
+        F1,
+        F2,
+    }
+
     public class Voronoi<T> : AbstractNoise<T> {
         public Variable<float> amplitude;
         public Variable<T> scale;
-        public Type type;
-
-        public enum Type {
-            F1,
-            F2,
-        }
+        public VoronoiType type;
 
         public Voronoi() {
             this.amplitude = 1.0f;
             scale = GraphUtils.One<T>() * (Variable<float>.Const(0.01f)).Broadcast<T>();
-            this.type = Type.F1;
+            this.type = VoronoiType.F1;
         }
 
-        public Voronoi(Variable<float> scale, Variable<float> amplitude, Type type = Type.F1) {
+        public Voronoi(Variable<float> scale, Variable<float> amplitude, VoronoiType type = VoronoiType.F1) {
             this.amplitude = amplitude;
             this.scale = scale.Broadcast<T>();
             this.type = type;
         }
 
-        public Voronoi(Variable<T> scale, Variable<float> amplitude, Type type = Type.F1) {
+        public Voronoi(Variable<T> scale, Variable<float> amplitude, VoronoiType type = VoronoiType.F1) {
             this.amplitude = amplitude;
             this.scale = scale;
             this.type = type;

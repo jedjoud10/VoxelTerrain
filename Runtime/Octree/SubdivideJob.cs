@@ -11,7 +11,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public NativeList<BitField32> neighbourMasks;
         public OctreeNode root;
 
-        public NativeArray<LocalTransform> loaders;
+        public NativeList<float3> loaders;
 
         [ReadOnly] public int maxDepth;
 
@@ -39,9 +39,7 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         private bool InRangeOfLoaders(ref OctreeNode node) {
             // TODO: implement clustering algorithm to make this faster...
-            foreach (LocalTransform loader in loaders) {
-                float3 center = loader.Position;
-
+            foreach (float3 center in loaders) {
                 // pls add me back...
                 float factor = math.clamp(1.8f, 1f, 2f);
 

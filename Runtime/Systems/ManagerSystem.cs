@@ -138,6 +138,7 @@ namespace jedjoud.VoxelTerrain {
                         node = node,
                         skirts = skirts,
                         generateCollisions = node.depth == octreeConfig.maxDepth,
+                        deferredVisibility = true,
                     });
 
                     state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld() { Value = localToWorld });

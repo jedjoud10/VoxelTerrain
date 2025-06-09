@@ -31,23 +31,23 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public static Variable<float> VoronoiF1<T>(Variable<T> input, Variable<T> scale, Variable<float> amplitude) {
-            return new Voronoi<T>(scale, amplitude, Voronoi<T>.Type.F1).Evaluate(input);
+            return new Voronoi<T>(scale, amplitude, VoronoiType.F1).Evaluate(input);
         }
 
         public static Variable<float> VoronoiF2<T>(Variable<T> input, Variable<T> scale, Variable<float> amplitude) {
-            return new Voronoi<T>(scale, amplitude, Voronoi<T>.Type.F2).Evaluate(input);
+            return new Voronoi<T>(scale, amplitude, VoronoiType.F2).Evaluate(input);
         }
 
         public static Variable<float> VoronoiF1<T>(Variable<T> input, Variable<float> scale, Variable<float> amplitude) {
-            return new Voronoi<T>(scale, amplitude, Voronoi<T>.Type.F1).Evaluate(input);
+            return new Voronoi<T>(scale, amplitude, VoronoiType.F1).Evaluate(input);
         }
 
         public static Variable<float> VoronoiF2<T>(Variable<T> input, Variable<float> scale, Variable<float> amplitude) {
-            return new Voronoi<T>(scale, amplitude, Voronoi<T>.Type.F2).Evaluate(input);
+            return new Voronoi<T>(scale, amplitude, VoronoiType.F2).Evaluate(input);
         }
 
         public static Variable<O> Random<I, O>(Variable<I> input, bool signed = false) {
-            return jedjoud.VoxelTerrain.Generation.Random.Evaluate<I, O>(input, signed);
+            return Generation.Random.Evaluate<I, O>(input, signed);
         }
     }
 }

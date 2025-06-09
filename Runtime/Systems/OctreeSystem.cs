@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
 using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Octree {
@@ -10,7 +11,7 @@ namespace jedjoud.VoxelTerrain.Octree {
     public partial struct OctreeSystem : ISystem {
         private NativeHashSet<OctreeNode> oldNodesSet;
         private NativeHashSet<OctreeNode> newNodesSet;
-        private NativeArray<LocalTransform> loaders;
+        private NativeList<float3> loaders;
 
         private bool initialized;
 
@@ -24,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             oldNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             newNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             initialized = false;
-            loaders = default;
+            loaders = new NativeList<float3>(0, Allocator.Persistent);
         }
 
         private TerrainOctree InitOctree() {
@@ -61,13 +62,10 @@ namespace jedjoud.VoxelTerrain.Octree {
             TerrainOctreeConfig config = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             int maxDepth = config.maxDepth;
 
-            RefRW<TerrainOctree> _octree = SystemAPI.GetSingletonRW<TerrainOctree>();
-            ref TerrainOctree octree = ref _octree.ValueRW;
+            ref TerrainOctree octree = ref SystemAPI.GetSingletonRW<TerrainOctree>().ValueRW;
 
             if (octree.handle.IsCompleted && octree.pending) {
                 octree.handle.Complete();
-                loaders.Dispose();
-                loaders = default;
                 octree.continuous = false;
                 octree.pending = false;
                 octree.readyToSpawn = true;
@@ -84,8 +82,14 @@ namespace jedjoud.VoxelTerrain.Octree {
                 return;
             }
 
-            EntityQuery loadersQuery = SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalTransform>().Build();
-            loaders = loadersQuery.ToComponentDataArray<LocalTransform>(Allocator.Persistent);
+            EntityQuery loadersQuery = SystemAPI.QueryBuilder().WithAll<TerrainLoader, LocalToWorld>().Build();
+
+            NativeArray<LocalToWorld> transforms = loadersQuery.ToComponentDataArray<LocalToWorld>(Allocator.Temp);
+            loaders.Clear();
+            foreach (var transform in transforms) {
+                loaders.Add(transform.Position);
+            }
+
 
             octree.nodes.Clear();
             octree.neighbourMasks.Clear();

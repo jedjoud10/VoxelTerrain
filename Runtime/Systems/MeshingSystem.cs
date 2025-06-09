@@ -117,13 +117,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (handler.TryComplete(EntityManager, out Mesh mesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, true);
 
-                if (stats.empty)
-                    return;
-
                 // we MUST take a copy of TerrainChunk here (we cannot use GetComponentRW)
                 // because we execute RenderMeshUtility.AddComponents right after
                 // RenderMeshUtility.AddComponents changes the archetype of the chunk entity, invalidating the reference we hold to TerrainChunk
                 TerrainChunk chunk = SystemAPI.GetComponent<TerrainChunk>(chunkEntity);
+
+                if (stats.empty) {
+                    if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity))
+                        SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+                    return;
+                }
+
                 OctreeNode node = chunk.node;
                 
                 BatchMeshID meshId = graphics.RegisterMesh(mesh);
@@ -140,11 +144,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 worldRenderBounds.Extents *= scalingFactor;
 
                 if (stats.indexCount > 0) {
-
                     EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkEntity, chunk.generateCollisions);
                     RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
-
-                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, !chunk.deferredVisibility);
 
                     NativeArray<float3> vertices = new NativeArray<float3>(stats.vertices.Length, Allocator.Persistent);
                     NativeArray<int> indices = new NativeArray<int>(stats.indices.Length, Allocator.Persistent);
@@ -166,18 +168,24 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     EntityManager.SetComponentData<WorldRenderBounds>(chunkEntity, new WorldRenderBounds() {
                         Value = worldRenderBounds
                     });
+                } else {
+                    if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity))
+                        SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
                 }
 
                 for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
-                    if (stats.forcedSkirtFacesTriCount[skirtIndex] == 0)
-                        continue;
-                    
                     Entity skirtEntity = chunk.skirts[skirtIndex];
+
+                    if (stats.forcedSkirtFacesTriCount[skirtIndex] == 0) {
+                        if (SystemAPI.HasComponent<MaterialMeshInfo>(skirtEntity))
+                            SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                        continue;
+                    }
 
                     MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(skirtMeshMaterialId, meshId, (ushort)(skirtIndex + 1));
                     RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
 
-                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                    EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, !chunk.deferredVisibility);
 
                     EntityManager.SetComponentData<RenderBounds>(skirtEntity, new RenderBounds() {
                         Value = localRenderBounds,

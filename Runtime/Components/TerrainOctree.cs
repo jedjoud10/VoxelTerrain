@@ -1,6 +1,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Octree {
     public struct TerrainOctree : IComponentData {

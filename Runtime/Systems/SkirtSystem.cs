@@ -23,7 +23,7 @@ namespace jedjoud.VoxelTerrain {
             float3 cameraForward = worldTransform.Forward;
             float chunkSize = VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
-            foreach (var (localToWorld, skirt, skirtEntity) in SystemAPI.Query<LocalToWorld, TerrainSkirt>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisibleTag>().WithEntityAccess()) {
+            foreach (var (localToWorld, skirt, toggle) in SystemAPI.Query<LocalToWorld, TerrainSkirt, EnabledRefRW<MaterialMeshInfo>>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisibleTag>()) {
                 float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * chunkSize * 0.5f;
                 float3 skirtDirection = DirectionOffsetUtils.FORWARD_DIRECTION_INCLUDING_NEGATIVE[(int)skirt.direction];
 
@@ -36,16 +36,12 @@ namespace jedjoud.VoxelTerrain {
                 bool visibleByCamera = skirtNormalToCameraForwardDot < 0f;
                 */
 
-                SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, frontFaceVisible);
+                toggle.ValueRW = frontFaceVisible;
             }
 
-            foreach (var (_, skirtEntity) in SystemAPI.Query<TerrainSkirt>().WithPresent<MaterialMeshInfo>().WithDisabled<TerrainSkirtVisibleTag>().WithEntityAccess()) {
-                SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+            foreach (var toggle in SystemAPI.Query<EnabledRefRW<MaterialMeshInfo>>().WithPresent<MaterialMeshInfo>().WithDisabled<TerrainSkirtVisibleTag>()) {
+                toggle.ValueRW = false;
             }
-        }
-
-        [BurstCompile]
-        public void OnDestroy(ref SystemState state) {
         }
     }
 }
