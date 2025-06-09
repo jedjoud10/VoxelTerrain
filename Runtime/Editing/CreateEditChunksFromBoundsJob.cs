@@ -10,11 +10,13 @@ namespace jedjoud.VoxelTerrain.Edits {
     public struct CreateEditChunksFromBoundsJob : IJob {
         [ReadOnly]
         public NativeArray<Unity.Mathematics.Geometry.MinMaxAABB> boundsArray;
+
         public NativeHashMap<int3, int> chunkPositionsToChunkEditIndices;
+        public NativeList<int3> addedChunkEditPositions;
         public NativeList<int3> modifiedChunkEditPositions;
 
         public void Execute() {
-            int currentIndex = chunkPositionsToChunkEditIndices.Count;
+            int count = chunkPositionsToChunkEditIndices.Count;
 
             foreach (var bounds in boundsArray) {
                 int3 min = (int3)math.floor(bounds.Min / (float)VoxelUtils.PHYSICAL_CHUNK_SIZE);
@@ -26,8 +28,9 @@ namespace jedjoud.VoxelTerrain.Edits {
                             int3 chunkPos = new int3(x, y, z);
 
                             if (!chunkPositionsToChunkEditIndices.ContainsKey(chunkPos)) {
-                                chunkPositionsToChunkEditIndices.Add(chunkPos, currentIndex);
-                                currentIndex++;
+                                chunkPositionsToChunkEditIndices.Add(chunkPos, count);
+                                addedChunkEditPositions.Add(chunkPos);
+                                count++;
                             }
 
                             modifiedChunkEditPositions.Add(chunkPos);
