@@ -99,6 +99,7 @@ namespace jedjoud.VoxelTerrain {
             if (!SystemAPI.HasSingleton<TerrainManager>()) {
                 state.EntityManager.CreateSingleton<TerrainManager>(new TerrainManager {
                     chunks = new NativeHashMap<OctreeNode, Entity>(0, Allocator.Persistent),
+                    skirtPrototype = skirtPrototype
                 });
             }
 
@@ -127,19 +128,12 @@ namespace jedjoud.VoxelTerrain {
                     manager.chunks.Add(node, entity);
                     nextEndOfPipeCount++;
 
-                    FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
                     float4x4 localToWorld = float4x4.TRS((float3)node.position, quaternion.identity, (float)node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE);
 
-                    for (int i = 0; i < 6; i++) {
-                        Entity skirt = state.EntityManager.Instantiate(skirtPrototype);
-                        state.EntityManager.SetComponentData<TerrainSkirt>(skirt, new TerrainSkirt() { direction = (byte)i });
-                        state.EntityManager.SetComponentData<LocalToWorld>(skirt, new LocalToWorld() { Value = localToWorld });
-                        skirts.Add(skirt);
-                    }
 
                     state.EntityManager.SetComponentData<TerrainChunk>(entity, new TerrainChunk {
                         node = node,
-                        skirts = skirts,
+                        skirts = new FixedList64Bytes<Entity>(),
                     });
 
 
@@ -198,15 +192,17 @@ namespace jedjoud.VoxelTerrain {
                 foreach (var entity in chunksToDestroy) {
                     TerrainChunk chunk = state.EntityManager.GetComponentData<TerrainChunk>(entity);
 
-                    for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
-                        Entity skirtEntity = chunk.skirts[skirtIndex];
+                    if (chunk.skirts.Length > 0) {
+                        for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
+                            Entity skirtEntity = chunk.skirts[skirtIndex];
 
-                        if (state.EntityManager.HasComponent<MaterialMeshInfo>(skirtEntity)) {
-                            MaterialMeshInfo matMeshInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(skirtEntity);
-                            temp.Add(matMeshInfo.MeshID);
+                            if (state.EntityManager.HasComponent<MaterialMeshInfo>(skirtEntity)) {
+                                MaterialMeshInfo matMeshInfo = state.EntityManager.GetComponentData<MaterialMeshInfo>(skirtEntity);
+                                temp.Add(matMeshInfo.MeshID);
+                            }
+
+                            state.EntityManager.DestroyEntity(skirtEntity);
                         }
-
-                        state.EntityManager.DestroyEntity(skirtEntity);
                     }
 
                     if (state.EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity)) {
@@ -245,8 +241,10 @@ namespace jedjoud.VoxelTerrain {
 
                 {
                     foreach (var (chunk, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
-                        for (int i = 0; i < 6; i++) {
-                            SystemAPI.SetComponentEnabled<TerrainSkirtVisibleTag>(chunk.skirts[i], BitUtils.IsBitSet(chunk.skirtMask, i));
+                        if (chunk.skirts.Length > 0) {
+                            for (int i = 0; i < 6; i++) {
+                                SystemAPI.SetComponentEnabled<TerrainSkirtVisibleTag>(chunk.skirts[i], BitUtils.IsBitSet(chunk.skirtMask, i));
+                            }
                         }
                     }
                 }

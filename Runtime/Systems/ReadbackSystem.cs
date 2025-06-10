@@ -162,11 +162,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                             ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
 
                             uint* dst = (uint*)voxels.inner.GetUnsafePtr();
-                            JobHandle handle = new UnsafeAsyncMemCpy {
-                                src = (void*)src,
-                                dst = (void*)dst,
-                                byteSize = Voxel.size * VoxelUtils.VOLUME,
-                            }.Schedule();
+                            JobHandle handle = AsyncMemCpyUtils.RawCopy((void*)src, (void*)dst, Voxel.size * VoxelUtils.VOLUME);
 
                             copies[j] = handle;
                             voxels.asyncWriteJob = handle;

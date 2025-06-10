@@ -7,6 +7,7 @@ using Unity.Entities;
 using Unity.Entities.Graphics;
 using Unity.Mathematics;
 using Unity.Rendering;
+using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
@@ -119,10 +120,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (handler.TryComplete(EntityManager, out Mesh mesh, out Entity chunkEntity, out MeshJobHandler.Stats stats)) {
                
                 EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, true);
-
                 // we MUST take a copy of TerrainChunk here (we cannot use GetComponentRW)
                 // because we execute RenderMeshUtility.AddComponents right after
-                // RenderMeshUtility.AddComponents changes the archetype of the chunk entity, invalidating the reference we hold to TerrainChunk
+                // RenderMeshUtility.AddComponents is a structural change, invalidating the reference we hold to TerrainChunk
                 TerrainChunk chunk = SystemAPI.GetComponent<TerrainChunk>(chunkEntity);
 
                 if (stats.empty) {
@@ -143,13 +143,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
                     }
 
-                    for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
-                        Entity skirtEntity = chunk.skirts[skirtIndex];
+                    if (chunk.skirts.Length > 0) {
+                        for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
+                            Entity skirtEntity = chunk.skirts[skirtIndex];
 
-                        if (SystemAPI.HasComponent<MaterialMeshInfo>(skirtEntity)) {
-                            MaterialMeshInfo matMeshInf = SystemAPI.GetComponent<MaterialMeshInfo>(skirtEntity);
-                            unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = matMeshInf.MeshID });
-                            EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                            if (SystemAPI.HasComponent<MaterialMeshInfo>(skirtEntity)) {
+                                MaterialMeshInfo matMeshInf = SystemAPI.GetComponent<MaterialMeshInfo>(skirtEntity);
+                                unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = matMeshInf.MeshID });
+                                EntityManager.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                            }
                         }
                     }
                 }
@@ -197,6 +199,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
                 }
 
+                if (chunk.skirts.Length == 0) {
+                    FixedList64Bytes<Entity> skirts = new FixedList64Bytes<Entity>();
+                    Entity skirtPrototype = SystemAPI.GetSingleton<TerrainManager>().skirtPrototype;
+                    LocalToWorld localToWorld = EntityManager.GetComponentData<LocalToWorld>(chunkEntity);
+                    for (int i = 0; i < 6; i++) {
+                        Entity skirt = EntityManager.Instantiate(skirtPrototype);
+                        EntityManager.SetComponentData<TerrainSkirt>(skirt, new TerrainSkirt() { direction = (byte)i });
+                        EntityManager.SetComponentData<LocalToWorld>(skirt, localToWorld);
+                        skirts.Add(skirt);
+                    }
+                    chunk.skirts = skirts;
+                }
+
                 for (int skirtIndex = 0; skirtIndex < 6; skirtIndex++) {
                     Entity skirtEntity = chunk.skirts[skirtIndex];
 
@@ -217,6 +232,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
                     }
                 }
+
+                EntityManager.SetComponentData(chunkEntity, chunk);
             }
         }
 

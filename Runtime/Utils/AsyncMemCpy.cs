@@ -4,8 +4,9 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 
 namespace jedjoud.VoxelTerrain {
+
     [BurstCompile(CompileSynchronously = true)]
-    public struct AsyncMemCpy<T> : IJob where T: unmanaged {
+    public struct AsyncMemCpyJob<T> : IJob where T : unmanaged {
         [ReadOnly]
         public NativeArray<T> src;
         [WriteOnly]
@@ -16,7 +17,7 @@ namespace jedjoud.VoxelTerrain {
     }
 
     [BurstCompile(CompileSynchronously = true)]
-    public unsafe struct UnsafeAsyncMemCpy : IJob {
+    public unsafe struct UnsafeAsyncMemCpyJob : IJob {
         [NativeDisableUnsafePtrRestriction]
         public void* src;
         [NativeDisableUnsafePtrRestriction]
@@ -24,6 +25,23 @@ namespace jedjoud.VoxelTerrain {
         public int byteSize;
         public void Execute() {
             UnsafeUtility.MemCpy(dst, src, byteSize);
+        }
+    }
+
+    public static class AsyncMemCpyUtils {
+        public static JobHandle Copy<T>(NativeArray<T> src, NativeArray<T> dst, JobHandle dep = default) where T: unmanaged {
+            return new AsyncMemCpyJob<T> {
+                src = src,
+                dst = dst
+            }.Schedule(dep);
+        }
+
+        public static unsafe JobHandle RawCopy(void* src, void* dst, int size, JobHandle dep = default) {
+            return new UnsafeAsyncMemCpyJob() {
+                src = src,
+                dst = dst,
+                byteSize = size
+            }.Schedule(dep);
         }
     }
 }
