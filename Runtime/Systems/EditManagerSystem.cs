@@ -51,5 +51,13 @@ namespace jedjoud.VoxelTerrain.Edits {
             mgr.SetComponentData<TerrainEditBounds>(entity, new TerrainEditBounds() { bounds = bounds });
             mgr.SetComponentData<T>(entity, edit);
         }
+
+        public static void CreateEditEntity<T>(EntityCommandBuffer ecb, T edit) where T : unmanaged, IComponentData, IEdit {
+            Entity entity = ecb.CreateEntity();
+            MinMaxAABB bounds = edit.GetBounds();
+            ecb.AddComponent<TerrainEdit>(entity, new TerrainEdit { type = ComponentType.ReadOnly<T>().TypeIndex });
+            ecb.AddComponent<TerrainEditBounds>(entity, new TerrainEditBounds() { bounds = bounds });
+            ecb.AddComponent<T>(entity, edit);
+        }
     }
 }

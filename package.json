@@ -1,7 +1,7 @@
 {
   "displayName": "Voxel Terrain",
   "name": "com.jedjoud.voxelterrain",
-  "version": "1.1.1151",
+  "version": "1.1.116",
   "unity": "6000.0",
   "unityRelease": "47f1",
   "author": {
@@ -9,7 +9,7 @@
     "email": "jribijed6@gmail.com",
     "url": "https://github.com/jedjoud10"
   },
-  "description": "Le voxel terrain generator... in ECS now... with le props.\n\nTerrain be like: \"hold up... I'm LODed\"\nProps be like: \"hold up... I'm impostors (sus)\"",
+  "description": "Le voxel terrain generator... in ECS now... with le props.\n\nTerrain be like: \"hold up... I'm LODed\"\nProps be like: \"hold up... I'm impostors (sus)\"\nEdits be like: \"hold up... I'm entitied\"",
   "dependencies": {
     "com.unity.mathematics": "1.3.2",
     "com.unity.burst": "1.8.18",
