@@ -29,6 +29,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [BurstCompile(CompileSynchronously = true)]
         struct BakingJob : IJobParallelFor {
             [ReadOnly]
+            [NativeDisableContainerSafetyRestriction]
             public UnsafeList<TerrainChunkMesh> meshes;
             [WriteOnly]
             public NativeArray<BlobAssetReference<Collider>> colliders;
@@ -50,10 +51,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [BurstCompile]
         public  void OnUpdate(ref SystemState state) {
-            /*
             TryCompleteOldBatches(ref state);
             TryFetchNewBatch(ref state);
-            */
         }
 
         [BurstCompile]
@@ -69,9 +68,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     NativeArray<BlobAssetReference<Collider>> colliders = batches[i].colliders;
 
                     for (int e = 0; e < entities.Length; e++) {
-                        state.EntityManager.AddSharedComponent<PhysicsWorldIndex>(entities[e], new PhysicsWorldIndex { Value = 0 });
-                        state.EntityManager.AddComponent<PhysicsCollider>(entities[e]);
-                        state.EntityManager.SetComponentData<PhysicsCollider>(entities[e], new PhysicsCollider() { Value = colliders[e] });
+                        Entity entity = entities[e];
+
+                        if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {
+                            state.EntityManager.GetComponentData<PhysicsCollider>(entity).Value.Dispose();
+                        }
+
+                        state.EntityManager.AddSharedComponent<PhysicsWorldIndex>(entity, new PhysicsWorldIndex { Value = 0 });
+                        state.EntityManager.AddComponent<PhysicsCollider>(entity);
+                        state.EntityManager.SetComponentData<PhysicsCollider>(entity, new PhysicsCollider() { Value = colliders[e] });
                     }
 
                     batches[i].Dispose();
@@ -82,10 +87,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         private void TryFetchNewBatch(ref SystemState state) {
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkRequestCollisionTag, TerrainChunkMesh>().Build();
-
-            if (query.CalculateEntityCount() == 0)
+            if (query.IsEmpty)
                 return;
-            
 
             // we deallocate these later when we complete the jobs
             NativeArray<Entity> entities = query.ToEntityArray(Allocator.Persistent);
@@ -97,7 +100,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             NativeArray<TerrainChunkMesh> meshes = query.ToComponentDataArray<TerrainChunkMesh>(Allocator.Temp);
             what.Resize(entities.Length);
             what.CopyFrom(meshes);
-
 
             BakingJob bake = new BakingJob {
                 meshes = what,
@@ -113,7 +115,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 what = what
             });
 
-            state.EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(query, false);
+            foreach (var entity in entities) {
+                state.EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, false);
+            }
         }
     }
 }

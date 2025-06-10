@@ -10,9 +10,10 @@ namespace jedjoud.VoxelTerrain.Octree {
         public NativeList<BitField32> neighbourMasks;
         public OctreeNode root;
 
+        [ReadOnly]
         public NativeList<float3> loaders;
 
-        [ReadOnly] public int maxDepth;
+        public int maxDepth;
 
         public void Execute() {
             NativeQueue<OctreeNode> pending = new NativeQueue<OctreeNode>(Allocator.Temp);
@@ -43,7 +44,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                 float factor = math.clamp(1.8f, 1f, 2f);
 
                 // clamp to the root node
-                float3 clamped = math.clamp(center, nodes[0].Bounds.Min, nodes[0].Bounds.Max);
+                float3 clamped = math.clamp(center, root.Bounds.Min, root.Bounds.Max);
 
                 if (math.distance(node.Center, clamped) < factor * node.size) {
                     return true;
@@ -65,6 +66,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                     parentIndex = node.index,
                     index = node.childBaseIndex + i,
                     childBaseIndex = -1,
+                    atMaxDepth = (node.depth + 1) == maxDepth,
                 };
 
                 pending.Enqueue(child);

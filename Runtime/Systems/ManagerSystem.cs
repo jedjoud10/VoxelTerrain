@@ -108,7 +108,6 @@ namespace jedjoud.VoxelTerrain {
             ref TerrainReadySystems ready = ref SystemAPI.GetSingletonRW<TerrainReadySystems>().ValueRW;
             ready.manager = chunksToShow.IsEmpty && chunksToDestroy.IsEmpty;
 
-            TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             ref TerrainOctree octree = ref SystemAPI.GetSingletonRW<TerrainOctree>().ValueRW;
 
             if (!octree.pending && octree.handle.IsCompleted && octree.readyToSpawn) {
@@ -145,7 +144,7 @@ namespace jedjoud.VoxelTerrain {
                         deferredVisibility = true,
                     });
 
-                    state.EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, node.depth == octreeConfig.maxDepth);
+                    state.EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, node.atMaxDepth);
 
                     state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld() { Value = localToWorld });
 
@@ -210,6 +209,7 @@ namespace jedjoud.VoxelTerrain {
                         voxels.asyncWriteJob.Complete();
                         voxels.asyncReadJob.Complete();
                         voxels.inner.Dispose();
+                        state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                     }
 
                     if (state.EntityManager.IsComponentEnabled<TerrainChunkMesh>(entity)) {
@@ -266,12 +266,14 @@ namespace jedjoud.VoxelTerrain {
                     voxels.asyncWriteJob.Complete();
                     voxels.asyncReadJob.Complete();
                     voxels.inner.Dispose();
+                    state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                 }
 
                 if (state.EntityManager.IsComponentEnabled<TerrainChunkMesh>(entity)) {
                     TerrainChunkMesh mesh = state.EntityManager.GetComponentData<TerrainChunkMesh>(entity);
                     mesh.vertices.Dispose();
                     mesh.indices.Dispose();
+                    state.EntityManager.SetComponentEnabled<TerrainChunkMesh>(entity, false);
                 }
 
                 if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {

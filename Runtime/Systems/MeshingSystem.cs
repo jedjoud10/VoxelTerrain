@@ -61,7 +61,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         protected override void OnUpdate() {
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunk, TerrainChunkVoxels, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
-            bool ready = query.CalculateEntityCount() == 0 && handlers.All(x => x.Free);
+            bool ready = query.IsEmpty && handlers.All(x => x.Free);
 
             RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
             _ready.ValueRW.mesher = ready;

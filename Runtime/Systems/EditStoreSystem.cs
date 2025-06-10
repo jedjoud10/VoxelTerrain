@@ -48,7 +48,6 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             // request to update the chunks' meshes
             UpdateChunkMeshes(modifiedChunkEditPositions);
-
             bounds.Dispose();
         }
 
@@ -151,7 +150,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
                 if (manager.chunks.TryGetValue(node, out Entity entity)) {
                     mgr.SetComponentEnabled<TerrainChunkMesh>(entity, false);
-                    mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, false);
+                    mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, true);
                     mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
                     mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
                     mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, false);

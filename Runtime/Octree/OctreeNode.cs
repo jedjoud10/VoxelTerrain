@@ -18,6 +18,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public int size;
         public int index;
         public int parentIndex;
+        public bool atMaxDepth;
         public int childBaseIndex;
 
         public float3 Center => math.float3(position) + math.float3(size) / 2.0F;
@@ -33,6 +34,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             node.index = 0;
             node.parentIndex = -1;
             node.childBaseIndex = 1;
+            node.atMaxDepth = false;
             return node;
         }
 
@@ -43,6 +45,7 @@ namespace jedjoud.VoxelTerrain.Octree {
                 depth = maxDepth,
                 index = -1,
                 parentIndex = -1,
+                atMaxDepth = true,
                 position = chunkPosition * chunkSize,
             };
         }
