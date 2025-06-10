@@ -35,8 +35,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 enabled = enabled,
             };
 
-            JobHandle checkJobHandle = checkJob.Schedule(bits.Length, SMALLEST_BATCH, dependency);
-            JobHandle cornerJobHandle = cornerJob.Schedule(VOLUME, SMALLEST_BATCH, checkJobHandle);
+            JobHandle checkJobHandle = checkJob.Schedule(bits.Length, EVEN_SMALLER_BATCH, dependency);
+            JobHandle cornerJobHandle = cornerJob.Schedule(VOLUME, EVEN_SMALLER_BATCH, checkJobHandle);
             jobHandle = cornerJobHandle;
         }
 

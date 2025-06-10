@@ -79,7 +79,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                     voxels = voxels.inner
                 };
 
-                JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.REALLY_SMALLEST_BATCH, voxels.asyncReadJob);
+                JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, voxels.asyncReadJob);
                 voxels.asyncReadJob = handle;
                 allDependencies.Add(voxels.asyncReadJob);
             }

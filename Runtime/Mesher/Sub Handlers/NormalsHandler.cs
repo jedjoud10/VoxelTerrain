@@ -72,7 +72,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             // Calculate the normals at EACH voxel
             // This gives pretty results compared to something like numerical approach but whatever
             // Maybe when I eventually write a proper hermite data system I can scratch all of this... (will be very hard considering I also need to support terrain edits of any kind)
-            JobHandle normalsJobHandle = normalsCalculateJob.Schedule(VOLUME, SMALLEST_BATCH, normalsDep2);
+            JobHandle normalsJobHandle = normalsCalculateJob.Schedule(VOLUME, EVEN_SMALLER_BATCH, normalsDep2);
             jobHandle = normalsJobHandle;
         }
 

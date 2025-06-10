@@ -54,8 +54,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             JobHandle vertexDep = JobHandle.CombineDependencies(normalsSubHandler.jobHandle, codeSubHandler.jobHandle);
-            vertexJobHandle = vertexJob.Schedule(VOLUME, SMALLEST_BATCH, vertexDep);
-            quadJobHandle = quadJob.Schedule(VOLUME, SMALLEST_BATCH, vertexJobHandle);
+            vertexJobHandle = vertexJob.Schedule(VOLUME, EVEN_SMALLER_BATCH, vertexDep);
+            quadJobHandle = quadJob.Schedule(VOLUME, EVEN_SMALLER_BATCH, vertexJobHandle);
         }
 
         public void Dispose() {
