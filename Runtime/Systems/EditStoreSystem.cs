@@ -13,26 +13,20 @@ namespace jedjoud.VoxelTerrain.Edits {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [UpdateAfter(typeof(OctreeSystem))]
     [UpdateBefore(typeof(ManagerSystem))]
-    public partial struct EditStoreSystem : ISystem {
-        const int MAX_EDITS_PER_TICK = 4;
-
-        public void OnCreate(ref SystemState state) {
-            state.RequireForUpdate<TerrainOctree>();
-            state.RequireForUpdate<TerrainManager>();
-            state.RequireForUpdate<TerrainOctreeConfig>();
-            state.RequireForUpdate<TerrainReadySystems>();
-            state.RequireForUpdate<TerrainEditConfig>();
-            state.RequireForUpdate<TerrainEdits>();
-
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainEditBounds>().Build();
-            state.RequireForUpdate(query);
+    [RequireMatchingQueriesForUpdate]
+    public partial class EditStoreSystem : SystemBase {
+        protected override void OnCreate() {
+            RequireForUpdate<TerrainOctree>();
+            RequireForUpdate<TerrainManager>();
+            RequireForUpdate<TerrainOctreeConfig>();
+            RequireForUpdate<TerrainReadySystems>();
+            RequireForUpdate<TerrainEditConfig>();
+            RequireForUpdate<TerrainEdit>();
+            RequireForUpdate<TerrainEdits>();
         }
 
-        public void OnUpdate(ref SystemState state) {
-            state.CompleteDependency();
-            state.EntityManager.CompleteDependencyBeforeRO<TerrainOctree>();
-            TerrainEdits backing = SystemAPI.GetSingleton<TerrainEdits>();
-
+        protected override void OnUpdate() {
+            TerrainEdits backing = SystemAPI.ManagedAPI.GetSingleton<TerrainEdits>();
             if (!backing.applySystemHandle.IsCompleted)
                 return;
             backing.applySystemHandle.Complete();
@@ -41,26 +35,24 @@ namespace jedjoud.VoxelTerrain.Edits {
             if (!ready.readback || !ready.manager)
                 return;
 
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainEditBounds>().Build();
-
-            // int numEdits = math.min(query.CalculateEntityCount(), MAX_EDITS_PER_TICK);
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainEditBounds, TerrainEdit>().Build();
             NativeArray<Entity> entities = query.ToEntityArray(Allocator.Temp);
             NativeArray<TerrainEditBounds> bounds = query.ToComponentDataArray<TerrainEditBounds>(Allocator.TempJob);
             NativeArray<MinMaxAABB> aabbs = bounds.Reinterpret<MinMaxAABB>();
 
-            AddEditChunks(ref state, ref backing, aabbs, out NativeArray<int3> modifiedChunkEditPositions);
-            Debug.Log(modifiedChunkEditPositions.Length);
+            // if we need to add voxel data for edited chunks, do add it
+            AddEditChunks(backing, aabbs, out NativeArray<int3> modifiedChunkEditPositions);
 
-            ModifyData(ref state, ref backing, entities, aabbs, modifiedChunkEditPositions);
+            // modify the voxel data for the editted chunks
+            ModifyData(backing, entities, aabbs, modifiedChunkEditPositions);
 
-            UpdateChunkMeshes(ref state, modifiedChunkEditPositions);
+            // request to update the chunks' meshes
+            UpdateChunkMeshes(modifiedChunkEditPositions);
 
-            SystemAPI.SetSingleton<TerrainEdits>(backing);
-            
             bounds.Dispose();
         }
 
-        private void ModifyData(ref SystemState state, ref TerrainEdits backing, NativeArray<Entity> entities, NativeArray<MinMaxAABB> aabbs, NativeArray<int3> modifiedChunkEditPositions) {
+        private void ModifyData(TerrainEdits backing, NativeArray<Entity> entities, NativeArray<MinMaxAABB> aabbs, NativeArray<int3> modifiedChunkEditPositions) {
             // modify the editted terrain voxels with the new terrain edits
             int modifCount = modifiedChunkEditPositions.Length;
             NativeArray<JobHandle> deps = new NativeArray<JobHandle>(modifCount, Allocator.Temp);
@@ -74,6 +66,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
                 if (backing.chunkPositionsToChunkEditIndices.TryGetValue(editChunkPosition, out int index)) {
                     NativeArray<Voxel> editVoxels = backing.chunkEdits[index];
+                    int3 chunkOffset = editChunkPosition * VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
                     // apply each edit for this *tick* in sequence
                     JobHandle sequence = default;
@@ -81,14 +74,8 @@ namespace jedjoud.VoxelTerrain.Edits {
                         
                         // only apply the edits that affect this edit chunk
                         if (aabbs[j].Overlaps(editChunkAabb)) {
-                            EditStoreJob editJob = new EditStoreJob {
-                                center = aabbs[j].Center,
-                                chunkOffset = editChunkPosition * VoxelUtils.PHYSICAL_CHUNK_SIZE,
-                                voxels = editVoxels,
-                            };
-
-                            // like a linked list kek
-                            sequence = editJob.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, sequence);
+                            Entity editEntity = entities[j];
+                            sequence = backing.registry.ApplyEdit(editEntity, editVoxels, chunkOffset, sequence);
                             appliedEditEntities.Add(entities[j]);
                         }
                     }
@@ -101,15 +88,14 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             JobHandle.CompleteAll(deps);
             NativeArray<Entity> entitiesToDestroy = appliedEditEntities.ToNativeArray(Allocator.Temp);
-            state.EntityManager.DestroyEntity(entitiesToDestroy);
+            EntityManager.DestroyEntity(entitiesToDestroy);
         }
 
-        private void AddEditChunks(ref SystemState state, ref TerrainEdits backing, NativeArray<MinMaxAABB> aabbs, out NativeArray<int3> modifiedChunkEditPositions) {
+        private void AddEditChunks(TerrainEdits backing, NativeArray<MinMaxAABB> aabbs, out NativeArray<int3> modifiedChunkEditPositions) {
             TerrainManager manager = SystemAPI.GetSingleton<TerrainManager>();
             TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             
             // create edit chunks that will contain modified chunk data
-            int previousCount = backing.chunkPositionsToChunkEditIndices.Count;
             NativeHashSet<int3> intersecting = new NativeHashSet<int3>(0, Allocator.TempJob);
             GetIntersectingEditChunkPositionsFromBounds createEditChunksJob = new GetIntersectingEditChunkPositionsFromBounds {
                 boundsArray = aabbs,
@@ -127,7 +113,6 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             // add chunk edit backing native arrays (using LOD 0 chunks' voxel data as source)
             int newChunkEditIndirectIndex = backing.chunkEdits.Length;
-            Debug.Log(newIntersecting.Length);
             for (int i = 0; i < newIntersecting.Length; i++) {
                 int3 chunkPosOnly = newIntersecting[i];
                 OctreeNode node = OctreeNode.LeafLodZeroNode(chunkPosOnly, octreeConfig.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE);
@@ -145,7 +130,6 @@ namespace jedjoud.VoxelTerrain.Edits {
                 } else {
                     Debug.LogWarning("Tried accessing chunk that does not exist or non LOD0 chunk. Uh oh...");
                 }
-
             }
 
 
@@ -153,9 +137,9 @@ namespace jedjoud.VoxelTerrain.Edits {
             intersecting.Dispose();
         }
 
-        private void UpdateChunkMeshes(ref SystemState state, NativeArray<int3> modifiedChunkEditPositions) {
+        private void UpdateChunkMeshes(NativeArray<int3> modifiedChunkEditPositions) {
             TerrainManager manager = SystemAPI.GetSingleton<TerrainManager>();
-            EntityManager mgr = state.EntityManager;
+            EntityManager mgr = EntityManager;
             TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
 
             // notify the underlying chunks that contain these values

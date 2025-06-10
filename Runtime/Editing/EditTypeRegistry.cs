@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             public override JobHandle Apply(Entity entity, NativeArray<Voxel> voxels, int3 chunkOffset, JobHandle dep) {
                 if (lookup.TryGetComponent(entity, out T edit)) {
-                    var job = new EditStoreJob2<T> {
+                    var job = new EditStoreJob<T> {
                         chunkOffset = chunkOffset,
                         edit = edit,
                         voxels = voxels                    
@@ -35,26 +35,30 @@ namespace jedjoud.VoxelTerrain.Edits {
             }
         }
 
-        public List<EditTypeDynDispatch> registry;
+        public ComponentLookup<TerrainEdit> lookup;
+        public Dictionary<TypeIndex, EditTypeDynDispatch> registry;
+
+        public EditTypeRegistry(SystemBase system) {
+            lookup = system.GetComponentLookup<TerrainEdit>(true);
+            registry = new Dictionary<TypeIndex, EditTypeDynDispatch>();
+        }
 
         public void Register<T>(SystemBase system) where T: unmanaged, IEdit, IComponentData {
-            registry.Add(new Bruh<T>() {
+            registry.Add(ComponentType.ReadOnly<T>().TypeIndex, new Bruh<T>() {
                 lookup = system.GetComponentLookup<T>(true),
             });
         }
 
         public void Update(SystemBase system) {
-            foreach (var registered in registry) {
+            lookup.Update(system);
+            foreach (var (_, registered) in registry) {
                 registered.Update(system);
             }
         }
 
         public JobHandle ApplyEdit(Entity entity, NativeArray<Voxel> voxels, int3 chunkOffset, JobHandle dep) {
-            // in case the entity contains more than one registered edit component
-            foreach (var registered in registry) {
-                dep = registered.Apply(entity, voxels, chunkOffset, dep);
-            }
-
+            TypeIndex index = lookup[entity].type;
+            dep = registry[index].Apply(entity, voxels, chunkOffset, dep);
             return dep;
         }
     }

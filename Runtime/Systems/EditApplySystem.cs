@@ -13,25 +13,14 @@ namespace jedjoud.VoxelTerrain.Edits {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
     [UpdateAfter(typeof(ReadbackSystem))]
     [UpdateBefore(typeof(MeshingSystem))]
-    public partial struct EditApplySystem : ISystem {
-        [BurstCompile]
-        public void OnCreate(ref SystemState state) {
-            state.RequireForUpdate<TerrainOctree>();
-            state.RequireForUpdate<TerrainManager>();
-            state.RequireForUpdate<TerrainOctreeConfig>();
-            state.RequireForUpdate<TerrainReadySystems>();
-            state.RequireForUpdate<TerrainEditConfig>();
-            state.RequireForUpdate<TerrainEdits>();
-
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
-            state.RequireForUpdate(query);
+    [RequireMatchingQueriesForUpdate]
+    public partial class EditApplySystem : SystemBase {
+        protected override void OnCreate() {
+            RequireForUpdate<TerrainEdits>();
         }
 
-        [BurstCompile]
-        public void OnUpdate(ref SystemState state) {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
-
-            ref TerrainEdits backing = ref SystemAPI.GetSingletonRW<TerrainEdits>().ValueRW;
+        protected override void OnUpdate() {
+            TerrainEdits backing = SystemAPI.ManagedAPI.GetSingleton<TerrainEdits>();
 
             NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = backing.chunkPositionsToChunkEditIndices;
             UnsafePtrList<Voxel> chunkEditsCopyRaw = new UnsafePtrList<Voxel>(backing.chunkPositionsToChunkEditIndices.Count, Allocator.Persistent);
@@ -41,6 +30,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                 }
             }
 
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk>().WithAny<TerrainChunkRequestMeshingTag, TerrainChunkRequestReadbackTag>().Build();
             NativeArray<TerrainChunk> chunks = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
             NativeArray<Entity> chunkEntities = query.ToEntityArray(Allocator.Temp);
             NativeHashSet<Entity> modifiedChunkEntities = new NativeHashSet<Entity>(0, Allocator.Temp);
@@ -66,22 +56,29 @@ namespace jedjoud.VoxelTerrain.Edits {
             foreach (var entity in modifiedChunkEntities) {
                 OctreeNode node = SystemAPI.GetComponent<TerrainChunk>(entity).node;
 
-                ref TerrainChunkVoxels voxels = ref SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity).ValueRW;
-                voxels.asyncWriteJob.Complete();
+                if (SystemAPI.IsComponentEnabled<TerrainChunkVoxelsReadyTag>(entity) && SystemAPI.IsComponentEnabled<TerrainChunkRequestMeshingTag>(entity)) {
+                    ref TerrainChunkVoxels voxels = ref SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity).ValueRW;
+                    voxels.asyncWriteJob.Complete();
 
-                EditApplyJob job = new EditApplyJob {
-                    chunkPositionsToChunkEditIndices = chunkPositionsToChunkEditIndices,
-                    chunkEditsRaw = chunkEditsCopyRaw,
+                    EditApplyJob job = new EditApplyJob {
+                        chunkPositionsToChunkEditIndices = chunkPositionsToChunkEditIndices,
+                        chunkEditsRaw = chunkEditsCopyRaw,
 
-                    chunkScale = node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE,
-                    chunkOffset = node.position,
+                        chunkScale = node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE,
+                        chunkOffset = node.position,
 
-                    voxels = voxels.inner
-                };
+                        voxels = voxels.inner
+                    };
 
-                JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, voxels.asyncReadJob);
-                voxels.asyncReadJob = handle;
-                allDependencies.Add(voxels.asyncReadJob);
+                    JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, voxels.asyncReadJob);
+                    voxels.asyncReadJob = handle;
+                    allDependencies.Add(voxels.asyncReadJob);
+                    SystemAPI.GetComponentRW<TerrainChunkRequestMeshingTag>(entity).ValueRW.deferredVisibility = false;
+                }
+
+                if (SystemAPI.HasComponent<TerrainChunkRequestReadbackTag>(entity)) {
+                    SystemAPI.GetComponentRW<TerrainChunkRequestReadbackTag>(entity).ValueRW.skipMeshingIfEmpty = false;
+                }
             }
 
             JobHandle final = JobHandle.CombineDependencies(allDependencies.AsArray());

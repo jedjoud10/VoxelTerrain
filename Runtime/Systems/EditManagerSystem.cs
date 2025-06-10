@@ -3,24 +3,29 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
+using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
     [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(EditStoreSystem))]
-    [UpdateAfter(typeof(EditApplySystem))]
-    public partial struct EditManagerSystem : ISystem {
+    [UpdateBefore(typeof(EditStoreSystem))]
+    [UpdateBefore(typeof(EditApplySystem))]
+    public partial class EditManagerSystem : SystemBase {
+        public TerrainEdits singleton;
 
-        [BurstCompile]
-        public void OnCreate(ref SystemState state) {
-            state.EntityManager.CreateSingleton<TerrainEdits>(new TerrainEdits {
+        protected override void OnCreate() {
+            singleton = new TerrainEdits {
                 chunkPositionsToChunkEditIndices = new NativeHashMap<int3, int>(0, Allocator.Persistent),
                 chunkEdits = new UnsafeList<NativeArray<Voxel>>(0, Allocator.Persistent),
-            });
+                applySystemHandle = default,
+                registry = new EditTypeRegistry(this),
+            };
+            EntityManager.CreateSingleton<TerrainEdits>(singleton);
+
+            singleton.registry.Register<TerrainSphereEdit>(this);
         }
 
-        [BurstCompile]
-        public void OnDestroy(ref SystemState state) {
-            TerrainEdits backing = SystemAPI.GetSingleton<TerrainEdits>();
+        protected override void OnDestroy() {
+            TerrainEdits backing = SystemAPI.ManagedAPI.GetSingleton<TerrainEdits>();
 
             backing.chunkPositionsToChunkEditIndices.Dispose();
 
@@ -29,6 +34,22 @@ namespace jedjoud.VoxelTerrain.Edits {
             }
 
             backing.chunkEdits.Dispose();
+        }
+
+        protected override void OnUpdate() {
+            singleton.registry.Update(this);
+        }
+
+        public static void CreateEditEntity<T>(EntityManager mgr, T edit) where T: unmanaged, IComponentData, IEdit {
+            Entity entity = mgr.CreateEntity();
+            mgr.AddComponent<TerrainEdit>(entity);
+            mgr.AddComponent<TerrainEditBounds>(entity);
+            mgr.AddComponent<T>(entity);
+
+            MinMaxAABB bounds = edit.GetBounds();
+            mgr.SetComponentData<TerrainEdit>(entity, new TerrainEdit { type = ComponentType.ReadOnly<T>().TypeIndex });
+            mgr.SetComponentData<TerrainEditBounds>(entity, new TerrainEditBounds() { bounds = bounds });
+            mgr.SetComponentData<T>(entity, edit);
         }
     }
 }

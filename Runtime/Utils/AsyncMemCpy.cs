@@ -6,11 +6,11 @@ using Unity.Jobs;
 namespace jedjoud.VoxelTerrain {
 
     [BurstCompile(CompileSynchronously = true)]
-    public struct AsyncMemCpyJob<T> : IJob where T : unmanaged {
+    public struct AsyncMemCpyJob : IJob {
         [ReadOnly]
-        public NativeArray<T> src;
+        public NativeArray<byte> src;
         [WriteOnly]
-        public NativeArray<T> dst;
+        public NativeArray<byte> dst;
         public void Execute() {
             dst.CopyFrom(src);
         }
@@ -30,9 +30,13 @@ namespace jedjoud.VoxelTerrain {
 
     public static class AsyncMemCpyUtils {
         public static JobHandle Copy<T>(NativeArray<T> src, NativeArray<T> dst, JobHandle dep = default) where T: unmanaged {
-            return new AsyncMemCpyJob<T> {
-                src = src,
-                dst = dst
+            int sizeOf = UnsafeUtility.SizeOf<T>();
+            NativeArray<byte> castedSrc = src.Reinterpret<byte>(sizeOf);
+            NativeArray<byte> castedDst = dst.Reinterpret<byte>(sizeOf);
+
+            return new AsyncMemCpyJob {
+                src = castedSrc,
+                dst = castedDst
             }.Schedule(dep);
         }
 

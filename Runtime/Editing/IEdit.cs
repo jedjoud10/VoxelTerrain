@@ -3,11 +3,12 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
     public interface IEdit {
-        public Voxel Modify(float3 position, Voxel voxel);
-        public Bounds GetBounds();
+        public void Modify(float3 position, ref float density);
+        public MinMaxAABB GetBounds();
 
         //public JobHandle Apply(float3 offset, NativeArray<Voxel> voxels);
 
