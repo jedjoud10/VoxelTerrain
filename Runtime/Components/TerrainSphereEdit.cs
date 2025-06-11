@@ -15,7 +15,7 @@ namespace jedjoud.VoxelTerrain.Edits {
         }
 
         public void Modify(float3 position, ref float voxel) {
-            float sphere = math.length(position - center) - 5;
+            float sphere = math.length(position - center) - radius;
             voxel = math.max(voxel, -sphere);
         }
     }

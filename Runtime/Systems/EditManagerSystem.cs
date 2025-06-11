@@ -11,6 +11,7 @@ namespace jedjoud.VoxelTerrain.Edits {
     [UpdateBefore(typeof(EditApplySystem))]
     public partial class EditManagerSystem : SystemBase {
         public TerrainEdits singleton;
+        const float BOUNDS_EXPAND_OFFSET = 2f;
 
         protected override void OnCreate() {
             singleton = new TerrainEdits {
@@ -47,6 +48,8 @@ namespace jedjoud.VoxelTerrain.Edits {
             mgr.AddComponent<T>(entity);
 
             MinMaxAABB bounds = edit.GetBounds();
+            bounds.Expand(BOUNDS_EXPAND_OFFSET);
+
             mgr.SetComponentData<TerrainEdit>(entity, new TerrainEdit { type = ComponentType.ReadOnly<T>().TypeIndex });
             mgr.SetComponentData<TerrainEditBounds>(entity, new TerrainEditBounds() { bounds = bounds });
             mgr.SetComponentData<T>(entity, edit);
@@ -54,7 +57,10 @@ namespace jedjoud.VoxelTerrain.Edits {
 
         public static void CreateEditEntity<T>(EntityCommandBuffer ecb, T edit) where T : unmanaged, IComponentData, IEdit {
             Entity entity = ecb.CreateEntity();
+
             MinMaxAABB bounds = edit.GetBounds();
+            bounds.Expand(BOUNDS_EXPAND_OFFSET);
+
             ecb.AddComponent<TerrainEdit>(entity, new TerrainEdit { type = ComponentType.ReadOnly<T>().TypeIndex });
             ecb.AddComponent<TerrainEditBounds>(entity, new TerrainEditBounds() { bounds = bounds });
             ecb.AddComponent<T>(entity, edit);

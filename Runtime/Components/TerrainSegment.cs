@@ -17,10 +17,10 @@ namespace jedjoud.VoxelTerrain.Segments {
 
         public enum LevelOfDetail: int {
             // Spawn physical entities at this level
-            High = 0,
+            High,
             
             // Use billboards at this level
-            Low = -1,
+            Low,
         }
 
         // https://forum.unity.com/threads/burst-error-bc1091-external-and-internal-calls-are-not-allowed-inside-static-constructors.1347293/
