@@ -8,7 +8,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
     public struct VertexJob : IJobParallelFor {
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public VoxelData voxels;
 
         [ReadOnly]
         public NativeArray<float3> voxelNormals;
@@ -72,11 +72,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 float3 endNormal = voxelNormals[endIndex];
 
                 // Get the Voxels of the edge
-                Voxel startVoxel = voxels[startIndex];
-                Voxel endVoxel = voxels[endIndex];
+                half start = voxels.densities[startIndex];
+                half end = voxels.densities[endIndex];
 
                 // Create a vertex on the line of the edge
-                float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
+                float value = math.unlerp(start, end, 0);
                 vertex += math.lerp(startOffset, endOffset, value);
                 normal += math.lerp(startNormal, endNormal, value);
             }

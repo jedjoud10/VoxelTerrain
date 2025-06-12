@@ -4,7 +4,7 @@ using Unity.Jobs;
 
 namespace jedjoud.VoxelTerrain {
     public struct TerrainChunkVoxels : IComponentData, IEnableableComponent {
-        public NativeArray<Voxel> inner;
+        public VoxelData data;
         public JobHandle asyncWriteJob;
         public JobHandle asyncReadJob;
         public bool meshingInProgress;

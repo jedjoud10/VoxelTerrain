@@ -25,12 +25,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private SkirtSnHandler skirt;
         private ApplyMeshHandler apply;
 
-        private NativeArray<Voxel> voxels;
+        private VoxelData voxels;
         private JobHandle jobHandle;
         private Entity entity;
 
         public MeshJobHandler() {
-            voxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            voxels = new VoxelData(Allocator.Persistent);
             code.Init();
             normals.Init();
             core.Init();
@@ -49,14 +49,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             this.entity = entity;
 
             JobHandle dependency = chunkVoxels.asyncReadJob;
-            dependency = AsyncMemCpyUtils.Copy(chunkVoxels.inner, this.voxels, dependency);
+            dependency = AsyncMemCpyUtils.Copy(chunkVoxels.data.densities.inner, this.voxels.densities.inner, dependency);
             chunkVoxels.asyncReadJob = dependency;
             chunkVoxels.meshingInProgress = true;
 
-            code.Schedule(voxels, dependency);
-            normals.Schedule(voxels, dependency);
-            core.Schedule(voxels, ref normals, ref code);
-            skirt.Schedule(voxels, ref normals, ref core, dependency);
+            code.Schedule(ref voxels, dependency);
+            normals.Schedule(ref voxels, dependency);
+            core.Schedule(ref voxels, ref normals, ref code);
+            skirt.Schedule(ref voxels, ref normals, ref core, dependency);
             apply.Schedule(ref core, ref skirt);
             jobHandle = apply.jobHandle;
         }

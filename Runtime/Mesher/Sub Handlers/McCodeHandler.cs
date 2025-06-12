@@ -16,14 +16,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
             enabled = new NativeArray<byte>(VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         }
 
-        public void Schedule(NativeArray<Voxel> voxels, JobHandle dependency) {
+        public void Schedule(ref VoxelData voxels, JobHandle dependency) {
             // The check job converts each of the voxels into simple bits.
             // If a voxel has a positive or zero density value then the bit that corresponds to that voxel is set
             // This is helps the next job fetch data more quickly since it doesn't need to look at each of the original voxel values
             // (which is slow considering it needs to fetch 8 indices that are far apart in memor)
             // by converting the voxels into bits, we allow the CPU to fit more important data (which is whether it has a negative density or not) into the same cache line as before
             CheckJob checkJob = new CheckJob {
-                voxels = voxels,
+                densities = voxels.densities,
                 bits = bits,
             };
 

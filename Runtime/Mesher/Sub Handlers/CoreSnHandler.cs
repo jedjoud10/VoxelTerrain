@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             triangleCounter = new NativeCounter(Allocator.Persistent);
         }
 
-        public void Schedule(NativeArray<Voxel> voxels, ref NormalsHandler normalsSubHandler, ref McCodeHandler codeSubHandler) {
+        public void Schedule(ref VoxelData voxels, ref NormalsHandler normalsSubHandler, ref McCodeHandler codeSubHandler) {
             triangleCounter.Count = 0;
             vertexCounter.Count = 0;
 

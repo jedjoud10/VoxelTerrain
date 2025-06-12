@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Edits {
     public class EditTypeRegistry {
         public abstract class EditTypeDynDispatch {
             public abstract void Update(SystemBase system);
-            public abstract JobHandle Apply(Entity entity, NativeArray<Voxel> voxels, int3 chunkOffset, JobHandle dep);
+            public abstract JobHandle Apply(Entity entity, VoxelData voxels, int3 chunkOffset, JobHandle dep);
         }
 
         public class Bruh<T>: EditTypeDynDispatch where T : unmanaged, IEdit, IComponentData {
@@ -20,7 +20,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                 lookup.Update(system);
             }
 
-            public override JobHandle Apply(Entity entity, NativeArray<Voxel> voxels, int3 chunkOffset, JobHandle dep) {
+            public override JobHandle Apply(Entity entity, VoxelData voxels, int3 chunkOffset, JobHandle dep) {
                 if (lookup.TryGetComponent(entity, out T edit)) {
                     var job = new EditStoreJob<T> {
                         chunkOffset = chunkOffset,
@@ -56,7 +56,7 @@ namespace jedjoud.VoxelTerrain.Edits {
             }
         }
 
-        public JobHandle ApplyEdit(Entity entity, NativeArray<Voxel> voxels, int3 chunkOffset, JobHandle dep) {
+        public JobHandle ApplyEdit(Entity entity, VoxelData voxels, int3 chunkOffset, JobHandle dep) {
             TypeIndex index = lookup[entity].type;
             dep = registry[index].Apply(entity, voxels, chunkOffset, dep);
             return dep;

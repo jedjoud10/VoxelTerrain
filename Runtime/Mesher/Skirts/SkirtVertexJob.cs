@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
     public struct SkirtVertexJob : IJobParallelFor {
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public VoxelData voxels;
         [ReadOnly]
         public NativeArray<float3> voxelNormals;
         [ReadOnly]

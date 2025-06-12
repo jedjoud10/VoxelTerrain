@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
     public struct SkirtQuadJob : IJobParallelFor {
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public VoxelData voxels;
 
         [ReadOnly]
         public NativeArray<int> skirtVertexIndicesGenerated;
@@ -65,13 +65,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 int baseIndex = VoxelUtils.PosToIndex(unflattened, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(unflattened + forward, VoxelUtils.SIZE);
 
-                Voxel startVoxel = voxels[baseIndex];
-                Voxel endVoxel = voxels[endIndex];
+                half start = voxels.densities[baseIndex];
+                half end = voxels.densities[endIndex];
 
-                if (startVoxel.density >= 0f == endVoxel.density >= 0f)
+                if (start >= 0f == end >= 0f)
                     return;
 
-                flip = (endVoxel.density >= 0.0);
+                flip = end >= 0.0;
             }
 
             int3 offset = (int3)((int3)unflattened + (int3)forward - math.int3(1));

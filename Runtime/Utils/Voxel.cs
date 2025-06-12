@@ -3,41 +3,38 @@ using Unity.Collections;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
-    // CPU representation of what a voxel is. The most important value here is the density value
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Voxel {
-        public const int size = sizeof(int);
+    // SoA packed voxel data coming from the GPU
+    // Packed so that each array is at least the size of a uint, since we don't have "half" in shaders
+    public struct GpuVoxelData {
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PaddedDensity {
+            public half density;
+            public ushort _padding;
+        }
 
-        // Density of the voxel as a half to save some memory
-        public half density;
+        public NativeArray<PaddedDensity> paddedDensities;
 
-        // Material of the voxel that depicts its color and other parameters
-        public byte material;
+        public GpuVoxelData(Allocator allocator) {
+            paddedDensities = new NativeArray<PaddedDensity>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+        }
 
-        // Not used
-        public byte _padding;
-
-        // Empty voxel with the empty material
-        public readonly static Voxel Empty = new Voxel {
-            density = half.zero,
-            material = byte.MaxValue,
-            _padding = 0
-        };
+        public void Dispose() {
+            paddedDensities.Dispose();
+        }
     }
 
-    // SoA type representation for the voxel data
+
+    // SoA voxel data
     public struct VoxelData {
         public NativeArray<half> densities;
-        public NativeArray<byte> material;
+
 
         public VoxelData(Allocator allocator) {
             densities = new NativeArray<half>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
-            material = new NativeArray<byte>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
         }
 
         public void Dispose() {
             densities.Dispose();
-            material.Dispose();
         }
     }
 }

@@ -7,7 +7,7 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain.Edits {
     public class TerrainEdits : IComponentData {
         public NativeHashMap<int3, int> chunkPositionsToChunkEditIndices;
-        public UnsafeList<NativeArray<Voxel>> chunkEdits;
+        public UnsafeList<VoxelData> chunkEdits;
         public JobHandle applySystemHandle;
         public EditTypeRegistry registry;
     }

@@ -30,22 +30,22 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-        public void Schedule(NativeArray<Voxel> voxels, JobHandle dependency) {
+        public void Schedule(ref VoxelData voxels, JobHandle dependency) {
             // Normalize my shi dawg | Part 1
             NormalsPrefetchJob prefetchBase = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(BASE_OFFSET, BASE_COUNT),
+                densities = voxels.densities.GetSubArray(BASE_OFFSET, BASE_COUNT),
                 val = normalPrefetchedVals[0],
             };
             NormalsPrefetchJob prefetchX = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(OFFSET_X_OFFSET, OFFSET_X_COUNT),
+                densities = voxels.densities.GetSubArray(OFFSET_X_OFFSET, OFFSET_X_COUNT),
                 val = normalPrefetchedVals[1],
             };
             NormalsPrefetchJob prefetchY = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(OFFSET_Y_OFFSET, OFFSET_Y_COUNT),
+                densities = voxels.densities.GetSubArray(OFFSET_Y_OFFSET, OFFSET_Y_COUNT),
                 val = normalPrefetchedVals[2],
             };
             NormalsPrefetchJob prefetchZ = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(OFFSET_Z_OFFSET, OFFSET_Z_COUNT),
+                densities = voxels.densities.GetSubArray(OFFSET_Z_OFFSET, OFFSET_Z_COUNT),
                 val = normalPrefetchedVals[3],
             };
 
