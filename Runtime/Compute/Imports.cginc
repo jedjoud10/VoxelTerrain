@@ -24,8 +24,8 @@ SamplerState my_linear_clamp_sampler;
 
 #if defined(_ASYNC_READBACK_OCTAL)
     // why the FUCK does CBUFFER not work :sob: :skull:
-    RWStructuredBuffer<int> neg_pos_octal_counters;
-    StructuredBuffer<float4> pos_scale_octals;
+    RWStructuredBuffer<int> multi_counters_buffer;
+    StructuredBuffer<float4> multi_transforms_buffer;
 
     int size;
     RWStructuredBuffer<uint> voxels_buffer;
@@ -61,8 +61,8 @@ SamplerState my_linear_clamp_sampler;
             uint3 zero_to_three = id / LOGICAL_SIZE;
             int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
     
-            float4 pos_scale = pos_scale_octals[chunk_index];
-            return (float3)((int3)(id % LOGICAL_SIZE) * pos_scale.w) + pos_scale.xyz;
+            float4 transform = multi_transforms_buffer[chunk_index];
+            return (float3)((int3)(id % LOGICAL_SIZE) * transform.w) + transform.xyz;
     }
 #elif defined(_PREVIEW)
     float3 ConvertIntoWorldPosition(uint3 id) {
@@ -197,12 +197,16 @@ SamplerState my_linear_clamp_sampler;
     void CheckVoxelSign(uint3 id, float value) {
         uint3 zero_to_three = id / LOGICAL_SIZE;
         int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
-        InterlockedAdd(neg_pos_octal_counters[chunk_index], value >= 0.0 ? 1 : -1);
+        InterlockedAdd(multi_counters_buffer[chunk_index], value >= 0.0 ? 1 : -1);
     }
 #endif
 
 #if defined(_ASYNC_READBACK_OCTAL) || defined(_SEGMENT_VOXELS) || defined(_PREVIEW)
-    void StoreVoxel(uint3 id, float density, int material) {
+    void StoreVoxel(uint3 id, float density, uint material) {
+        Voxel voxel;
+        voxel.density = density;
+        voxel.material = material;
+
         #if defined(_ASYNC_READBACK_OCTAL)
             uint3 zero_to_three = id / LOGICAL_SIZE;
             int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
@@ -212,10 +216,10 @@ SamplerState my_linear_clamp_sampler;
     
             // this is a buffer!!!
             // contiguous buffer containing 64 chunks worth of data
-            voxels_buffer[index] = packVoxelData(density, material);
+            voxels_buffer[index] = packVoxelData(voxel);
             CheckVoxelSign(id, density);
         #elif defined(_PREVIEW)
-            voxels_texture_write[id] = packVoxelData(density, material);
+            voxels_texture_write[id] = packVoxelData(voxel);
         #elif defined(_SEGMENT_VOXELS)
             densities_texture_write[id] = density;
         #endif

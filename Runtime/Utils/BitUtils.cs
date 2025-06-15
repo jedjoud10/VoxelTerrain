@@ -90,5 +90,9 @@ namespace jedjoud.VoxelTerrain {
             DebugCheckOnlyOneBitMask(b3);
             return math.tzcnt(math.bitmask(new bool4(b3, false)));
         }
+
+        public static uint PackByteToUint(byte a, byte b, byte c, byte d) {
+            return (uint)a | (uint)b << 8 | (uint)c << 16 | (uint)d << 24;
+        }
     }
 }

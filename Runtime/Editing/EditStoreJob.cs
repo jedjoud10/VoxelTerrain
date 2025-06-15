@@ -14,14 +14,10 @@ namespace jedjoud.VoxelTerrain.Edits {
             uint3 id = VoxelUtils.IndexToPos(index, VoxelUtils.SIZE);
             float3 worldPosition = (float3)((int3)id + chunkOffset);
 
-            /*
             // Read, modify, write
-            Voxel voxel = voxels[index];
-            float density = voxel.density;
-            edit.Modify(worldPosition, ref density);
-            voxel.density = (half)density;
-            voxels[index] = voxel;
-            */
+            EditVoxel voxel = voxels.FetchEditVoxel(index);
+            edit.Modify(worldPosition, ref voxel);
+            voxels.StoreEditVoxels(index, voxel);
         }
     }
 }

@@ -47,7 +47,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtWithinThreshold = new NativeArray<bool>(FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         }
 
-        public void Schedule(NativeArray<Voxel> voxels, ref NormalsHandler normals, ref CoreSnHandler core, JobHandle dependency) {
+        public void Schedule(ref VoxelData voxels, ref NormalsHandler normals, ref CoreSnHandler core, JobHandle dependency) {
             skirtStitchedTriangleCounter.Count = 0;
             skirtForcedTriangleCounter.Reset();
             skirtVertexCounter.Count = 0;

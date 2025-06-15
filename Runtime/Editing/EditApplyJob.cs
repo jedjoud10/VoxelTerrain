@@ -11,9 +11,9 @@ namespace jedjoud.VoxelTerrain.Edits {
         public NativeHashMap<int3, int> chunkPositionsToChunkEditIndices;
 
         [ReadOnly]
-        public UnsafePtrList<VoxelData> chunkEditsRaw;
+        public UnsafePtrListVoxelData chunkEditsRaw;
 
-        public NativeArray<VoxelData> voxels;
+        public VoxelData voxels;
         public int3 chunkOffset;
         public int chunkScale;
 
@@ -26,14 +26,7 @@ namespace jedjoud.VoxelTerrain.Edits {
             if (chunkPositionsToChunkEditIndices.TryGetValue(chunkEditPosition, out int chunkEditIndex)) {
                 uint3 voxelPositionInsideChunkEdit = VoxelUtils.Mod(worldPosition, VoxelUtils.PHYSICAL_CHUNK_SIZE);
                 int chunkEditVoxelIndex = VoxelUtils.PosToIndex(voxelPositionInsideChunkEdit, VoxelUtils.SIZE);
-
-                /*
-                unsafe {
-                    Voxel* chunkEditVoxelsPtr = chunkEditsRaw[chunkEditIndex];
-                    Voxel srcEditVoxel = chunkEditVoxelsPtr[chunkEditVoxelIndex];
-                    voxels[index] = srcEditVoxel;
-                }
-                */
+                chunkEditsRaw.CopyToDataAtIndex(chunkEditIndex, chunkEditVoxelIndex, voxels, index);
             }
         }
     }

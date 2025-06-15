@@ -149,7 +149,7 @@ namespace jedjoud.VoxelTerrain {
                     state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld() { Value = localToWorld });
 
                     state.EntityManager.SetComponentData<TerrainChunkVoxels>(entity, new TerrainChunkVoxels {
-                        inner = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
+                        data = new VoxelData(Allocator.Persistent),
                         asyncWriteJob = default,
                         asyncReadJob = default,
                     });
@@ -208,7 +208,7 @@ namespace jedjoud.VoxelTerrain {
                         TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
                         voxels.asyncWriteJob.Complete();
                         voxels.asyncReadJob.Complete();
-                        voxels.inner.Dispose();
+                        voxels.data.Dispose();
                         state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                     }
 
@@ -265,7 +265,7 @@ namespace jedjoud.VoxelTerrain {
                     TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
                     voxels.asyncWriteJob.Complete();
                     voxels.asyncReadJob.Complete();
-                    voxels.inner.Dispose();
+                    voxels.data.Dispose();
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                 }
 

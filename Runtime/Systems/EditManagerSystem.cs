@@ -1,6 +1,5 @@
-using Unity.Burst;
+using System.Collections.Generic;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
@@ -16,7 +15,7 @@ namespace jedjoud.VoxelTerrain.Edits {
         protected override void OnCreate() {
             singleton = new TerrainEdits {
                 chunkPositionsToChunkEditIndices = new NativeHashMap<int3, int>(0, Allocator.Persistent),
-                chunkEdits = new UnsafeList<NativeArray<Voxel>>(0, Allocator.Persistent),
+                chunkEdits = new List<VoxelData>(),
                 applySystemHandle = default,
                 registry = new EditTypeRegistry(this),
             };
@@ -33,8 +32,6 @@ namespace jedjoud.VoxelTerrain.Edits {
             foreach (var editData in backing.chunkEdits) {
                 editData.Dispose();
             }
-
-            backing.chunkEdits.Dispose();
         }
 
         protected override void OnUpdate() {

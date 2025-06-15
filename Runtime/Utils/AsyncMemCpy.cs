@@ -29,7 +29,7 @@ namespace jedjoud.VoxelTerrain {
     }
 
     public static class AsyncMemCpyUtils {
-        public static JobHandle Copy<T>(NativeArray<T> src, NativeArray<T> dst, JobHandle dep = default) where T: unmanaged {
+        public static JobHandle CopyAsync<T>(NativeArray<T> src, NativeArray<T> dst, JobHandle dep = default) where T: unmanaged {
             int sizeOf = UnsafeUtility.SizeOf<T>();
             NativeArray<byte> castedSrc = src.Reinterpret<byte>(sizeOf);
             NativeArray<byte> castedDst = dst.Reinterpret<byte>(sizeOf);
@@ -40,7 +40,11 @@ namespace jedjoud.VoxelTerrain {
             }.Schedule(dep);
         }
 
-        public static unsafe JobHandle RawCopy(void* src, void* dst, int size, JobHandle dep = default) {
+        public static JobHandle CopyFromAsync<T>(this NativeArray<T> self, NativeArray<T> other, JobHandle dep = default) where T : unmanaged {
+            return CopyAsync<T>(other, self, dep);
+        }
+
+        public static unsafe JobHandle RawCopyAsync(void* src, void* dst, int size, JobHandle dep = default) {
             return new UnsafeAsyncMemCpyJob() {
                 src = src,
                 dst = dst,

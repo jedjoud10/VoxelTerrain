@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateAfter(typeof(ReadbackSystem))]
     public partial class MeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
-        const int MAX_MESH_JOBS_PER_TICK = 8;
+        const int MAX_MESH_JOBS_PER_TICK = 4;
         private RenderMeshDescription mainMeshDescription;
         private RenderMeshDescription skirtsMeshDescription;
         private EntitiesGraphicsSystem graphics;

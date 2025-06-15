@@ -14,9 +14,9 @@ namespace jedjoud.VoxelTerrain.Edits {
             return MinMaxAABB.CreateFromCenterAndHalfExtents(center, radius);
         }
 
-        public void Modify(float3 position, ref float voxel) {
+        public void Modify(float3 position, ref EditVoxel voxel) {
             float sphere = math.length(position - center) - radius;
-            voxel = math.max(voxel, -sphere);
+            voxel.density = math.max(voxel.density, -sphere);
         }
     }
 }

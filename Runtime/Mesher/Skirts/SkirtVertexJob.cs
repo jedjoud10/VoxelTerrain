@@ -147,12 +147,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uint3 startOffset = SkirtUtils.UnflattenFromFaceRelative(startOffset2D, faceDir, (uint)(negative ? 0 : 1));
                 uint3 endOffset = SkirtUtils.UnflattenFromFaceRelative(endOffset2D, faceDir, (uint)(negative ? 0 : 1));
 
-
                 int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
                 int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
 
-                Voxel startVoxel = voxels[startIndex];
-                Voxel endVoxel = voxels[endIndex];
+                float startDensity = voxels.densities[startIndex];
+                float endDensity = voxels.densities[endIndex];
 
                 uint2 startPosition2D = startOffset2D + flat;
                 uint2 endPosition2D = endOffset2D + flat;
@@ -160,9 +159,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 force |= withinThreshold[VoxelUtils.PosToIndex2D(startPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
                 force |= withinThreshold[VoxelUtils.PosToIndex2D(endPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
 
-                if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
+                if (startDensity >= 0 ^ endDensity >= 0) {
                     count++;
-                    float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
+                    float value = math.unlerp(startDensity, endDensity, 0);
                     vertex += math.lerp(startOffset, endOffset, value);
                     spawnedNormal += math.lerp(voxelNormals[startIndex], voxelNormals[endIndex], value);
                 }
@@ -214,8 +213,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int startIndex = VoxelUtils.PosToIndex(unoffsetted - endOffset, VoxelUtils.SIZE);
             int endIndex = VoxelUtils.PosToIndex(unoffsetted, VoxelUtils.SIZE);
 
-            Voxel startVoxel = voxels[startIndex];
-            Voxel endVoxel = voxels[endIndex];
+            float startDensity = voxels.densities[startIndex];
+            float endDensity = voxels.densities[endIndex];
 
             uint2 startPosition2D = flatten - SkirtUtils.FlattenToFaceRelative(endOffset, faceDir);
             uint2 endPosition2D = flatten;
@@ -223,9 +222,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             force |= withinThreshold[VoxelUtils.PosToIndex2D(startPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
             force |= withinThreshold[VoxelUtils.PosToIndex2D(endPosition2D, VoxelUtils.SIZE) + withinThresholdFaceIndex];
 
-            if (startVoxel.density >= 0 ^ endVoxel.density >= 0) {
+            if (startDensity >= 0 ^ endDensity >= 0) {
                 spawn = true;
-                float value = math.unlerp(startVoxel.density, endVoxel.density, 0);
+                float value = math.unlerp(startDensity, endDensity, 0);
                 vertex = math.lerp(-(float3)(endOffset), 0, value);
                 spawnedNormal = math.lerp(voxelNormals[startIndex], voxelNormals[endIndex], value);
             }

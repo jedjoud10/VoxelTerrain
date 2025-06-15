@@ -23,12 +23,8 @@ namespace jedjoud.VoxelTerrain.Edits {
             TerrainEdits backing = SystemAPI.ManagedAPI.GetSingleton<TerrainEdits>();
 
             NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = backing.chunkPositionsToChunkEditIndices;
-            UnsafePtrList<Voxel> chunkEditsCopyRaw = new UnsafePtrList<Voxel>(backing.chunkPositionsToChunkEditIndices.Count, Allocator.Persistent);
-            unsafe {
-                foreach (var arr in backing.chunkEdits) {
-                    chunkEditsCopyRaw.Add(arr.GetUnsafeReadOnlyPtr());
-                }
-            }
+            UnsafePtrListVoxelData chunkEditsCopyRaw = new UnsafePtrListVoxelData(Allocator.Persistent);
+            chunkEditsCopyRaw.AddReadOnlyRange(backing.chunkEdits);
 
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk>().WithAny<TerrainChunkRequestMeshingTag, TerrainChunkRequestReadbackTag>().Build();
             NativeArray<TerrainChunk> chunks = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
@@ -67,7 +63,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                         chunkScale = node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE,
                         chunkOffset = node.position,
 
-                        voxels = voxels.inner
+                        voxels = voxels.data
                     };
 
                     JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, voxels.asyncReadJob);

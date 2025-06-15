@@ -48,8 +48,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Free = false;
             this.entity = entity;
 
-            JobHandle dependency = chunkVoxels.asyncReadJob;
-            dependency = AsyncMemCpyUtils.Copy(chunkVoxels.data.densities.inner, this.voxels.densities.inner, dependency);
+            JobHandle dependency = voxels.CopyFromAsync(chunkVoxels.data, chunkVoxels.asyncReadJob);
             chunkVoxels.asyncReadJob = dependency;
             chunkVoxels.meshingInProgress = true;
 

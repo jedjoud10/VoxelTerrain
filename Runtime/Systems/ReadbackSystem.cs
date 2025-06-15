@@ -20,24 +20,24 @@ namespace jedjoud.VoxelTerrain.Generation {
         private NativeArray<int> counters;
         private bool countersFetched, voxelsFetched;
         private bool disposed;
-        private OctalReadbackExecutor octalExecutor;
+        private MultiReadbackExecutor octalExecutor;
         private ComputeBuffer negPosOctalCountersBuffer;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadbackConfig>();
             RequireForUpdate<TerrainReadySystems>();
-            data = new NativeArray<uint>(VoxelUtils.VOLUME * VoxelUtils.OCTAL_CHUNK_COUNT, Allocator.Persistent);
-            entities = new List<Entity>(VoxelUtils.OCTAL_CHUNK_COUNT);
-            copies = new NativeArray<JobHandle>(VoxelUtils.OCTAL_CHUNK_COUNT, Allocator.Persistent);
-            counters = new NativeArray<int>(VoxelUtils.OCTAL_CHUNK_COUNT, Allocator.Persistent);
+            data = new NativeArray<uint>(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
+            entities = new List<Entity>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT);
+            copies = new NativeArray<JobHandle>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
+            counters = new NativeArray<int>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
             free = true;
             pendingCopies = null;
             voxelsFetched = false;
             countersFetched = false;
             disposed = false;
 
-            octalExecutor = new OctalReadbackExecutor();
-            negPosOctalCountersBuffer = new ComputeBuffer(VoxelUtils.OCTAL_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
+            octalExecutor = new MultiReadbackExecutor();
+            negPosOctalCountersBuffer = new ComputeBuffer(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
         }
 
         private void Reset() {
@@ -88,9 +88,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
             }
                 
-            int numChunks = math.min(VoxelUtils.OCTAL_CHUNK_COUNT, voxelsArray.Length);
+            int numChunks = math.min(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, voxelsArray.Length);
 
-            OctalReadbackPosScaleData[] posScaleOctals = new OctalReadbackPosScaleData[VoxelUtils.OCTAL_CHUNK_COUNT];
+            MultiReadbackTransform[] posScaleOctals = new MultiReadbackTransform[VoxelUtils.MULTI_READBACK_CHUNK_COUNT];
 
             free = false;
 
@@ -104,7 +104,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 float3 pos = (float3)chunk.node.position;
                 float scale = chunk.node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
-                posScaleOctals[j] = new OctalReadbackPosScaleData {
+                posScaleOctals[j] = new MultiReadbackTransform {
                     scale = scale,
                     position = pos
                 };
@@ -114,14 +114,14 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
-            OctalReadbackExecutorParameters parameters = new OctalReadbackExecutorParameters() {
+            MultiReadbackExecutorParameters parameters = new MultiReadbackExecutorParameters() {
                 commandBufferName = "Terrain Readback System Async Dispatch",
-                posScaleOctals = posScaleOctals,
+                transforms = posScaleOctals,
                 kernelName = "CSVoxels",
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
                 seeder = ManagedTerrain.instance.seeder,
-                negPosOctalCountersBuffer = negPosOctalCountersBuffer,
+                countersBuffer = negPosOctalCountersBuffer,
             };
 
             GraphicsFence fence = octalExecutor.Execute(parameters);
@@ -161,8 +161,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                             RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity);
                             ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
 
-                            uint* dst = (uint*)voxels.inner.GetUnsafePtr();
-                            JobHandle handle = AsyncMemCpyUtils.RawCopy((void*)src, (void*)dst, Voxel.size * VoxelUtils.VOLUME);
+                            JobHandle handle = new GpuToCpuCopy {
+                                cpuData = voxels.data,
+                                rawGpuData = src,
+                            }.Schedule(BatchUtils.BATCH, VoxelUtils.VOLUME);
 
                             copies[j] = handle;
                             voxels.asyncWriteJob = handle;

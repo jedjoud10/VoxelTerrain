@@ -64,7 +64,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                 MinMaxAABB editChunkAabb = new MinMaxAABB(editChunkPosition * VoxelUtils.PHYSICAL_CHUNK_SIZE, editChunkPosition * VoxelUtils.PHYSICAL_CHUNK_SIZE + VoxelUtils.PHYSICAL_CHUNK_SIZE);
 
                 if (backing.chunkPositionsToChunkEditIndices.TryGetValue(editChunkPosition, out int index)) {
-                    NativeArray<Voxel> editVoxels = backing.chunkEdits[index];
+                    VoxelData editVoxels = backing.chunkEdits[index];
                     int3 chunkOffset = editChunkPosition * VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
                     // apply each edit for this *tick* in sequence
@@ -111,16 +111,16 @@ namespace jedjoud.VoxelTerrain.Edits {
             }
 
             // add chunk edit backing native arrays (using LOD 0 chunks' voxel data as source)
-            int newChunkEditIndirectIndex = backing.chunkEdits.Length;
+            int newChunkEditIndirectIndex = backing.chunkEdits.Count;
             for (int i = 0; i < newIntersecting.Length; i++) {
                 int3 chunkPosOnly = newIntersecting[i];
                 OctreeNode node = OctreeNode.LeafLodZeroNode(chunkPosOnly, octreeConfig.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE);
 
                 // check if the chunk edit represents and LOD0 chunk that we can use for its source voxels
                 if (manager.chunks.TryGetValue(node, out Entity chunk)) {
-                    NativeArray<Voxel> editVoxels = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent);
+                    VoxelData editVoxels = new VoxelData(Allocator.Persistent);
                     TerrainChunkVoxels chunkVoxels = SystemAPI.GetComponent<TerrainChunkVoxels>(chunk);
-                    editVoxels.CopyFrom(chunkVoxels.inner);
+                    editVoxels.CopyFrom(chunkVoxels.data);
 
                     // add a new chunk edit array to the world. this will be stored indefinitely
                     backing.chunkEdits.Add(editVoxels);

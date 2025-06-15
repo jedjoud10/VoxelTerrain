@@ -1,12 +1,16 @@
-void unpackVoxelData(uint packed, out float density, out uint material) {
-    density = f16tof32(packed & 0xFFFF);
-    material = packed >> 16;
+struct Voxel {
+    float density;
+    uint material;
+};
+
+Voxel unpackVoxelData(uint packed) {
+    Voxel voxel;
+    voxel.density = f16tof32(packed & 0xFFFF);
+    voxel.material = (packed >> 16) & 0xFF; 
+    return voxel;
 }
 
-float unpackDensity(uint packed) {
-    return f16tof32(packed & 0xFFFF);
-}
-
-uint packVoxelData(float density, uint material) {
-    return f32tof16(density) | (material << 16);
+uint packVoxelData(Voxel voxel) {
+    uint first = f32tof16(voxel.density) | (clamp(voxel.material, 0, 255) << 16);
+    return first;
 }
