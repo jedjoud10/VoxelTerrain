@@ -1,13 +1,13 @@
+using System;
 using System.Linq;
 using Unity.Collections;
-using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    internal class MeshJobHandler {
+    public class MeshJobHandler {
         public struct Stats {
             public bool empty;
             public Bounds bounds;
@@ -16,6 +16,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public int indexCount;
             public NativeArray<float3> vertices;
             public NativeArray<int> indices;
+        }
+
+        public struct Request {
+            public TerrainChunk chunk;
+            public Action<TerrainChunk> callback;
         }
 
         // Sub handlers scheduled in sequential order
@@ -27,7 +32,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         private VoxelData voxels;
         private JobHandle jobHandle;
-        private Entity entity;
+        private Request request;
 
         public MeshJobHandler() {
             voxels = new VoxelData(Allocator.Persistent);
@@ -40,18 +45,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public bool Free { get; private set; } = true;
 
-        public bool IsComplete(EntityManager manager) {
-            return jobHandle.IsCompleted && !Free && manager.Exists(entity);
+        public bool IsComplete() {
+            return jobHandle.IsCompleted && !Free;
         }
 
-        public void BeginJob(Entity entity, ref TerrainChunkVoxels chunkVoxels) {
+        public void BeginJob(Request request) {
             Free = false;
-            this.entity = entity;
+            this.request = request;
+            TerrainChunk chunk = request.chunk;
 
-            JobHandle dependency = voxels.CopyFromAsync(chunkVoxels.data, chunkVoxels.asyncReadJob);
-            chunkVoxels.asyncReadJob = dependency;
-            chunkVoxels.meshingInProgress = true;
-
+            JobHandle dependency = voxels.CopyFromAsync(chunk.voxels, chunk.asyncReadJobHandle);
+            chunk.asyncReadJobHandle = dependency;
+            
             code.Schedule(ref voxels, dependency);
             normals.Schedule(ref voxels, dependency);
             core.Schedule(ref voxels, ref normals, ref code);
@@ -60,33 +65,28 @@ namespace jedjoud.VoxelTerrain.Meshing {
             jobHandle = apply.jobHandle;
         }
 
-        public bool TryComplete(EntityManager mgr, out Mesh outChunkMesh, out Entity entity, out Stats stats) {
+        public bool TryComplete(out Request request, out Stats stats) {
             jobHandle.Complete();
             Free = true;
 
-            if (!mgr.Exists(this.entity)) {
-                entity = Entity.Null;
+            if (this.request.chunk == null) {
                 stats = default;
-                outChunkMesh = null;
+                request = default;
                 return false;
             }
 
-            entity = this.entity;
+            request = this.request;
 
             int[] temp = skirt.skirtForcedTriangleCounter.ToArray();
             bool empty = core.triangleCounter.Count == 0 && temp.All(x => x == 0);
 
             if (empty) {
-                outChunkMesh = null;
+                this.request.chunk.sharedMesh = null;
                 apply.array.Dispose();
             } else {
-                outChunkMesh = new Mesh();
-                Mesh.ApplyAndDisposeWritableMeshData(apply.array, outChunkMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
+                this.request.chunk.sharedMesh = new Mesh();
+                Mesh.ApplyAndDisposeWritableMeshData(apply.array, this.request.chunk.sharedMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
             }
-
-            TerrainChunkVoxels tmp = mgr.GetComponentData<TerrainChunkVoxels>(entity);
-            tmp.meshingInProgress = false;
-            mgr.SetComponentData(entity, tmp);
 
             stats = new Stats {
                 bounds = new Bounds() {

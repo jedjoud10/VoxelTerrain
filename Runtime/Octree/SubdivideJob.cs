@@ -11,7 +11,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         public OctreeNode root;
 
         [ReadOnly]
-        public NativeList<float3> loaders;
+        public NativeList<TerrainLoader.Data> loadersData;
 
         public int maxDepth;
 
@@ -39,12 +39,11 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         private bool InRangeOfLoaders(ref OctreeNode node) {
             // TODO: implement clustering algorithm to make this faster...
-            foreach (float3 center in loaders) {
-                // pls add me back...
-                float factor = math.clamp(1.8f, 1f, 2f);
+            foreach (TerrainLoader.Data loader in loadersData) {
+                float factor = math.clamp(loader.factor, 1f, 2f);
 
                 // clamp to the root node
-                float3 clamped = math.clamp(center, root.Bounds.Min, root.Bounds.Max);
+                float3 clamped = math.clamp(loader.position, root.Bounds.Min, root.Bounds.Max);
 
                 if (math.distance(node.Center, clamped) < factor * node.size) {
                     return true;

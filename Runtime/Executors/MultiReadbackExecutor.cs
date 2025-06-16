@@ -11,8 +11,8 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public class MultiReadbackExecutorParameters : ExecutorParameters {
-        public MultiReadbackTransform[] transforms;
-        public ComputeBuffer countersBuffer;
+        public MultiReadbackTransform[] multiTransforms;
+        public ComputeBuffer signCountersBuffer;
     }
 
     public class MultiReadbackExecutor : VolumeExecutor<MultiReadbackExecutorParameters> {
@@ -26,21 +26,21 @@ namespace jedjoud.VoxelTerrain.Generation {
             transformsBuffer?.Dispose();
         }
 
-        protected override void CreateResources(ManagedTerrainCompiler compiler) {
+        protected override void CreateResources(TerrainCompiler compiler) {
             base.CreateResources(compiler);
             transformsBuffer = new ComputeBuffer(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, sizeof(int) * 4, ComputeBufferType.Structured);
             buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxels" }, new ComputeBuffer(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, GpuVoxel.size, ComputeBufferType.Structured)));
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, MultiReadbackExecutorParameters parameters, int kernelIndex) {
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, TerrainSeeder seeder, MultiReadbackExecutorParameters parameters, int kernelIndex) {
             base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
 
             ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.OctalReadback);
-            commands.SetBufferData(transformsBuffer, parameters.transforms);
+            commands.SetBufferData(transformsBuffer, parameters.multiTransforms);
             commands.SetComputeBufferParam(shader, kernelIndex, "multi_transforms_buffer", transformsBuffer);
 
-            commands.SetBufferData(parameters.countersBuffer, new int[VoxelUtils.MULTI_READBACK_CHUNK_COUNT]);
-            commands.SetComputeBufferParam(shader, kernelIndex, "multi_counters_buffer", parameters.countersBuffer);
+            commands.SetBufferData(parameters.signCountersBuffer, new int[VoxelUtils.MULTI_READBACK_CHUNK_COUNT]);
+            commands.SetComputeBufferParam(shader, kernelIndex, "multi_counters_buffer", parameters.signCountersBuffer);
         }
     }
 }

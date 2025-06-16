@@ -2,22 +2,20 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Segments {
     [BurstCompile(CompileSynchronously = true)]
     public struct SegmentSpawnJob : IJob {
-        public NativeHashSet<TerrainSegment> oldSegments;
-        public NativeHashSet<TerrainSegment> newSegments;
+        public NativeHashSet<TerrainSegment.Data> oldSegments;
+        public NativeHashSet<TerrainSegment.Data> newSegments;
         
-        public NativeArray<TerrainLoader> loaders;
-        public NativeArray<LocalTransform> loaderTransforms;
+        public NativeArray<TerrainLoader.Data> loaders;
 
         [WriteOnly]
-        public NativeList<TerrainSegment> addedSegments;
+        public NativeList<TerrainSegment.Data> addedSegments;
 
         [WriteOnly]
-        public NativeList<TerrainSegment> removedSegments;
+        public NativeList<TerrainSegment.Data> removedSegments;
 
         public int maxSegmentsInWorld;
         public float worldSegmentSize;
@@ -27,9 +25,8 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             // TODO: implement clustering algorithm to make this faster...
             for (int l = 0; l < loaders.Length; l++) {
-                TerrainLoader loader = loaders[l];
-                LocalTransform transform = loaderTransforms[l];
-                float3 center = transform.Position;
+                TerrainLoader.Data loader = loaders[l];
+                float3 center = loader.position;
                 int3 extent = loader.segmentExtent;
                 int3 extentHigh = loader.segmentExtentHigh;
 
@@ -51,13 +48,13 @@ namespace jedjoud.VoxelTerrain.Segments {
                             float distance = math.distance(center, segmentCenter) / worldSegmentSize;
 
                             if (math.all(worldSegment >= min) && math.all(worldSegment < max)) {
-                                var lod = TerrainSegment.LevelOfDetail.Low;
+                                var lod = TerrainSegment.Data.LevelOfDetail.Low;
 
                                 if (math.all(localSegment >= -extentHigh) && math.all(localSegment < extentHigh)) {
-                                    lod = TerrainSegment.LevelOfDetail.High;
+                                    lod = TerrainSegment.Data.LevelOfDetail.High;
                                 }
 
-                                newSegments.Add(new TerrainSegment {
+                                newSegments.Add(new TerrainSegment.Data {
                                     position = worldSegment,
                                     lod = lod,
                                 });

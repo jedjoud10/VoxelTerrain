@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
@@ -15,6 +16,12 @@ namespace jedjoud.VoxelTerrain {
             NativeBitArrayUnsafeUtility.SetAtomicSafetyHandle(ref self, handle);
 #endif
             return arr;
+        }
+
+        public static void AddRange<T>(this NativeList<T> self, IEnumerable<T> other) where T: unmanaged {
+            foreach (var item in other) {
+                self.Add(item);
+            }
         }
     }
 }

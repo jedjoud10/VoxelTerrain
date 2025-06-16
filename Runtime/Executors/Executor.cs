@@ -9,8 +9,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string kernelName;
         public string commandBufferName;
         public bool updateInjected;
-        public ManagedTerrainCompiler compiler;
-        public ManagedTerrainSeeder seeder;
+        public TerrainCompiler compiler;
+        public TerrainSeeder seeder;
     }
 
     public abstract class Executor<P> where P : ExecutorParameters {
@@ -20,7 +20,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Dictionary<string, ExecutorTexture> Textures { get { return textures; } }
         public Dictionary<string, ExecutorBuffer> Buffers { get { return buffers; } }
 
-        protected virtual void CreateResources (ManagedTerrainCompiler compiler) {
+        protected virtual void CreateResources (TerrainCompiler compiler) {
             DisposeResources();
 
             // TODO: for some reason unity thinks there's a memory leak here due to the compute buffers??
@@ -32,7 +32,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        protected virtual void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, P parameters, int kernelIndex) {
+        protected virtual void SetComputeParams(CommandBuffer commands, ComputeShader shader, TerrainSeeder seeder, P parameters, int kernelIndex) {
             commands.SetComputeIntParams(shader, "permutation_seed", new int[] { seeder.permutationSeed.x, seeder.permutationSeed.y, seeder.permutationSeed.z });
             commands.SetComputeIntParams(shader, "modulo_seed", new int[] { seeder.moduloSeed.x, seeder.moduloSeed.y, seeder.moduloSeed.z });
         }
@@ -42,8 +42,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (parameters == null)
                 throw new ArgumentNullException("Missing execution parameters");
 
-            ManagedTerrainCompiler compiler = parameters.compiler;
-            ManagedTerrainSeeder seeder = parameters.seeder;
+            TerrainCompiler compiler = parameters.compiler;
+            TerrainSeeder seeder = parameters.seeder;
 
             if (compiler == null)
                 throw new ArgumentNullException("Compiler not set or missing");
@@ -144,7 +144,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             return ExecuteWithInvocationCount(new int3(size), parameters, previous);
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, P parameters, int kernelIndex) {
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, TerrainSeeder seeder, P parameters, int kernelIndex) {
             base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
             commands.SetComputeIntParam(shader, "size", size);
         }

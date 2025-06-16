@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public class SegmentPropExecutor : Executor<SegmentPropExecutorParameters> {
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, SegmentPropExecutorParameters parameters, int kernelIndex) {
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, TerrainSeeder seeder, SegmentPropExecutorParameters parameters, int kernelIndex) {
             base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
 
             ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.SegmentProps);

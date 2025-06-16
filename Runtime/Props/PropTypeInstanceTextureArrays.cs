@@ -8,6 +8,7 @@ namespace jedjoud.VoxelTerrain.Props {
         public Texture2DArray normal;
         public Texture2DArray mask;
 
+        /*
         public PropTypeInstanceTextureArrays(TerrainPropsConfig.BakedPropVariant[] variants) {
             Texture2D[] diffuse = variants.Select(variant => variant.diffuse).ToArray();
             Texture2D[] normal = variants.Select(variant => variant.normal).ToArray();
@@ -17,6 +18,7 @@ namespace jedjoud.VoxelTerrain.Props {
             this.normal = CreateTexArray(normal, true, Texture2D.normalTexture);
             this.mask = CreateTexArray(mask, true, Texture2D.whiteTexture);
         }
+        */
 
         private static Texture2DArray CreateTexArray(Texture2D[] textures, bool linear, Texture2D fallback) {
             if (textures == null || textures.Length == 0 || textures[0] == null)

@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public PreviewExecutor(int size) : base(size) {
         }
 
-        protected override void CreateResources(ManagedTerrainCompiler compiler) {
+        protected override void CreateResources(TerrainCompiler compiler) {
             base.CreateResources(compiler);
             textures.Add("voxels", new ExecutorTexture {
                 name = "voxels",
@@ -24,7 +24,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             });
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, PreviewExecutorParameters parameters, int kernelIndex) {
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, TerrainSeeder seeder, PreviewExecutorParameters parameters, int kernelIndex) {
             base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
 
             ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.Preview);

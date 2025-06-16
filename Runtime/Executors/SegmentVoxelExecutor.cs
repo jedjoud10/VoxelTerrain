@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public SegmentVoxelExecutor() : base(SegmentUtils.SEGMENT_SIZE_PADDED) {
         }
 
-        protected override void CreateResources(ManagedTerrainCompiler compiler) {
+        protected override void CreateResources(TerrainCompiler compiler) {
             base.CreateResources(compiler);
             textures.Add("densities", new ExecutorTexture {
                 name = "densities",
@@ -24,7 +24,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             });
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, SegmentVoxelExecutorParameters parameters, int kernelIndex) {
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, TerrainSeeder seeder, SegmentVoxelExecutorParameters parameters, int kernelIndex) {
             base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
 
             ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.SegmentVoxels);
