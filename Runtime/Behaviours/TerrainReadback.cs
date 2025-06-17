@@ -25,6 +25,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         private ComputeBuffer signCountersBuffer;
 
         public bool Free => queue.IsEmpty();
+        public int InQueue => queue.Count;
 
         public override void CallerStart() {
             queue = new QueueDedupped<TerrainChunk>();
@@ -42,7 +43,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             signCountersBuffer = new ComputeBuffer(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
         }
 
-        private void Reset() {
+        private void ResetInternally() {
             free = true;
             chunks.Clear();
             pendingCopies = null;
@@ -70,8 +71,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 return;
             }
 
-            int numChunks = math.min(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, array.Length);
-
             MultiReadbackTransform[] multiTransforms = new MultiReadbackTransform[VoxelUtils.MULTI_READBACK_CHUNK_COUNT];
 
             free = false;
@@ -79,7 +78,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Change chunk states, since we are now waiting for voxel readback
             chunks.Clear();
             chunks.AddRange(array);
-            for (int j = 0; j < numChunks; j++) {
+            for (int j = 0; j < array.Length; j++) {
                 TerrainChunk chunk = array[j];
 
                 float3 pos = (float3)chunk.node.position;
@@ -130,11 +129,15 @@ namespace jedjoud.VoxelTerrain.Generation {
                             // we can just do parallel copies from the source buffer at the appropriate offset
                             uint* src = pointer + (VoxelUtils.VOLUME * j);
 
+                            JobHandle dep = JobHandle.CombineDependencies(chunk.asyncReadJobHandle, chunk.asyncWriteJobHandle);
+                            if (!dep.IsCompleted)
+                                Debug.LogWarning($"Chunk {chunk.node.position} is doing a GpuToCpuCopy whilst the previous async[Read,Write]Job is has not completed yet.");
+
                             JobHandle handle = new GpuToCpuCopy {
                                 cpuData = chunk.voxels,
                                 rawGpuData = src,
-                            }.Schedule(BatchUtils.BATCH, VoxelUtils.VOLUME);
-
+                            }.Schedule(BatchUtils.BATCH, VoxelUtils.VOLUME, dep);
+  
                             copies[j] = handle;
                             chunk.asyncWriteJobHandle = handle;
                         }
@@ -163,22 +166,21 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (pendingCopies.HasValue && pendingCopies.Value.IsCompleted && signCountersFetched && voxelsFetched) {
                 pendingCopies.Value.Complete();
 
-                // Since we now fetch n+2 voxels (66^3) we can actually use the pos/neg optimizations
+                // Since we now fetch n+2 voxels (34^3) we can actually use the sign optimizations
                 // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
                 // heheheha....
                 for (int j = 0; j < chunks.Count; j++) {
                     int count = signCounters[j];
                     TerrainChunk chunk = chunks[j];
 
+                    // Skip empty chunks!!!
                     int max = VoxelUtils.VOLUME;
                     bool empty = count == max || count == -max;
                     bool skipIfEmpty = chunk.skipIfEmpty;
-
-                    // Skip empty chunks!!!
                     onReadback?.Invoke(chunk, empty && skipIfEmpty);
                 }
 
-                Reset();
+                ResetInternally();
             }
         }
 

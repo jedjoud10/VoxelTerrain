@@ -111,7 +111,10 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public void Add(UntypedVariable node, string name) {
-            //Hash(node);
+            // You can't add a hash because all the nodes are classes, so hashing the nodes would hash the references
+            // The hash needs to stay consistent for the "type" of node and the inner references of the nodes, but wtv
+            // Hash(node);
+            
             scopes[currentScope].nodesToNames.Add(node, name);
         }
 

@@ -81,12 +81,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
             bool empty = core.triangleCounter.Count == 0 && temp.All(x => x == 0);
 
             if (empty) {
-                this.request.chunk.sharedMesh = null;
                 apply.array.Dispose();
             } else {
-                this.request.chunk.sharedMesh = new Mesh();
-                Mesh.ApplyAndDisposeWritableMeshData(apply.array, this.request.chunk.sharedMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
+                Mesh.ApplyAndDisposeWritableMeshData(apply.array, this.request.chunk.sharedMesh);
             }
+            apply.arrayAllocated = false;
 
             stats = new Stats {
                 bounds = new Bounds() {

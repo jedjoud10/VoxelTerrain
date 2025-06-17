@@ -133,8 +133,10 @@ namespace jedjoud.VoxelTerrain.Octree {
                 } else {
                     handle = null;
 
-                    if (shouldUpdate)
+                    if (shouldUpdate) {
+                        shouldUpdate = false;
                         BeginJob();
+                    }
                 }
             }
         }
@@ -162,7 +164,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             }
         }
 
-        public void ShouldUpdate() {
+        public void RequestUpdate() {
             shouldUpdate = true;
         }
     }

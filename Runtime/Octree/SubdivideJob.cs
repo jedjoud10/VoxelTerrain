@@ -24,6 +24,8 @@ namespace jedjoud.VoxelTerrain.Octree {
                     Subdivide(node, ref pending);
                 }
             }
+
+            pending.Dispose();
         }
 
         public static readonly int3[] OCTREE_CHILD_OFFSETS = new int3[] {
@@ -40,7 +42,7 @@ namespace jedjoud.VoxelTerrain.Octree {
         private bool InRangeOfLoaders(ref OctreeNode node) {
             // TODO: implement clustering algorithm to make this faster...
             foreach (TerrainLoader.Data loader in loadersData) {
-                float factor = math.clamp(loader.factor, 1f, 2f);
+                float factor = math.saturate(loader.factor) + 1;
 
                 // clamp to the root node
                 float3 clamped = math.clamp(loader.position, root.Bounds.Min, root.Bounds.Max);

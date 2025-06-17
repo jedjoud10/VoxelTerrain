@@ -20,19 +20,30 @@ namespace jedjoud.VoxelTerrain {
         public BitField32 neighbourMask;
         [HideInInspector]
         public bool skipIfEmpty;
+        [HideInInspector]
+        public bool skipped;
 
-        public void ResetChunk(OctreeNode item, BitField32 neighbourMask) {
-            float size = item.size / (VoxelUtils.PHYSICAL_CHUNK_SIZE);
+        public void ResetChunk(OctreeNode node, BitField32 neighbourMask) {
+            float size = node.size / (VoxelUtils.PHYSICAL_CHUNK_SIZE);
             gameObject.GetComponent<MeshRenderer>().enabled = false;
-            gameObject.transform.position = (Vector3)math.float3(item.position);
+            gameObject.transform.position = (Vector3)math.float3(node.position);
             gameObject.transform.localScale = Vector3.one * size;
-            gameObject.name = item.position.ToString();
+            gameObject.name = node.position.ToString();
 
-            this.node = item;
+            this.node = node;
             this.neighbourMask = neighbourMask;
+            skipped = false;
+
+            asyncReadJobHandle.Complete();
+            asyncWriteJobHandle.Complete();
+
+            asyncReadJobHandle = default;
+            asyncWriteJobHandle = default;
         }
 
         public void Dispose() {
+            asyncReadJobHandle.Complete();
+            asyncWriteJobHandle.Complete();
             voxels.Dispose();
         }
     }

@@ -7,6 +7,7 @@ namespace jedjoud.VoxelTerrain {
         private HashSet<T> set;
         private Queue<T> queue;
 
+        public int Count => queue.Count;
         public QueueDedupped() {
             set = new HashSet<T>();
             queue = new Queue<T>();
@@ -32,10 +33,14 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public T[] Take(int maxBatchCount) {
-            T[] array = queue.AsEnumerable().Take(maxBatchCount).ToArray();
-            foreach (T item in array) {
-                set.Remove(item);
+            int count = Math.Min(queue.Count, maxBatchCount);
+            T[] array = new T[count];
+
+            for (int i = 0; i < count; i++) {
+                array[i] = queue.Dequeue();
+                set.Remove(array[i]);
             }
+
             return array;
         }
     }

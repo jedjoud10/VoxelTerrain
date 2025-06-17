@@ -22,6 +22,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public event OnMeshingComplete onMeshingComplete;
         
         public bool Free => queue.IsEmpty();
+        public int InQueue => queue.Count;
+
 
         // Initialize the voxel mesher
         public override void CallerStart() {
@@ -58,10 +60,15 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         renderer.material = material;
 
                         float scalingFactor = chunk.node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE;
-                        Bounds bounds = stats.bounds;
-                        bounds.center += chunk.transform.position;
-                        bounds.extents *= scalingFactor;
-                        renderer.bounds = bounds;
+                        
+                        Bounds localBounds = stats.bounds;
+                        Bounds worldBounds = new Bounds {
+                            min = chunk.transform.position + localBounds.min * scalingFactor,
+                            max = chunk.transform.position + localBounds.max * scalingFactor,
+                        };
+
+                        chunk.sharedMesh.bounds = localBounds;
+                        renderer.bounds = worldBounds;
                     }
 
                     Profiler.EndSample();
@@ -83,7 +90,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public override void CallerDispose() {
             foreach (MeshJobHandler handler in handlers) {
-                handler.TryComplete(out _, out _);
                 handler.Dispose();
             }
         }

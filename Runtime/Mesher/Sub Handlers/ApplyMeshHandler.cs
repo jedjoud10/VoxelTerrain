@@ -23,6 +23,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeReference<int> totalIndexCount;
         
         public Mesh.MeshDataArray array;
+        public bool arrayAllocated;
 
         public void Init() {
             mergedVertices = new NativeArray<float3>(VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -85,6 +86,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             array = Mesh.AllocateWritableMeshData(1);
+            arrayAllocated = true;
 
             SetMeshDataJob setMeshDataJob = new SetMeshDataJob {
                 data = array[0],
@@ -119,6 +121,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             mergedVertices.Dispose();
             mergedNormals.Dispose();
             mergedIndices.Dispose();
+
+            if (arrayAllocated)
+                array.Dispose();
         }
     }
 }

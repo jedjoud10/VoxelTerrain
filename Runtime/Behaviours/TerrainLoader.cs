@@ -1,3 +1,4 @@
+using System;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -6,6 +7,7 @@ namespace jedjoud.VoxelTerrain {
         private Vector3 lastPosition;
         public Data data;
 
+        [Serializable]
         public struct Data {
             [HideInInspector]
             public float3 position;
@@ -25,23 +27,22 @@ namespace jedjoud.VoxelTerrain {
             data.position = transform.position;
 
             if (!registered) {
-                if (Terrain.Instance != null) {
-                    Terrain.Instance.octree.loaders.Add(this);
+                if (TerrainManager.Instance != null) {
+                    TerrainManager.Instance.octree.loaders.Add(this);
                     registered = true;
                 }
             }
 
             if (Vector3.Distance(transform.position, lastPosition) > 1) {
-                if (Terrain.Instance != null) {
-                    Terrain.Instance.octree.ShouldUpdate();
+                if (TerrainManager.Instance != null) {
+                    TerrainManager.Instance.octree.RequestUpdate();
                 }
                 lastPosition = transform.position;
             }
         }
-
         void OnDestroy() {
-            if (registered) {
-                Terrain.Instance.octree.loaders.Remove(this);
+            if (registered && TerrainManager.Instance != null && TerrainManager.Instance.octree != null) {
+                TerrainManager.Instance.octree.loaders.Remove(this);
             }
         }
     }

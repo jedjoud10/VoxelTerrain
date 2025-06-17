@@ -3,7 +3,7 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain {
     public class TerrainBehaviour : MonoBehaviour {
         [HideInInspector]
-        public Terrain terrain => GetComponent<Terrain>();
+        public TerrainManager terrain => GetComponent<TerrainManager>();
         [HideInInspector]
         public long tick => terrain.currentTick;
         [HideInInspector]
