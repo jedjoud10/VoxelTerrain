@@ -52,7 +52,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 throw new ArgumentNullException("Seed not set or missing");
 
             if (compiler.ctx == null)
-                throw new ArgumentNullException("Compiler context missing (need to add more ParsedTranspilation() guards oops...)");
+                throw new ArgumentNullException("Compiler context missing (need to add more Parse() guards oops...)");
 
             // dawg...
             ComputeShader shader = compiler.shader;

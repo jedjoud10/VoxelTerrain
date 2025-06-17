@@ -5,7 +5,6 @@ using UnityEngine.Rendering;
 using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Collections.LowLevel.Unsafe;
-using System;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class TerrainReadback : TerrainBehaviour {

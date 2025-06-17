@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using System.Linq;
 
 namespace jedjoud.VoxelTerrain.Props {
     public class PropTypeInstanceTextureArrays {

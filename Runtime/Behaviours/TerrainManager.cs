@@ -95,6 +95,8 @@ namespace jedjoud.VoxelTerrain {
             seeder = GetComponent<Generation.TerrainSeeder>();
             octree = GetComponent<Octree.TerrainOctree>();
 
+            compiler.Parse();
+
             pendingValidChunks = -1;
 
             octree.onOctreeChanged += (ref NativeList<Octree.OctreeNode> added, ref NativeList<Octree.OctreeNode> removed, ref NativeList<Octree.OctreeNode> all, ref NativeList<BitField32> neighbourMasks) => {
@@ -139,39 +141,10 @@ namespace jedjoud.VoxelTerrain {
             mesher.onMeshingComplete += (TerrainChunk chunk, Meshing.MeshJobHandler.Stats stats) => {
                 pendingValidChunks--;
                 pendingChunksToShow.Add(chunk.gameObject);
-                //chunk.gameObject.SetActive(true);
-                /*
-                if (mesh.VertexCount > 0 && mesh.TriangleCount > 0) {
-                    if (chunk.node.depth == octree.maxDepth)
-                        collisions.GenerateCollisions(chunk, mesh);
 
-                    chunk.completedFlags |= TerrainChunk.CompletedFlags.Mesh;
-                    pendingChunksToShow.Add(chunk.gameObject);
-                }
-
-                pendingValidChunks--;
-                */
+                if (chunk.node.depth == octree.maxDepth && !stats.empty)
+                    collisions.GenerateCollisions(chunk);
             };
-
-            /*
-            spawner.onChunkSpawned += (VoxelChunk chunk) => {
-                readback.GenerateVoxels(chunk);
-                props.GenerateProps(chunk);
-                pendingChunks++;
-            };
-
-
-
-
-            collisions.onCollisionBakingComplete += (VoxelChunk chunk) => {
-                pendingChunks--;
-                complete = true;
-            };
-
-            onComplete += () => {
-                Debug.Log("Terrain generation finished!");
-            };
-            */
 
             mesher.CallerStart();
             collisions.CallerStart();

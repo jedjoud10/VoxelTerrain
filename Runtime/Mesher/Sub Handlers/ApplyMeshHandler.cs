@@ -50,12 +50,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Max = -10000f,
             };
 
-            BoundsJob boundsJob = new BoundsJob {
-                vertices = core.vertices,
-                vertexCounter = core.vertexCounter,
-                bounds = bounds,
-            };
-
             MergeMeshJob mergeMeshJob = new MergeMeshJob {
                 vertices = core.vertices,
                 normals = core.normals,
@@ -83,6 +77,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 mergedVertices = mergedVertices,
                 mergedNormals = mergedNormals,
                 mergedIndices = mergedIndices,
+            };
+
+            BoundsJob boundsJob = new BoundsJob {
+                mergedVertices = mergedVertices,
+                totalVertexCount = totalVertexCount,
+                bounds = bounds,
             };
 
             array = Mesh.AllocateWritableMeshData(1);

@@ -1,12 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Unity.Jobs;
 using UnityEngine;
-using System.Linq;
 using UnityEngine.Profiling;
-using Unity.Collections;
-using jedjoud.VoxelTerrain.Octree;
-using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     // Responsible for creating and executing the mesh generation jobs
