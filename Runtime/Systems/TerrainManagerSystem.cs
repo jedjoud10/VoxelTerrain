@@ -9,8 +9,8 @@ using Unity.Transforms;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(OctreeSystem))]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainOctreeSystem))]
     public partial struct ManagerSystem : ISystem {
         private Entity chunkPrototype;
         private Entity skirtPrototype;

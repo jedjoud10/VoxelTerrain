@@ -4,10 +4,10 @@ using Unity.Entities;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(SegmentManagerSystem))]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainSegmentManagerSystem))]
     [RequireMatchingQueriesForUpdate]
-    public partial class SegmentVoxelSystem : SystemBase {
+    public partial class TerrainSegmentVoxelSystem : SystemBase {
         public SegmentVoxelExecutor voxelExecutor;
         public Entity entity;
         public TerrainSegment segment;

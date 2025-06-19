@@ -1,7 +1,8 @@
 using Unity.Entities;
+using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     public class TerrainMesherConfig : IComponentData {
-        public TerrainMaterial material;
+        public Material material;
     }
 }

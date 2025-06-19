@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     class TerrainMesherConfigAuthoring : MonoBehaviour {
-        public TerrainMaterial material;
+        public Material material;
     }
 
     class TerrainMesherConfigBaker: Baker<TerrainMesherConfigAuthoring> {

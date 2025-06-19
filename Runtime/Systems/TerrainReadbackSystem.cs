@@ -9,35 +9,35 @@ using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
     // This MUST stay as a SystemBase since we have some AsyncGPUReadback stuff with delegates that keep a handle to the properties stored here
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
     [UpdateAfter(typeof(ManagerSystem))]
-    public partial class ReadbackSystem : SystemBase {
+    public partial class TerrainReadbackSystem : SystemBase {
         private bool free;
-        private NativeArray<uint> data;
+        private NativeArray<uint> multiData;
         private List<Entity> entities;
         private JobHandle? pendingCopies;
         private NativeArray<JobHandle> copies;
-        private NativeArray<int> counters;
+        private NativeArray<int> multiSignCounters;
         private bool countersFetched, voxelsFetched;
         private bool disposed;
-        private MultiReadbackExecutor octalExecutor;
-        private ComputeBuffer negPosOctalCountersBuffer;
+        private MultiReadbackExecutor multiExecutor;
+        private ComputeBuffer multiSignCountersBuffer;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadbackConfig>();
             RequireForUpdate<TerrainReadySystems>();
-            data = new NativeArray<uint>(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
+            multiData = new NativeArray<uint>(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
             entities = new List<Entity>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT);
             copies = new NativeArray<JobHandle>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
-            counters = new NativeArray<int>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
+            multiSignCounters = new NativeArray<int>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
             free = true;
             pendingCopies = null;
             voxelsFetched = false;
             countersFetched = false;
             disposed = false;
 
-            octalExecutor = new MultiReadbackExecutor();
-            negPosOctalCountersBuffer = new ComputeBuffer(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
+            multiExecutor = new MultiReadbackExecutor();
+            multiSignCountersBuffer = new ComputeBuffer(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, sizeof(int), ComputeBufferType.Structured);
         }
 
         private void Reset() {
@@ -52,12 +52,12 @@ namespace jedjoud.VoxelTerrain.Generation {
         protected override void OnDestroy() {
             disposed = true;
             AsyncGPUReadback.WaitAllRequests();
-            data.Dispose();
+            multiData.Dispose();
             entities.Clear();
-            counters.Dispose();
+            multiSignCounters.Dispose();
             copies.Dispose();
-            octalExecutor.DisposeResources();
-            negPosOctalCountersBuffer.Dispose();
+            multiExecutor.DisposeResources();
+            multiSignCountersBuffer.Dispose();
         }
 
         protected override void OnUpdate() {
@@ -121,10 +121,10 @@ namespace jedjoud.VoxelTerrain.Generation {
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
                 seeder = ManagedTerrain.instance.seeder,
-                countersBuffer = negPosOctalCountersBuffer,
+                multiSignCountersBuffer = multiSignCountersBuffer,
             };
 
-            GraphicsFence fence = octalExecutor.Execute(parameters);
+            GraphicsFence fence = multiExecutor.Execute(parameters);
             CommandBuffer cmds = new CommandBuffer();
             cmds.name = "Terrain Readback System Async Readback";
             cmds.WaitOnAsyncGraphicsFence(fence, SynchronisationStageFlags.ComputeProcessing);
@@ -132,10 +132,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Request GPU data into the native array we allocated at the start
             // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
             // This avoids waiting on the memory copies and can spread them out on many threads
-            NativeArray<uint> voxelData = data;
+            NativeArray<uint> voxelData = multiData;
             cmds.RequestAsyncReadbackIntoNativeArray(
                 ref voxelData,
-                octalExecutor.Buffers["voxels"],
+                multiExecutor.Buffers["voxels"],
                 delegate (AsyncGPUReadbackRequest asyncRequest) {
                     unsafe {
                         if (disposed)
@@ -143,7 +143,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                         // We have to do this to stop unity from complaining about using the data...
                         // fuck you...
-                        uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(data);
+                        uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(multiData);
 
                         // Start doing the memcpy asynchronously...
                         for (int j = 0; j < entities.Count; j++) {
@@ -161,10 +161,11 @@ namespace jedjoud.VoxelTerrain.Generation {
                             RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity);
                             ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
 
+                            JobHandle dep = JobHandle.CombineDependencies(voxels.asyncReadJob, voxels.asyncWriteJob);
                             JobHandle handle = new GpuToCpuCopy {
                                 cpuData = voxels.data,
                                 rawGpuData = src,
-                            }.Schedule(BatchUtils.BATCH, VoxelUtils.VOLUME);
+                            }.Schedule(BatchUtils.BATCH, VoxelUtils.VOLUME, dep);
 
                             copies[j] = handle;
                             voxels.asyncWriteJob = handle;
@@ -177,8 +178,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             );
 
             cmds.RequestAsyncReadbackIntoNativeArray(
-                ref counters,
-                negPosOctalCountersBuffer,
+                ref multiSignCounters,
+                multiSignCountersBuffer,
                 delegate (AsyncGPUReadbackRequest asyncRequest) {
                     if (disposed)
                         return;
@@ -199,7 +200,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 // to check early if we need to do any meshing for a chunk whose voxels are from the GPU!
                 // heheheha....
                 for (int j = 0; j < entities.Count; j++) {
-                    int count = counters[j];
+                    int count = multiSignCounters[j];
                     Entity entity = entities[j];
 
                     int max = VoxelUtils.VOLUME;

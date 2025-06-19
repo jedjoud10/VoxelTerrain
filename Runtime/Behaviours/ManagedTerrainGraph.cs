@@ -46,9 +46,9 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             public PossibleSurface IsSurfaceAlongAxis(Variable<float3> position, Axis axis) {
                 int _axis = (int)axis;
-                Variable<bool> hit = Variable<bool>.New(false);
-                Variable<float3> hitPosition = Variable<float3>.New(float3.zero);
-                Variable<float3> hitNormal = Variable<float3>.New(float3.zero);
+                Variable<bool> hit = Variable<bool>.NonConst(false);
+                Variable<float3> hitPosition = Variable<float3>.NonConst(float3.zero);
+                Variable<float3> hitNormal = Variable<float3>.NonConst(float3.zero);
 
                 chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
                     position.Handle(ctx);

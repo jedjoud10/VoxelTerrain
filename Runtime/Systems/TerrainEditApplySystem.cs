@@ -1,18 +1,16 @@
 using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
-using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(ReadbackSystem))]
-    [UpdateBefore(typeof(MeshingSystem))]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainReadbackSystem))]
+    [UpdateBefore(typeof(TerrainMeshingSystem))]
     [RequireMatchingQueriesForUpdate]
     public partial class EditApplySystem : SystemBase {
         protected override void OnCreate() {

@@ -114,6 +114,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         private VertexToSpawn CreateCorner(int direction, bool negative, uint2 flatten) {
+            // TODO: fix me. removed it cause of bounds stuff
+            return new VertexToSpawn { shouldSpawn = false };
+            /*
             VertexToSpawn vertex;
             uint missing2 = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
             uint2 flatten2 = math.clamp(flatten, 0, VoxelUtils.SIZE - 2);
@@ -127,6 +130,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 useWorldPosition = true,
             };
             return vertex;
+            */
         }
 
         private VertexToSpawn CreateSurfaceNets2D(int face, bool negative, uint3 position) {

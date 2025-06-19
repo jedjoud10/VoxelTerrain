@@ -3,11 +3,6 @@ using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
     class TerrainManagerConfigAuthoring : MonoBehaviour {
-        [Range(0, 1)]
-        public float ditherTransitionTime;
-
-        [Range(0, 4)]
-        public int voxelSizeReduction;
     }
 
     class TerrainManagerConfigBaker : Baker<TerrainManagerConfigAuthoring> {
@@ -15,8 +10,6 @@ namespace jedjoud.VoxelTerrain {
             Entity self = GetEntity(TransformUsageFlags.None);
 
             AddComponent(self, new TerrainManagerConfig {
-                //voxelSizeReduction = authoring.voxelSizeReduction,
-                //ditherTransitionTime = authoring.ditherTransitionTime
             });
         }
     }

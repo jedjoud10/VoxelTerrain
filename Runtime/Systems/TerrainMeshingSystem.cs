@@ -13,9 +13,9 @@ using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(ReadbackSystem))]
-    public partial class MeshingSystem : SystemBase {
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainReadbackSystem))]
+    public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
         const int MAX_MESH_JOBS_PER_TICK = 4;
         private RenderMeshDescription mainMeshDescription;
@@ -76,8 +76,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 */
 
                 graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
-                mainMeshMaterialId = graphics.RegisterMaterial(config.material.material);
-                skirtMeshMaterialId = graphics.RegisterMaterial(config.material.material);
+                mainMeshMaterialId = graphics.RegisterMaterial(config.material);
+                skirtMeshMaterialId = graphics.RegisterMaterial(config.material);
             }
 
             foreach (var handler in handlers) {

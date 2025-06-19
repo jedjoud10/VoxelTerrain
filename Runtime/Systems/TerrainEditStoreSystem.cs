@@ -1,8 +1,5 @@
 using jedjoud.VoxelTerrain.Octree;
-using JetBrains.Annotations;
-using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -10,11 +7,11 @@ using UnityEngine;
 using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(OctreeSystem))]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainOctreeSystem))]
     [UpdateBefore(typeof(ManagerSystem))]
     [RequireMatchingQueriesForUpdate]
-    public partial class EditStoreSystem : SystemBase {
+    public partial class TerrainEditStoreSystem : SystemBase {
         protected override void OnCreate() {
             RequireForUpdate<TerrainOctree>();
             RequireForUpdate<TerrainManager>();
@@ -95,12 +92,20 @@ namespace jedjoud.VoxelTerrain.Edits {
             TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             
             // create edit chunks that will contain modified chunk data
-            NativeHashSet<int3> intersecting = new NativeHashSet<int3>(0, Allocator.TempJob);
-            GetIntersectingEditChunkPositionsFromBounds createEditChunksJob = new GetIntersectingEditChunkPositionsFromBounds {
-                boundsArray = aabbs,
-                intersecting = intersecting,
-            };
-            createEditChunksJob.Schedule().Complete();
+            NativeHashSet<int3> intersecting = new NativeHashSet<int3>(0, Allocator.Temp);
+            foreach (var bounds in aabbs) {
+                int3 min = (int3)math.floor(bounds.Min / (float)VoxelUtils.PHYSICAL_CHUNK_SIZE);
+                int3 max = (int3)math.floor(bounds.Max / (float)VoxelUtils.PHYSICAL_CHUNK_SIZE);
+
+                for (int z = min.z; z <= max.z; z++) {
+                    for (int y = min.y; y <= max.y; y++) {
+                        for (int x = min.x; x <= max.x; x++) {
+                            int3 chunkPos = new int3(x, y, z);
+                            intersecting.Add(chunkPos);
+                        }
+                    }
+                }
+            }
 
             // detect NEW intersecting edit chunks, the ones that we have just added
             NativeList<int3> newIntersecting = new NativeList<int3>(Allocator.Temp);
@@ -133,7 +138,6 @@ namespace jedjoud.VoxelTerrain.Edits {
 
 
             modifiedChunkEditPositions = intersecting.ToNativeArray(Allocator.Temp);
-            intersecting.Dispose();
         }
 
         private void UpdateChunkMeshes(NativeArray<int3> modifiedChunkEditPositions) {

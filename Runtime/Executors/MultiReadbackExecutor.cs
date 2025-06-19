@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
     public class MultiReadbackExecutorParameters : ExecutorParameters {
         public MultiReadbackTransform[] transforms;
-        public ComputeBuffer countersBuffer;
+        public ComputeBuffer multiSignCountersBuffer;
     }
 
     public class MultiReadbackExecutor : VolumeExecutor<MultiReadbackExecutorParameters> {
@@ -39,8 +39,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             commands.SetBufferData(transformsBuffer, parameters.transforms);
             commands.SetComputeBufferParam(shader, kernelIndex, "multi_transforms_buffer", transformsBuffer);
 
-            commands.SetBufferData(parameters.countersBuffer, new int[VoxelUtils.MULTI_READBACK_CHUNK_COUNT]);
-            commands.SetComputeBufferParam(shader, kernelIndex, "multi_counters_buffer", parameters.countersBuffer);
+            commands.SetBufferData(parameters.multiSignCountersBuffer, new int[VoxelUtils.MULTI_READBACK_CHUNK_COUNT]);
+            commands.SetComputeBufferParam(shader, kernelIndex, "multi_counters_buffer", parameters.multiSignCountersBuffer);
         }
     }
 }

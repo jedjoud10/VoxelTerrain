@@ -5,10 +5,10 @@ using Unity.Mathematics;
 using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateBefore(typeof(EditStoreSystem))]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateBefore(typeof(TerrainEditStoreSystem))]
     [UpdateBefore(typeof(EditApplySystem))]
-    public partial class EditManagerSystem : SystemBase {
+    public partial class TerrainEditManagerSystem : SystemBase {
         public TerrainEdits singleton;
         const float BOUNDS_EXPAND_OFFSET = 2f;
 
@@ -22,6 +22,7 @@ namespace jedjoud.VoxelTerrain.Edits {
             EntityManager.CreateSingleton<TerrainEdits>(singleton);
 
             singleton.registry.Register<TerrainSphereEdit>(this);
+            singleton.registry.Register<TerrainAddEdit>(this);
         }
 
         protected override void OnDestroy() {
