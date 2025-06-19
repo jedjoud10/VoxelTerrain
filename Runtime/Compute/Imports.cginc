@@ -28,10 +28,10 @@ SamplerState my_linear_clamp_sampler;
     StructuredBuffer<float4> multi_transforms_buffer;
 
     int size;
-    RWStructuredBuffer<uint> voxels_buffer;
+    RWStructuredBuffer<PackedVoxel> voxels_buffer;
 #elif defined(_PREVIEW)
     int size;
-    RWTexture3D<uint> voxels_texture_write;
+    RWTexture3D<PackedVoxel> voxels_texture_write;
     float3 preview_scale;
     float3 preview_offset;
 #elif defined(_SEGMENT_VOXELS)

@@ -10,14 +10,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct SetMeshDataJob : IJob {
         [WriteOnly]
         public Mesh.MeshData data;
-        [ReadOnly]
-        public NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
 
         // Merged buffers that include the original mesh and the skirt meshes
         [ReadOnly]
-        public NativeArray<float3> mergedVertices;
-        [ReadOnly]
-        public NativeArray<float3> mergedNormals;
+        public Vertices mergedVertices;
         [ReadOnly]
         public NativeArray<int> mergedIndices;
 
@@ -34,9 +30,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public void Execute() {
             // We will store ALL the vertices (uniform + skirt)
-            data.SetVertexBufferParams(totalVertexCount.Value, vertexAttributeDescriptors);
-            mergedVertices.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(0));
-            mergedNormals.GetSubArray(0, totalVertexCount.Value).CopyTo(data.GetVertexData<float3>(1));
+            mergedVertices.SetMeshDataAttributes(totalVertexCount.Value, data);
 
             // We will store ALL the indices (uniform + skirt)
             data.SetIndexBufferParams(totalIndexCount.Value, IndexFormat.UInt32);

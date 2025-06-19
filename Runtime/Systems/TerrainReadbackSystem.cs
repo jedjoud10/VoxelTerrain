@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     [UpdateAfter(typeof(ManagerSystem))]
     public partial class TerrainReadbackSystem : SystemBase {
         private bool free;
-        private NativeArray<uint> multiData;
+        private NativeArray<GpuVoxel> multiData;
         private List<Entity> entities;
         private JobHandle? pendingCopies;
         private NativeArray<JobHandle> copies;
@@ -26,7 +26,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadbackConfig>();
             RequireForUpdate<TerrainReadySystems>();
-            multiData = new NativeArray<uint>(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
+            multiData = new NativeArray<GpuVoxel>(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
             entities = new List<Entity>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT);
             copies = new NativeArray<JobHandle>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
             multiSignCounters = new NativeArray<int>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
@@ -132,7 +132,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Request GPU data into the native array we allocated at the start
             // When we get it back, start off multiple memcpy jobs that we can wait for the next tick
             // This avoids waiting on the memory copies and can spread them out on many threads
-            NativeArray<uint> voxelData = multiData;
+            NativeArray<GpuVoxel> voxelData = multiData;
             cmds.RequestAsyncReadbackIntoNativeArray(
                 ref voxelData,
                 multiExecutor.Buffers["voxels"],
@@ -143,7 +143,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                         // We have to do this to stop unity from complaining about using the data...
                         // fuck you...
-                        uint* pointer = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr<uint>(multiData);
+                        GpuVoxel* pointer = (GpuVoxel*)NativeArrayUnsafeUtility.GetUnsafePtr<GpuVoxel>(multiData);
 
                         // Start doing the memcpy asynchronously...
                         for (int j = 0; j < entities.Count; j++) {
@@ -151,7 +151,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                             // Since we are using a buffer where the data for chunks is contiguous
                             // we can just do parallel copies from the source buffer at the appropriate offset
-                            uint* src = pointer + (VoxelUtils.VOLUME * j);
+                            GpuVoxel* src = pointer + (VoxelUtils.VOLUME * j);
 
                             bool enabled = EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity);
 

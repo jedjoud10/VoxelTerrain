@@ -6,8 +6,7 @@ using static jedjoud.VoxelTerrain.BatchUtils;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct SkirtSnHandler : ISubHandler {
-        public NativeArray<float3> skirtVertices;
-        public NativeArray<float3> skirtNormals;
+        public Vertices skirtVertices;
         public NativeCounter skirtVertexCounter;
 
         public NativeArray<bool> skirtWithinThreshold;
@@ -23,8 +22,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public JobHandle skirtQuadJobHandle;
 
         public void Init() {
-            skirtVertices = new NativeArray<float3>(SKIRT_FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            skirtNormals = new NativeArray<float3>(SKIRT_FACE * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            skirtVertices = new Vertices(SKIRT_FACE * 6, Allocator.Persistent);
             skirtVertexCounter = new NativeCounter(Allocator.Persistent);
 
             // Dedicated vertex index lookup buffers for the copied vertices from the boundary and generated skirted vertices
@@ -51,7 +49,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtStitchedTriangleCounter.Count = 0;
             skirtForcedTriangleCounter.Reset();
             skirtVertexCounter.Count = 0;
-            float voxelSizeFactor = 1;
 
             // Job that acts like an SDF generator, checks if certain positions are within a certain distance from a surface (for forced skirt generation)
             SkirtClosestSurfaceJob skirtClosestSurfaceThresholdJob = new SkirtClosestSurfaceJob {
@@ -72,8 +69,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 withinThreshold = skirtWithinThreshold,
                 voxels = voxels,
                 voxelNormals = normals.voxelNormals,
-                skirtNormals = skirtNormals,
-                voxelScale = voxelSizeFactor,
 
                 skirtVertexCounter = skirtVertexCounter,
                 
@@ -115,7 +110,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             skirtWithinThreshold.Dispose();
 
             skirtVertices.Dispose();
-            skirtNormals.Dispose();
             skirtVertexCounter.Dispose();
         }
     }

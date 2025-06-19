@@ -6,8 +6,7 @@ using static jedjoud.VoxelTerrain.BatchUtils;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct CoreSnHandler : ISubHandler {
-        public NativeArray<float3> vertices;
-        public NativeArray<float3> normals;
+        public Vertices vertices;
         public NativeArray<int> indices;
         public NativeArray<int> vertexIndices;
         public NativeCounter vertexCounter;
@@ -18,8 +17,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
 
         public void Init() {
-            vertices = new NativeArray<float3>(VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            normals = new NativeArray<float3>(VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            vertices = new Vertices(VOLUME, Allocator.Persistent);
             indices = new NativeArray<int>(VOLUME * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             vertexIndices = new NativeArray<int>(VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             vertexCounter = new NativeCounter(Allocator.Persistent);
@@ -30,8 +28,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             triangleCounter.Count = 0;
             vertexCounter.Count = 0;
 
-            float voxelSizeFactor = 1;
-
             // Generate the *shared* vertices of the main mesh
             VertexJob vertexJob = new VertexJob {
                 enabled = codeSubHandler.enabled,
@@ -39,9 +35,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 voxelNormals = normalsSubHandler.voxelNormals,
                 indices = vertexIndices,
                 vertices = vertices,
-                normals = normals,
                 vertexCounter = vertexCounter,
-                voxelScale = voxelSizeFactor,
             };
 
             // Generate the quads of the mesh (handles materials internally)
@@ -60,7 +54,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public void Dispose() {
             vertices.Dispose();
-            normals.Dispose();
             indices.Dispose();
             vertexIndices.Dispose();
             vertexCounter.Dispose();

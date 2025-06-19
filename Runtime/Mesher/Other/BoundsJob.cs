@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
     public struct BoundsJob: IJob {
         [ReadOnly]
-        public NativeArray<float3> mergedVertices;
+        public NativeArray<float3> mergedVerticesPositions;
         [ReadOnly]
         public NativeReference<int> totalVertexCount;
         public NativeReference<MinMaxAABB> bounds;
@@ -17,8 +17,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float3 max = -10000;
 
             for (int i = 0; i < totalVertexCount.Value; i++) {
-                min = math.min(min, mergedVertices[i]);
-                max = math.max(max, mergedVertices[i]);
+                min = math.min(min, mergedVerticesPositions[i]);
+                max = math.max(max, mergedVerticesPositions[i]);
             }
 
             bounds.Value = new MinMaxAABB {

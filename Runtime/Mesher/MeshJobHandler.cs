@@ -99,7 +99,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 forcedSkirtFacesTriCount = temp,
                 empty = empty,
 
-                vertices = apply.mergedVertices.GetSubArray(0, apply.totalVertexCount.Value),
+                vertices = apply.mergedVertices.positions.GetSubArray(0, apply.totalVertexCount.Value),
                 indices = apply.mergedIndices.GetSubArray(0, apply.submeshIndexCounts[0]),
             };                       
 

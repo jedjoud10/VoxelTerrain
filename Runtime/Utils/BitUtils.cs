@@ -94,5 +94,14 @@ namespace jedjoud.VoxelTerrain {
         public static uint PackByteToUint(byte a, byte b, byte c, byte d) {
             return (uint)a | (uint)b << 8 | (uint)c << 16 | (uint)d << 24;
         }
+
+        public static float4 Byte4ToFloat4(uint packed) {
+            float r = (packed & 0xFF) / 255.0f;
+            float g = ((packed >> 8) & 0xFF) / 255.0f;
+            float b = ((packed >> 16) & 0xFF) / 255.0f;
+            float a = ((packed >> 24) & 0xFF) / 255.0f;
+
+            return new float4(r, g, b, a);
+        }
     }
 }

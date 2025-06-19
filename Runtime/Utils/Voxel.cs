@@ -12,13 +12,13 @@ namespace jedjoud.VoxelTerrain {
         public VoxelData cpuData;
 
         [NativeDisableUnsafePtrRestriction]
-        public uint* rawGpuData;
+        public GpuVoxel* rawGpuData;
         
         public void Execute(int index) {
-            GpuVoxel voxel = *(GpuVoxel*)(rawGpuData + index);
+            GpuVoxel voxel = *(rawGpuData + index);
             cpuData.densities[index] = voxel.density;
             cpuData.materials[index] = voxel.material;
-            //cpuData.layers[index] = BitUtils.PackByteToUint(voxel.layer1, voxel.layer2, voxel.layer3, voxel.layer4);
+            cpuData.layers[index] = BitUtils.PackByteToUint(voxel.layer1, voxel.layer2, voxel.layer3, voxel.layer4);
         }
     }
 
@@ -31,18 +31,18 @@ namespace jedjoud.VoxelTerrain {
         public byte material;
         public byte _padding;
 
-        /*
         // UINT2
         public byte layer1;
         public byte layer2;
         public byte layer3;
         public byte layer4;
 
+        /*
         // UINT3 and UINT4 (unused)
         public uint _padding2;
         public uint _padding3;
         */
-        public const int size = 1 * sizeof(uint);
+        public const int size = 2 * sizeof(uint);
     }
 
     // Only used for editing, for ease of use
@@ -55,19 +55,19 @@ namespace jedjoud.VoxelTerrain {
     public struct VoxelData {
         public NativeArray<half> densities;
         public NativeArray<byte> materials;
-        //public NativeArray<uint> layers;
+        public NativeArray<uint> layers;
 
 
         public VoxelData(Allocator allocator) {
             densities = new NativeArray<half>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
             materials = new NativeArray<byte>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
-            //layers = new NativeArray<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+            layers = new NativeArray<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
         }
 
         public void CopyFrom(VoxelData other) {
             densities.CopyFrom(other.densities);
             materials.CopyFrom(other.materials);
-            //layers.CopyFrom(other.layers);
+            layers.CopyFrom(other.layers);
         }
 
         public EditVoxel FetchEditVoxel(int index) {
@@ -82,14 +82,14 @@ namespace jedjoud.VoxelTerrain {
         public JobHandle CopyFromAsync(VoxelData other, JobHandle dep = default) {
             JobHandle a = AsyncMemCpyUtils.CopyAsync(other.densities, densities, dep);
             JobHandle b = AsyncMemCpyUtils.CopyAsync(other.materials, materials, dep);
-            //JobHandle c = AsyncMemCpyUtils.CopyAsync(other.layers, layers, dep);
-            return JobHandle.CombineDependencies(a, b);
+            JobHandle c = AsyncMemCpyUtils.CopyAsync(other.layers, layers, dep);
+            return JobHandle.CombineDependencies(a, b, c);
         }
 
         public void Dispose() {
             densities.Dispose();
             materials.Dispose();
-            //layers.Dispose();
+            layers.Dispose();
         }
     }
 
@@ -97,13 +97,13 @@ namespace jedjoud.VoxelTerrain {
     public struct UnsafePtrListVoxelData {
         public UnsafePtrList<half> densityPtrs;
         public UnsafePtrList<byte> materialPtrs;
-        //public UnsafePtrList<uint> layerPtrs;
+        public UnsafePtrList<uint> layerPtrs;
 
 
         public UnsafePtrListVoxelData(Allocator allocator) {
             densityPtrs = new UnsafePtrList<half>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
             materialPtrs = new UnsafePtrList<byte>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
-            //layerPtrs = new UnsafePtrList<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+            layerPtrs = new UnsafePtrList<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
         }
 
         public void AddReadOnlyRange(IEnumerable<VoxelData> datas) {
@@ -111,7 +111,7 @@ namespace jedjoud.VoxelTerrain {
                 foreach (var data in datas) {
                     densityPtrs.Add(data.densities.GetUnsafeReadOnlyPtr());
                     materialPtrs.Add(data.materials.GetUnsafeReadOnlyPtr());
-                    //layerPtrs.Add(data.layers.GetUnsafeReadOnlyPtr());
+                    layerPtrs.Add(data.layers.GetUnsafeReadOnlyPtr());
                 }
             }
         }
@@ -128,7 +128,7 @@ namespace jedjoud.VoxelTerrain {
         public void Dispose(JobHandle handle) {
             densityPtrs.Dispose(handle);
             materialPtrs.Dispose(handle);
-            //layerPtrs.Dispose(handle);
+            layerPtrs.Dispose(handle);
         }
     }
 }

@@ -5,13 +5,14 @@
 #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
 #include "UnityIndirect.cginc"
 
-RWTexture3D<uint> voxels;
 
 int3 permutation_seed = int3(684, 2325, 31);
 int3 modulo_seed = int3(423, 4543, -23423);
 
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/common.cginc"
+
+RWTexture3D<PackedVoxel> voxels;
 
 Voxel fetch(uint3 id) {
     return unpackVoxelData(voxels[id]);

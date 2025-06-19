@@ -23,17 +23,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Vertices that we generated
         [WriteOnly]
-        [NativeDisableParallelForRestriction]
-        public NativeArray<float3> vertices;
-
-        // Normals in case we have a shader that requires them
-        [WriteOnly]
-        [NativeDisableParallelForRestriction]
-        public NativeArray<float3> normals;
+        public Vertices vertices;
 
         // Vertex Counter
         public NativeCounter.Concurrent vertexCounter;
-        public float voxelScale;
 
         // Excuted for each cell within the grid
         public void Execute(int index) {
@@ -42,9 +35,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             if (math.any(position > VoxelUtils.SIZE - 3))
                 return;
-
-            float3 vertex = float3.zero;
-            float3 normal = float3.zero;
 
             // Fetch the byte that contains the number of corners active
             uint enabledCorners = enabled[index];
@@ -58,6 +48,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             int count = math.countbits(code);
 
             // Create the smoothed vertex
+            Vertices.Single vertex = new Vertices.Single();
             for (int edge = 0; edge < 12; edge++) {
                 // Continue if the edge isn't inside
                 if (((code >> edge) & 1) == 0) continue;
@@ -65,31 +56,17 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uint3 startOffset = EdgePositionUtils.EDGE_POSITIONS_0[edge];
                 uint3 endOffset = EdgePositionUtils.EDGE_POSITIONS_1[edge];
 
-                int startIndex = VoxelUtils.PosToIndex(startOffset + position, VoxelUtils.SIZE);
-                int endIndex = VoxelUtils.PosToIndex(endOffset + position, VoxelUtils.SIZE);
-
-                float3 startNormal = voxelNormals[startIndex];
-                float3 endNormal = voxelNormals[endIndex];
-
-                // Get the Voxels of the edge
-                half start = voxels.densities[startIndex];
-                half end = voxels.densities[endIndex];
-
-                // Create a vertex on the line of the edge
-                float value = math.unlerp(start, end, 0);
-                vertex += math.lerp(startOffset, endOffset, value);
-                normal += math.lerp(startNormal, endNormal, value);
+                int startIndex = VoxelUtils.PosToIndex(position + startOffset, VoxelUtils.SIZE);
+                int endIndex = VoxelUtils.PosToIndex(position + endOffset, VoxelUtils.SIZE);
+                vertex.Add(startOffset, endOffset, startIndex, endIndex, ref voxels, ref voxelNormals);
             }
 
-            // Smooth the vertex with the number of edges that have a sign crossing
-            // TODO: Test out QEF or other methods for smoothing
-            vertex = vertex / (float)count + position;
+            vertex.Finalize(count);
+            vertex.position += position;
 
-            // Write vertex data and index
             int vertexIndex = vertexCounter.Increment();
             indices[index] = vertexIndex;
-            vertices[vertexIndex] = vertex * voxelScale;
-            normals[vertexIndex] = math.normalizesafe(normal, math.up());
+            vertices[vertexIndex] = vertex;
         }
     }
 }

@@ -7,12 +7,10 @@ using static jedjoud.VoxelTerrain.VoxelUtils;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct ApplyMeshHandler : ISubHandler {
-        public NativeArray<float3> mergedVertices;
-        public NativeArray<float3> mergedNormals;
+        public Vertices mergedVertices;
         public NativeArray<int> mergedIndices;
         
         public NativeReference<MinMaxAABB> bounds;
-        public NativeArray<VertexAttributeDescriptor> vertexAttributeDescriptors;
         
         public JobHandle jobHandle;
         
@@ -24,13 +22,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public Mesh.MeshDataArray array;
 
         public void Init() {
-            mergedVertices = new NativeArray<float3>(VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            mergedNormals = new NativeArray<float3>(VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            mergedVertices = new Vertices(VOLUME, Allocator.Persistent);
             mergedIndices = new NativeArray<int>(VOLUME * 6, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-
-            VertexAttributeDescriptor positionDesc = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
-            VertexAttributeDescriptor normalDesc = new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3, 1);
-            vertexAttributeDescriptors = new NativeArray<VertexAttributeDescriptor>(new VertexAttributeDescriptor[] { positionDesc, normalDesc }, Allocator.Persistent);
             bounds = new NativeReference<MinMaxAABB>(Allocator.Persistent);
 
             submeshIndexOffsets = new NativeArray<int>(7, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -50,14 +43,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             MergeMeshJob mergeMeshJob = new MergeMeshJob {
                 vertices = core.vertices,
-                normals = core.normals,
                 indices = core.indices,
 
                 vertexCounter = core.vertexCounter,
                 triangleCounter = core.triangleCounter,
 
                 skirtVertices = skirt.skirtVertices,
-                skirtNormals = skirt.skirtNormals,
 
                 skirtStitchedIndices = skirt.skirtStitchedIndices,
                 skirtForcedPerFaceIndices = skirt.skirtForcedPerFaceIndices,
@@ -73,12 +64,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 totalVertexCount = totalVertexCount,
 
                 mergedVertices = mergedVertices,
-                mergedNormals = mergedNormals,
                 mergedIndices = mergedIndices,
             };
 
             BoundsJob boundsJob = new BoundsJob {
-                mergedVertices = mergedVertices,
+                mergedVerticesPositions = mergedVertices.positions,
                 totalVertexCount = totalVertexCount,
                 bounds = bounds,
             };
@@ -87,10 +77,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             SetMeshDataJob setMeshDataJob = new SetMeshDataJob {
                 data = array[0],
-                vertexAttributeDescriptors = vertexAttributeDescriptors,
-
+                
                 mergedVertices = mergedVertices,
-                mergedNormals = mergedNormals,
                 mergedIndices = mergedIndices,
 
                 submeshIndexCounts = submeshIndexCounts,
@@ -107,7 +95,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         public void Dispose() {
-            vertexAttributeDescriptors.Dispose();
             bounds.Dispose();
 
             submeshIndexCounts.Dispose();
@@ -116,7 +103,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             totalVertexCount.Dispose();
 
             mergedVertices.Dispose();
-            mergedNormals.Dispose();
             mergedIndices.Dispose();
         }
     }
