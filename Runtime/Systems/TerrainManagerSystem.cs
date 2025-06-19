@@ -256,7 +256,10 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state) {
-            SystemAPI.GetSingleton<TerrainManager>().chunks.Dispose();
+            if (SystemAPI.TryGetSingleton<TerrainManager>(out var mgr)) {
+                mgr.chunks.Dispose();
+            }
+
             chunksToShow.Dispose();
             chunksToDestroy.Dispose();
 
