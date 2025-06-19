@@ -2,9 +2,9 @@ using Unity.Burst;
 using Unity.Entities;
 
 namespace jedjoud.VoxelTerrain {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup), OrderLast = true)]
     [BurstCompile]
-    public partial struct TickSystem : ISystem {
+    public partial struct TerrainTickSystem : ISystem {
         public struct Singleton : IComponentData {
             public uint tick;
         }

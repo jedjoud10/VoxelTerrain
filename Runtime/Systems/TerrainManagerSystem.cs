@@ -9,8 +9,8 @@ using Unity.Transforms;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(OctreeSystem))]
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainOctreeSystem))]
     public partial struct ManagerSystem : ISystem {
         private Entity chunkPrototype;
         private Entity skirtPrototype;
@@ -149,7 +149,7 @@ namespace jedjoud.VoxelTerrain {
                     state.EntityManager.SetComponentData<LocalToWorld>(entity, new LocalToWorld() { Value = localToWorld });
 
                     state.EntityManager.SetComponentData<TerrainChunkVoxels>(entity, new TerrainChunkVoxels {
-                        inner = new NativeArray<Voxel>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory),
+                        data = new VoxelData(Allocator.Persistent),
                         asyncWriteJob = default,
                         asyncReadJob = default,
                     });
@@ -208,7 +208,7 @@ namespace jedjoud.VoxelTerrain {
                         TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
                         voxels.asyncWriteJob.Complete();
                         voxels.asyncReadJob.Complete();
-                        voxels.inner.Dispose();
+                        voxels.data.Dispose();
                         state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                     }
 
@@ -256,7 +256,10 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state) {
-            SystemAPI.GetSingleton<TerrainManager>().chunks.Dispose();
+            if (SystemAPI.TryGetSingleton<TerrainManager>(out var mgr)) {
+                mgr.chunks.Dispose();
+            }
+
             chunksToShow.Dispose();
             chunksToDestroy.Dispose();
 
@@ -265,7 +268,7 @@ namespace jedjoud.VoxelTerrain {
                     TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
                     voxels.asyncWriteJob.Complete();
                     voxels.asyncReadJob.Complete();
-                    voxels.inner.Dispose();
+                    voxels.data.Dispose();
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                 }
 

@@ -6,9 +6,9 @@ using Unity.Mathematics;
 using Unity.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup), OrderLast = true)]
-    [UpdateAfter(typeof(MeshingSystem))]
-    public partial struct ArchetypeBoundsSystem : ISystem {
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup), OrderLast = true)]
+    [UpdateAfter(typeof(TerrainMeshingSystem))]
+    public partial struct TerrainArchetypeBoundsSystem : ISystem {
         private ComponentTypeHandle<WorldRenderBounds> instanceBoundsTypeHandle;
         private ComponentTypeHandle<ChunkWorldRenderBounds> chunkBoundsTypeHandle;
 

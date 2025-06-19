@@ -8,7 +8,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public struct QuadJob : IJobParallelFor {
         // Voxel native array
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public VoxelData voxels;
 
         // Contains 3D data of the indices of the vertices
         [ReadOnly]
@@ -36,28 +36,14 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Check and edge and check if we must generate a quad in it's forward facing direction
         void CheckEdge(int index, uint3 basePosition, int direction) {
-            uint3 forward = DirectionOffsetUtils.FORWARD_DIRECTION[direction];
             int forwardIndexOffset = DirectionIndexOffsetUtils.FORWARD_DIRECTION_INDEX_OFFSET[direction];
-
-            int baseIndex = index;
             int endIndex = forwardIndexOffset + index;
-
-            Voxel startVoxel = voxels[baseIndex];
-            Voxel endVoxel = voxels[endIndex];
-
-            bool flip = (endVoxel.density >= 0.0);
-
-            byte material = flip ? startVoxel.material : endVoxel.material;
-            uint3 offset = basePosition + forward - math.uint3(1);
 
             // Fetch the indices of the vertex positions
             int4 indices = int.MaxValue;
             int4 positionalIndex = index + DirectionIndexOffsetUtils.NEGATIVE_ONE_OFFSET + DirectionIndexOffsetUtils.PERPENDICULAR_OFFSETS_INDEX_OFFSET[direction];
             for (int i = 0; i < 4; i++) {
-                //int positionalIndex = VoxelUtils.PosToIndex(offset + EdgeMaskUtils2.PERPENDICULAR_OFFSETS[direction * 4 + i], VoxelUtils.SIZE);
-                //int positionalIndex = 
                 indices[i] = vertexIndices[positionalIndex[i]];
-                //indices[i] = vertexIndices[positionalIndex];
             }
 
             // Don't make a quad if the vertices are invalid
@@ -66,7 +52,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Get the triangle index base
             int triIndex = triangleCounter.Add(2) * 3;
-            
+            bool flip = voxels.densities[endIndex] >= 0.0;
+
             // Set the first tri
             triangles[triIndex + (flip ? 0 : 2)] = indices[0];
             triangles[triIndex + 1] = indices[1];

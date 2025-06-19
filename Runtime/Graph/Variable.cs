@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new DefineNode<T> { value = VariableType.ToDefinableString(value), constant = true };
         }
 
-        public static Variable<T> New(T value) {
+        public static Variable<T> NonConst(T value) {
             return new DefineNode<T> { value = VariableType.ToDefinableString(value), constant = false };
         }
 
@@ -95,11 +95,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-
-        public Variable<U> Swizzle<U>(string swizzle, params Variable<float>[] others) {
-            return new SwizzleNode<T, U> { a = this, swizzle = swizzle, others = others };
-        }
-
         public Variable<U> Cast<U>() {
             return new CastNode<T, U> { a = this };
         }
@@ -129,6 +124,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             return VariableExtensions.Clamp(this, GraphUtils.Zero<T>(), GraphUtils.One<T>());
         }
 
+        public Variable<T> OneMinus() {
+            return GraphUtils.One<T>() - this;
+        }
+
         public Variable<T> With(params (string, UntypedVariable)[] properties) {
             return new SetPropertiesNode<T>() { owner = this, properties = properties };
         }
@@ -139,12 +138,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             return new SwizzleNode<T, O> { a = this, swizzle = new string('x', VariableType.Dimensionality<O>()) };
-        }
-
-        private void VerifyAllowedSwizzle(int index) {
-            if ((index + 1) > VariableType.Dimensionality<T>()) {
-                throw new Exception("Trying to swizzle at a higher dimension than possible");
-            }
         }
     }
 }

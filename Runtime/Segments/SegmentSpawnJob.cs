@@ -2,17 +2,16 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Segments {
     [BurstCompile(CompileSynchronously = true)]
     public struct SegmentSpawnJob : IJob {
         public NativeHashSet<TerrainSegment> oldSegments;
         public NativeHashSet<TerrainSegment> newSegments;
-        
-        public NativeArray<TerrainLoader> loaders;
-        public NativeArray<LocalTransform> loaderTransforms;
 
+        [ReadOnly]
+        public NativeList<TerrainLoader> loaders;
+        
         [WriteOnly]
         public NativeList<TerrainSegment> addedSegments;
 
@@ -28,8 +27,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             // TODO: implement clustering algorithm to make this faster...
             for (int l = 0; l < loaders.Length; l++) {
                 TerrainLoader loader = loaders[l];
-                LocalTransform transform = loaderTransforms[l];
-                float3 center = transform.Position;
+                float3 center = loader.position;
                 int3 extent = loader.segmentExtent;
                 int3 extentHigh = loader.segmentExtentHigh;
 

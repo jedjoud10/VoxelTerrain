@@ -7,7 +7,7 @@ namespace jedjoud.VoxelTerrain {
 
     class TerrainMainCameraEntityBaker : Baker<TerrainMainCameraEntityAuthoring> {
         public override void Bake(TerrainMainCameraEntityAuthoring authoring) {
-            AddComponent(GetEntity(TransformUsageFlags.Dynamic), new TerrainMainCamera {
+            AddComponent(GetEntity(TransformUsageFlags.WorldSpace), new TerrainMainCamera {
             });
         }
     }

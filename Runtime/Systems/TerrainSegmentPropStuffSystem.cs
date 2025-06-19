@@ -3,9 +3,9 @@ using Unity.Entities;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(SegmentVoxelSystem))]
-    public partial class SegmentPropStuffSystem : SystemBase {
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainSegmentVoxelSystem))]
+    public partial class TerrainSegmentPropStuffSystem : SystemBase {
         public bool initialized;
         private Entity singleton;
 

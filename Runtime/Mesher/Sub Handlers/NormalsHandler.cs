@@ -30,24 +30,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-        public void Schedule(NativeArray<Voxel> voxels, JobHandle dependency) {
+        public void Schedule(ref VoxelData voxels, JobHandle dependency) {
             // Normalize my shi dawg | Part 1
-            NormalsPrefetchJob prefetchBase = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(BASE_OFFSET, BASE_COUNT),
-                val = normalPrefetchedVals[0],
-            };
-            NormalsPrefetchJob prefetchX = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(OFFSET_X_OFFSET, OFFSET_X_COUNT),
-                val = normalPrefetchedVals[1],
-            };
-            NormalsPrefetchJob prefetchY = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(OFFSET_Y_OFFSET, OFFSET_Y_COUNT),
-                val = normalPrefetchedVals[2],
-            };
-            NormalsPrefetchJob prefetchZ = new NormalsPrefetchJob {
-                voxels = voxels.GetSubArray(OFFSET_Z_OFFSET, OFFSET_Z_COUNT),
-                val = normalPrefetchedVals[3],
-            };
+            // Prefetch the voxel values as to avoid fetching them in the same job
+            // Helps a bit cache hit wise, since all of these jobs will read from 
+            NativeArray<JobHandle> deps = new NativeArray<JobHandle>(4, Allocator.Temp);
+            deps[0] = normalPrefetchedVals[0].GetSubArray(0, BASE_COUNT).CopyFromAsync(voxels.densities.GetSubArray(BASE_OFFSET, BASE_COUNT), dependency);
+            deps[1] = normalPrefetchedVals[1].GetSubArray(0, OFFSET_X_COUNT).CopyFromAsync(voxels.densities.GetSubArray(OFFSET_X_OFFSET, OFFSET_X_COUNT), dependency);
+            deps[2] = normalPrefetchedVals[2].GetSubArray(0, OFFSET_Y_COUNT).CopyFromAsync(voxels.densities.GetSubArray(OFFSET_Y_OFFSET, OFFSET_Y_COUNT), dependency);
+            deps[3] = normalPrefetchedVals[3].GetSubArray(0, OFFSET_Z_COUNT).CopyFromAsync(voxels.densities.GetSubArray(OFFSET_Z_OFFSET, OFFSET_Z_COUNT), dependency);
+            JobHandle combined = JobHandle.CombineDependencies(deps);
 
             // Normalize my shi dawg | Part 2
             NormalsCalculateJob normalsCalculateJob = new NormalsCalculateJob {
@@ -57,23 +49,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 yVal = normalPrefetchedVals[2],
                 zVal = normalPrefetchedVals[3]
             };
-
-            // Prefetch the voxel values as to avoid fetching them in the same job
-            // Helps a bit cache hit wise, since all of these jobs will read from nearly sequential data (each at a different offse )
-            JobHandle prefetchBaseJobHandle = prefetchBase.Schedule(VOLUME, SMALLER_BATCH, dependency);
-            JobHandle prefetchXJobHandle = prefetchX.Schedule(VOLUME - 1, SMALLER_BATCH, dependency);
-            JobHandle prefetchYJobHandle = prefetchY.Schedule(VOLUME - SIZE * SIZE, SMALLER_BATCH, dependency);
-            JobHandle prefetchZJobHandle = prefetchZ.Schedule(VOLUME - SIZE, SMALLER_BATCH, dependency);
-
-            // Combine the prefetch deps
-            JobHandle normalsDep1 = JobHandle.CombineDependencies(prefetchXJobHandle, prefetchYJobHandle, prefetchZJobHandle);
-            JobHandle normalsDep2 = JobHandle.CombineDependencies(normalsDep1, prefetchBaseJobHandle);
-            
+                        
             // Calculate the normals at EACH voxel
             // This gives pretty results compared to something like numerical approach but whatever
             // Maybe when I eventually write a proper hermite data system I can scratch all of this... (will be very hard considering I also need to support terrain edits of any kind)
-            JobHandle normalsJobHandle = normalsCalculateJob.Schedule(VOLUME, EVEN_SMALLER_BATCH, normalsDep2);
-            jobHandle = normalsJobHandle;
+            jobHandle = normalsCalculateJob.Schedule(VOLUME, EVEN_SMALLER_BATCH, combined);
         }
 
         public void Dispose() {

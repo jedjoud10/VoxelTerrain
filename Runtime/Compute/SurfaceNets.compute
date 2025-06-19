@@ -5,7 +5,6 @@
 #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
 #include "UnityIndirect.cginc"
 
-RWTexture3D<uint> voxels;
 
 int3 permutation_seed = int3(684, 2325, 31);
 int3 modulo_seed = int3(423, 4543, -23423);
@@ -13,24 +12,14 @@ int3 modulo_seed = int3(423, 4543, -23423);
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/common.cginc"
 
-float fetch(uint3 id) {
-    float density;
-    uint material;
-    unpackVoxelData(voxels[id], density, material);
-    return density;
-}
+RWTexture3D<PackedVoxel> voxels;
 
-float3 fetchMatId(uint3 id) {
-    float density;
-    uint material;
-    unpackVoxelData(voxels[id], density, material);
-    return hash31((float)material * 43.2342321 + 543.3232);
+Voxel fetch(uint3 id) {
+    return unpackVoxelData(voxels[id]);
 }
 
 RWTexture3D<uint> vertexIds;
 
-bool blocky;
-bool materialId;
 int size;
 
 RWStructuredBuffer<float3> vertices;
@@ -102,10 +91,10 @@ float invLerp(float from, float to, float value){
 }
 
 float3 normalMaxx(uint3 id) {
-    float base = fetch(id);
-    float x = fetch(id + uint3(1, 0, 0));
-    float y = fetch(id + uint3(0, 1, 0));
-    float z = fetch(id + uint3(0, 0, 1));
+    float base = fetch(id).density;
+    float x = fetch(id + uint3(1, 0, 0)).density;
+    float y = fetch(id + uint3(0, 1, 0)).density;
+    float z = fetch(id + uint3(0, 0, 1)).density;
     return normalize(float3(base-x, base-y, base-z));
 }
 
@@ -119,30 +108,19 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
     int count = 0;
     float3 sum = float3(0, 0, 0);
     float3 normalSum = float3(0, 0, 0);
-    float3 colorSum = float3(0,0,0);
 
     for (int i = 0; i < 12; i++) {
         uint3 first = edgePositions0[i];
         uint3 second = edgePositions1[i];
-        float firstDensity = fetch(id + first);
-        float secondDensity = fetch(id + second);
-        float3 firstColor = fetchMatId(id + first);
-        float3 secondColor = fetchMatId(id + second);
+        Voxel firstVoxel = fetch(id + first);
+        Voxel secondVoxel = fetch(id + second);
 
-        if (firstDensity < 0.0 ^ secondDensity < 0.0) {
+        if (firstVoxel.density < 0.0 ^ secondVoxel.density < 0.0) {
             count++;
 
-            if (blocky) {
-                sum = 0.5;
-                normalSum = normalMaxx(id);
-                colorSum += lerp(firstColor, secondColor, 0.5);
-                break;
-            } else {
-                float unlerped = invLerp(firstDensity, secondDensity, 0.0);
-                sum += lerp(float3(first), float3(second), unlerped);
-                normalSum += lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped);
-                colorSum += lerp(firstColor, secondColor, unlerped);
-            }
+            float unlerped = invLerp(firstVoxel.density, secondVoxel.density, 0.0);
+            sum += lerp(float3(first), float3(second), unlerped);
+            normalSum += lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped);
         }
     }
 
@@ -150,9 +128,8 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         uint oldValue = 0;
         InterlockedAdd(atomicCounters[0], 1, oldValue); 
         vertices[oldValue] = float3(id) + sum/float(count);
-        //normals[oldValue] = 1.0;
         normals[oldValue] = length(normalSum) < 0.1 ? 1.0 : normalize(-normalSum);
-        colors[oldValue] = materialId ? (colorSum / float(count)) : 1.0;
+        colors[oldValue] = 1.0f;
         vertexIds[id] = oldValue;   
     }
 }
@@ -165,8 +142,8 @@ void CSQuad(uint3 id : SV_DispatchThreadID) {
     }
 
     for (int i = 0; i < 3; i++) {
-        float firstDensity = fetch(id);
-        float secondDensity = fetch(id + test[i]);
+        float firstDensity = fetch(id).density;
+        float secondDensity = fetch(id + test[i]).density;
         bool flip = firstDensity < 0.0;
 
         if (firstDensity < 0.0 ^ secondDensity < 0.0) {

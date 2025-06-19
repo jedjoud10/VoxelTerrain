@@ -41,7 +41,7 @@ namespace jedjoud.VoxelTerrain {
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
 
-            SegmentPropStuffSystem system = world.GetExistingSystemManaged<SegmentPropStuffSystem>();
+            TerrainSegmentPropStuffSystem system = world.GetExistingSystemManaged<TerrainSegmentPropStuffSystem>();
 
             GUI.contentColor = Color.white;
             Label($"# of total chunk entities: {totalChunks.CalculateEntityCount()}");

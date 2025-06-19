@@ -12,6 +12,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 gradient = gradient,
                 mixer = mixer,
                 size = size,
+                inner = new GeneratedTextureHelper(),
             };
         }
 
@@ -31,6 +32,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 inputMin = inputMin,
                 inputMax = inputMax,
                 invert = invert,
+                inner = new GeneratedTextureHelper(),
             };
         }
 

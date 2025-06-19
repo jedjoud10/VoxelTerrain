@@ -3,8 +3,8 @@ using Unity.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateInGroup(typeof(SimulationSystemGroup), OrderLast = true)]
-    [UpdateAfter(typeof(MeshingSystem))]
-    public partial class UnregisterMeshSystem : SystemBase {
+    [UpdateAfter(typeof(TerrainMeshingSystem))]
+    public partial class TerrainUnregisterMeshSystem : SystemBase {
         private EntitiesGraphicsSystem graphics;
         
         protected override void OnCreate() {

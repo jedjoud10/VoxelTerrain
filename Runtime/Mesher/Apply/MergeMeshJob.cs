@@ -1,16 +1,13 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
-using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
     public struct MergeMeshJob : IJob {
         // Normal mesh buffers
         [ReadOnly]
-        public NativeArray<float3> vertices;
-        [ReadOnly]
-        public NativeArray<float3> normals;
+        public Vertices vertices;
         [ReadOnly]
         public NativeArray<int> indices;
 
@@ -22,9 +19,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         // Skirt vertices (both stitched + forced)
         [ReadOnly]
-        public NativeArray<float3> skirtVertices;
-        [ReadOnly]
-        public NativeArray<float3> skirtNormals;
+        public Vertices skirtVertices;
 
         // Skirt indices
         [ReadOnly]
@@ -49,13 +44,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeReference<int> totalIndexCount;
 
         // Merged mesh buffers
-        public NativeArray<float3> mergedVertices;
-        public NativeArray<float3> mergedNormals;
+        public Vertices mergedVertices;
         public NativeArray<int> mergedIndices;
 
-        private void Copy<T>(NativeArray<T> src, NativeArray<T> dst, int dstOffset, int length) where T: unmanaged {
+        private static void Copy<T>(NativeArray<T> src, NativeArray<T> dst, int dstOffset, int length) where T: unmanaged {
             NativeArray<T> tmpSrc = src.GetSubArray(0, length);
             tmpSrc.CopyTo(dst.GetSubArray(dstOffset, length));
+        }
+
+        private static void Copy(Vertices src, Vertices dst, int dstOffset, int length) {
+            src.CopyTo(dst, dstOffset, length);
         }
 
         public void Execute() {
@@ -65,11 +63,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             // Merge the main mesh vertices
             Copy(vertices, mergedVertices, 0, vertexCounter.Count);
-            Copy(normals, mergedNormals, 0, vertexCounter.Count);
 
             // Merge the skirt vertices
             Copy(skirtVertices, mergedVertices, vertexCounter.Count, skirtVertexCounter.Count);
-            Copy(skirtNormals, mergedNormals, vertexCounter.Count, skirtVertexCounter.Count);
 
             // We will store ALL the indices (uniform + stitch + forced)
             totalIndexCount.Value = triangleCounter.Count * 3 + skirtStitchedTriangleCounter.Count * 3 + skirtForcedTriangleCounter.Sum() * 3;

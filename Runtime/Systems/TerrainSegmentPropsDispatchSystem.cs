@@ -9,9 +9,9 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {
-    [UpdateInGroup(typeof(FixedStepTerrainSystemGroup))]
-    [UpdateAfter(typeof(SegmentVoxelSystem))]
-    public partial class SegmentPropsDispatchSystem : SystemBase {
+    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
+    [UpdateAfter(typeof(TerrainSegmentVoxelSystem))]
+    public partial class TerrainSegmentPropsDispatchSystem : SystemBase {
         private bool countersFetched;
         private bool propsFetched;
         private bool free;
@@ -69,7 +69,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
 
         private void TryBeginDispatchAndReadback() {
-            SegmentVoxelSystem dispatcher = World.GetExistingSystemManaged<SegmentVoxelSystem>();
+            TerrainSegmentVoxelSystem dispatcher = World.GetExistingSystemManaged<TerrainSegmentVoxelSystem>();
             Entity entity = dispatcher.entity;
             TerrainSegment segment = dispatcher.segment;
             GraphicsFence fence = dispatcher.fence;

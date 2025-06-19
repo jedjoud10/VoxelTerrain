@@ -1,12 +1,13 @@
 using System.Linq;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Entities;
+using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {
     [UpdateInGroup(typeof(PresentationSystemGroup), OrderLast = true)]
-    public partial class SegmentPropsRenderSystem : SystemBase {
+    public partial class TerrainSegmentPropsRenderSystem : SystemBase {
         private TerrainPropsConfig config;
         private TerrainPropPermBuffers perm;
         private TerrainPropRenderingBuffers rendering;
@@ -19,6 +20,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             RequireForUpdate<TerrainPropsConfig>();
             RequireForUpdate<TerrainPropPermBuffers>();
             RequireForUpdate<TerrainPropRenderingBuffers>();
+            RequireForUpdate<TerrainMainCamera>();
             initialized = false;
         }
 
@@ -37,9 +39,9 @@ namespace jedjoud.VoxelTerrain.Segments {
             }
 
             int types = config.props.Count;
-            Camera cam = Camera.main;
-            if (cam == null)
-                return;
+            Entity cameraEntity = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
+            TerrainMainCamera cameraComponent = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
+            LocalToWorld cameraTransform = SystemAPI.GetComponent<LocalToWorld>(cameraEntity);
 
 
             CommandBuffer cmds = new CommandBuffer();
@@ -65,9 +67,9 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeIntParam(config.cull, "max_combined_perm_props", perm.maxCombinedPermProps);
             cmds.SetComputeIntParam(config.cull, "types", types);
 
-            cmds.SetComputeVectorParam(config.cull, "camera_position", cam.transform.position);
+            cmds.SetComputeVectorParam(config.cull, "camera_position", (Vector3)cameraTransform.Position);
 
-            Plane[] temp = GeometryUtility.CalculateFrustumPlanes(cam);
+            Plane[] temp = GeometryUtility.CalculateFrustumPlanes(cameraComponent.worldToProjection);
             Vector4[] frustums = temp.Select(plane => new Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.distance)).ToArray();
             cmds.SetComputeVectorArrayParam(config.cull, "camera_frustum_planes", frustums);
 
@@ -105,7 +107,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 }
 
                 if (config.props[i].renderImpostors) {
-                    RenderImpostorPropsOfType(cam, config.props[i], i);
+                    RenderImpostorPropsOfType(cameraTransform, config.props[i], i);
                 }
             }
         }
@@ -146,7 +148,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             Graphics.RenderMeshIndirect(renderParams, mesh, rendering.instancedDrawArgsBuffer, 1, i);
         }
 
-        public void RenderImpostorPropsOfType(Camera cam, PropType type, int i) {
+        public void RenderImpostorPropsOfType(LocalToWorld cameraTransform, PropType type, int i) {
             if (!rendering.typeImpostorsTextureArrays[i].IsValid()) {
                 Debug.LogWarning($"Missing captured impostor textures for prop '{type.name}' variant {i}");
                 return;
@@ -173,8 +175,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetInt("_PropType", i);
             mat.SetInt("_MaxVariantCountForType", type.variants.Count);
 
-            mat.SetVector("_CameraPosition", cam.transform.position);
-            mat.SetVector("_CameraUp", cam.transform.up);
+            mat.SetVector("_CameraPosition", (Vector3)cameraTransform.Position);
+            mat.SetVector("_CameraUp", (Vector3)cameraTransform.Up);
 
             mat.SetVector("_ImpostorOffset", type.impostorOffset);
             mat.SetFloat("_ImpostorScale", type.impostorScale);

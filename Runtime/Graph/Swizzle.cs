@@ -1,7 +1,14 @@
+using System;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract partial class Variable<T> : UntypedVariable {
+        private void VerifyAllowedSwizzle(int index) {
+            if ((index + 1) > VariableType.Dimensionality<T>()) {
+                throw new Exception("Trying to swizzle at a higher dimension than possible");
+            }
+        }
+
         public Variable<float> x { get { VerifyAllowedSwizzle(0); return new SwizzleNode<T, float> { a = this, swizzle = "x" }; } }
         public Variable<float> y { get { VerifyAllowedSwizzle(1); return new SwizzleNode<T, float> { a = this, swizzle = "y" }; } }
         public Variable<float> z { get { VerifyAllowedSwizzle(2); return new SwizzleNode<T, float> { a = this, swizzle = "z" }; } }

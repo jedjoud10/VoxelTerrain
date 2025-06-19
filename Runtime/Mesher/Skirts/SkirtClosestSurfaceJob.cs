@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<bool> withinThreshold;
 
         [ReadOnly]
-        public NativeArray<Voxel> voxels;
+        public VoxelData voxels;
             
         const int PADDING_SEARCH_AREA = 3;
         public void Execute(int index) {
@@ -27,7 +27,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
 
                 // skip if this is air, we will never generate forced skirts in the air
-                if (voxels[VoxelUtils.PosToIndex(position, VoxelUtils.SIZE)].density > 0) {
+                if (voxels.densities[VoxelUtils.PosToIndex(position, VoxelUtils.SIZE)] > 0) {
                     return;
                 }
             }
@@ -41,7 +41,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     int3 global = SkirtUtils.UnflattenFromFaceRelative(offset + basePosition2D, direction, (int)missing);
 
                     if (math.all(global >= 0 & global < VoxelUtils.SIZE)) {
-                        if (voxels[VoxelUtils.PosToIndex((uint3)global, VoxelUtils.SIZE)].density >= 0) {
+                        if (voxels.densities[VoxelUtils.PosToIndex((uint3)global, VoxelUtils.SIZE)] >= 0) {
                             within = true;
                             break;
                         }

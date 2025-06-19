@@ -4,9 +4,9 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain {
     // Common terrain utility methods
     public static class VoxelUtils {
-        // number of "octal" chunks that will get their voxel values computed in the same compute shader dispatch
-        public const int OCTAL_CHUNK_SIZE_RATIO = 4;
-        public const int OCTAL_CHUNK_COUNT = 64;
+        // number of "multi" chunks that will get their voxel values computed in the same compute shader dispatch
+        public const int MULTI_READBACK_CHUNK_SIZE_RATIO = 4;
+        public const int MULTI_READBACK_CHUNK_COUNT = 64;
 
         // "physical" size of the chunks, how big their entities are
         public const int PHYSICAL_CHUNK_SIZE = 32;

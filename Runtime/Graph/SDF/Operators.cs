@@ -49,7 +49,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                     string[] swizzler = new string[] { "x", "y", "z" };
 
-                    Variable<float> temp2 = temp.Swizzle<float>("x");
+                    Variable<float> temp2 = temp.x;
                     for (var i = 1; i < VariableType.Dimensionality<T>(); i++) {
                         temp2.Handle(ctx);
                         temp2 = ctx.AssignTempVariable<float>("folded_vec", $"max({ctx[temp2]}, {ctx[temp]}.{swizzler[i]})");

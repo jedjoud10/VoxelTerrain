@@ -15,8 +15,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         private RenderTexture tempVertexTexture;
         public Material customRenderingMaterial;
         private GraphicsBuffer.IndirectDrawIndexedArgs defaultArgs;
-        public bool materialId;
-        public bool blocky;
         public bool flatshaded;
         public int size = 64;
         private int initSize = -1;
@@ -143,8 +141,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             commandBuffer.SetData(new GraphicsBuffer.IndirectDrawIndexedArgs[1] { defaultArgs });
 
             var shader = surfaceNetsCompute;
-            shader.SetBool("blocky", blocky);
-            shader.SetBool("materialId", materialId);
             shader.SetInt("size", size);
 
             int minDispatchVertex = Mathf.CeilToInt((float)size / 4.0f);
@@ -188,7 +184,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             mat.SetBuffer("_Vertices", vertexBuffer);
             mat.SetBuffer("_Normals", normalsBuffer);
             mat.SetBuffer("_Colors", colorsBuffer);
-            mat.SetInt("_Flatshaded", (flatshaded || blocky) ? 1 : 0);
+            mat.SetInt("_Flatshaded", flatshaded ? 1 : 0);
 
             // FIXME: Why do I need to use this instead of just render mesh primitives indexed inderect???
             // Also why do I need to handle the indexing myself???
