@@ -2,7 +2,6 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Rendering;
 using static jedjoud.VoxelTerrain.VoxelUtils;
 
 namespace jedjoud.VoxelTerrain.Meshing {

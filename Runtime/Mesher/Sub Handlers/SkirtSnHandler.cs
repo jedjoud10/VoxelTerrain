@@ -1,6 +1,5 @@
 using Unity.Collections;
 using Unity.Jobs;
-using Unity.Mathematics;
 using static jedjoud.VoxelTerrain.VoxelUtils;
 using static jedjoud.VoxelTerrain.BatchUtils;
 

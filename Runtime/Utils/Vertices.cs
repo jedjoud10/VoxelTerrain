@@ -1,10 +1,4 @@
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using JetBrains.Annotations;
-using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
-using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
