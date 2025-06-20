@@ -10,43 +10,37 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
     [UpdateAfter(typeof(TerrainMeshingSystem))]
     public partial struct TerrainColliderSystem : ISystem {
-        struct PendingBatchBakeRequest {
+        struct PendingBakeRequest {
             public JobHandle dep;
-            public NativeArray<Entity> entities;
-            public NativeArray<BlobAssetReference<Collider>> colliders;
-            public UnsafeList<TerrainChunkMesh> what;
+            public Entity entity;
+            public NativeReference<BlobAssetReference<Collider>> colliderRef;
 
             public void Dispose() {
                 dep.Complete();
-                entities.Dispose();
-                colliders.Dispose();
-                what.Dispose();
+                colliderRef.Dispose();
             }
         }
 
-        private NativeList<PendingBatchBakeRequest> batches;
+        private NativeList<PendingBakeRequest> pending;
 
         [BurstCompile(CompileSynchronously = true)]
-        struct BakingJob : IJobParallelFor {
+        struct BakingJob : IJob {
             [ReadOnly]
-            [NativeDisableContainerSafetyRestriction]
-            public UnsafeList<TerrainChunkMesh> meshes;
-            [WriteOnly]
-            public NativeArray<BlobAssetReference<Collider>> colliders;
+            public TerrainChunkMesh mesh;
+            public NativeReference<BlobAssetReference<Collider>> colliderRef;
 
-            public void Execute(int i) {
-                NativeArray<float3> vertices = meshes[i].vertices;
-                NativeArray<int3> triangles = meshes[i].indices.Reinterpret<int3>(sizeof(int));
+            public void Execute() {
+                NativeArray<float3> vertices = mesh.vertices;
+                NativeArray<int3> triangles = mesh.mainMeshIndices.Reinterpret<int3>(sizeof(int));
                 var material = Material.Default;
                 material.Friction = 0.95f;
-                BlobAssetReference<Collider> collider = MeshCollider.Create(vertices, triangles, CollisionFilter.Default, material);
-                colliders[i] = collider;
+                colliderRef.Value = MeshCollider.Create(vertices, triangles, CollisionFilter.Default, material);
             }
         }
 
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
-            batches = new NativeList<PendingBatchBakeRequest>(Allocator.Persistent);
+            pending = new NativeList<PendingBakeRequest>(Allocator.Persistent);
         }
 
         [BurstCompile]
@@ -57,30 +51,26 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state) {
-            batches.Dispose();
+            pending.Dispose();
         }
 
         private void TryCompleteOldBatches(ref SystemState state) {
-            for (int i = batches.Length - 1; i >= 0; i--) {
-                if (batches[i].dep.IsCompleted) {
-                    batches[i].dep.Complete();
-                    NativeArray<Entity> entities = batches[i].entities;
-                    NativeArray<BlobAssetReference<Collider>> colliders = batches[i].colliders;
+            for (int i = pending.Length - 1; i >= 0; i--) {
+                if (pending[i].dep.IsCompleted) {
+                    pending[i].dep.Complete();
+                    Entity entity = pending[i].entity;
+                    BlobAssetReference<Collider> collider = pending[i].colliderRef.Value;
 
-                    for (int e = 0; e < entities.Length; e++) {
-                        Entity entity = entities[e];
-
-                        if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {
-                            state.EntityManager.GetComponentData<PhysicsCollider>(entity).Value.Dispose();
-                        }
-
-                        state.EntityManager.AddSharedComponent<PhysicsWorldIndex>(entity, new PhysicsWorldIndex { Value = 0 });
-                        state.EntityManager.AddComponent<PhysicsCollider>(entity);
-                        state.EntityManager.SetComponentData<PhysicsCollider>(entity, new PhysicsCollider() { Value = colliders[e] });
+                    if (state.EntityManager.HasComponent<PhysicsCollider>(entity)) {
+                        state.EntityManager.GetComponentData<PhysicsCollider>(entity).Value.Dispose();
                     }
 
-                    batches[i].Dispose();
-                    batches.RemoveAt(i);
+                    state.EntityManager.AddSharedComponent<PhysicsWorldIndex>(entity, new PhysicsWorldIndex { Value = 0 });
+                    state.EntityManager.AddComponent<PhysicsCollider>(entity);
+                    state.EntityManager.SetComponentData<PhysicsCollider>(entity, new PhysicsCollider() { Value = collider });
+
+                    pending[i].Dispose();
+                    pending.RemoveAt(i);
                 }
             }
         }
@@ -90,30 +80,25 @@ namespace jedjoud.VoxelTerrain.Meshing {
             if (query.IsEmpty)
                 return;
 
-            // we deallocate these later when we complete the jobs
-            NativeArray<Entity> entities = query.ToEntityArray(Allocator.Persistent);
-            NativeArray<BlobAssetReference<Collider>> colliders = new NativeArray<BlobAssetReference<Collider>>(entities.Length, Allocator.Persistent);
-            UnsafeList<TerrainChunkMesh> what = new UnsafeList<TerrainChunkMesh>(entities.Length, Allocator.Persistent);
-
-            // temp allocation so we don't need to dispose of it
-            // (we can't anyways, since we can't dispose nested containers in jobs, even the fucking deferred dispose ones)
+            NativeArray<Entity> entities = query.ToEntityArray(Allocator.Temp);
             NativeArray<TerrainChunkMesh> meshes = query.ToComponentDataArray<TerrainChunkMesh>(Allocator.Temp);
-            what.Resize(entities.Length);
-            what.CopyFrom(meshes);
 
-            BakingJob bake = new BakingJob {
-                meshes = what,
-                colliders = colliders,
-            };
+            for (int i = 0; i < entities.Length; i++) {
+                NativeReference<BlobAssetReference<Collider>> colliderRef = new NativeReference<BlobAssetReference<Collider>>(Allocator.Persistent);
 
-            JobHandle handle = bake.Schedule(entities.Length, 1);
+                BakingJob bake = new BakingJob {
+                    mesh = meshes[i],
+                    colliderRef = colliderRef
+                };
 
-            batches.Add(new PendingBatchBakeRequest {
-                dep = handle,
-                colliders = colliders,
-                entities = entities,
-                what = what
-            });
+                JobHandle handle = bake.Schedule();
+
+                pending.Add(new PendingBakeRequest {
+                    dep = handle,
+                    colliderRef = colliderRef,
+                    entity = entities[i],
+                });
+            }
 
             foreach (var entity in entities) {
                 state.EntityManager.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, false);

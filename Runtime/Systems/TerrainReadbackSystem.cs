@@ -161,14 +161,14 @@ namespace jedjoud.VoxelTerrain.Generation {
                             RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity);
                             ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
 
-                            JobHandle dep = JobHandle.CombineDependencies(voxels.asyncReadJob, voxels.asyncWriteJob);
+                            JobHandle dep = JobHandle.CombineDependencies(voxels.asyncReadJobHandle, voxels.asyncWriteJobHandle);
                             JobHandle handle = new GpuToCpuCopy {
                                 cpuData = voxels.data,
                                 rawGpuData = src,
                             }.Schedule(BatchUtils.BATCH, VoxelUtils.VOLUME, dep);
 
                             copies[j] = handle;
-                            voxels.asyncWriteJob = handle;
+                            voxels.asyncWriteJobHandle = handle;
                         }
 
                         pendingCopies = JobHandle.CombineDependencies(copies.Slice(0, entities.Count));

@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
@@ -111,6 +113,85 @@ namespace jedjoud.VoxelTerrain {
         public static uint3 Mod(int3 val, int size) {
             int3 r = val % size;
             return (uint3)math.select(r, r + size, r < 0);
+        }
+
+
+        // Fetch the Voxels with neighbour data fallback, but consider ALL 26 neighbours, not just the ones in the positive axii
+        // Solely used for AO, since that needs to fetch data from all the neighbours
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static half FetchDensityNeighbours(int3 position, ref UnsafePtrList<half> voxelDataPtrs) {
+            // remap -1,1 to 0,2
+            position += new int3(PHYSICAL_CHUNK_SIZE);
+            int3 chunkPosition = position / PHYSICAL_CHUNK_SIZE;
+            int chunkIndex = PosToIndex((uint3)chunkPosition, 3);
+            int voxelIndex = PosToIndex((uint3)Mod(position, PHYSICAL_CHUNK_SIZE), SIZE);
+
+            unsafe {
+                half* ptr = voxelDataPtrs[chunkIndex];
+
+                if (ptr != null) {
+                    half* offset = (ptr + voxelIndex);
+                    return *offset;
+                } else {
+                    return half.zero;
+                }
+            }
+        }
+
+        // Check if a 2x2x2 region starting from a specific voxel is accessible
+        // Required for vertex job, corner job, quad job. Yk, meshing stuff
+        // TODO: PLEASE IMPROVE PERFORMANCE THIS IS HORRID. There's definitely a smarter way to tackle this lol
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckCubicVoxelPosition(int3 position, BitField32 mask) {
+            bool all = true;
+            for (int i = 0; i < 8; i++) {
+                all &= CheckPosition(position + (int3)IndexToPos(i, 2), mask);
+            }
+            return all;
+        }
+
+        // Checks if the given GLOBAL position (could be negative) is valid with the given neighbours
+        // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckPosition(int3 position, BitField32 mask) {
+            int3 temp1 = position + PHYSICAL_CHUNK_SIZE;
+
+            DebugCheckBounds(temp1, PHYSICAL_CHUNK_SIZE * 3);
+
+            int3 chunkPosition = temp1 / SIZE;
+
+            //Debug.Log(chunkPosition);
+            int index1 = PosToIndex((uint3)chunkPosition, 3);
+
+            return mask.IsSet(index1);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static half SampleDensityInterpolated(float3 position, ref UnsafePtrList<half> neighbours) {
+            float3 frac = math.frac(position);
+            int3 voxPos = (int3)math.floor(position);
+
+            float d000 = FetchDensityNeighbours(voxPos, ref neighbours);
+            float d100 = FetchDensityNeighbours(voxPos + math.int3(1, 0, 0), ref neighbours);
+            float d010 = FetchDensityNeighbours(voxPos + math.int3(0, 1, 0), ref neighbours);
+            float d110 = FetchDensityNeighbours(voxPos + math.int3(1, 1, 0), ref neighbours);
+
+            float d001 = FetchDensityNeighbours(voxPos + math.int3(0, 0, 1), ref neighbours);
+            float d101 = FetchDensityNeighbours(voxPos + math.int3(1, 0, 1), ref neighbours);
+            float d011 = FetchDensityNeighbours(voxPos + math.int3(0, 1, 1), ref neighbours);
+            float d111 = FetchDensityNeighbours(voxPos + math.int3(1, 1, 1), ref neighbours);
+
+            float mixed0 = math.lerp(d000, d100, frac.x);
+            float mixed1 = math.lerp(d010, d110, frac.x);
+            float mixed2 = math.lerp(d001, d101, frac.x);
+            float mixed3 = math.lerp(d011, d111, frac.x);
+
+            float mixed4 = math.lerp(mixed0, mixed2, frac.z);
+            float mixed5 = math.lerp(mixed1, mixed3, frac.z);
+
+            float mixed6 = math.lerp(mixed4, mixed5, frac.y);
+
+            return (half)mixed6;
         }
     }
 }

@@ -7,15 +7,15 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
-    internal class MeshJobHandler {
+    public class MeshJobHandler {
         public struct Stats {
             public bool empty;
             public Bounds bounds;
             public int[] forcedSkirtFacesTriCount;
             public int vertexCount;
-            public int indexCount;
-            public NativeArray<float3> vertices;
-            public NativeArray<int> indices;
+            public int mainMeshIndexCount;
+            public Vertices vertices;
+            public NativeArray<int> mainMeshIndices;
         }
 
         // Sub handlers scheduled in sequential order
@@ -48,8 +48,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             Free = false;
             this.entity = entity;
 
-            JobHandle dependency = voxels.CopyFromAsync(chunkVoxels.data, chunkVoxels.asyncReadJob);
-            chunkVoxels.asyncReadJob = dependency;
+            JobHandle dependency = voxels.CopyFromAsync(chunkVoxels.data, chunkVoxels.asyncWriteJobHandle);
+            chunkVoxels.asyncReadJobHandle = dependency;
             chunkVoxels.meshingInProgress = true;
 
             code.Schedule(ref voxels, dependency);
@@ -95,12 +95,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 },
 
                 vertexCount = apply.totalVertexCount.Value,
-                indexCount = apply.submeshIndexCounts[0],
+                mainMeshIndexCount = apply.submeshIndexCounts[0],
                 forcedSkirtFacesTriCount = temp,
                 empty = empty,
 
-                vertices = apply.mergedVertices.positions.GetSubArray(0, apply.totalVertexCount.Value),
-                indices = apply.mergedIndices.GetSubArray(0, apply.submeshIndexCounts[0]),
+                vertices = apply.mergedVertices.GetSubArray(0, apply.totalVertexCount.Value),
+                mainMeshIndices = apply.mergedIndices.GetSubArray(0, apply.submeshIndexCounts[0]),
             };                       
 
             return true;

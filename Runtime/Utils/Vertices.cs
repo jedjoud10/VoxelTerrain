@@ -62,14 +62,24 @@ namespace jedjoud.VoxelTerrain {
             Copy(this.layers, dst.layers, dstOffset, length);
         }
 
+        public Vertices GetSubArray(int offset, int length) {
+            Vertices tmp = new Vertices();
+            tmp.positions = positions.GetSubArray(offset, length);
+            tmp.normals = normals.GetSubArray(offset, length);
+            tmp.layers = layers.GetSubArray(offset, length);
+            return tmp;
+        }
+
         public void SetMeshDataAttributes(int count, Mesh.MeshData data) {
-            NativeArray<VertexAttributeDescriptor> descriptors = new NativeArray<VertexAttributeDescriptor>(2, Allocator.Temp);
+            NativeArray<VertexAttributeDescriptor> descriptors = new NativeArray<VertexAttributeDescriptor>(3, Allocator.Temp);
             descriptors[0] = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
             descriptors[1] = new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3, 1);
+            descriptors[2] = new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.Float32, 4, 2);
 
             data.SetVertexBufferParams(count, descriptors);
             positions.GetSubArray(0, count).CopyTo(data.GetVertexData<float3>(0));
             normals.GetSubArray(0, count).CopyTo(data.GetVertexData<float3>(1));
+            data.GetVertexData<float4>(2).AsSpan().Fill(float4.zero);
         }
 
         public Single this[int index] {

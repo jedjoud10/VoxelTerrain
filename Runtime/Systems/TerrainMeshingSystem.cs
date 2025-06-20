@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateAfter(typeof(TerrainReadbackSystem))]
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
-        const int MAX_MESH_JOBS_PER_TICK = 4;
+        const int MAX_MESH_HANDLERS_PER_TICK = 4;
         private RenderMeshDescription mainMeshDescription;
         private RenderMeshDescription skirtsMeshDescription;
         private EntitiesGraphicsSystem graphics;
@@ -27,8 +27,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainMesherConfig>();
-            handlers = new List<MeshJobHandler>(MAX_MESH_JOBS_PER_TICK);
-            for (int i = 0; i < MAX_MESH_JOBS_PER_TICK; i++) {
+            handlers = new List<MeshJobHandler>(MAX_MESH_HANDLERS_PER_TICK);
+            for (int i = 0; i < MAX_MESH_HANDLERS_PER_TICK; i++) {
                 handlers.Add(new MeshJobHandler());
             }
 
@@ -112,8 +112,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, false);
                 SystemAPI.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkEntity, false);
             }
-
-            entitiesArray.Dispose();
         }
 
         private void FinishJob(MeshJobHandler handler) {
@@ -134,9 +132,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 if (EntityManager.HasComponent<TerrainChunkMesh>(chunkEntity)) {
                     DynamicBuffer<TerrainUnregisterMeshBuffer> unregisterBuffer = SystemAPI.GetSingletonBuffer<TerrainUnregisterMeshBuffer>();
                     TerrainChunkMesh tmpMesh = EntityManager.GetComponentData<TerrainChunkMesh>(chunkEntity);
-                    tmpMesh.vertices.Dispose();
-                    tmpMesh.indices.Dispose();
-
+                    tmpMesh.Dispose();
+                    
                     if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity)) {
                         MaterialMeshInfo matMeshInf = SystemAPI.GetComponent<MaterialMeshInfo>(chunkEntity);
                         unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = matMeshInf.MeshID });
@@ -175,17 +172,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
                 EntityManager.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, !deferredVisibility);
 
-                NativeArray<float3> vertices = new NativeArray<float3>(stats.vertices.Length, Allocator.Persistent);
-                NativeArray<int> indices = new NativeArray<int>(stats.indices.Length, Allocator.Persistent);
-
-                vertices.CopyFrom(stats.vertices);
-                indices.CopyFrom(stats.indices);
-
                 EntityManager.SetComponentEnabled<TerrainChunkMesh>(chunkEntity, true);
-                EntityManager.SetComponentData<TerrainChunkMesh>(chunkEntity, new TerrainChunkMesh {
-                    vertices = vertices,
-                    indices = indices,
-                });
+                EntityManager.SetComponentData<TerrainChunkMesh>(chunkEntity, TerrainChunkMesh.FromMeshJobHandlerStats(stats));
 
                 EntityManager.SetComponentData<RenderBounds>(chunkEntity, new RenderBounds() {
                     Value = localRenderBounds,
@@ -195,7 +183,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     Value = worldRenderBounds
                 });
 
-                if (stats.indexCount == 0) {
+                if (stats.mainMeshIndexCount == 0) {
                     SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
                 }
 
