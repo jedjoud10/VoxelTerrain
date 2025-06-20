@@ -145,7 +145,7 @@ namespace jedjoud.VoxelTerrain {
         public static bool CheckCubicVoxelPosition(int3 position, BitField32 mask) {
             bool all = true;
             for (int i = 0; i < 8; i++) {
-                all &= CheckPosition(position + (int3)IndexToPos(i, 2), mask);
+                all &= CheckPositionInsideMultipleChunks(position + (int3)IndexToPos(i, 2), mask);
             }
             return all;
         }
@@ -153,7 +153,7 @@ namespace jedjoud.VoxelTerrain {
         // Checks if the given GLOBAL position (could be negative) is valid with the given neighbours
         // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool CheckPosition(int3 position, BitField32 mask) {
+        public static bool CheckPositionInsideMultipleChunks(int3 position, BitField32 mask) {
             int3 temp1 = position + PHYSICAL_CHUNK_SIZE;
 
             DebugCheckBounds(temp1, PHYSICAL_CHUNK_SIZE * 3);
@@ -164,6 +164,11 @@ namespace jedjoud.VoxelTerrain {
             int index1 = PosToIndex((uint3)chunkPosition, 3);
 
             return mask.IsSet(index1);
+        }
+
+        // Checks if a position is stored inside the chunk
+        public static bool CheckPositionInsideChunk(int3 position) {
+            return math.all(position > 0 & position < SIZE);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

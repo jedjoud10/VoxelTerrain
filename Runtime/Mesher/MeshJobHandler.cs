@@ -23,6 +23,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         private NormalsHandler normals;
         private CoreSnHandler core;
         private SkirtSnHandler skirt;
+        private MergeMeshHandler merger;
+        private LightingHandler lighting;
         private ApplyMeshHandler apply;
 
         private VoxelData voxels;
@@ -35,6 +37,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             normals.Init();
             core.Init();
             skirt.Init();
+            merger.Init();
             apply.Init();
         }
 
@@ -44,7 +47,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             return jobHandle.IsCompleted && !Free && manager.Exists(entity);
         }
 
-        public void BeginJob(Entity entity, ref TerrainChunkVoxels chunkVoxels) {
+        public void BeginJob(Entity entity, ref TerrainChunkVoxels chunkVoxels, EntityManager mgr) {
             Free = false;
             this.entity = entity;
 
@@ -56,7 +59,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             normals.Schedule(ref voxels, dependency);
             core.Schedule(ref voxels, ref normals, ref code);
             skirt.Schedule(ref voxels, ref normals, ref core, dependency);
-            apply.Schedule(ref core, ref skirt);
+            merger.Schedule(ref core, ref skirt);
+            lighting.Schedule(ref voxels, ref merger, dependency, entity, mgr);
+            apply.Schedule(ref merger, ref lighting);
             jobHandle = apply.jobHandle;
         }
 
@@ -94,13 +99,13 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     max = apply.bounds.Value.Max,
                 },
 
-                vertexCount = apply.totalVertexCount.Value,
-                mainMeshIndexCount = apply.submeshIndexCounts[0],
+                vertexCount = merger.totalVertexCount.Value,
+                mainMeshIndexCount = merger.submeshIndexCounts[0],
                 forcedSkirtFacesTriCount = temp,
                 empty = empty,
 
-                vertices = apply.mergedVertices.GetSubArray(0, apply.totalVertexCount.Value),
-                mainMeshIndices = apply.mergedIndices.GetSubArray(0, apply.submeshIndexCounts[0]),
+                vertices = merger.mergedVertices.GetSubArray(0, merger.totalVertexCount.Value),
+                mainMeshIndices = merger.mergedIndices.GetSubArray(0, merger.submeshIndexCounts[0]),
             };                       
 
             return true;

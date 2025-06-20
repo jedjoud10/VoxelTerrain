@@ -6,26 +6,28 @@ using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     [BurstCompile(CompileSynchronously = true)]
-    public struct AoJob : IJobParallelFor {
+    public struct AoJob : IJobParallelForDefer {
         [ReadOnly]
-        public UnsafePtrList<half> densityDataPtrs;
-        [WriteOnly]
-        public NativeArray<float4> uvs;
+        public NativeArray<float3> positions;
         [ReadOnly]
         public NativeArray<float3> normals;
+        [WriteOnly]
+        public NativeArray<float4> colours;
         [ReadOnly]
-        public NativeArray<float3> vertices;
+        public UnsafePtrList<half> densityDataPtrs;
         [ReadOnly]
         public BitField32 neighbourMask;
-
+        [ReadOnly]
+        public NativeArray<float3> precomputeSamples;
+        
         public float globalOffset;
         public float minDotNormal;
         public float globalSpread;
         public float strength;
-        const int SIZE = 3;
+        const int SIZE = 2;
 
         public void Execute(int index) {
-            float3 vertex = vertices[index];
+            float3 vertex = positions[index];
             float3 normal = normals[index];
 
             int sum = 0;
@@ -61,7 +63,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             float factor = math.clamp((float)sum / (float)total, 0f, 1f);
             float ao = math.saturate(1 - factor * strength);
-            uvs[index] = new float4(ao, 0, 0, 0);
+            colours[index] = new float4(ao, 0, 0, 0);
         }
     }
 }

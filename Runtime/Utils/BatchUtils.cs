@@ -10,5 +10,6 @@ namespace jedjoud.VoxelTerrain {
         public const int PER_SKIRT_FACE_SMALLER_BATCH = VoxelUtils.SKIRT_FACE / 12;
 
         public const int VERTEX_BATCH = 4096;
+        public const int SMALLEST_VERTEX_BATCH = 32;
     }
 }

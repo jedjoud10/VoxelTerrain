@@ -2,6 +2,7 @@ using jedjoud.VoxelTerrain.Meshing;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain {
@@ -9,6 +10,7 @@ namespace jedjoud.VoxelTerrain {
         public NativeArray<float3> vertices;
         public NativeArray<float3> normals;
         public NativeArray<int> mainMeshIndices;
+        public JobHandle accessJobHandle;
 
         public static TerrainChunkMesh FromMeshJobHandlerStats(MeshJobHandler.Stats stats) {
             NativeArray<float3> vertices = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
@@ -27,6 +29,7 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public void Dispose() {
+            accessJobHandle.Complete();
             vertices.Dispose();
             normals.Dispose();
             mainMeshIndices.Dispose();

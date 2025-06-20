@@ -15,11 +15,12 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
-namespace jedjoud.VoxelTerrain.Meshing {
+namespace jedjoud.VoxelTerrain.Meshing  {
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
     [UpdateAfter(typeof(TerrainMeshingSystem))]
     [RequireMatchingQueriesForUpdate]
     public partial class TerrainLightingSystem : SystemBase {
+        /*
         class LightingHandler {
             public Mesh mesh;
             public UnsafePtrList<half> densityDataPtrs;
@@ -46,7 +47,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 Mesh.MeshData data = meshDataArray[0];
                 NativeArray<float4> colours = data.GetVertexData<float4>(2);
-                colours.AsSpan().Fill(0.2f);
 
                 vertices = new NativeArray<float3>(chunkMesh.vertices.Length, Allocator.Persistent);
                 vertices.CopyFrom(chunkMesh.vertices);
@@ -66,7 +66,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     densityDataPtrs = densityDataPtrs,
                 };
 
-                jobHandle = job.Schedule(colours.Length, BatchUtils.VERTEX_BATCH);
+                jobHandle = job.Schedule(colours.Length, BatchUtils.SMALLEST_VERTEX_BATCH);
             }
 
             public void Complete() {
@@ -102,51 +102,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
         }
 
-        public bool TryCheckShouldCalculateLighting(Entity entity, TerrainManager manager, out NativeArray<Entity> entities) {
-            TerrainChunk chunk = SystemAPI.GetComponent<TerrainChunk>(entity);
-            OctreeNode self = chunk.node;
-            BitField32 mask = chunk.neighbourMask;
-
-            entities = new NativeArray<Entity>(27, Allocator.Temp);
-            entities.FillArray(Entity.Null);
-
-            for (int j = 0; j < 27; j++) {
-                
-                uint3 _offset = VoxelUtils.IndexToPos(j, 3);
-                int3 offset = (int3)_offset - 1;
-
-                if (math.all(offset == int3.zero)) {
-                    entities[j] = entity;
-                    continue;
-                }
-
-                if (mask.IsSet(j)) {
-                    OctreeNode neighbourNode = new OctreeNode {
-                        size = self.size,
-                        childBaseIndex = -1,
-                        depth = self.depth,
-
-                        // doesn't matter since we don't consider this in the hash/equality check!!!
-                        index = -1,
-                        parentIndex = -1,
-
-                        position = self.position + offset * self.size,
-                    };
-
-                    if (manager.chunks.TryGetValue(neighbourNode, out var neighbourChunk)) {
-                        if (SystemAPI.IsComponentEnabled<TerrainChunkVoxels>(neighbourChunk)) {
-                            entities[j] = neighbourChunk;
-                        } else {
-                            return false;
-                        }
-                    } else {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        }
 
         protected override void OnUpdate() {
             if (graphics == null) {
@@ -172,42 +127,19 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 Entity chunkEntity = entitiesArray[i];
                 TerrainChunk chunk = SystemAPI.GetComponent<TerrainChunk>(chunkEntity);
                 TerrainChunkMesh chunkMesh = SystemAPI.GetComponent<TerrainChunkMesh>(chunkEntity);
-
-                if (TryCheckShouldCalculateLighting(chunkEntity, manager, out NativeArray<Entity> chunks)) {
-                    SystemAPI.SetComponentEnabled<TerrainChunkRequestLightingTag>(chunkEntity, false);
-                    MaterialMeshInfo materialMeshInfo = SystemAPI.GetComponent<MaterialMeshInfo>(chunkEntity);
-                    Mesh mesh = graphics.GetMesh(materialMeshInfo.MeshID);
-                    Mesh.MeshDataArray meshDataArray = Mesh.AllocateWritableMeshData(mesh);
-
-                    unsafe {
-                        half*[] densityPtrs = new half*[27];
-
-                        for (int j = 0; j < 27; j++) {
-                            if (EntityManager.Exists(chunks[j])) {
-                                TerrainChunkVoxels voxels = SystemAPI.GetComponent<TerrainChunkVoxels>(chunks[j]);
-
-                                // TODO: remove this; add it as a scheduling dep instead
-                                voxels.asyncWriteJobHandle.Complete();
-
-                                densityPtrs[j] = (half*)voxels.data.densities.GetUnsafeReadOnlyPtr();
-                            } else {
-                                densityPtrs[j] = (half*)IntPtr.Zero;
-                            }
-                        }
-
-                        handler.mesh = mesh;
-                        handler.meshDataArray = meshDataArray;
-                        handler.Begin(chunk.neighbourMask, chunkMesh, densityPtrs);
-                    }
-                }
+                TryCalculateLightingForChunkEntity(manager, handler, chunkEntity, chunk, chunkMesh);
 
             }
         }
+
 
         protected override void OnDestroy() {
             foreach (var handler in handlers) {
                 handler.Dispose();
             }
+        }
+        */
+        protected override void OnUpdate() {
         }
     }
 }

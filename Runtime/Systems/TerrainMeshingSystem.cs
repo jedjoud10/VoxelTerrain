@@ -106,7 +106,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 RefRW<TerrainChunkVoxels> _voxels = SystemAPI.GetComponentRW<TerrainChunkVoxels>(chunkEntity);
 
                 Profiler.BeginSample("Begin Mesh Jobs");
-                handler.BeginJob(chunkEntity, ref _voxels.ValueRW);
+                handler.BeginJob(chunkEntity, ref _voxels.ValueRW, EntityManager);
                 Profiler.EndSample();
 
                 SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkEntity, false);

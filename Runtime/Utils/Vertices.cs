@@ -1,4 +1,6 @@
+using jedjoud.VoxelTerrain.Meshing;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -9,6 +11,7 @@ namespace jedjoud.VoxelTerrain {
             public float3 position;
             public float3 normal;
             public float4 layers;
+            public float4 colour;
 
             public void AddLerped(float3 startVertex, float3 endVertex, int startIndex, int endIndex, float value, ref VoxelData voxels, ref NativeArray<float3> voxelNormals) {
                 position += math.lerp(startVertex, endVertex, value);
@@ -42,6 +45,7 @@ namespace jedjoud.VoxelTerrain {
             positions = new NativeArray<float3>(count, allocator, NativeArrayOptions.UninitializedMemory);
             normals = new NativeArray<float3>(count, allocator, NativeArrayOptions.UninitializedMemory);
             layers = new NativeArray<float4>(count, allocator, NativeArrayOptions.UninitializedMemory);
+            colours = new NativeArray<float4>(count, allocator, NativeArrayOptions.UninitializedMemory);
         }
 
         [NativeDisableParallelForRestriction]
@@ -50,6 +54,8 @@ namespace jedjoud.VoxelTerrain {
         public NativeArray<float3> normals;
         [NativeDisableParallelForRestriction]
         public NativeArray<float4> layers;
+        [NativeDisableParallelForRestriction]
+        public NativeArray<float4> colours;
 
         private static void Copy<T>(NativeArray<T> src, NativeArray<T> dst, int dstOffset, int length) where T: unmanaged {
             NativeArray<T> tmpSrc = src.GetSubArray(0, length);
@@ -60,6 +66,7 @@ namespace jedjoud.VoxelTerrain {
             Copy(this.positions, dst.positions, dstOffset, length);
             Copy(this.normals, dst.normals, dstOffset, length);
             Copy(this.layers, dst.layers, dstOffset, length);
+            Copy(this.colours, dst.colours, dstOffset, length);
         }
 
         public Vertices GetSubArray(int offset, int length) {
@@ -67,6 +74,7 @@ namespace jedjoud.VoxelTerrain {
             tmp.positions = positions.GetSubArray(offset, length);
             tmp.normals = normals.GetSubArray(offset, length);
             tmp.layers = layers.GetSubArray(offset, length);
+            tmp.colours = colours.GetSubArray(offset, length);
             return tmp;
         }
 
@@ -79,7 +87,7 @@ namespace jedjoud.VoxelTerrain {
             data.SetVertexBufferParams(count, descriptors);
             positions.GetSubArray(0, count).CopyTo(data.GetVertexData<float3>(0));
             normals.GetSubArray(0, count).CopyTo(data.GetVertexData<float3>(1));
-            data.GetVertexData<float4>(2).AsSpan().Fill(float4.zero);
+            colours.GetSubArray(0, count).CopyTo(data.GetVertexData<float4>(2));
         }
 
         public Single this[int index] {
@@ -87,13 +95,15 @@ namespace jedjoud.VoxelTerrain {
                 return new Single {
                     position = positions[index],
                     normal = normals[index],
-                    layers = layers[index]
+                    layers = layers[index],
+                    colour = colours[index],
                 };
             }
             set {
                 positions[index] = value.position;
                 normals[index] = value.normal;
                 layers[index] = value.layers;
+                colours[index] = value.colour;
             }
         }
 
@@ -101,6 +111,7 @@ namespace jedjoud.VoxelTerrain {
             positions.Dispose();
             normals.Dispose();
             layers.Dispose();
+            colours.Dispose();
         }
     }
 }

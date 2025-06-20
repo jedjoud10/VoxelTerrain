@@ -86,17 +86,18 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 return;
 
             NativeArray<Entity> entities = query.ToEntityArray(Allocator.Temp);
-            NativeArray<TerrainChunkMesh> meshes = query.ToComponentDataArray<TerrainChunkMesh>(Allocator.Temp);
 
             for (int i = 0; i < entities.Length; i++) {
                 NativeReference<BlobAssetReference<Collider>> colliderRef = new NativeReference<BlobAssetReference<Collider>>(Allocator.Persistent);
+                ref TerrainChunkMesh mesh = ref SystemAPI.GetComponentRW<TerrainChunkMesh>(entities[i]).ValueRW;
 
                 BakingJob bake = new BakingJob {
-                    mesh = meshes[i],
+                    mesh = mesh,
                     colliderRef = colliderRef
                 };
 
                 JobHandle handle = bake.Schedule();
+                mesh.accessJobHandle = JobHandle.CombineDependencies(mesh.accessJobHandle, handle);
 
                 pending.Add(new PendingBakeRequest {
                     dep = handle,
