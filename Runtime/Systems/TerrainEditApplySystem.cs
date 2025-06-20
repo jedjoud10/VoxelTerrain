@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
             NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = backing.chunkPositionsToChunkEditIndices;
             UnsafePtrListVoxelData chunkEditsCopyRaw = new UnsafePtrListVoxelData(Allocator.Persistent);
-            chunkEditsCopyRaw.AddReadOnlyRange(backing.chunkEdits);
+            chunkEditsCopyRaw.AddReadOnlyRangePtrs(backing.chunkEdits);
 
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk>().WithAny<TerrainChunkRequestMeshingTag, TerrainChunkRequestReadbackTag>().Build();
             NativeArray<TerrainChunk> chunks = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);
@@ -52,7 +52,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
                 if (SystemAPI.IsComponentEnabled<TerrainChunkVoxelsReadyTag>(entity) && SystemAPI.IsComponentEnabled<TerrainChunkRequestMeshingTag>(entity)) {
                     ref TerrainChunkVoxels voxels = ref SystemAPI.GetComponentRW<TerrainChunkVoxels>(entity).ValueRW;
-                    voxels.asyncWriteJob.Complete();
+                    voxels.asyncWriteJobHandle.Complete();
 
                     EditApplyJob job = new EditApplyJob {
                         chunkPositionsToChunkEditIndices = chunkPositionsToChunkEditIndices,
@@ -64,9 +64,10 @@ namespace jedjoud.VoxelTerrain.Edits {
                         voxels = voxels.data
                     };
 
-                    JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, voxels.asyncReadJob);
-                    voxels.asyncReadJob = handle;
-                    allDependencies.Add(voxels.asyncReadJob);
+                    JobHandle dep = JobHandle.CombineDependencies(voxels.asyncReadJobHandle, voxels.asyncWriteJobHandle);
+                    JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, dep);
+                    voxels.asyncWriteJobHandle = handle;
+                    allDependencies.Add(handle);
                     SystemAPI.GetComponentRW<TerrainChunkRequestMeshingTag>(entity).ValueRW.deferredVisibility = false;
                 }
 

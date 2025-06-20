@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.Burst;
@@ -106,12 +107,42 @@ namespace jedjoud.VoxelTerrain {
             layerPtrs = new UnsafePtrList<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
         }
 
-        public void AddReadOnlyRange(IEnumerable<VoxelData> datas) {
+        public void AddReadOnlyRangePtrs(IEnumerable<VoxelData> datas) {
             unsafe {
                 foreach (var data in datas) {
-                    densityPtrs.Add(data.densities.GetUnsafeReadOnlyPtr());
-                    materialPtrs.Add(data.materials.GetUnsafeReadOnlyPtr());
-                    layerPtrs.Add(data.layers.GetUnsafeReadOnlyPtr());
+                    AddReadOnlyPtrs(data);
+                }
+            }
+        }
+
+        public void AddReadOnlyPtrs(VoxelData data) {
+            unsafe {
+                densityPtrs.Add(data.densities.GetUnsafeReadOnlyPtr());
+                materialPtrs.Add(data.materials.GetUnsafeReadOnlyPtr());
+                layerPtrs.Add(data.layers.GetUnsafeReadOnlyPtr());
+            }
+        }
+
+        public void AddNullPtrs(int count) {
+            for (int i = 0; i < count; i++) {
+                AddNullPtrs();
+            }
+        }
+
+        public void AddNullPtrs() {
+            unsafe {
+                densityPtrs.Add(IntPtr.Zero);
+                materialPtrs.Add(IntPtr.Zero);
+                layerPtrs.Add(IntPtr.Zero);
+            }
+        }
+
+        public VoxelData this[int index] {
+            set {
+                unsafe {
+                    densityPtrs[index] = (half*)value.densities.GetUnsafeReadOnlyPtr();
+                    materialPtrs[index] = (byte*)value.materials.GetUnsafeReadOnlyPtr();
+                    layerPtrs[index] = (uint*)value.layers.GetUnsafeReadOnlyPtr();
                 }
             }
         }
@@ -129,6 +160,12 @@ namespace jedjoud.VoxelTerrain {
             densityPtrs.Dispose(handle);
             materialPtrs.Dispose(handle);
             layerPtrs.Dispose(handle);
+        }
+
+        public void Dispose() {
+            densityPtrs.Dispose();
+            materialPtrs.Dispose();
+            layerPtrs.Dispose();
         }
     }
 }

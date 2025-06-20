@@ -8,7 +8,7 @@ namespace jedjoud.VoxelTerrain {
     public partial class TerrainFixedStepSystemGroup : ComponentSystemGroup {
         [Preserve]
         public TerrainFixedStepSystemGroup() {
-            float defaultFixedTimestep = 1.0f / 64.0f;
+            float defaultFixedTimestep = 1f / 64f;
             SetRateManagerCreateAllocator(new RateUtils.FixedRateCatchUpManager(defaultFixedTimestep));
             RateManager.Timestep = defaultFixedTimestep;
         }

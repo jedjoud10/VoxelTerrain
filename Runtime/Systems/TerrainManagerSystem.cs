@@ -31,9 +31,12 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainChunk>(chunkPrototype);
 
             mgr.AddComponent<TerrainChunkVoxels>(chunkPrototype);
+            
             mgr.AddComponent<TerrainChunkRequestReadbackTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkRequestMeshingTag>(chunkPrototype);
+            mgr.AddComponent<TerrainChunkRequestLightingTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkRequestCollisionTag>(chunkPrototype);
+
             mgr.AddComponent<TerrainChunkVoxelsReadyTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkMesh>(chunkPrototype);
             mgr.AddComponent<TerrainChunkEndOfPipeTag>(chunkPrototype);
@@ -45,11 +48,12 @@ namespace jedjoud.VoxelTerrain {
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkPrototype, false);
 
-            // initial starting conditions: readback from GPU, then do meshing, then do collisions
+            // initial starting conditions: readback from GPU, then do meshing, then do collisions and lighting
             mgr.SetComponentEnabled<TerrainChunkVoxels>(chunkPrototype, true);
             mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(chunkPrototype, true);
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, true);
             mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(chunkPrototype, true);
+            mgr.SetComponentEnabled<TerrainChunkRequestLightingTag>(chunkPrototype, true);
 
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
@@ -150,8 +154,8 @@ namespace jedjoud.VoxelTerrain {
 
                     state.EntityManager.SetComponentData<TerrainChunkVoxels>(entity, new TerrainChunkVoxels {
                         data = new VoxelData(Allocator.Persistent),
-                        asyncWriteJob = default,
-                        asyncReadJob = default,
+                        asyncWriteJobHandle = default,
+                        asyncReadJobHandle = default,
                     });
 
                     chunksToShow.Add(entity);
@@ -164,6 +168,13 @@ namespace jedjoud.VoxelTerrain {
                     if (manager.chunks.TryGetValue(node, out var entity)) {
                         RefRW<TerrainChunk> _chunk = SystemAPI.GetComponentRW<TerrainChunk>(entity);
                         ref TerrainChunk chunk = ref _chunk.ValueRW;
+
+                        BitField32 lastNeighbourMask = chunk.neighbourMask;
+                        BitField32 newNeighbourMask = octree.neighbourMasks[node.index];
+                        if (lastNeighbourMask.Value != newNeighbourMask.Value) {
+                            SystemAPI.SetComponentEnabled<TerrainChunkRequestLightingTag>(entity, true);
+                        }
+
                         chunk.neighbourMask = octree.neighbourMasks[node.index];
                         chunk.skirtMask = CalculateEnabledSkirtMask(chunk.neighbourMask);
                     }
@@ -206,16 +217,15 @@ namespace jedjoud.VoxelTerrain {
 
                     if (state.EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity)) {
                         TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
-                        voxels.asyncWriteJob.Complete();
-                        voxels.asyncReadJob.Complete();
+                        voxels.asyncWriteJobHandle.Complete();
+                        voxels.asyncReadJobHandle.Complete();
                         voxels.data.Dispose();
                         state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                     }
 
                     if (state.EntityManager.IsComponentEnabled<TerrainChunkMesh>(entity)) {
                         TerrainChunkMesh mesh = state.EntityManager.GetComponentData<TerrainChunkMesh>(entity);
-                        mesh.vertices.Dispose();
-                        mesh.indices.Dispose();
+                        mesh.Dispose();
                     }
 
                     if (state.EntityManager.HasComponent<MaterialMeshInfo>(entity)) {
@@ -266,16 +276,15 @@ namespace jedjoud.VoxelTerrain {
             foreach (var (_, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
                 if (state.EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity)) {
                     TerrainChunkVoxels voxels = state.EntityManager.GetComponentData<TerrainChunkVoxels>(entity);
-                    voxels.asyncWriteJob.Complete();
-                    voxels.asyncReadJob.Complete();
+                    voxels.asyncWriteJobHandle.Complete();
+                    voxels.asyncReadJobHandle.Complete();
                     voxels.data.Dispose();
                     state.EntityManager.SetComponentEnabled<TerrainChunkVoxels>(entity, false);
                 }
 
                 if (state.EntityManager.IsComponentEnabled<TerrainChunkMesh>(entity)) {
                     TerrainChunkMesh mesh = state.EntityManager.GetComponentData<TerrainChunkMesh>(entity);
-                    mesh.vertices.Dispose();
-                    mesh.indices.Dispose();
+                    mesh.Dispose();
                     state.EntityManager.SetComponentEnabled<TerrainChunkMesh>(entity, false);
                 }
 

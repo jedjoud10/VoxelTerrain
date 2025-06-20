@@ -117,8 +117,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             ScopeArgument position = ScopeArgument.AsInput<float3>("position");
 
             // Run the graph for the voxels pass
-            ManagedTerrainGraph.VoxelInput voxelInput = new ManagedTerrainGraph.VoxelInput() { position = (Variable<float3>)position.node };
-            graph.Voxels(voxelInput, out ManagedTerrainGraph.VoxelOutput voxelOutput);
+            graph.Density((Variable<float3>)position.node, out Variable<float> density);
 
             // Create the scope and kernel for the voxel generation step
             // This will be used by the terrain previewer, terrain async readback system, and terrain segmentation system
@@ -126,7 +125,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 name = "CSVoxels",
                 arguments = new ScopeArgument[] {
                     position,
-                    ScopeArgument.AsOutput<float>("density", voxelOutput.density),
+                    ScopeArgument.AsOutput<float>("density", density),
                     ScopeArgument.AsOutput<int>("material", 0)
                 },
                 dispatch = new VoxelKernelDispatch {

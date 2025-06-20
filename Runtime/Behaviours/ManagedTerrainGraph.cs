@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -12,14 +14,19 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public class PropContext {
             internal CustomCodeChainedNode chain;
+            private HashSet<int> defined;
 
             public PropContext() {
                 chain = null;
+                defined = new HashSet<int>();
             }
 
-            public void SpawnProp(int type, Variable<bool> shouldSpawn, Props.GenerationProp prop) {
+            public void DeclarePropSpawn(int type, Variable<bool> shouldSpawn, Props.GenerationProp prop) {
                 if (prop.position == null || prop.rotation == null || prop.variant == null || prop.scale == null)
-                    throw new System.NullReferenceException("One of the prop variables is null");
+                    throw new NullReferenceException("One of the prop variables is null");
+
+                if (defined.Contains(type))
+                    throw new InvalidOperationException($"Spawn condition for type '{type}' has already been declared. Only one declaration is allowed per type.");
 
                 chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
                     prop.position.Handle(ctx);
@@ -30,6 +37,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                     ctx.AddLine("// this is some very cool prop spawning call....");
                     ctx.AddLine($"ConditionalSpawnPropOfType({ctx[shouldSpawn]}, type, {type}, {ctx[prop.position]}, {ctx[prop.scale]}, {ctx[prop.rotation]}, {ctx[prop.variant]});");                    
                 });
+
+                defined.Add(type);
             }
 
             public struct PossibleSurface {
@@ -55,10 +64,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                     hit.Handle(ctx);
                     hitPosition.Handle(ctx);
                     hitNormal.Handle(ctx);
-                    ctx.AddLine($@"
-// this is some *extremely* cool possible surface check...
-{ctx[hit]} = CheckSurfaceAlongAxis({ctx[position]}, {_axis}, {ctx[hitPosition]}, {ctx[hitNormal]});
-");
+                    ctx.AddLine("// this is some *extremely* cool possible surface check...");
+                    ctx.AddLine($"{ctx[hit]} = CheckSurfaceAlongAxis({ctx[position]}, {_axis}, {ctx[hitPosition]}, {ctx[hitNormal]});");
                 });
 
                 return new PossibleSurface {
@@ -76,17 +83,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             public Variable<int> type;
         }
 
-        public class VoxelInput {
-            public Variable<float3> position;
-        }
-
-        public class VoxelOutput {
-            public Variable<float> density;
-
-            public VoxelOutput(Variable<float> density) {
-                this.density = density;
-            }
-        }
 
         public class LayersInput {
             public Variable<float> density;
@@ -101,8 +97,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        public abstract void Voxels(VoxelInput input, out VoxelOutput output);
-        public abstract void Props(PropInput input, PropContext propContext);
-        //public abstract void Layers(LayersInput input, out LayersOutput);
+        public abstract void Density(in Variable<float3> position, out Variable<float> density);
+        public abstract void Layers(in Variable<float3> position, in Variable<float3> normal, in Variable<float> density, out Variable<float4> layers);
+        public abstract void Props(in PropInput input, PropContext propContext);
     }
 }
