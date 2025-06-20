@@ -9,7 +9,7 @@ using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 namespace jedjoud.VoxelTerrain.Edits {
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
     [UpdateAfter(typeof(TerrainOctreeSystem))]
-    [UpdateBefore(typeof(ManagerSystem))]
+    [UpdateBefore(typeof(TerrainManagerSystem))]
     [RequireMatchingQueriesForUpdate]
     public partial class TerrainEditStoreSystem : SystemBase {
         protected override void OnCreate() {
@@ -160,6 +160,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                     mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, false);
                     mgr.SetComponentEnabled<TerrainChunkVoxels>(entity, true);
                     mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
+                    mgr.SetComponentEnabled<TerrainChunkRequestLightingTag>(entity, true);
                     SystemAPI.GetComponentRW<TerrainChunkRequestMeshingTag>(entity).ValueRW.deferredVisibility = false;
                 }
             }

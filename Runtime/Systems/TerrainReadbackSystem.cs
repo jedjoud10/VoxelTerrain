@@ -10,7 +10,7 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     // This MUST stay as a SystemBase since we have some AsyncGPUReadback stuff with delegates that keep a handle to the properties stored here
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
-    [UpdateAfter(typeof(ManagerSystem))]
+    [UpdateAfter(typeof(TerrainManagerSystem))]
     public partial class TerrainReadbackSystem : SystemBase {
         private bool free;
         private NativeArray<GpuVoxel> multiData;

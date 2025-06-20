@@ -51,6 +51,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state) {
+            foreach (var baking in pending) {
+                baking.dep.Complete();
+                baking.Dispose();
+            }
+
             pending.Dispose();
         }
 

@@ -22,11 +22,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public float minDotNormal;
         public float globalSpread;
         public float strength;
-        const int SIZE = 2;
+        const int SIZE = 3;
 
         public void Execute(int index) {
-            uvs[index] = 1f;
-            /*
             float3 vertex = vertices[index];
             float3 normal = normals[index];
 
@@ -62,8 +60,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             }
 
             float factor = math.clamp((float)sum / (float)total, 0f, 1f);
-            uvs[index] = new float4(1 - factor * strength, 0, 0, 0);
-            */
+            float ao = math.saturate(1 - factor * strength);
+            uvs[index] = new float4(ao, 0, 0, 0);
         }
     }
 }

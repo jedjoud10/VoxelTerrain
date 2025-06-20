@@ -11,7 +11,7 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
     [UpdateAfter(typeof(TerrainOctreeSystem))]
-    public partial struct ManagerSystem : ISystem {
+    public partial struct TerrainManagerSystem : ISystem {
         private Entity chunkPrototype;
         private Entity skirtPrototype;
 

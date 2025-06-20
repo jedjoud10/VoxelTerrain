@@ -26,8 +26,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
             //public NativeArray<half> combinedDensities;
             public JobHandle jobHandle;
             public Mesh.MeshDataArray meshDataArray;
-
             public bool Free => jobHandle.IsCompleted && mesh == null;
+            private NativeArray<float3> vertices;
+            private NativeArray<float3> normals;
 
             public LightingHandler() {
                 densityDataPtrs = new UnsafePtrList<half>(27, Allocator.Persistent);
@@ -47,14 +48,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 NativeArray<float4> colours = data.GetVertexData<float4>(2);
                 colours.AsSpan().Fill(0.2f);
 
+                vertices = new NativeArray<float3>(chunkMesh.vertices.Length, Allocator.Persistent);
+                vertices.CopyFrom(chunkMesh.vertices);
+
+                normals = new NativeArray<float3>(chunkMesh.normals.Length, Allocator.Persistent);
+                normals.CopyFrom(chunkMesh.normals);
+
                 AoJob job = new AoJob() {
                     strength = 1f,
-                    globalSpread = 4f,
+                    globalSpread = 2f,
                     globalOffset = 0.5f,
-                    minDotNormal = 0.2f,
+                    minDotNormal = 0.5f,
                     neighbourMask = neighbourMask,
-                    vertices = chunkMesh.vertices,
-                    normals = chunkMesh.normals,
+                    vertices = vertices,
+                    normals = normals,
                     uvs = colours,
                     densityDataPtrs = densityDataPtrs,
                 };
@@ -67,6 +74,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 if (mesh != null) {
                     Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
+                    vertices.Dispose();
+                    normals.Dispose();
                 }
 
                 mesh = null;
@@ -152,7 +161,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
             TerrainManager manager = SystemAPI.GetSingleton<TerrainManager>();
 
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkRequestLightingTag, TerrainChunk, TerrainChunkVoxels, TerrainChunkVoxelsReadyTag>().WithPresent<MaterialMeshInfo>().Build();
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkRequestLightingTag, TerrainChunk, TerrainChunkVoxels, TerrainChunkVoxelsReadyTag, TerrainChunkEndOfPipeTag>().WithPresent<MaterialMeshInfo>().Build();
             NativeArray<Entity> entitiesArray = query.ToEntityArray(Allocator.Temp);
 
             LightingHandler[] freeHandlers = handlers.AsEnumerable().Where(x => x.Free).ToArray();
