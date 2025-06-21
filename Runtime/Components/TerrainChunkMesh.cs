@@ -12,13 +12,17 @@ namespace jedjoud.VoxelTerrain {
         public NativeArray<int> mainMeshIndices;
         public JobHandle accessJobHandle;
 
+
         public static TerrainChunkMesh FromMeshJobHandlerStats(MeshJobHandler.Stats stats) {
             NativeArray<float3> vertices = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
             NativeArray<float3> normals = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
             NativeArray<int> indices = new NativeArray<int>(stats.mainMeshIndexCount, Allocator.Persistent);
 
+            /*
             vertices.CopyFrom(stats.vertices.positions);
             normals.CopyFrom(stats.vertices.normals);
+            */
+
             indices.CopyFrom(stats.mainMeshIndices);
 
             return new TerrainChunkMesh() {

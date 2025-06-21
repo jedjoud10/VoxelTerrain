@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using NUnit.Framework.Constraints;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -186,15 +187,14 @@ namespace jedjoud.VoxelTerrain {
             float d011 = FetchDensityNeighbours(voxPos + math.int3(0, 1, 1), ref neighbours);
             float d111 = FetchDensityNeighbours(voxPos + math.int3(1, 1, 1), ref neighbours);
 
-            float mixed0 = math.lerp(d000, d100, frac.x);
-            float mixed1 = math.lerp(d010, d110, frac.x);
-            float mixed2 = math.lerp(d001, d101, frac.x);
-            float mixed3 = math.lerp(d011, d111, frac.x);
+            float4 d0 = new float4(d000, d010, d001, d011);
+            float4 d1 = new float4(d100, d110, d101, d111);
+            float4 interpX = math.lerp(d0, d1, frac.x);
 
-            float mixed4 = math.lerp(mixed0, mixed2, frac.z);
-            float mixed5 = math.lerp(mixed1, mixed3, frac.z);
-
-            float mixed6 = math.lerp(mixed4, mixed5, frac.y);
+            float2 m01 = new float2(interpX.x, interpX.y);
+            float2 m23 = new float2(interpX.z, interpX.w);
+            float2 m = math.lerp(m01, m23, frac.z);
+            float mixed6 = math.lerp(m.x, m.y, frac.y);
 
             return (half)mixed6;
         }

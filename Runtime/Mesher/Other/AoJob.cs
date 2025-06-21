@@ -18,52 +18,39 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public BitField32 neighbourMask;
         [ReadOnly]
-        public NativeArray<float3> precomputeSamples;
+        public NativeArray<float3> precomputedSamples;
         
         public float globalOffset;
         public float minDotNormal;
         public float globalSpread;
         public float strength;
-        const int SIZE = 2;
 
         public void Execute(int index) {
             float3 vertex = positions[index];
             float3 normal = normals[index];
 
             int sum = 0;
-            int total = 0;
+            
+            quaternion rotation = quaternion.LookRotationSafe(normal, math.up());
+            float3x3 matrix = new float3x3(rotation);
+            //float3x3 matrix = float3x3.identity;
 
-            for (int x = -SIZE; x <= SIZE; x++) {
-                for (int y = -SIZE; y <= SIZE; y++) {
-                    for (int z = -SIZE; z <= SIZE; z++) {
-                        float3 offset = new float3(x, y, z) * globalSpread;
+            for (int i = 0; i < LightingUtils.AO_SAMPLES; i++) {
+                float3 sample = math.mul(matrix, precomputedSamples[i]);
+                float3 position = vertex + sample + globalOffset;
+                int3 floored = (int3)math.floor(position);
 
-                        if (math.all(offset == 0f)) {
-                            continue;
-                        }
-
-                        if (math.dot(math.normalize(offset), normal) > minDotNormal) {
-                            total++;
-                        } else {
-                            continue;
-                        }
-
-                        float3 position = vertex + offset + globalOffset;
-                        int3 floored = (int3)math.floor(position);
-
-                        if (VoxelUtils.CheckCubicVoxelPosition(floored, neighbourMask)) {
-                            half density = VoxelUtils.SampleDensityInterpolated(position, ref densityDataPtrs);
-                            if (density < 0.0) {
-                                sum++;
-                            }
-                        }
+                if (VoxelUtils.CheckCubicVoxelPosition(floored, neighbourMask)) {
+                    half density = VoxelUtils.SampleDensityInterpolated(position, ref densityDataPtrs);
+                    if (density < 0.0) {
+                        sum++;
                     }
                 }
             }
 
-            float factor = math.clamp((float)sum / (float)total, 0f, 1f);
+            float factor = math.clamp((float)sum / (float)LightingUtils.AO_SAMPLES, 0f, 1f);
             float ao = math.saturate(1 - factor * strength);
-            colours[index] = new float4(ao, 0, 0, 0);
+            colours[index] = new float4(0, 0, 0, ao);
         }
     }
 }

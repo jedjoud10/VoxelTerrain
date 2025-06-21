@@ -35,7 +35,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             data.SetIndexBufferParams(totalIndexCount.Value, IndexFormat.UInt32);
             mergedIndices.GetSubArray(0, totalIndexCount.Value).CopyTo(data.GetIndexData<int>());
 
-
             // 1 submesh for the main mesh + 6 submeshes per skirt face
             data.subMeshCount = 7;
 
@@ -45,7 +44,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     indexStart = submeshIndexOffsets[i],
                     indexCount = submeshIndexCounts[i],
                     topology = MeshTopology.Triangles,
-                });
+                }, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontNotifyMeshUsers);
             }
         }
     }

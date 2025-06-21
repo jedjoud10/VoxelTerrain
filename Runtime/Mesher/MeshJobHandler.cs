@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing {
@@ -37,6 +38,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             normals.Init();
             core.Init();
             skirt.Init();
+            lighting.Init();
             merger.Init();
             apply.Init();
         }
@@ -66,6 +68,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         public bool TryComplete(EntityManager mgr, out Mesh outChunkMesh, out Entity entity, out Stats stats) {
+            Profiler.BeginSample("Try Complete MeshJobHandler");
             jobHandle.Complete();
             Free = true;
 
@@ -73,6 +76,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 entity = Entity.Null;
                 stats = default;
                 outChunkMesh = null;
+                Profiler.EndSample();
                 return false;
             }
 
@@ -86,7 +90,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 apply.array.Dispose();
             } else {
                 outChunkMesh = new Mesh();
-                Mesh.ApplyAndDisposeWritableMeshData(apply.array, outChunkMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds);
+                Profiler.BeginSample("Apply Writable Mesh Data");
+                Mesh.ApplyAndDisposeWritableMeshData(apply.array, outChunkMesh, MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontNotifyMeshUsers);
+                Profiler.EndSample();
             }
 
             TerrainChunkVoxels tmp = mgr.GetComponentData<TerrainChunkVoxels>(entity);
@@ -106,8 +112,9 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 vertices = merger.mergedVertices.GetSubArray(0, merger.totalVertexCount.Value),
                 mainMeshIndices = merger.mergedIndices.GetSubArray(0, merger.submeshIndexCounts[0]),
-            };                       
+            };
 
+            Profiler.EndSample();
             return true;
         }
 
@@ -119,6 +126,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
             core.Dispose();
             skirt.Dispose();
             apply.Dispose();
+            merger.Dispose();
+            lighting.Dispose();
         }
     }
 }

@@ -60,7 +60,7 @@ namespace jedjoud.VoxelTerrain {
 
         public struct UmmmData {
             public BitField32 neighbourMask;
-            public UnsafePtrList<half> densityPtrs;
+            public UnsafePtrList<half> tempDensityPtrs;
         }
 
         public static bool TryCalculateLightingForChunkEntity(EntityManager entityManager, Entity chunkEntity, out UmmmData output) {
@@ -71,10 +71,10 @@ namespace jedjoud.VoxelTerrain {
                 output.neighbourMask = entityManager.GetComponentData<TerrainChunk>(chunkEntity).neighbourMask;
 
                 unsafe {
-                    output.densityPtrs = new UnsafePtrList<half>(27, Allocator.Persistent);
+                    output.tempDensityPtrs = new UnsafePtrList<half>(27, Allocator.Temp);
 
                     for (int j = 0; j < 27; j++) {
-                        output.densityPtrs.Add(IntPtr.Zero);
+                        output.tempDensityPtrs.Add(IntPtr.Zero);
                     }
 
                     for (int j = 0; j < 27; j++) {
@@ -84,9 +84,9 @@ namespace jedjoud.VoxelTerrain {
                             // TODO: remove this; add it as a scheduling dep instead
                             voxels.asyncWriteJobHandle.Complete();
 
-                            output.densityPtrs[j] = (half*)voxels.data.densities.GetUnsafeReadOnlyPtr();
+                            output.tempDensityPtrs[j] = (half*)voxels.data.densities.GetUnsafeReadOnlyPtr();
                         } else {
-                            output.densityPtrs[j] = (half*)IntPtr.Zero;
+                            output.tempDensityPtrs[j] = (half*)IntPtr.Zero;
                         }
                     }
 
@@ -102,6 +102,48 @@ namespace jedjoud.VoxelTerrain {
             }
 
             return false;
+        }
+
+        public const int AO_SAMPLES_SEED = 1234;
+        public const int AO_SAMPLES = 16;
+        public const float AO_STRENGTH = 1f;
+        public const float AO_GLOBAL_SPREAD = 2.5f;
+        public const float AO_GLOBAL_OFFSET = 0.5f;
+        public const float AO_MIN_DOT_NORMAL = 0.2f;
+        public const int AO_SAMPLE_CUBE_SIZE = 2;
+
+        public static NativeArray<float3> PrecomputeAoSamples() {
+            NativeList<float3> tmp = new NativeList<float3>(Allocator.Temp);
+
+            for (int x = -AO_SAMPLE_CUBE_SIZE; x <= AO_SAMPLE_CUBE_SIZE; x++) {
+                for (int y = -AO_SAMPLE_CUBE_SIZE; y <= AO_SAMPLE_CUBE_SIZE; y++) {
+                    for (int z = -AO_SAMPLE_CUBE_SIZE; z <= AO_SAMPLE_CUBE_SIZE; z++) {
+                        float3 offset = new float3(x, y, z) * AO_GLOBAL_SPREAD;
+
+                        if (math.all(offset == 0f)) {
+                            continue;
+                        }
+
+                        float3 vec = math.forward();
+
+                        if (math.dot(math.normalize(offset), vec) > AO_MIN_DOT_NORMAL) {
+                            tmp.Add(offset);
+                        } else {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            NativeArray<float3> precomputedSamples = new NativeArray<float3>(AO_SAMPLES, Allocator.Persistent);
+
+            Unity.Mathematics.Random rng = new Unity.Mathematics.Random(AO_SAMPLES_SEED);
+            for (int i = 0; i < AO_SAMPLES; i++) {
+                int srcIndex = rng.NextInt(tmp.Length);
+                precomputedSamples[i] = tmp[srcIndex];
+            }
+
+            return precomputedSamples;
         }
     }
 }
