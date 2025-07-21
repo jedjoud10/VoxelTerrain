@@ -1,8 +1,10 @@
 using System;
+using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Rendering;
 using UnityEngine;
@@ -10,7 +12,7 @@ using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     public static class LightingUtils {
-        public static bool TryCheckShouldCalculateLighting(EntityManager entityManager, Entity entity, out NativeArray<Entity> entities) {
+        private static bool TryCheckShouldCalculateLighting(EntityManager entityManager, Entity entity, out NativeArray<Entity> entities) {
             TerrainManager terrainManager = new EntityQueryBuilder(Allocator.Temp).WithAll<TerrainManager>().Build(entityManager).GetSingleton<TerrainManager>();
 
             TerrainChunk chunk = entityManager.GetComponentData<TerrainChunk>(entity);
@@ -58,50 +60,60 @@ namespace jedjoud.VoxelTerrain {
             return true;
         }
 
-        public struct UmmmData {
-            public BitField32 neighbourMask;
-            public UnsafePtrList<half> tempDensityPtrs;
-        }
+        public unsafe static bool TryCalculateLightingForChunkEntity(
+            EntityManager mgr,
+            Entity chunkEntity,
+            Vertices vertices,
+            NativeArray<float3> precomputedSamples,
+            ref UnsafePtrList<half> densityPtrs,
+            JobHandle dependency,
+            int* deferredVertexCountPtr,
+            out JobHandle handle
+        ) {
+            handle = default;
 
-        public static bool TryCalculateLightingForChunkEntity(EntityManager entityManager, Entity chunkEntity, out UmmmData output) {
-            output = default;
+            densityPtrs.Clear();
 
-
-            if (TryCheckShouldCalculateLighting(entityManager, chunkEntity, out NativeArray<Entity> chunks)) {
-                output.neighbourMask = entityManager.GetComponentData<TerrainChunk>(chunkEntity).neighbourMask;
-
-                unsafe {
-                    output.tempDensityPtrs = new UnsafePtrList<half>(27, Allocator.Temp);
-
-                    for (int j = 0; j < 27; j++) {
-                        output.tempDensityPtrs.Add(IntPtr.Zero);
-                    }
-
-                    for (int j = 0; j < 27; j++) {
-                        if (entityManager.Exists(chunks[j])) {
-                            TerrainChunkVoxels voxels = entityManager.GetComponentData<TerrainChunkVoxels>(chunks[j]);
-
-                            // TODO: remove this; add it as a scheduling dep instead
-                            voxels.asyncWriteJobHandle.Complete();
-
-                            output.tempDensityPtrs[j] = (half*)voxels.data.densities.GetUnsafeReadOnlyPtr();
-                        } else {
-                            output.tempDensityPtrs[j] = (half*)IntPtr.Zero;
-                        }
-                    }
-
-                    /*
-                    handler.mesh = mesh;
-                    handler.meshDataArray = meshDataArray;
-                    handler.Begin(chunk.neighbourMask, chunkMesh, densityPtrs);
-                    */
-                }
-
-                return true;
-                //entityManager.SetComponentEnabled<TerrainChunkRequestLightingTag>(chunkEntity, false);
+            for (var i = 0; i < 27; i++) {
+                densityPtrs.Add((half*)IntPtr.Zero);
             }
 
-            return false;
+            if (TryCheckShouldCalculateLighting(mgr, chunkEntity, out NativeArray<Entity> chunks)) {
+                BitField32 neighbourMask = mgr.GetComponentData<TerrainChunk>(chunkEntity).neighbourMask;
+                
+                for (int j = 0; j < 27; j++) {
+                    if (chunks[j] != Entity.Null) {
+                        TerrainChunkVoxels voxels = mgr.GetComponentData<TerrainChunkVoxels>(chunks[j]);
+                        voxels.asyncWriteJobHandle.Complete();
+                        densityPtrs[j] = (half*)NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(voxels.data.densities);
+                    }
+                }                
+
+                AoJob job = new AoJob() {
+                    positions = vertices.positions,
+                    normals = vertices.normals,
+                    colours = vertices.colours,
+
+                    strength = LightingUtils.AO_STRENGTH,
+                    globalOffset = LightingUtils.AO_GLOBAL_OFFSET,
+
+                    neighbourMask = neighbourMask,
+                    densityDataPtrs = densityPtrs,
+                    precomputedSamples = precomputedSamples
+                };
+                handle = job.Schedule(deferredVertexCountPtr, BatchUtils.SMALLEST_VERTEX_BATCH, dependency);
+
+                for (int j = 0; j < 27; j++) {
+                    if (chunks[j] != Entity.Null) {
+                        TerrainChunkVoxels voxels = mgr.GetComponentData<TerrainChunkVoxels>(chunks[j]);
+                        voxels.asyncReadJobHandle = JobHandle.CombineDependencies(voxels.asyncReadJobHandle, handle);
+                        mgr.SetComponentData(chunks[j], voxels);
+                    }
+                }
+                return true;
+            } else {
+                return false;
+            }            
         }
 
         public const int AO_SAMPLES_SEED = 1234;

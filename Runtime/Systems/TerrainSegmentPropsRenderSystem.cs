@@ -69,7 +69,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             cmds.SetComputeVectorParam(config.cull, "camera_position", (Vector3)cameraTransform.Position);
 
-            Plane[] temp = GeometryUtility.CalculateFrustumPlanes(cameraComponent.worldToProjection);
+            Plane[] temp = GeometryUtility.CalculateFrustumPlanes(cameraComponent.projectionMatrix);
             Vector4[] frustums = temp.Select(plane => new Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.distance)).ToArray();
             cmds.SetComputeVectorArrayParam(config.cull, "camera_frustum_planes", frustums);
 

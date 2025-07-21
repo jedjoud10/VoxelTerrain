@@ -5,13 +5,9 @@ using Unity.Rendering;
 using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain {
-    [UpdateInGroup(typeof(TerrainFixedStepSystemGroup), OrderLast = true)]
-    public partial struct TerrainSkirtSystem : ISystem {
-
+    public partial struct TerrainVisibilitySystem : ISystem {
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainSkirt, LocalToWorld, MaterialMeshInfo>().Build();
-            state.RequireForUpdate(query);
             state.RequireForUpdate<TerrainMainCamera>();
         }
 
@@ -20,10 +16,15 @@ namespace jedjoud.VoxelTerrain {
             Entity mainCamera = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
             LocalToWorld worldTransform = SystemAPI.GetComponent<LocalToWorld>(mainCamera);
             float3 cameraCenter = worldTransform.Position;
-            float3 cameraForward = worldTransform.Forward;
             float chunkSize = VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
-            foreach (var (localToWorld, skirt, toggle) in SystemAPI.Query<LocalToWorld, TerrainSkirt, EnabledRefRW<MaterialMeshInfo>>().WithPresent<MaterialMeshInfo>().WithAll<TerrainSkirtVisibleTag>()) {
+            // hide occluded chunks/skirts or those that are not visible due to their deferred visibility
+            foreach (var (deferredVisible, occluded, toggle) in SystemAPI.Query<EnabledRefRO<TerrainDeferredVisible>, EnabledRefRO<TerrainCurrentlyOccludedTag>, EnabledRefRW<MaterialMeshInfo>>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)) {
+                toggle.ValueRW = deferredVisible.ValueRO && !occluded.ValueRO;
+            }
+
+            // custom culling for skirts, goes over what is visible up to this point
+            foreach (var (localToWorld, skirt, toggle) in SystemAPI.Query<LocalToWorld, TerrainSkirt, EnabledRefRW<MaterialMeshInfo>>().WithAll<TerrainDeferredVisible>()) {
                 float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * chunkSize * 0.5f;
                 float3 skirtDirection = DirectionOffsetUtils.FORWARD_DIRECTION_INCLUDING_NEGATIVE[(int)skirt.direction];
 
@@ -31,16 +32,7 @@ namespace jedjoud.VoxelTerrain {
                 float centerToCameraDot = math.dot(skirtCenterToCamera, skirtDirection);
                 bool frontFaceVisible = centerToCameraDot > 0f;
 
-                /*
-                float skirtNormalToCameraForwardDot = math.dot(skirtDirection, cameraForward);
-                bool visibleByCamera = skirtNormalToCameraForwardDot < 0f;
-                */
-
                 toggle.ValueRW = frontFaceVisible;
-            }
-
-            foreach (var toggle in SystemAPI.Query<EnabledRefRW<MaterialMeshInfo>>().WithPresent<MaterialMeshInfo>().WithDisabled<TerrainSkirtVisibleTag>()) {
-                toggle.ValueRW = false;
             }
         }
     }

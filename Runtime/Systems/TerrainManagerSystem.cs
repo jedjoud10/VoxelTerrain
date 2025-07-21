@@ -40,6 +40,8 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainChunkVoxelsReadyTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkMesh>(chunkPrototype);
             mgr.AddComponent<TerrainChunkEndOfPipeTag>(chunkPrototype);
+            mgr.AddComponent<TerrainCurrentlyOccludedTag>(chunkPrototype);
+            mgr.AddComponent<TerrainDeferredVisible>(chunkPrototype);
             mgr.AddComponent<Prefab>(chunkPrototype);
 
             mgr.SetComponentEnabled<TerrainChunkMesh>(chunkPrototype, false);
@@ -47,6 +49,8 @@ namespace jedjoud.VoxelTerrain {
             mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainCurrentlyOccludedTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainDeferredVisible>(chunkPrototype, false);
 
             // initial starting conditions: readback from GPU, then do meshing, then do collisions and lighting
             mgr.SetComponentEnabled<TerrainChunkVoxels>(chunkPrototype, true);
@@ -58,10 +62,12 @@ namespace jedjoud.VoxelTerrain {
             skirtPrototype = mgr.CreateEntity();
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
             mgr.AddComponent<TerrainSkirt>(skirtPrototype);
-            mgr.AddComponent<TerrainSkirtVisibleTag>(skirtPrototype);
+            mgr.AddComponent<TerrainDeferredVisible>(skirtPrototype);
+            mgr.AddComponent<TerrainCurrentlyOccludedTag>(skirtPrototype);
             mgr.AddComponent<Prefab>(skirtPrototype);
 
-            mgr.SetComponentEnabled<TerrainSkirtVisibleTag>(skirtPrototype, false);
+            mgr.SetComponentEnabled<TerrainCurrentlyOccludedTag>(skirtPrototype, false);
+            mgr.SetComponentEnabled<TerrainDeferredVisible>(skirtPrototype, false);
 
             state.EntityManager.CreateSingleton<TerrainReadySystems>();
             state.EntityManager.CreateSingletonBuffer<TerrainUnregisterMeshBuffer>();
@@ -194,7 +200,7 @@ namespace jedjoud.VoxelTerrain {
 
                 foreach (var entity in chunksToShow) {
                     if (SystemAPI.HasComponent<MaterialMeshInfo>(entity)) {
-                        SystemAPI.SetComponentEnabled<MaterialMeshInfo>(entity, true);
+                        SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(entity, true);
                     }
                 }
 
@@ -253,7 +259,7 @@ namespace jedjoud.VoxelTerrain {
                     foreach (var (chunk, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
                         if (chunk.skirts.Length > 0) {
                             for (int i = 0; i < 6; i++) {
-                                SystemAPI.SetComponentEnabled<TerrainSkirtVisibleTag>(chunk.skirts[i], BitUtils.IsBitSet(chunk.skirtMask, i));
+                                SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunk.skirts[i], BitUtils.IsBitSet(chunk.skirtMask, i));
                             }
                         }
                     }

@@ -21,8 +21,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public NativeArray<float3> precomputedSamples;
         
         public float globalOffset;
-        public float minDotNormal;
-        public float globalSpread;
         public float strength;
 
         public void Execute(int index) {

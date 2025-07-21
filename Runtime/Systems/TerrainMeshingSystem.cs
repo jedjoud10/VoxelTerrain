@@ -124,8 +124,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 TerrainChunk chunk = SystemAPI.GetComponent<TerrainChunk>(chunkEntity);
 
                 if (stats.empty) {
-                    if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity))
+                    if (SystemAPI.HasComponent<MaterialMeshInfo>(chunkEntity)) {
                         SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+                        SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunkEntity, false);
+                    }
                     return;
                 }
 
@@ -138,6 +140,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         MaterialMeshInfo matMeshInf = SystemAPI.GetComponent<MaterialMeshInfo>(chunkEntity);
                         unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = matMeshInf.MeshID });
                         SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+                        SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunkEntity, false);
                     }
 
                     if (chunk.skirts.Length > 0) {
@@ -148,6 +151,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                                 MaterialMeshInfo matMeshInf = SystemAPI.GetComponent<MaterialMeshInfo>(skirtEntity);
                                 unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = matMeshInf.MeshID });
                                 SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                                SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(skirtEntity, false);
                             }
                         }
                     }
@@ -173,7 +177,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
 
                 SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, !deferredVisibility);
-
+                SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunkEntity, !deferredVisibility);
                 SystemAPI.SetComponentEnabled<TerrainChunkMesh>(chunkEntity, true);
                 SystemAPI.SetComponent<TerrainChunkMesh>(chunkEntity, TerrainChunkMesh.FromMeshJobHandlerStats(stats));
 
@@ -186,7 +190,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                 });
 
                 if (stats.mainMeshIndexCount == 0) {
-                    SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, false);
+                    SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunkEntity, false);
                 }
 
                 if (chunk.skirts.Length == 0) {
@@ -209,7 +213,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                     RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
 
-                    SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, !deferredVisibility);
+                    SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(skirtEntity, !deferredVisibility);
 
                     SystemAPI.SetComponent<RenderBounds>(skirtEntity, new RenderBounds() {
                         Value = localRenderBounds,
@@ -220,7 +224,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     });
 
                     if (stats.forcedSkirtFacesTriCount[skirtIndex] == 0) {
-                        SystemAPI.SetComponentEnabled<MaterialMeshInfo>(skirtEntity, false);
+                        SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(skirtEntity, false);
                     }
                 }
 

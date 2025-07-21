@@ -45,6 +45,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         [BurstCompile]
         public  void OnUpdate(ref SystemState state) {
+            state.CompleteDependency();
+
             TryCompleteOldBatches(ref state);
             TryFetchNewBatch(ref state);
         }

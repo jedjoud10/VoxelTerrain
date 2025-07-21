@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
+using UnityEditor;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
@@ -11,10 +12,13 @@ namespace jedjoud.VoxelTerrain {
         public bool debugGui;
         public bool debugChunkBounds;
         public bool debugSegmentBounds;
+        public bool debugOcclusionCulling;
         private World world;
+        private Texture2D occlusionTexture;
 
         private void Start() {
             world = World.DefaultGameObjectInjectionWorld;
+            occlusionTexture = new Texture2D(TerrainOcclusionSystem.RASTERIZE_SCREEN_WIDTH, TerrainOcclusionSystem.RASTERIZE_SCREEN_HEIGHT, TextureFormat.RFloat, false);
         }
 
         private void OnGUI() {
@@ -91,6 +95,7 @@ namespace jedjoud.VoxelTerrain {
 
         }
 
+
         private void OnDrawGizmos() {
             if (world == null)
                 return;
@@ -121,6 +126,17 @@ namespace jedjoud.VoxelTerrain {
 
                     Gizmos.DrawWireCube(worldPosition, worldSize);
                 }
+            }
+
+            if (debugOcclusionCulling) {
+                NativeArray<float> depth = world.EntityManager.GetComponentData<TerrainOcclusionScreenData>(world.GetExistingSystem<TerrainOcclusionSystem>()).rasterizedDdaDepth;
+                occlusionTexture.SetPixelData(depth, 0, 0);
+                occlusionTexture.Apply();
+
+                Handles.BeginGUI();
+                Rect fullScreenRect = new Rect(0, 0, Screen.width, Screen.height);
+                GUI.DrawTexture(fullScreenRect, occlusionTexture, ScaleMode.StretchToFill);
+                Handles.EndGUI();
             }
         }
     }

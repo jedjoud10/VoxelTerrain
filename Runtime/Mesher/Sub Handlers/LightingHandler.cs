@@ -22,36 +22,16 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public void Schedule(ref VoxelData voxels, ref MergeMeshHandler merger, JobHandle dependency, Entity entity, EntityManager mgr) {
             Vertices vertices = merger.mergedVertices;
 
-            if (LightingUtils.TryCalculateLightingForChunkEntity(mgr, entity, out LightingUtils.UmmmData data)) {
-                densityPtrs.Clear();
-                densityPtrs.AddRange(data.tempDensityPtrs);
+            unsafe {
+                JobHandle dep = JobHandle.CombineDependencies(merger.jobHandle, dependency);
+                if (LightingUtils.TryCalculateLightingForChunkEntity(mgr, entity, vertices, precomputedSamples, ref densityPtrs, dep, merger.totalVertexCount.GetUnsafePtrWithoutChecks(), out JobHandle handle)) {
+                    jobHandle = handle;
+                } else {
+                    jobHandle = default;
 
-                AoJob job = new AoJob() {
-                    positions = vertices.positions,
-                    normals = vertices.normals,
-                    colours = vertices.colours,
-
-                    strength = LightingUtils.AO_STRENGTH,
-                    globalSpread = LightingUtils.AO_GLOBAL_SPREAD,
-                    globalOffset = LightingUtils.AO_GLOBAL_OFFSET,
-                    minDotNormal = LightingUtils.AO_MIN_DOT_NORMAL,
-
-                    neighbourMask = data.neighbourMask,
-                    densityDataPtrs = densityPtrs,
-                    precomputedSamples = precomputedSamples
-                };
-
-                unsafe {
-                    int* countPtr = merger.totalVertexCount.GetUnsafePtrWithoutChecks();
-
-                    JobHandle voxelDeps = dependency;
-                    jobHandle = job.Schedule(countPtr, BatchUtils.SMALLEST_VERTEX_BATCH, JobHandle.CombineDependencies(merger.jobHandle, voxelDeps));
+                    // since we can't calculate lighting rn, defer it to the TerrainLightingSystem for later
+                    mgr.SetComponentEnabled<TerrainChunkRequestLightingTag>(entity, true);
                 }
-            } else {
-                jobHandle = default;
-
-                // since we can't calculate lighting rn, defer it to the TerrainLightingSystem for later
-                mgr.SetComponentEnabled<TerrainChunkRequestLightingTag>(entity, true);
             }
         }
 

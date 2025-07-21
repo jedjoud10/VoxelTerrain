@@ -21,7 +21,8 @@ namespace jedjoud.VoxelTerrain {
                 LocalToWorld worldTransform = new LocalToWorld { Value = float4x4.TRS(go.transform.position, go.transform.rotation, 1f) };
                 SystemAPI.SetComponent<LocalToWorld>(cameraEntity, worldTransform);
                 SystemAPI.SetComponent<TerrainMainCamera>(cameraEntity, new TerrainMainCamera {
-                    worldToProjection = camera.projectionMatrix,
+                    projectionMatrix = camera.projectionMatrix,
+                    worldToCamera = camera.worldToCameraMatrix,
                 });
             }
         }

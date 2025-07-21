@@ -167,6 +167,13 @@ namespace jedjoud.VoxelTerrain {
             return mask.IsSet(index1);
         }
 
+        // Converts a world space voxel position to a chunk position and a chunk local voxel position
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WorldVoxelPosToChunkSpace(int3 worldSpaceVoxelPos, out int3 chunkPosition, out uint3 chunkSpaceVoxelPos) {
+            chunkPosition = (int3)math.floor((float3)worldSpaceVoxelPos / PHYSICAL_CHUNK_SIZE);
+            chunkSpaceVoxelPos = Mod(worldSpaceVoxelPos, PHYSICAL_CHUNK_SIZE);
+        }
+
         // Checks if a position is stored inside the chunk
         public static bool CheckPositionInsideChunk(int3 position) {
             return math.all(position > 0 & position < SIZE);
