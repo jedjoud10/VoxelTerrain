@@ -2,7 +2,6 @@ using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;

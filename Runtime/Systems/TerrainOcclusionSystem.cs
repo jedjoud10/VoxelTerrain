@@ -1,6 +1,3 @@
-using Codice.CM.Common;
-using jedjoud.VoxelTerrain.Meshing;
-using jedjoud.VoxelTerrain.Octree;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -10,13 +7,9 @@ using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
 
-namespace jedjoud.VoxelTerrain {
+namespace jedjoud.VoxelTerrain.Occlusion {
     [UpdateBefore(typeof(TerrainVisibilitySystem))]
     public partial struct TerrainOcclusionSystem : ISystem {
-        public const int RASTERIZE_SCREEN_WIDTH = 128;
-        public const int RASTERIZE_SCREEN_HEIGHT = 64;
-        const int ITERATIONS = 64;
-        
         [BurstCompile(CompileSynchronously = true)]
         private struct RasterizeJob : IJobParallelFor {
             [ReadOnly]
@@ -27,30 +20,31 @@ namespace jedjoud.VoxelTerrain {
             public float4x4 invProj;
             public float4x4 invView;
             public float3 cameraPosition;
+            public float2 nearFarPlanes;
 
             [WriteOnly]
             public NativeArray<float> screenDepth;
 
             public void Execute(int index) {
-                screenDepth[index] = 0f;
+                screenDepth[index] = 1f;
 
-                int x = index % RASTERIZE_SCREEN_WIDTH;
-                int y = index / RASTERIZE_SCREEN_WIDTH;
-                float2 uvs = new float2(x,y) / new float2(RASTERIZE_SCREEN_WIDTH,RASTERIZE_SCREEN_HEIGHT);
+                int x = index % OcclusionUtils.RASTERIZE_SCREEN_WIDTH;
+                int y = index / OcclusionUtils.RASTERIZE_SCREEN_WIDTH;
+                float2 uvs = new float2(x,y) / new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT);
                 float4 clip = new float4(uvs * 2f - 1f, 1f, 1f);
                 float4 rayView = math.mul(invProj, clip);
                 rayView /= rayView.w;
-                float3 direction = math.normalize(math.mul(invView, new float4(rayView.xyz, 0)).xyz);
+                float3 rayDir = math.normalize(math.mul(invView, new float4(rayView.xyz, 0)).xyz);
 
                 float3 rayPos = cameraPosition;
 
-                float3 invDir = 1 / direction;
-                float3 dirSign = math.sign(direction);
+                float3 invDir = 1 / rayDir;
+                float3 dirSign = math.sign(rayDir);
                 
                 float3 flooredPos = math.floor(rayPos);
                 float3 sideDist = flooredPos - rayPos + 0.5f + 0.5f * dirSign;
 
-                for (int i = 0; i < ITERATIONS; i++) {
+                for (int i = 0; i < OcclusionUtils.DDA_ITERATIONS; i++) {
                     int3 voxelPos = (int3)flooredPos;
                     VoxelUtils.WorldVoxelPosToChunkSpace(voxelPos, out int3 chunkPosition, out uint3 localVoxelPos);
 
@@ -61,10 +55,14 @@ namespace jedjoud.VoxelTerrain {
                             half* ptr = chunkDensityPtrs[chunkIndexLookup];
                             half density = *(ptr + voxelIndex);
 
-                            if (density < -2f) {
+                            float3 test = (flooredPos - rayPos + 0.5f - 0.5f * dirSign) * invDir;
+                            float max = math.cmax(test);
+                            float3 world = rayPos + rayDir * max;
 
-
-                                screenDepth[index] = 1f;
+                            if (density < OcclusionUtils.MIN_DENSITY_THRESHOLD) {
+                                float4 clipPos = math.mul(proj, math.mul(view, new float4(world, 1.0f)));
+                                clipPos /= clipPos.w;
+                                screenDepth[index] = math.saturate(OcclusionUtils.LinearizeDepthStandard(clipPos.z, nearFarPlanes) + nearFarPlanes.x * OcclusionUtils.NEAR_PLANE_DEPTH_OFFSET_FACTOR);
                                 break;
                             }
                         }
@@ -78,13 +76,12 @@ namespace jedjoud.VoxelTerrain {
             }
         }
 
-
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<TerrainMainCamera>();
             state.EntityManager.AddComponent<TerrainOcclusionScreenData>(state.SystemHandle);
             state.EntityManager.SetComponentData<TerrainOcclusionScreenData>(state.SystemHandle, new TerrainOcclusionScreenData {
-                rasterizedDdaDepth = new NativeArray<float>(RASTERIZE_SCREEN_HEIGHT * RASTERIZE_SCREEN_WIDTH, Allocator.Persistent)
+                rasterizedDdaDepth = new NativeArray<float>(OcclusionUtils.RASTERIZE_SCREEN_HEIGHT * OcclusionUtils.RASTERIZE_SCREEN_WIDTH, Allocator.Persistent)
             });
 
         }
@@ -102,11 +99,10 @@ namespace jedjoud.VoxelTerrain {
             NativeHashMap<int3, int> chunkPositionsLookup = new NativeHashMap<int3, int>(0, Allocator.TempJob);
             UnsafePtrList<half> chunkDensityPtrs = new UnsafePtrList<half>(0, Allocator.TempJob);
 
-            foreach (var (chunk, voxels) in SystemAPI.Query<TerrainChunk, TerrainChunkVoxels>().WithAll<TerrainDeferredVisible>()) {
+            foreach (var (chunk, voxels) in SystemAPI.Query<TerrainChunk, TerrainChunkVoxels>()) {
                 if (chunk.node.atMaxDepth) {
                     chunkPositionsLookup.Add(chunk.node.position / VoxelUtils.PHYSICAL_CHUNK_SIZE, chunkDensityPtrs.Length);
                     voxels.asyncWriteJobHandle.Complete();
-                    voxels.asyncReadJobHandle.Complete();
                     unsafe {
                         chunkDensityPtrs.Add(voxels.data.densities.GetUnsafeReadOnlyPtr());
                     }
@@ -114,83 +110,73 @@ namespace jedjoud.VoxelTerrain {
             }
 
             RasterizeJob job = new RasterizeJob() {
-                view = camera.worldToCamera,
                 proj = camera.projectionMatrix,
-                invView = math.inverse(camera.worldToCamera),
+                view = camera.worldToCamera,
                 invProj = math.inverse(camera.projectionMatrix),
+                invView = math.inverse(camera.worldToCamera),
                 chunkDensityPtrs = chunkDensityPtrs,
                 chunkPositionsLookup = chunkPositionsLookup,
                 screenDepth = screenDepth,
+                nearFarPlanes = camera.nearFarPlanes,
                 cameraPosition = cameraPosition
             };
 
-            JobHandle handle = job.Schedule(RASTERIZE_SCREEN_HEIGHT * RASTERIZE_SCREEN_WIDTH, 4);
+            JobHandle handle = job.Schedule(OcclusionUtils.RASTERIZE_SCREEN_HEIGHT * OcclusionUtils.RASTERIZE_SCREEN_WIDTH, 4);
             handle.Complete();
 
             chunkPositionsLookup.Dispose();
             chunkDensityPtrs.Dispose();
 
-            foreach (var (chunk, bounds, occluded) in SystemAPI.Query<TerrainChunk, RenderBounds, EnabledRefRW<TerrainCurrentlyOccludedTag>>().WithAll<TerrainDeferredVisible>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)) {
+            foreach (var (chunk, bounds, occluded) in SystemAPI.Query<TerrainChunk, WorldRenderBounds, EnabledRefRW<TerrainCurrentlyOccludedTag>>().WithAll<TerrainDeferredVisible>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)) {
                 MinMaxAABB aabb = bounds.Value;
 
-                // Given chunk AABB (min/max in world space)
                 float3 aabbMin = aabb.Min;
                 float3 aabbMax = aabb.Max;
 
-                // Get all 8 corners of the AABB
-                float3[] corners = new float3[8] {
-                    new float3(aabbMin.x, aabbMin.y, aabbMin.z),
-                    new float3(aabbMin.x, aabbMin.y, aabbMax.z),
-                    new float3(aabbMin.x, aabbMax.y, aabbMin.z),
-                    new float3(aabbMin.x, aabbMax.y, aabbMax.z),
-                    new float3(aabbMax.x, aabbMin.y, aabbMin.z),
-                    new float3(aabbMax.x, aabbMin.y, aabbMax.z),
-                    new float3(aabbMax.x, aabbMax.y, aabbMin.z),
-                    new float3(aabbMax.x, aabbMax.y, aabbMax.z)
-                };
+                NativeArray<float3> corners = new NativeArray<float3>(8, Allocator.Temp);
+                corners[0] = new float3(aabbMin.x, aabbMin.y, aabbMin.z);
+                corners[1] = new float3(aabbMin.x, aabbMin.y, aabbMax.z);
+                corners[2] = new float3(aabbMin.x, aabbMax.y, aabbMin.z);
+                corners[3] = new float3(aabbMin.x, aabbMax.y, aabbMax.z);
+                corners[4] = new float3(aabbMax.x, aabbMin.y, aabbMin.z);
+                corners[5] = new float3(aabbMax.x, aabbMin.y, aabbMax.z);
+                corners[6] = new float3(aabbMax.x, aabbMax.y, aabbMin.z);
+                corners[7] = new float3(aabbMax.x, aabbMax.y, aabbMax.z);
 
-                // Project to screen space (UV coords [0,1])
                 float2 minScreen = new float2(1, 1);
                 float2 maxScreen = new float2(0, 0);
+                float nearestClipSpaceZVal = 1f;
                 for (int i = 0; i < 8; i++) {
                     float4 clipPos = math.mul(camera.projectionMatrix, math.mul(camera.worldToCamera, new float4(corners[i], 1.0f)));
-                    clipPos /= clipPos.w; // Perspective divide
+                    clipPos /= clipPos.w;
+                    nearestClipSpaceZVal = math.min(OcclusionUtils.LinearizeDepthStandard(clipPos.z, camera.nearFarPlanes), nearestClipSpaceZVal);
                     float2 screenUV = (new float2(clipPos.x, clipPos.y) + 1.0f) * 0.5f;
 
                     minScreen = math.min(minScreen, screenUV);
                     maxScreen = math.max(maxScreen, screenUV);
                 }
 
-                occluded.ValueRW = IsChunkOccluded(screenDepth, minScreen, maxScreen);
+                minScreen = math.saturate(minScreen - OcclusionUtils.UV_EXPANSION_OFFSET);
+                maxScreen = math.saturate(maxScreen + OcclusionUtils.UV_EXPANSION_OFFSET);
+                occluded.ValueRW = IsChunkOccluded(screenDepth, minScreen, maxScreen, math.saturate(nearestClipSpaceZVal));
             }
         }
 
-        private static bool IsChunkOccluded(NativeArray<float> screenDepth, float2 minUV, float2 maxUV) {
-            // Convert UVs to pixel coords
-            int2 minPixel = new int2(
-                (int)(minUV.x * RASTERIZE_SCREEN_WIDTH),
-                (int)(minUV.y * RASTERIZE_SCREEN_HEIGHT)
-            );
-            int2 maxPixel = new int2(
-                (int)(maxUV.x * RASTERIZE_SCREEN_WIDTH),
-                (int)(maxUV.y * RASTERIZE_SCREEN_HEIGHT)
-            );
-            minPixel.x = math.clamp(minPixel.x, 0, RASTERIZE_SCREEN_WIDTH);
-            maxPixel.x = math.clamp(maxPixel.x, 0, RASTERIZE_SCREEN_WIDTH);
-            minPixel.y = math.clamp(minPixel.y, 0, RASTERIZE_SCREEN_HEIGHT);
-            maxPixel.y = math.clamp(maxPixel.y, 0, RASTERIZE_SCREEN_HEIGHT);
+        private static bool IsChunkOccluded(NativeArray<float> screenDepth, float2 minUV, float2 maxUV, float nearestClipSpaceZVal) {
+            int2 minPixel = (int2)(minUV * new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH - 1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT - 1));
+            int2 maxPixel = (int2)(maxUV * new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH - 1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT - 1));
 
-            // Check every Nth pixel (for performance)
-            const int step = 4; // Adjust based on performance needs
-            for (int y = minPixel.y; y <= maxPixel.y; y += step) {
-                for (int x = minPixel.x; x <= maxPixel.x; x += step) {
-                    int index = y * RASTERIZE_SCREEN_WIDTH + x;
-                    if (screenDepth[index] < 0.99f) { // Not fully occluded
+            for (int y = minPixel.y; y <= maxPixel.y; y += 1) {
+                for (int x = minPixel.x; x <= maxPixel.x; x += 1) {
+                    int index = y * OcclusionUtils.RASTERIZE_SCREEN_WIDTH + x;
+                    // 0 -> closest to the camera 
+                    // 1 -> furthest from the camera
+                    if (screenDepth[index] > nearestClipSpaceZVal) { 
                         return false;
                     }
                 }
             }
-            return true; // All sampled pixels were occluded
+            return true;
         }
 
         [BurstCompile]

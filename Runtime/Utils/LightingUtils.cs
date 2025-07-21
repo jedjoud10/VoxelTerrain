@@ -6,8 +6,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Rendering;
-using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {

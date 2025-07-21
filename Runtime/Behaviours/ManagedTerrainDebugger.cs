@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Segments;
+using jedjoud.VoxelTerrain.Occlusion;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
-using UnityEditor;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain {
@@ -13,12 +13,15 @@ namespace jedjoud.VoxelTerrain {
         public bool debugChunkBounds;
         public bool debugSegmentBounds;
         public bool debugOcclusionCulling;
+
+        [Range(0f, 1f)]
+        public float debugOcclusionTextureOverlay;
         private World world;
         private Texture2D occlusionTexture;
 
         private void Start() {
             world = World.DefaultGameObjectInjectionWorld;
-            occlusionTexture = new Texture2D(TerrainOcclusionSystem.RASTERIZE_SCREEN_WIDTH, TerrainOcclusionSystem.RASTERIZE_SCREEN_HEIGHT, TextureFormat.RFloat, false);
+            occlusionTexture = new Texture2D(OcclusionUtils.RASTERIZE_SCREEN_WIDTH, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT, TextureFormat.RFloat, false);
         }
 
         private void OnGUI() {
@@ -100,13 +103,21 @@ namespace jedjoud.VoxelTerrain {
             if (world == null)
                 return;
 
-            EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds));
+            EntityQuery meshedChunksNotOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds));
+            EntityQuery meshedChunksOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds), typeof(TerrainCurrentlyOccludedTag));
+
             EntityQuery segmentsQuery = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment));
 
             if (debugChunkBounds) {
-                Gizmos.color = Color.grey;
-                NativeArray<WorldRenderBounds> chunkBounds = meshedChunks.ToComponentDataArray<WorldRenderBounds>(Allocator.Temp);
-                foreach (var chunk in chunkBounds) {
+                Gizmos.color = Color.green;
+                NativeArray<WorldRenderBounds> visibleBounds = meshedChunksNotOccluded.ToComponentDataArray<WorldRenderBounds>(Allocator.Temp);
+                foreach (var chunk in visibleBounds) {
+                    Gizmos.DrawWireCube(chunk.Value.Center, chunk.Value.Extents * 2);
+                }
+
+                Gizmos.color = Color.red;
+                NativeArray<WorldRenderBounds> occludedBounds = meshedChunksOccluded.ToComponentDataArray<WorldRenderBounds>(Allocator.Temp);
+                foreach (var chunk in occludedBounds) {
                     Gizmos.DrawWireCube(chunk.Value.Center, chunk.Value.Extents * 2);
                 }
             }
@@ -128,16 +139,18 @@ namespace jedjoud.VoxelTerrain {
                 }
             }
 
+#if UNITY_EDITOR
             if (debugOcclusionCulling) {
                 NativeArray<float> depth = world.EntityManager.GetComponentData<TerrainOcclusionScreenData>(world.GetExistingSystem<TerrainOcclusionSystem>()).rasterizedDdaDepth;
                 occlusionTexture.SetPixelData(depth, 0, 0);
                 occlusionTexture.Apply();
 
-                Handles.BeginGUI();
+                UnityEditor.Handles.BeginGUI();
                 Rect fullScreenRect = new Rect(0, 0, Screen.width, Screen.height);
-                GUI.DrawTexture(fullScreenRect, occlusionTexture, ScaleMode.StretchToFill);
-                Handles.EndGUI();
+                GUI.DrawTexture(fullScreenRect, occlusionTexture, ScaleMode.StretchToFill, true, 0f, new Color(1, 1, 1, debugOcclusionTextureOverlay), 0f, 0f);
+                UnityEditor.Handles.EndGUI();
             }
+#endif
         }
     }
 }

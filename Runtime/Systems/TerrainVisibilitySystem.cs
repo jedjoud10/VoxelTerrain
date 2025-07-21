@@ -23,6 +23,18 @@ namespace jedjoud.VoxelTerrain {
                 toggle.ValueRW = deferredVisible.ValueRO && !occluded.ValueRO;
             }
 
+            // if the chunks are occluded, then their skirts are occluded as well
+            foreach (var (occluded, chunk) in SystemAPI.Query<EnabledRefRO<TerrainCurrentlyOccludedTag>, TerrainChunk>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)) {
+                if (chunk.skirts.IsEmpty)
+                    continue;
+
+                for (int i = 0; i < 6; i++) {
+                    Entity skirt = chunk.skirts[i];
+                    if (SystemAPI.Exists(skirt))
+                        SystemAPI.SetComponentEnabled<TerrainCurrentlyOccludedTag>(skirt, occluded.ValueRO);
+                }
+            }
+
             // custom culling for skirts, goes over what is visible up to this point
             foreach (var (localToWorld, skirt, toggle) in SystemAPI.Query<LocalToWorld, TerrainSkirt, EnabledRefRW<MaterialMeshInfo>>().WithAll<TerrainDeferredVisible>()) {
                 float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * chunkSize * 0.5f;

@@ -2,7 +2,6 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using static jedjoud.VoxelTerrain.VoxelUtils;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct ApplyMeshHandler : ISubHandler {

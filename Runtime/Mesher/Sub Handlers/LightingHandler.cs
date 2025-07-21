@@ -1,10 +1,8 @@
-using static jedjoud.VoxelTerrain.BatchUtils;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
-using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct LightingHandler : ISubHandler {

@@ -1,19 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using jedjoud.VoxelTerrain.Generation;
-using jedjoud.VoxelTerrain.Octree;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
-using Unity.Entities.Graphics;
-using Unity.Jobs;
-using Unity.Mathematics;
-using Unity.Rendering;
-using Unity.Transforms;
-using UnityEngine;
-using UnityEngine.Profiling;
-using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Meshing  {
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
