@@ -20,7 +20,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             pending.Enqueue(root);
 
             while (pending.TryDequeue(out OctreeNode node)) {
-                if (InRangeOfLoaders(ref node) && node.depth < maxDepth) {
+                if (ShouldSubdivide(ref node) && node.depth < maxDepth) {
                     Subdivide(node, ref pending);
                 }
             }
@@ -37,7 +37,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             new int3(1, 1, 1),
         };
 
-        private bool InRangeOfLoaders(ref OctreeNode node) {
+        private bool ShouldSubdivide(ref OctreeNode node) {
             // TODO: implement clustering algorithm to make this faster...
             foreach (TerrainLoader loader in loaders) {
                 // pls add me back...

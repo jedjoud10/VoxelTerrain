@@ -201,6 +201,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
                         Entity skirt = EntityManager.Instantiate(skirtPrototype);
                         SystemAPI.SetComponent<TerrainSkirt>(skirt, new TerrainSkirt() { direction = (byte)i });
                         SystemAPI.SetComponent<LocalToWorld>(skirt, localToWorld);
+                        SystemAPI.SetComponent<TerrainSkirtLinkedParent>(skirt, new TerrainSkirtLinkedParent() { chunkParent = chunkEntity });
                         skirts.Add(skirt);
                     }
                     chunk.skirts = skirts;

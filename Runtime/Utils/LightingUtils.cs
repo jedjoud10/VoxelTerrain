@@ -10,6 +10,14 @@ using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     public static class LightingUtils {
+        public const int AO_SAMPLES_SEED = 1234;
+        public const int AO_SAMPLES = 16;
+        public const float AO_STRENGTH = 1f;
+        public const float AO_GLOBAL_SPREAD = 0.5f;
+        public const float AO_GLOBAL_OFFSET = 0.5f;
+        public const float AO_MIN_DOT_NORMAL = 0.4f;
+        public const int AO_SAMPLE_CUBE_SIZE = 4;
+
         private static bool TryCheckShouldCalculateLighting(EntityManager entityManager, Entity entity, out NativeArray<Entity> entities) {
             TerrainManager terrainManager = new EntityQueryBuilder(Allocator.Temp).WithAll<TerrainManager>().Build(entityManager).GetSingleton<TerrainManager>();
 
@@ -113,15 +121,6 @@ namespace jedjoud.VoxelTerrain {
                 return false;
             }            
         }
-
-        public const int AO_SAMPLES_SEED = 1234;
-        public const int AO_SAMPLES = 16;
-        public const float AO_STRENGTH = 1f;
-        public const float AO_GLOBAL_SPREAD = 2.5f;
-        public const float AO_GLOBAL_OFFSET = 0.5f;
-        public const float AO_MIN_DOT_NORMAL = 0.2f;
-        public const int AO_SAMPLE_CUBE_SIZE = 2;
-
         public static NativeArray<float3> PrecomputeAoSamples() {
             NativeList<float3> tmp = new NativeList<float3>(Allocator.Temp);
 

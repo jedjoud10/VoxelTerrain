@@ -30,15 +30,15 @@ namespace jedjoud.VoxelTerrain.Occlusion {
 
                 int x = index % OcclusionUtils.RASTERIZE_SCREEN_WIDTH;
                 int y = index / OcclusionUtils.RASTERIZE_SCREEN_WIDTH;
-                float2 uvs = new float2(x,y) / new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT);
+                float2 uvs = new float2(x,y) / new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH-1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT-1);
                 float4 clip = new float4(uvs * 2f - 1f, 1f, 1f);
                 float4 rayView = math.mul(invProj, clip);
                 rayView /= rayView.w;
                 float3 rayDir = math.normalize(math.mul(invView, new float4(rayView.xyz, 0)).xyz);
 
-                float3 rayPos = cameraPosition;
+                float3 rayPos = cameraPosition + 0.5f;
 
-                float3 invDir = 1 / rayDir;
+                float3 invDir = math.rcp(rayDir);
                 float3 dirSign = math.sign(rayDir);
                 
                 float3 flooredPos = math.floor(rayPos);
@@ -59,10 +59,10 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                             float max = math.cmax(test);
                             float3 world = rayPos + rayDir * max;
 
-                            if (density < OcclusionUtils.MIN_DENSITY_THRESHOLD) {
+                            if (density < 0) {
                                 float4 clipPos = math.mul(proj, math.mul(view, new float4(world, 1.0f)));
                                 clipPos /= clipPos.w;
-                                screenDepth[index] = math.saturate(OcclusionUtils.LinearizeDepthStandard(clipPos.z, nearFarPlanes) + nearFarPlanes.x * OcclusionUtils.NEAR_PLANE_DEPTH_OFFSET_FACTOR);
+                                screenDepth[index] = math.saturate(OcclusionUtils.LinearizeDepthStandard(clipPos.z, nearFarPlanes));
                                 break;
                             }
                         }
@@ -99,10 +99,16 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             NativeHashMap<int3, int> chunkPositionsLookup = new NativeHashMap<int3, int>(0, Allocator.TempJob);
             UnsafePtrList<half> chunkDensityPtrs = new UnsafePtrList<half>(0, Allocator.TempJob);
 
-            foreach (var (chunk, voxels) in SystemAPI.Query<TerrainChunk, TerrainChunkVoxels>()) {
+            foreach (var (chunk, _voxels) in SystemAPI.Query<TerrainChunk, RefRW<TerrainChunkVoxels>>()) {
+                ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
+                
                 if (chunk.node.atMaxDepth) {
                     chunkPositionsLookup.Add(chunk.node.position / VoxelUtils.PHYSICAL_CHUNK_SIZE, chunkDensityPtrs.Length);
-                    voxels.asyncWriteJobHandle.Complete();
+
+                    if (voxels.asyncWriteJobHandle != default) {
+                        voxels.asyncWriteJobHandle.Complete();
+                        voxels.asyncWriteJobHandle = default;
+                    }
                     unsafe {
                         chunkDensityPtrs.Add(voxels.data.densities.GetUnsafeReadOnlyPtr());
                     }
@@ -158,11 +164,11 @@ namespace jedjoud.VoxelTerrain.Occlusion {
 
                 minScreen = math.saturate(minScreen - OcclusionUtils.UV_EXPANSION_OFFSET);
                 maxScreen = math.saturate(maxScreen + OcclusionUtils.UV_EXPANSION_OFFSET);
-                occluded.ValueRW = IsChunkOccluded(screenDepth, minScreen, maxScreen, math.saturate(nearestClipSpaceZVal));
+                occluded.ValueRW = IsChunkOccluded(screenDepth, minScreen, maxScreen, math.saturate(nearestClipSpaceZVal), camera.nearFarPlanes.x * OcclusionUtils.NEAR_PLANE_DEPTH_OFFSET_FACTOR);
             }
         }
 
-        private static bool IsChunkOccluded(NativeArray<float> screenDepth, float2 minUV, float2 maxUV, float nearestClipSpaceZVal) {
+        private static bool IsChunkOccluded(NativeArray<float> screenDepth, float2 minUV, float2 maxUV, float nearestClipSpaceZVal, float nearPlaneDepthOffset) {
             int2 minPixel = (int2)(minUV * new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH - 1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT - 1));
             int2 maxPixel = (int2)(maxUV * new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH - 1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT - 1));
 
@@ -171,7 +177,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                     int index = y * OcclusionUtils.RASTERIZE_SCREEN_WIDTH + x;
                     // 0 -> closest to the camera 
                     // 1 -> furthest from the camera
-                    if (screenDepth[index] > nearestClipSpaceZVal) { 
+                    if ((screenDepth[index] + nearPlaneDepthOffset) > nearestClipSpaceZVal) { 
                         return false;
                     }
                 }

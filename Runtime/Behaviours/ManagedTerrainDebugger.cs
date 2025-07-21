@@ -45,6 +45,7 @@ namespace jedjoud.VoxelTerrain {
             EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh));
             EntityQuery chunksAwaitingReadback = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestReadbackTag));
             EntityQuery chunksAwaitingMeshing = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestMeshingTag));
+            EntityQuery occlusionCulledChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainCurrentlyOccludedTag));
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
 
@@ -56,6 +57,7 @@ namespace jedjoud.VoxelTerrain {
             Label($"# of segments pending GPU dispatch: {segmentsAwaitingDispatch.CalculateEntityCount()}");
             Label($"# of chunks pending meshing: {chunksAwaitingMeshing.CalculateEntityCount()}");
             Label($"# of chunk entities with a mesh: {meshedChunks.CalculateEntityCount()}");
+            Label($"# of occlusion culled chunks: {occlusionCulledChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
 
             /*

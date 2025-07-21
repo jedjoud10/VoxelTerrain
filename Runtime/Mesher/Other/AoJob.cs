@@ -24,6 +24,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
         public float strength;
 
         public void Execute(int index) {
+            colours[index] = new float4(0, 0, 0, 1);
+            /*
             float3 vertex = positions[index];
             float3 normal = normals[index];
 
@@ -49,6 +51,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             float factor = math.clamp((float)sum / (float)LightingUtils.AO_SAMPLES, 0f, 1f);
             float ao = math.saturate(1 - factor * strength);
             colours[index] = new float4(0, 0, 0, ao);
+            */
         }
     }
 }

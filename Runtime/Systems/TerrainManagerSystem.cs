@@ -65,6 +65,7 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainDeferredVisible>(skirtPrototype);
             mgr.AddComponent<TerrainCurrentlyOccludedTag>(skirtPrototype);
             mgr.AddComponent<Prefab>(skirtPrototype);
+            mgr.AddComponent<TerrainSkirtLinkedParent>(skirtPrototype);
 
             mgr.SetComponentEnabled<TerrainCurrentlyOccludedTag>(skirtPrototype, false);
             mgr.SetComponentEnabled<TerrainDeferredVisible>(skirtPrototype, false);
