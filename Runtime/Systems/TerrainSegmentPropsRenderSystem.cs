@@ -115,7 +115,6 @@ namespace jedjoud.VoxelTerrain.Segments {
         public void RenderInstancedPropsOfType(PropType type, int i) {
             if (!rendering.typeInstanceTextureArrays[i].IsValid()) {
                 Debug.LogWarning($"Missing instanced textures for prop '{type.name}' variant {i}");
-                return;
             }
 
             RenderParams renderParams = new RenderParams(instancedMaterial);
@@ -131,9 +130,13 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetBuffer("_PermBuffer", perm.permBuffer);
             mat.SetBuffer("_PermMatricesBuffer", perm.permMatricesBuffer);
             mat.SetBuffer("_InstancedIndirectionBuffer", rendering.instancedIndirectionBuffer);
-            mat.SetTexture("_DiffuseMapArray", rendering.typeInstanceTextureArrays[i].diffuse);
-            mat.SetTexture("_NormalMapArray", rendering.typeInstanceTextureArrays[i].normal);
-            mat.SetTexture("_MaskMapArray", rendering.typeInstanceTextureArrays[i].mask);
+            
+            if (rendering.typeInstanceTextureArrays[i].IsValid()) {
+                mat.SetTexture("_DiffuseMapArray", rendering.typeInstanceTextureArrays[i].diffuse);
+                mat.SetTexture("_NormalMapArray", rendering.typeInstanceTextureArrays[i].normal);
+                mat.SetTexture("_MaskMapArray", rendering.typeInstanceTextureArrays[i].mask);
+            }
+            
             mat.SetInt("_PermBufferOffset", perm.permBufferOffsets[i]);
             mat.SetInt("_PropType", i);
             mat.SetInt("_MaxVariantCountForType", type.variants.Count);

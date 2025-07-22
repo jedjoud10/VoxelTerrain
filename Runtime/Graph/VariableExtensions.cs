@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             if (inputMin == null || inputMax == null) {
-                throw new NullReferenceException("inputMin and inputMax need to be set");
+                throw new NullReferenceException("Curve inputMin and inputMax need to be set");
             }
 
             return new CurveNode {
@@ -31,6 +31,26 @@ namespace jedjoud.VoxelTerrain.Generation {
                 size = size,
                 inputMin = inputMin,
                 inputMax = inputMax,
+                invert = invert,
+                inner = new GeneratedTextureHelper(),
+            };
+        }
+
+        public static Variable<float> Curve(this Variable<float> mixer, UnityEngine.AnimationCurve curve, Variable<float> amplitude, int size = 128, bool invert = false) {
+            if (curve == null) {
+                throw new NullReferenceException("Unity AnimationCurve is not set");
+            }
+
+            if (amplitude == null) {
+                throw new NullReferenceException("curve amplitude needs to be set");
+            }
+
+            return new CurveNode {
+                curve = curve,
+                mixer = mixer,
+                size = size,
+                inputMin = -amplitude,
+                inputMax = amplitude,
                 invert = invert,
                 inner = new GeneratedTextureHelper(),
             };

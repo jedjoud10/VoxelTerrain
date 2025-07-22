@@ -18,8 +18,28 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
         const int MAX_MESH_HANDLERS_PER_TICK = 4;
-        private RenderMeshDescription mainMeshDescription;
-        private RenderMeshDescription skirtsMeshDescription;
+        private static readonly RenderMeshDescription mainMeshDescription = new RenderMeshDescription {
+            FilterSettings = new RenderFilterSettings {
+                ShadowCastingMode = ShadowCastingMode.TwoSided,
+                ReceiveShadows = true,
+                MotionMode = MotionVectorGenerationMode.ForceNoMotion,
+                StaticShadowCaster = false,
+                Layer = 0,
+                RenderingLayerMask = ~0u,
+            },
+            LightProbeUsage = LightProbeUsage.Off,
+        };
+        private static readonly RenderMeshDescription skirtsMeshDescription = new RenderMeshDescription {
+            FilterSettings = new RenderFilterSettings {
+                ShadowCastingMode = ShadowCastingMode.Off,
+                ReceiveShadows = false,
+                MotionMode = MotionVectorGenerationMode.ForceNoMotion,
+                StaticShadowCaster = false,
+                Layer = 0,
+                RenderingLayerMask = ~0u,
+            },
+            LightProbeUsage = LightProbeUsage.Off,
+        };
         private EntitiesGraphicsSystem graphics;
 
         private BatchMaterialID mainMeshMaterialId;
@@ -31,30 +51,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
             for (int i = 0; i < MAX_MESH_HANDLERS_PER_TICK; i++) {
                 handlers.Add(new MeshJobHandler());
             }
-
-            mainMeshDescription = new RenderMeshDescription {
-                FilterSettings = new RenderFilterSettings {
-                    ShadowCastingMode = ShadowCastingMode.TwoSided,
-                    ReceiveShadows = true,
-                    MotionMode = MotionVectorGenerationMode.ForceNoMotion,
-                    StaticShadowCaster = false,
-                    Layer = 0,
-                    RenderingLayerMask = ~0u,
-                },
-                LightProbeUsage = LightProbeUsage.Off,
-            };
-
-            skirtsMeshDescription = new RenderMeshDescription {
-                FilterSettings = new RenderFilterSettings {
-                    ShadowCastingMode = ShadowCastingMode.Off,
-                    ReceiveShadows = false,
-                    MotionMode = MotionVectorGenerationMode.ForceNoMotion,
-                    StaticShadowCaster = false,
-                    Layer = 0,
-                    RenderingLayerMask = ~0u,
-                },
-                LightProbeUsage = LightProbeUsage.Off,
-            };
 
             graphics = null;
         }

@@ -40,7 +40,7 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<TerrainChunkVoxelsReadyTag>(chunkPrototype);
             mgr.AddComponent<TerrainChunkMesh>(chunkPrototype);
             mgr.AddComponent<TerrainChunkEndOfPipeTag>(chunkPrototype);
-            mgr.AddComponent<TerrainCurrentlyOccludedTag>(chunkPrototype);
+            mgr.AddComponent<TerrainOccludedTag>(chunkPrototype);
             mgr.AddComponent<TerrainDeferredVisible>(chunkPrototype);
             mgr.AddComponent<Prefab>(chunkPrototype);
 
@@ -49,7 +49,7 @@ namespace jedjoud.VoxelTerrain {
             mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(chunkPrototype, false);
-            mgr.SetComponentEnabled<TerrainCurrentlyOccludedTag>(chunkPrototype, false);
+            mgr.SetComponentEnabled<TerrainOccludedTag>(chunkPrototype, false);
             mgr.SetComponentEnabled<TerrainDeferredVisible>(chunkPrototype, false);
 
             // initial starting conditions: readback from GPU, then do meshing, then do collisions and lighting
@@ -63,11 +63,11 @@ namespace jedjoud.VoxelTerrain {
             mgr.AddComponent<LocalToWorld>(skirtPrototype);
             mgr.AddComponent<TerrainSkirt>(skirtPrototype);
             mgr.AddComponent<TerrainDeferredVisible>(skirtPrototype);
-            mgr.AddComponent<TerrainCurrentlyOccludedTag>(skirtPrototype);
+            mgr.AddComponent<TerrainOccludedTag>(skirtPrototype);
             mgr.AddComponent<Prefab>(skirtPrototype);
             mgr.AddComponent<TerrainSkirtLinkedParent>(skirtPrototype);
 
-            mgr.SetComponentEnabled<TerrainCurrentlyOccludedTag>(skirtPrototype, false);
+            mgr.SetComponentEnabled<TerrainOccludedTag>(skirtPrototype, false);
             mgr.SetComponentEnabled<TerrainDeferredVisible>(skirtPrototype, false);
 
             state.EntityManager.CreateSingleton<TerrainReadySystems>();

@@ -13,6 +13,7 @@ namespace jedjoud.VoxelTerrain {
         public bool debugChunkBounds;
         public bool debugSegmentBounds;
         public bool debugOcclusionCulling;
+        public bool debugPropData;
 
         [Range(0f, 1f)]
         public float debugOcclusionTextureOverlay;
@@ -45,7 +46,7 @@ namespace jedjoud.VoxelTerrain {
             EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh));
             EntityQuery chunksAwaitingReadback = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestReadbackTag));
             EntityQuery chunksAwaitingMeshing = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestMeshingTag));
-            EntityQuery occlusionCulledChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainCurrentlyOccludedTag));
+            EntityQuery occlusionCulledChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainOccludedTag));
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
 
@@ -60,15 +61,14 @@ namespace jedjoud.VoxelTerrain {
             Label($"# of occlusion culled chunks: {occlusionCulledChunks.CalculateEntityCount()}");
             Label($"# of chunk entities in the \"End of Pipe\" stage: {chunksEndOfPipe.CalculateEntityCount()}");
 
-            /*
-            if (system.initialized) {
+            if (system.initialized && debugPropData) {
                 TerrainPropPermBuffers.DebugCounts[] counts = system.perm.GetCounts(system.config, system.temp, system.render);
                 for (int i = 0; i < counts.Length; i++) {
                     TerrainPropPermBuffers.DebugCounts debug = counts[i];
                     Label($"--- Prop Type {i}: {system.config.props[i].name} ---");
                     Label($"Perm buffer count: {debug.maxPerm}");
                     Label($"Perm buffer offset: {debug.permOffset}");
-                    Label($"Temp buffer offset: {debug.maxTemp}");
+                    Label($"Temp buffer count: {debug.maxTemp}");
                     Label($"Temp buffer offset: {debug.tempOffset}");
 
                     Label($"In-use perm props: {debug.currentInUse}");
@@ -77,8 +77,6 @@ namespace jedjoud.VoxelTerrain {
                     Label($"");
                 }
             }
-            */
-
 
             EntityQuery readySystems = world.EntityManager.CreateEntityQuery(typeof(TerrainReadySystems));
             TerrainReadySystems ready = readySystems.GetSingleton<TerrainReadySystems>();
@@ -106,7 +104,7 @@ namespace jedjoud.VoxelTerrain {
                 return;
 
             EntityQuery meshedChunksNotOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds));
-            EntityQuery meshedChunksOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds), typeof(TerrainCurrentlyOccludedTag));
+            EntityQuery meshedChunksOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds), typeof(TerrainOccludedTag));
 
             EntityQuery segmentsQuery = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment));
 
@@ -142,8 +140,8 @@ namespace jedjoud.VoxelTerrain {
             }
 
 #if UNITY_EDITOR
-            if (debugOcclusionCulling) {
-                NativeArray<float> depth = world.EntityManager.GetComponentData<TerrainOcclusionScreenData>(world.GetExistingSystem<TerrainOcclusionSystem>()).rasterizedDdaDepth;
+            if (debugOcclusionCulling && Camera.current.cameraType == CameraType.Game) {
+                NativeArray<float> depth = world.EntityManager.CreateEntityQuery(typeof(TerrainOcclusionScreenData)).GetSingleton<TerrainOcclusionScreenData>().rasterizedDdaDepth;
                 occlusionTexture.SetPixelData(depth, 0, 0);
                 occlusionTexture.Apply();
 

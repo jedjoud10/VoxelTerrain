@@ -138,6 +138,22 @@ namespace jedjoud.VoxelTerrain {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe half FetchDensity(uint3 position, half* basePtr) {
+            int voxelIndex = PosToIndex(position, SIZE);
+
+            unsafe {
+                half* ptr = basePtr;
+
+                if (ptr != null) {
+                    half* offset = (ptr + voxelIndex);
+                    return *offset;
+                } else {
+                    return half.zero;
+                }
+            }
+        }
+
         // Check if a 2x2x2 region starting from a specific voxel is accessible
         // Required for vertex job, corner job, quad job. Yk, meshing stuff
         // TODO: PLEASE IMPROVE PERFORMANCE THIS IS HORRID. There's definitely a smarter way to tackle this lol
@@ -174,6 +190,7 @@ namespace jedjoud.VoxelTerrain {
         }
 
         // Checks if a position is stored inside the chunk
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool CheckPositionInsideChunk(int3 position) {
             return math.all(position > 0 & position < SIZE);
         }
@@ -192,6 +209,33 @@ namespace jedjoud.VoxelTerrain {
             float d101 = FetchDensityNeighbours(voxPos + math.int3(1, 0, 1), ref neighbours);
             float d011 = FetchDensityNeighbours(voxPos + math.int3(0, 1, 1), ref neighbours);
             float d111 = FetchDensityNeighbours(voxPos + math.int3(1, 1, 1), ref neighbours);
+
+            float4 d0 = new float4(d000, d010, d001, d011);
+            float4 d1 = new float4(d100, d110, d101, d111);
+            float4 interpX = math.lerp(d0, d1, frac.x);
+
+            float2 m01 = new float2(interpX.x, interpX.y);
+            float2 m23 = new float2(interpX.z, interpX.w);
+            float2 m = math.lerp(m01, m23, frac.z);
+            float mixed6 = math.lerp(m.x, m.y, frac.y);
+
+            return (half)mixed6;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe half SampleDensityInterpolated(float3 position, half* basePtr) {
+            float3 frac = math.frac(position);
+            uint3 voxPos = (uint3)math.floor(position);
+
+            float d000 = FetchDensity(voxPos, basePtr);
+            float d100 = FetchDensity(voxPos + math.uint3(1, 0, 0), basePtr);
+            float d010 = FetchDensity(voxPos + math.uint3(0, 1, 0), basePtr);
+            float d110 = FetchDensity(voxPos + math.uint3(1, 1, 0), basePtr);
+
+            float d001 = FetchDensity(voxPos + math.uint3(0, 0, 1), basePtr);
+            float d101 = FetchDensity(voxPos + math.uint3(1, 0, 1), basePtr);
+            float d011 = FetchDensity(voxPos + math.uint3(0, 1, 1), basePtr);
+            float d111 = FetchDensity(voxPos + math.uint3(1, 1, 1), basePtr);
 
             float4 d0 = new float4(d000, d010, d001, d011);
             float4 d1 = new float4(d100, d110, d101, d111);

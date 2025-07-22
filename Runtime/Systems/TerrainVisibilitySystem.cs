@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.Graphics;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -15,7 +16,7 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public partial struct MaterialMeshInfoVisibilityJob : IJobEntity {
-            void Execute(EnabledRefRO<TerrainDeferredVisible> deferredVisible, EnabledRefRO<TerrainCurrentlyOccludedTag> occluded, EnabledRefRW<MaterialMeshInfo> toggle) {
+            void Execute(EnabledRefRO<TerrainDeferredVisible> deferredVisible, EnabledRefRO<TerrainOccludedTag> occluded, EnabledRefRW<MaterialMeshInfo> toggle) {
                 toggle.ValueRW = deferredVisible.ValueRO && !occluded.ValueRO;
             }
         }
@@ -25,7 +26,7 @@ namespace jedjoud.VoxelTerrain {
             public float3 cameraCenter;
 
             [NativeDisableParallelForRestriction]
-            public ComponentLookup<TerrainCurrentlyOccludedTag> lookup;
+            public ComponentLookup<TerrainOccludedTag> lookup;
 
             void Execute(Entity e, TerrainSkirtLinkedParent skirtParent, TerrainSkirt skirt, LocalToWorld localToWorld) {
                 float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * VoxelUtils.PHYSICAL_CHUNK_SIZE * 0.5f;
@@ -52,10 +53,10 @@ namespace jedjoud.VoxelTerrain {
             // if the chunks are occluded, then their skirts are occluded as well
             // also checks if the skirt should even be visible from the camera
             EntityQuery query2 = SystemAPI.QueryBuilder().WithAll<TerrainSkirtLinkedParent, TerrainSkirt, LocalToWorld>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
-            new SkirtOcclusionJob() { lookup = SystemAPI.GetComponentLookup<TerrainCurrentlyOccludedTag>(), cameraCenter = cameraCenter }.ScheduleParallel(query2);
+            new SkirtOcclusionJob() { lookup = SystemAPI.GetComponentLookup<TerrainOccludedTag>(), cameraCenter = cameraCenter }.ScheduleParallel(query2);
             
             // hide occluded chunks/skirts or those that are not visible due to their deferred visibility
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, TerrainCurrentlyOccludedTag, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, TerrainOccludedTag, RenderFilterSettings, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
             new MaterialMeshInfoVisibilityJob().ScheduleParallel(query);
         }
     }
