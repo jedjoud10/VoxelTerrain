@@ -137,7 +137,12 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Create a specific new node for sampling from the voxel texture
             Variable<float> cachedDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
-                density.Handle(ctx);
+                foreach (var (name, texture) in ctx.textures) {
+                    if (texture.readKernels.Contains("CSVoxels")) {
+                        texture.readKernels.Add($"CS{ctx.scopes[ctx.currentScope].name}");
+                    }
+                }
+                
                 return @$"DensityAtSlow({position.name})";
             });
 

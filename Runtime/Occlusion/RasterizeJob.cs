@@ -1,18 +1,14 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Rendering;
-using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
     [BurstCompile(CompileSynchronously = true)]
     public struct RasterizeJob : IJobParallelFor {
         [ReadOnly]
-        public NativeHashMap<int3, int> chunkPositionsLookup;
-        public UnsafePtrList<half> chunkDensityPtrs;
+        public NativeArray<bool> insideSurfaceVoxels;
         public float4x4 proj;
         public float4x4 view;
         public float4x4 invProj;
@@ -44,25 +40,22 @@ namespace jedjoud.VoxelTerrain.Occlusion {
 
             for (int i = 0; i < OcclusionUtils.DDA_ITERATIONS; i++) {
                 int3 voxelPos = (int3)flooredPos;
-                VoxelUtils.WorldVoxelPosToChunkSpace(voxelPos, out int3 chunkPosition, out uint3 localVoxelPos);
 
                 float3 test = (flooredPos - rayPos + 0.5f - 0.5f * dirSign) * invDir;
                 float max = math.cmax(test);
                 float3 world = rayPos + rayDir * max;
 
-                if (chunkPositionsLookup.TryGetValue(chunkPosition, out int chunkIndexLookup)) {
-                    int voxelIndex = VoxelUtils.PosToIndex(localVoxelPos, VoxelUtils.SIZE);
-
-                    unsafe {
-                        half* ptr = chunkDensityPtrs[chunkIndexLookup];
-                        half density = *(ptr + voxelIndex);
-
-                        if (density < 0) {
-                            float4 clipPos = math.mul(proj, math.mul(view, new float4(world, 1.0f)));
-                            clipPos /= clipPos.w;
-                            screenDepth[index] = math.saturate(OcclusionUtils.LinearizeDepthStandard(clipPos.z, nearFarPlanes));
-                            break;
-                        }
+                int3 pos = voxelPos;
+                pos -= (int3)math.floor(cameraPosition);
+                pos += OcclusionUtils.DDA_ITERATIONS / 2;
+                
+                if (VoxelUtils.CheckPositionInsideVolume(pos, OcclusionUtils.DDA_ITERATIONS)) {
+                    uint3 ummwhat2 = (uint3)pos;
+                    if (insideSurfaceVoxels[VoxelUtils.PosToIndex(ummwhat2, OcclusionUtils.DDA_ITERATIONS)]) {
+                        float4 clipPos = math.mul(proj, math.mul(view, new float4(world, 1.0f)));
+                        clipPos /= clipPos.w;
+                        screenDepth[index] = math.saturate(OcclusionUtils.LinearizeDepthStandard(clipPos.z, nearFarPlanes));
+                        return;
                     }
                 }
 

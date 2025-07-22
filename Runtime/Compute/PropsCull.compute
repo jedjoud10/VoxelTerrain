@@ -80,7 +80,7 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 			float3 plane_normal = camera_frustum_planes[f].xyz;
 			float plane_distance = camera_frustum_planes[f].w;
 
-			if ((dot(plane_normal, culling_sphere_position) + plane_distance) < -culling_sphere_radius) {
+			if ((dot(plane_normal, culling_sphere_position) + plane_distance) < (-culling_sphere_radius * 2.0)) {
 				visible_in_frustum = false;
 				break;
 			}
@@ -90,28 +90,16 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		float4 view_position = mul(camera_view_matrix, float4(culling_sphere_position, 1.0));
 		float4 clip_position = mul(camera_projection_matrix, view_position);
 		clip_position /= clip_position.w;
-		float4 edge_position = mul(camera_projection_matrix,float4(culling_spheres[type].xyz + float3(culling_sphere_radius, 0, 0), 0));
-		float clip_radius = distance(edge_position, clip_position) * 0.5;
-		//float clip_radius = 0.001;
-		float2 min_uv = saturate(clip_position.xy * 0.5 + 0.5 - clip_radius);
-		float2 max_uv = saturate(clip_position.xy * 0.5 + 0.5 + clip_radius);
 
 		float nearest_clip_space_z_val = saturate(linearizeDepth(clip_position.z, camera_near, camera_far));
-	    
-        int2 min_pixel = int2(min_uv * float2(occlusion_width - 1, occlusion_height - 1));
-        int2 max_pixel = int2(max_uv * float2(occlusion_width - 1, occlusion_height - 1));
+		
+		float2 clip_uv = saturate(clip_position.xy * 0.5 + 0.5);
+        int2 clip_pixel = int2(clip_uv * float2(occlusion_width - 1, occlusion_height - 1));
+		float rasterized_depth = occlusion_depth_texture.Load(float3(clip_pixel, 0)).x; 
 
-        for (int y = min_pixel.y; y <= max_pixel.y; y += 1) {
-            for (int x = min_pixel.x; x <= max_pixel.x; x += 1) {
-				float rasterized_depth = occlusion_depth_texture.Load(float3(x, y, 0)).x; 
-
-				if ((rasterized_depth + 0.001) > nearest_clip_space_z_val ) {
-					occluded = false;
-                    break;
-                }
-            }
+		if ((rasterized_depth + 0.005) > nearest_clip_space_z_val) {
+			occluded = false;
         }
-
 
 		float dist = distance(position, camera_position);
 		float max_dist = max_distances[type];

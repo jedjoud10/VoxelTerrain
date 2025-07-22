@@ -70,11 +70,12 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             cullingSpheres = new Vector4[types];
             for (int i = 0; i < types; i++) {
-                if (config.props[i].renderImpostors) {
+                if (config.props[i].renderImpostors || config.props[i].renderInstances) {
                     Mesh mesh = config.props[i].instancedMesh;
+                    mesh.RecalculateBounds();
                     Bounds bounds = mesh.bounds;
                     Vector3 center = bounds.center;
-                    float radius = math.cmax(bounds.extents) * 2;
+                    float radius = math.cmax(bounds.extents);
                     cullingSpheres[i] = new Vector4(center.x, center.y, center.z, radius);
                 } else {
                     cullingSpheres[i] = Vector4.zero;

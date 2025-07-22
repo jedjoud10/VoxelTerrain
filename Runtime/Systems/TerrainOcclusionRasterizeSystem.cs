@@ -4,7 +4,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Rendering;
 using Unity.Transforms;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
@@ -19,7 +18,6 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             TerrainOcclusionScreenData data = SystemAPI.GetSingleton<TerrainOcclusionScreenData>();
-            NativeArray<float> screenDepth = data.rasterizedDdaDepth;
 
             Entity cameraEntity = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
             TerrainMainCamera camera = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
@@ -35,7 +33,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 if (chunk.node.atMaxDepth) {
                     chunkPositionsLookup.Add(chunk.node.position / VoxelUtils.PHYSICAL_CHUNK_SIZE, chunkDensityPtrs.Length);
 
-                    if (voxels.asyncWriteJobHandle != default) {
+                    if (!voxels.asyncWriteJobHandle.Equals(default)) {
                         voxels.asyncWriteJobHandle.Complete();
                         voxels.asyncWriteJobHandle = default;
                     }
@@ -45,20 +43,30 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 }
             }
 
-            RasterizeJob job = new RasterizeJob() {
+            VoxelizeJob voxelize = new VoxelizeJob() {
+                insideSurfaceVoxels = data.insideSurfaceVoxels,
+                cameraPosition = cameraPosition,
+                chunkDensityPtrs = chunkDensityPtrs,
+                chunkPositionsLookup = chunkPositionsLookup,
+            };
+
+            JobHandle voxelizeHandle = voxelize.Schedule(OcclusionUtils.DDA_ITERATIONS * OcclusionUtils.DDA_ITERATIONS * OcclusionUtils.DDA_ITERATIONS, 128);
+
+            RasterizeJob rasterize = new RasterizeJob() {
                 proj = camera.projectionMatrix,
                 view = camera.worldToCamera,
                 invProj = math.inverse(camera.projectionMatrix),
                 invView = math.inverse(camera.worldToCamera),
-                chunkDensityPtrs = chunkDensityPtrs,
-                chunkPositionsLookup = chunkPositionsLookup,
-                screenDepth = screenDepth,
+                insideSurfaceVoxels = data.insideSurfaceVoxels,
+                screenDepth = data.rasterizedDdaDepth,
                 nearFarPlanes = camera.nearFarPlanes,
                 cameraPosition = cameraPosition
             };
 
-            JobHandle handle = job.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, 4);
-            handle.Complete();
+            JobHandle rasterizeHandle = rasterize.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, 4, voxelizeHandle);
+
+
+            rasterizeHandle.Complete();
 
             chunkPositionsLookup.Dispose();
             chunkDensityPtrs.Dispose();

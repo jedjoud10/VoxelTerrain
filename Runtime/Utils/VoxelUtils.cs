@@ -189,10 +189,16 @@ namespace jedjoud.VoxelTerrain {
             chunkSpaceVoxelPos = Mod(worldSpaceVoxelPos, PHYSICAL_CHUNK_SIZE);
         }
 
+        // Checks if a position is stored inside the volume
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckPositionInsideVolume(int3 position, int size) {
+            return math.all(position >= 0 & position < size);
+        }
+
         // Checks if a position is stored inside the chunk
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool CheckPositionInsideChunk(int3 position) {
-            return math.all(position > 0 & position < SIZE);
+            return CheckPositionInsideVolume(position, SIZE);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
