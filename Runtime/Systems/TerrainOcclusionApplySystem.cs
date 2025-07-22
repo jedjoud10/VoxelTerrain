@@ -56,12 +56,12 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             public static bool IsAabbOccluded(NativeArray<float> screenDepth, float2 minUV, float2 maxUV, float nearestClipSpaceZVal, float2 nearFarPlanes) {
                 float nearPlaneDepthOffset = nearFarPlanes.x * OcclusionUtils.NEAR_PLANE_DEPTH_OFFSET_FACTOR;
 
-                int2 minPixel = (int2)(minUV * new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH - 1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT - 1));
-                int2 maxPixel = (int2)(maxUV * new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH - 1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT - 1));
+                int2 minPixel = (int2)(minUV * new float2(OcclusionUtils.WIDTH - 1, OcclusionUtils.HEIGHT - 1));
+                int2 maxPixel = (int2)(maxUV * new float2(OcclusionUtils.WIDTH - 1, OcclusionUtils.HEIGHT - 1));
 
                 for (int y = minPixel.y; y <= maxPixel.y; y += 1) {
                     for (int x = minPixel.x; x <= maxPixel.x; x += 1) {
-                        int index = y * OcclusionUtils.RASTERIZE_SCREEN_WIDTH + x;
+                        int index = y * OcclusionUtils.WIDTH + x;
                         // 0 -> closest to the camera 
                         // 1 -> furthest from the camera
                         if ((screenDepth[index] + nearPlaneDepthOffset) > nearestClipSpaceZVal) {

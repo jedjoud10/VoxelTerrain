@@ -23,6 +23,19 @@ float impostor_distance_percentage[MAX_PROP_TYPE_COUNT];
 
 float3 camera_position;
 
+float4x4 camera_projection_matrix;
+float4x4 camera_view_matrix;
+float camera_near;
+float camera_far;
+
+Texture2D occlusion_depth_texture;
+int occlusion_width;
+int occlusion_height;
+
+float linearizeDepth(float depth, float near, float far) {
+    return (2.0 * near) / (far + near - depth * (far - near));
+}
+
 [numthreads(64, 1, 1)]
 void CSCull(uint3 id : SV_DispatchThreadID) {
 	int block = perm_props_in_use_bitset_buffer[id.x];
@@ -59,9 +72,10 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		float3 position = position_scale.xyz;
 		float scale = position_scale.w;
 
-		bool visible_in_frustum = true;
 		float3 culling_sphere_position = culling_spheres[type].xyz + position;
 		float culling_sphere_radius = culling_spheres[type].w * scale;
+
+		bool visible_in_frustum = true;
 		for (int f = 0; f < 6; f++) {
 			float3 plane_normal = camera_frustum_planes[f].xyz;
 			float plane_distance = camera_frustum_planes[f].w;
@@ -72,12 +86,39 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 			}
 		}
 
-		float dist =  distance(position, camera_position);
+		bool occluded = true;
+		float4 view_position = mul(camera_view_matrix, float4(culling_sphere_position, 1.0));
+		float4 clip_position = mul(camera_projection_matrix, view_position);
+		clip_position /= clip_position.w;
+		float4 edge_position = mul(camera_projection_matrix,float4(culling_spheres[type].xyz + float3(culling_sphere_radius, 0, 0), 0));
+		float clip_radius = distance(edge_position, clip_position) * 0.5;
+		//float clip_radius = 0.001;
+		float2 min_uv = saturate(clip_position.xy * 0.5 + 0.5 - clip_radius);
+		float2 max_uv = saturate(clip_position.xy * 0.5 + 0.5 + clip_radius);
+
+		float nearest_clip_space_z_val = saturate(linearizeDepth(clip_position.z, camera_near, camera_far));
+	    
+        int2 min_pixel = int2(min_uv * float2(occlusion_width - 1, occlusion_height - 1));
+        int2 max_pixel = int2(max_uv * float2(occlusion_width - 1, occlusion_height - 1));
+
+        for (int y = min_pixel.y; y <= max_pixel.y; y += 1) {
+            for (int x = min_pixel.x; x <= max_pixel.x; x += 1) {
+				float rasterized_depth = occlusion_depth_texture.Load(float3(x, y, 0)).x; 
+
+				if ((rasterized_depth + 0.001) > nearest_clip_space_z_val ) {
+					occluded = false;
+                    break;
+                }
+            }
+        }
+
+
+		float dist = distance(position, camera_position);
 		float max_dist = max_distances[type];
 		float max_instance_dist = max_dist * impostor_distance_percentage[type];
 		float max_impostor_dist = max_dist;
 		
-		if (valid && visible_in_frustum) {
+		if (valid && visible_in_frustum && !occluded) {
 			uint dst_index_offset = (uint)perm_buffer_offsets_buffer[type];
 			uint local_dst_index;
 

@@ -14,7 +14,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             state.EntityManager.CreateSingleton<TerrainOcclusionScreenData>(new TerrainOcclusionScreenData {
-                rasterizedDdaDepth = new NativeArray<float>(OcclusionUtils.RASTERIZE_SCREEN_HEIGHT * OcclusionUtils.RASTERIZE_SCREEN_WIDTH, Allocator.Persistent)
+                rasterizedDdaDepth = new NativeArray<float>(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, Allocator.Persistent)
             });
         }
 

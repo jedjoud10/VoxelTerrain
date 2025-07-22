@@ -26,9 +26,9 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         public void Execute(int index) {
             screenDepth[index] = 1f;
 
-            int x = index % OcclusionUtils.RASTERIZE_SCREEN_WIDTH;
-            int y = index / OcclusionUtils.RASTERIZE_SCREEN_WIDTH;
-            float2 uvs = new float2(x, y) / new float2(OcclusionUtils.RASTERIZE_SCREEN_WIDTH - 1, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT - 1);
+            int x = index % OcclusionUtils.WIDTH;
+            int y = index / OcclusionUtils.WIDTH;
+            float2 uvs = new float2(x, y) / new float2(OcclusionUtils.WIDTH - 1, OcclusionUtils.HEIGHT - 1);
             float4 clip = new float4(uvs * 2f - 1f, 1f, 1f);
             float4 rayView = math.mul(invProj, clip);
             rayView /= rayView.w;

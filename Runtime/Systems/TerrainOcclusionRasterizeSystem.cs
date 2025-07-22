@@ -57,7 +57,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 cameraPosition = cameraPosition
             };
 
-            JobHandle handle = job.Schedule(OcclusionUtils.RASTERIZE_SCREEN_HEIGHT * OcclusionUtils.RASTERIZE_SCREEN_WIDTH, 4);
+            JobHandle handle = job.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, 4);
             handle.Complete();
 
             chunkPositionsLookup.Dispose();

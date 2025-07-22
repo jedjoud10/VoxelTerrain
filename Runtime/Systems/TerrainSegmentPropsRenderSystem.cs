@@ -1,5 +1,7 @@
 using System.Linq;
+using jedjoud.VoxelTerrain.Occlusion;
 using jedjoud.VoxelTerrain.Props;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
@@ -13,6 +15,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         private TerrainPropRenderingBuffers rendering;
         private Material instancedMaterial;
         private Material impostorMaterial;
+        private Texture2D occlusionTexture;
         private bool initialized;
         private Mesh quad;
 
@@ -20,6 +23,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             RequireForUpdate<TerrainPropsConfig>();
             RequireForUpdate<TerrainPropPermBuffers>();
             RequireForUpdate<TerrainPropRenderingBuffers>();
+            RequireForUpdate<TerrainOcclusionScreenData>();
             RequireForUpdate<TerrainMainCamera>();
             initialized = false;
         }
@@ -28,6 +32,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             config = SystemAPI.ManagedAPI.GetSingleton<TerrainPropsConfig>();
             perm = SystemAPI.ManagedAPI.GetSingleton<TerrainPropPermBuffers>();
             rendering = SystemAPI.ManagedAPI.GetSingleton<TerrainPropRenderingBuffers>();
+            NativeArray<float> occlusionDepth = SystemAPI.GetSingleton<TerrainOcclusionScreenData>().rasterizedDdaDepth; 
 
             if (!initialized) {
                 instancedMaterial = new Material(config.instancedShader);
@@ -36,11 +41,15 @@ namespace jedjoud.VoxelTerrain.Segments {
                 impostorMaterial.renderQueue = 2500;
                 initialized = true;
                 quad = PropQuadGenerator.GenerateMuhQuad();
+                occlusionTexture = new Texture2D(OcclusionUtils.WIDTH, OcclusionUtils.HEIGHT, TextureFormat.RFloat, false);
             }
+
+            occlusionTexture.SetPixelData(occlusionDepth, 0);
+            occlusionTexture.Apply();
 
             int types = config.props.Count;
             Entity cameraEntity = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
-            TerrainMainCamera cameraComponent = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
+            TerrainMainCamera camera = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
             LocalToWorld cameraTransform = SystemAPI.GetComponent<LocalToWorld>(cameraEntity);
 
 
@@ -69,7 +78,20 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             cmds.SetComputeVectorParam(config.cull, "camera_position", (Vector3)cameraTransform.Position);
 
-            Plane[] temp = GeometryUtility.CalculateFrustumPlanes(cameraComponent.projectionMatrix);
+
+            cmds.SetComputeTextureParam(config.cull, 0, "occlusion_depth_texture", occlusionTexture);
+            cmds.SetComputeIntParam(config.cull, "occlusion_width", OcclusionUtils.WIDTH);
+            cmds.SetComputeIntParam(config.cull, "occlusion_height", OcclusionUtils.HEIGHT);
+
+            Matrix4x4 projection = camera.projectionMatrix;
+            Matrix4x4 view = camera.worldToCamera;
+
+            cmds.SetComputeMatrixParam(config.cull, "camera_projection_matrix", projection);
+            cmds.SetComputeMatrixParam(config.cull, "camera_view_matrix", view);
+            cmds.SetComputeFloatParam(config.cull, "camera_near", camera.nearFarPlanes.x);
+            cmds.SetComputeFloatParam(config.cull, "camera_far", camera.nearFarPlanes.y);
+
+            Plane[] temp = GeometryUtility.CalculateFrustumPlanes(projection * view);
             Vector4[] frustums = temp.Select(plane => new Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.distance)).ToArray();
             cmds.SetComputeVectorArrayParam(config.cull, "camera_frustum_planes", frustums);
 
@@ -85,6 +107,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             float[] impostorDistancePercentage = config.props.Select(type => type.impostorDistancePercentage).ToArray();
             cmds.SetGlobalFloatArray("impostor_distance_percentage", impostorDistancePercentage);
+
 
             const int THREAD_GROUP_SIZE_X = 64;
             const int CULL_INNER_LOOP_SIZE = 32;

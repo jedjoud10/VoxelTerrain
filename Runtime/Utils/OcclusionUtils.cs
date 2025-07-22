@@ -3,8 +3,8 @@ using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
     public static class OcclusionUtils {
-        public const int RASTERIZE_SCREEN_WIDTH = 64;
-        public const int RASTERIZE_SCREEN_HEIGHT = 64;
+        public const int WIDTH = 64;
+        public const int HEIGHT = 64;
         public const int DDA_ITERATIONS = 64;
         public const float NEAR_PLANE_DEPTH_OFFSET_FACTOR = 0.005f;
         public const float UV_EXPANSION_OFFSET = 0.02f;

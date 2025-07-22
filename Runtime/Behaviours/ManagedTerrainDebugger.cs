@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain {
 
         private void Start() {
             world = World.DefaultGameObjectInjectionWorld;
-            occlusionTexture = new Texture2D(OcclusionUtils.RASTERIZE_SCREEN_WIDTH, OcclusionUtils.RASTERIZE_SCREEN_HEIGHT, TextureFormat.RFloat, false);
+            occlusionTexture = new Texture2D(OcclusionUtils.WIDTH, OcclusionUtils.HEIGHT, TextureFormat.RFloat, false);
         }
 
         private void OnGUI() {
