@@ -50,8 +50,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 chunkPositionsLookup = chunkPositionsLookup,
             };
 
-            JobHandle voxelizeHandle = voxelize.Schedule(OcclusionUtils.DDA_ITERATIONS * OcclusionUtils.DDA_ITERATIONS * OcclusionUtils.DDA_ITERATIONS, 128);
-
+            JobHandle voxelizeHandle = voxelize.Schedule(OcclusionUtils.SIZE * OcclusionUtils.SIZE * OcclusionUtils.SIZE, 128);
             RasterizeJob rasterize = new RasterizeJob() {
                 proj = camera.projectionMatrix,
                 view = camera.worldToCamera,

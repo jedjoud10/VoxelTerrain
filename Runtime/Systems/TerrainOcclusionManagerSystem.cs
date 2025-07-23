@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         public void OnCreate(ref SystemState state) {
             state.EntityManager.CreateSingleton<TerrainOcclusionScreenData>(new TerrainOcclusionScreenData {
                 rasterizedDdaDepth = new NativeArray<float>(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, Allocator.Persistent),
-                insideSurfaceVoxels = new NativeArray<bool>(OcclusionUtils.DDA_ITERATIONS * OcclusionUtils.DDA_ITERATIONS * OcclusionUtils.DDA_ITERATIONS, Allocator.Persistent),
+                insideSurfaceVoxels = new NativeArray<bool>(OcclusionUtils.SIZE * OcclusionUtils.SIZE * OcclusionUtils.SIZE, Allocator.Persistent),
             });
         }
 

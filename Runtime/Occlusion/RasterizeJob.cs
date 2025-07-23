@@ -1,6 +1,5 @@
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 
@@ -38,25 +37,27 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             float3 flooredPos = math.floor(rayPos);
             float3 sideDist = flooredPos - rayPos + 0.5f + 0.5f * dirSign;
 
-            for (int i = 0; i < OcclusionUtils.DDA_ITERATIONS; i++) {
+            for (int i = 0; i < OcclusionUtils.SIZE*2; i++) {
                 int3 voxelPos = (int3)flooredPos;
-
-                float3 test = (flooredPos - rayPos + 0.5f - 0.5f * dirSign) * invDir;
-                float max = math.cmax(test);
-                float3 world = rayPos + rayDir * max;
 
                 int3 pos = voxelPos;
                 pos -= (int3)math.floor(cameraPosition);
-                pos += OcclusionUtils.DDA_ITERATIONS / 2;
+                pos += OcclusionUtils.SIZE / 2;
                 
-                if (VoxelUtils.CheckPositionInsideVolume(pos, OcclusionUtils.DDA_ITERATIONS)) {
+                if (VoxelUtils.CheckPositionInsideVolume(pos, OcclusionUtils.SIZE)) {
                     uint3 ummwhat2 = (uint3)pos;
-                    if (insideSurfaceVoxels[VoxelUtils.PosToIndex(ummwhat2, OcclusionUtils.DDA_ITERATIONS)]) {
+                    if (insideSurfaceVoxels[VoxelUtils.PosToIndex(ummwhat2, OcclusionUtils.SIZE)]) {
+                        float3 test = (flooredPos - rayPos + 0.5f - 0.5f * dirSign) * invDir;
+                        float max = math.cmax(test);
+                        float3 world = rayPos + rayDir * max;
+
                         float4 clipPos = math.mul(proj, math.mul(view, new float4(world, 1.0f)));
                         clipPos /= clipPos.w;
                         screenDepth[index] = math.saturate(OcclusionUtils.LinearizeDepthStandard(clipPos.z, nearFarPlanes));
                         return;
                     }
+                } else {
+                    return;
                 }
 
                 float3 reconst = sideDist * invDir;

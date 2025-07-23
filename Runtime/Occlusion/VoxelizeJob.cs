@@ -16,8 +16,8 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         public float3 cameraPosition;
 
         public void Execute(int index) {
-            int3 pos = (int3)VoxelUtils.IndexToPos(index, OcclusionUtils.DDA_ITERATIONS);
-            pos -= OcclusionUtils.DDA_ITERATIONS / 2;
+            int3 pos = (int3)VoxelUtils.IndexToPos(index, OcclusionUtils.SIZE);
+            pos -= OcclusionUtils.SIZE / 2;
             pos += (int3)math.floor(cameraPosition);
 
             if (!IsVoxelSolid(pos)) {
@@ -25,7 +25,6 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 return;
             }
 
-            bool solid = true;
             for (int dz = -1; dz <= 1; dz++) {
                 for (int dy = -1; dy <= 1; dy++) {
                     for (int dx = -1; dx <= 1; dx++) {
