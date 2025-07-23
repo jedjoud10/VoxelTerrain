@@ -31,6 +31,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             public void Execute() {
                 NativeArray<float3> vertices = mesh.vertices;
                 NativeArray<int3> triangles = mesh.mainMeshIndices.Reinterpret<int3>(sizeof(int));
+
                 var material = Material.Default;
                 material.Friction = 0.95f;
                 colliderRef.Value = MeshCollider.Create(vertices, triangles, CollisionFilter.Default, material);

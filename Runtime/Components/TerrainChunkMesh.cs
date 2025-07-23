@@ -17,10 +17,8 @@ namespace jedjoud.VoxelTerrain {
             NativeArray<float3> normals = new NativeArray<float3>(stats.vertexCount, Allocator.Persistent);
             NativeArray<int> indices = new NativeArray<int>(stats.mainMeshIndexCount, Allocator.Persistent);
 
-            /*
             vertices.CopyFrom(stats.vertices.positions);
             normals.CopyFrom(stats.vertices.normals);
-            */
 
             indices.CopyFrom(stats.mainMeshIndices);
 
