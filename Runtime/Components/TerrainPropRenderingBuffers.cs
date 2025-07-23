@@ -72,7 +72,6 @@ namespace jedjoud.VoxelTerrain.Segments {
             for (int i = 0; i < types; i++) {
                 if (config.props[i].renderImpostors || config.props[i].renderInstances) {
                     Mesh mesh = config.props[i].instancedMesh;
-                    mesh.RecalculateBounds();
                     Bounds bounds = mesh.bounds;
                     Vector3 center = bounds.center;
                     float radius = math.cmax(bounds.extents);
