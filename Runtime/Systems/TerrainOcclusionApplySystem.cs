@@ -16,7 +16,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             public TerrainMainCamera camera;
             [ReadOnly]
             public NativeArray<float> screenDepth;
-            void Execute(in WorldRenderBounds bounds, EnabledRefRW<TerrainOccludedTag> occluded) {
+            void Execute(in WorldRenderBounds bounds, EnabledRefRW<OccludableTag> occluded) {
                 MinMaxAABB aabb = bounds.Value;
 
                 float3 aabbMin = aabb.Min;
@@ -36,7 +36,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 float2 maxScreen = new float2(0, 0);
                 float nearestClipSpaceZVal = 1f;
                 for (int i = 0; i < 8; i++) {
-                    float4 clipPos = math.mul(camera.projectionMatrix, math.mul(camera.worldToCamera, new float4(corners[i], 1.0f)));
+                    float4 clipPos = math.mul(camera.projectionMatrix, math.mul(camera.worldToCameraMatrix, new float4(corners[i], 1.0f)));
                     clipPos /= clipPos.w;
                     nearestClipSpaceZVal = math.min(OcclusionUtils.LinearizeDepthStandard(clipPos.z, camera.nearFarPlanes), nearestClipSpaceZVal);
                     float2 screenUV = (new float2(clipPos.x, clipPos.y) + 1.0f) * 0.5f;
@@ -85,7 +85,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             TerrainMainCamera camera = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
 
             // enable or disable the ocludee state of ocludable entities
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<WorldRenderBounds, TerrainOccludedTag, RenderFilterSettings>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
+            EntityQuery query = SystemAPI.QueryBuilder().WithAll<WorldRenderBounds, OccludableTag, RenderFilterSettings>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
             new OccludeJob() { camera = camera, screenDepth = screenDepth }.ScheduleParallel(query);
         }
     }

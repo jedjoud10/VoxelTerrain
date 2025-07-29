@@ -65,7 +65,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                     };
 
                     JobHandle dep = JobHandle.CombineDependencies(voxels.asyncReadJobHandle, voxels.asyncWriteJobHandle);
-                    JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, dep);
+                    JobHandle handle = job.Schedule(VoxelUtils.VOLUME, BatchUtils.EIGHTH_BATCH, dep);
                     voxels.asyncWriteJobHandle = handle;
                     allDependencies.Add(handle);
                     SystemAPI.GetComponentRW<TerrainChunkRequestMeshingTag>(entity).ValueRW.deferredVisibility = false;

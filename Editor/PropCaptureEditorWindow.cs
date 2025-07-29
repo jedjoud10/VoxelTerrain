@@ -55,7 +55,7 @@ namespace jedjoud.VoxelTerrain.Editor {
 
         const int AZIMUTH_ITERS = PropUtils.IMPOSTOR_CAPTURE_AZIMUTH_ITERATIONS;
 
-        // SHITS ITSELF WHEN URP RENDER SCALE IS LOWER!!!!
+        // TODO: SHITS ITSELF WHEN URP RENDER SCALE IS LOWER!!!!
         private void CaptureMaps(PropType type) {
             GameObject cameraGO = new GameObject("TempCamera");
             cameraGO.layer = 31;
@@ -132,17 +132,19 @@ namespace jedjoud.VoxelTerrain.Editor {
 
                 MeshRenderer renderer = faker.GetComponent<MeshRenderer>();
                 Material material = renderer.sharedMaterial;
-                if (!material.HasTexture("_DiffuseMap"))
-                    throw new NullReferenceException($"Missing _DiffuseMap at material from type '{type.name}' at variant {variant}");
-                Texture2D diffuse = (Texture2D)material.GetTexture("_DiffuseMap");
 
-                if (!material.HasTexture("_NormalMap"))
-                    throw new NullReferenceException($"Missing _NormalMap at material from type '{type.name}' at variant {variant}");
-                Texture2D normal = (Texture2D)material.GetTexture("_NormalMap");
+                Texture2D GetMap(string map, Texture2D fallback) {
+                    if (material.HasTexture(map)) {
+                        return (Texture2D)material.GetTexture(map);
+                    } else {
+                        Debug.LogWarning($"Missing {map} at material from type '{type.name}' at variant {variant}. Fallbacking to default...");
+                        return fallback;
+                    }
+                }
 
-                if (!material.HasTexture("_MaskMap"))
-                    throw new NullReferenceException($"Missing _MaskMap at material from type '{type.name}' at variant {variant}");
-                Texture2D mask = (Texture2D)material.GetTexture("_MaskMap");
+                Texture2D diffuse = GetMap("_DiffuseMap", Texture2D.whiteTexture);
+                Texture2D normal = GetMap("_NormalMap", Texture2D.normalTexture);
+                Texture2D mask = GetMap("_MaskMap", Texture2D.redTexture);
 
                 faker.GetComponent<MeshRenderer>().material = captureMaterial;
                 captureMaterial.SetTexture("_CaptureDiffuseMap", diffuse);

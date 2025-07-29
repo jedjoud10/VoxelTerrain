@@ -46,7 +46,7 @@ namespace jedjoud.VoxelTerrain {
             EntityQuery meshedChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh));
             EntityQuery chunksAwaitingReadback = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestReadbackTag));
             EntityQuery chunksAwaitingMeshing = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkRequestMeshingTag));
-            EntityQuery occlusionCulledChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainOccludedTag));
+            EntityQuery occlusionCulledChunks = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(OccludableTag));
             EntityQuery chunksEndOfPipe = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkEndOfPipeTag));
             EntityQuery segmentsAwaitingDispatch = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment), typeof(TerrainSegmentRequestVoxelsTag));
 
@@ -104,7 +104,7 @@ namespace jedjoud.VoxelTerrain {
                 return;
 
             EntityQuery meshedChunksNotOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds));
-            EntityQuery meshedChunksOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds), typeof(TerrainOccludedTag));
+            EntityQuery meshedChunksOccluded = world.EntityManager.CreateEntityQuery(typeof(TerrainChunk), typeof(TerrainChunkMesh), typeof(WorldRenderBounds), typeof(OccludableTag));
 
             EntityQuery segmentsQuery = world.EntityManager.CreateEntityQuery(typeof(TerrainSegment));
 

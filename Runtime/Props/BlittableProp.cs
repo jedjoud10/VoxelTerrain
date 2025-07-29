@@ -2,7 +2,9 @@ using System.Runtime.InteropServices;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Props {
-    // Props of the same type are stored in the same GPU buffer, so no need to do any funky stuff with that
+    /// <summary>
+    /// Props of the same type are stored in the same GPU buffer, so no need to do any funky stuff with that
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct BlittableProp {
         // Size in bytes of the blittable prop

@@ -8,7 +8,7 @@ namespace jedjoud.VoxelTerrain.Props {
     class TerrainPropBaker : Baker<TerrainPropAuthoring> {
         public override void Bake(TerrainPropAuthoring authoring) {
             Entity self = GetEntity(TransformUsageFlags.Renderable | TransformUsageFlags.Dynamic);
-            AddComponent(self, new TerrainProp { });
+            AddComponent(self, new TerrainPropTag { });
         }
     }
 }

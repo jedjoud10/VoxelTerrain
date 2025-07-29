@@ -19,7 +19,6 @@ namespace jedjoud.VoxelTerrain {
 
             vertices.CopyFrom(stats.vertices.positions);
             normals.CopyFrom(stats.vertices.normals);
-
             indices.CopyFrom(stats.mainMeshIndices);
 
             return new TerrainChunkMesh() {

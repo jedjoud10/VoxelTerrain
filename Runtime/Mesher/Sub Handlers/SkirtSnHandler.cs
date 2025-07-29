@@ -87,7 +87,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             };
 
             // Keep track of the voxels that are near the surface (does a 5x5 box-blur like lookup in 2D to check for surface)
-            JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(FACE * 6, SMALLER_SKIRT_BATCH, dependency);
+            JobHandle closestSurfaceJobHandle = skirtClosestSurfaceThresholdJob.Schedule(FACE * 6, HALF_SKIRT_BATCH, dependency);
 
             // Copies vertex indices from the boundary in the source mesh to our skirt vertices. We only need to copy indices since we are using submeshes for our skirts, so they all share the same vertex buffer
             JobHandle skirtCopyJobHandle = skirtCopyVertexIndicesJob.Schedule(core.vertexJobHandle);

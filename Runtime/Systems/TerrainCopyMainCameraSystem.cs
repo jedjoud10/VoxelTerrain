@@ -22,7 +22,7 @@ namespace jedjoud.VoxelTerrain {
                 SystemAPI.SetComponent<LocalToWorld>(cameraEntity, worldTransform);
                 SystemAPI.SetComponent<TerrainMainCamera>(cameraEntity, new TerrainMainCamera {
                     projectionMatrix = camera.projectionMatrix,
-                    worldToCamera = camera.worldToCameraMatrix,
+                    worldToCameraMatrix = camera.worldToCameraMatrix,
                     nearFarPlanes = new float2(camera.nearClipPlane, camera.farClipPlane)
                 });
             }

@@ -25,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Edits {
                         voxels = voxels                    
                     };
 
-                    return job.Schedule(VoxelUtils.VOLUME, BatchUtils.SMALLEST_BATCH, dep);
+                    return job.Schedule(VoxelUtils.VOLUME, BatchUtils.EIGHTH_BATCH, dep);
                 } else {
                     return dep;
                 }

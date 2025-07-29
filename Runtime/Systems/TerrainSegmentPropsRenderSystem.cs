@@ -84,7 +84,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeIntParam(config.cull, "occlusion_height", OcclusionUtils.HEIGHT);
 
             Matrix4x4 projection = camera.projectionMatrix;
-            Matrix4x4 view = camera.worldToCamera;
+            Matrix4x4 view = camera.worldToCameraMatrix;
 
             cmds.SetComputeMatrixParam(config.cull, "camera_projection_matrix", projection);
             cmds.SetComputeMatrixParam(config.cull, "camera_view_matrix", view);

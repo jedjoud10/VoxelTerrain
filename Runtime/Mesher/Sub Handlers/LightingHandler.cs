@@ -13,7 +13,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         public void Init() {
             densityPtrs = new UnsafePtrList<half>(0, Allocator.Persistent);
-            precomputedSamples = LightingUtils.PrecomputeAoSamples();
+            precomputedSamples = LightingUtils.PrecomputeAoSamples(Allocator.Persistent);
         }
 
 

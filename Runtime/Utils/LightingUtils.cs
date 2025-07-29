@@ -121,7 +121,7 @@ namespace jedjoud.VoxelTerrain {
                 return false;
             }            
         }
-        public static NativeArray<float3> PrecomputeAoSamples() {
+        public static NativeArray<float3> PrecomputeAoSamples(Allocator allocator) {
             NativeList<float3> tmp = new NativeList<float3>(Allocator.Temp);
 
             for (int x = -AO_SAMPLE_CUBE_SIZE; x <= AO_SAMPLE_CUBE_SIZE; x++) {
@@ -144,7 +144,7 @@ namespace jedjoud.VoxelTerrain {
                 }
             }
 
-            NativeArray<float3> precomputedSamples = new NativeArray<float3>(AO_SAMPLES, Allocator.Persistent);
+            NativeArray<float3> precomputedSamples = new NativeArray<float3>(AO_SAMPLES, allocator);
 
             Unity.Mathematics.Random rng = new Unity.Mathematics.Random(AO_SAMPLES_SEED);
             for (int i = 0; i < AO_SAMPLES; i++) {

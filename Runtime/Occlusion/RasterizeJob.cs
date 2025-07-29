@@ -45,8 +45,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 pos += OcclusionUtils.SIZE / 2;
                 
                 if (VoxelUtils.CheckPositionInsideVolume(pos, OcclusionUtils.SIZE)) {
-                    uint3 ummwhat2 = (uint3)pos;
-                    if (insideSurfaceVoxels[VoxelUtils.PosToIndex(ummwhat2, OcclusionUtils.SIZE)]) {
+                    if (insideSurfaceVoxels[VoxelUtils.PosToIndex((uint3)pos, OcclusionUtils.SIZE)]) {
                         float3 test = (flooredPos - rayPos + 0.5f - 0.5f * dirSign) * invDir;
                         float max = math.cmax(test);
                         float3 world = rayPos + rayDir * max;

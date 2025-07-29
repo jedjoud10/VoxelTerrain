@@ -1,28 +1,10 @@
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
+using System;
+using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
-    using System;
-    using UnityEngine.Rendering;
-
     public static class GraphUtils {
-        // Convert a strict type to a graphics format to be used for texture format
-        public static GraphicsFormat ToGfxFormat(VariableType type) {
-            switch (type.strict) {
-                case VariableType.StrictType.Float:
-                    return GraphicsFormat.R16_SFloat;
-                case VariableType.StrictType.Float2:
-                    return GraphicsFormat.R16G16_SFloat;
-                case VariableType.StrictType.Float3:
-                    return GraphicsFormat.R16G16B16A16_SFloat;
-                case VariableType.StrictType.Float4:
-                    return GraphicsFormat.R16G16B16A16_SFloat;
-                default:
-                    throw new System.Exception();
-            }
-        }
-
         public static Variable<T> Zero<T>() {
             T def = default(T);
             return new DefineNode<T> { value = VariableType.ToDefinableString(def), constant = true };
@@ -53,6 +35,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                         return "bool4(true,true,true,true)";
                     case VariableType.StrictType.Bool:
                         return "true";
+                    case VariableType.StrictType.Quaternion:
+                        throw new InvalidOperationException("Quaternions do not have a 'one' element");
                     default:
                         throw new Exception("jed forgot to implement the rest");
                 }
@@ -111,7 +95,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 case VariableType.StrictType.Float4:
                     return "xyzw";
                 default:
-                    throw new System.Exception();
+                    throw new Exception("Invalid swizzle generic type");
             }
         }
 
@@ -126,7 +110,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 case VariableType.StrictType.Float4:
                     return VariableType.ToDefinableString(value);
                 default:
-                    throw new System.Exception();
+                    throw new Exception("Invalid swizzle generic type");
             }
         }
 
@@ -139,7 +123,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 case VariableType.StrictType.Float4:
                     return "x, y, z, w";
                 default:
-                    throw new System.Exception();
+                    throw new Exception("Invalid vector constructor generic type");
             }
         }
     }

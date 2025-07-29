@@ -15,8 +15,15 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public partial struct MaterialMeshInfoVisibilityJob : IJobEntity {
-            void Execute(EnabledRefRO<TerrainDeferredVisible> deferredVisible, EnabledRefRO<TerrainOccludedTag> occluded, EnabledRefRW<MaterialMeshInfo> toggle) {
+            void Execute(EnabledRefRO<TerrainDeferredVisible> deferredVisible, EnabledRefRO<OccludableTag> occluded, EnabledRefRW<MaterialMeshInfo> toggle) {
                 toggle.ValueRW = deferredVisible.ValueRO && !occluded.ValueRO;
+            }
+        }
+
+        [BurstCompile]
+        public partial struct UserMaterialMeshInfoVisibilityJob : IJobEntity {
+            void Execute(EnabledRefRO<OccludableTag> occluded, EnabledRefRW<MaterialMeshInfo> toggle) {
+                toggle.ValueRW = !occluded.ValueRO;
             }
         }
 
@@ -25,9 +32,9 @@ namespace jedjoud.VoxelTerrain {
             public float3 cameraCenter;
 
             [NativeDisableParallelForRestriction]
-            public ComponentLookup<TerrainOccludedTag> lookup;
+            public ComponentLookup<OccludableTag> lookup;
 
-            void Execute(Entity e, TerrainSkirtLinkedParent skirtParent, TerrainSkirt skirt, LocalToWorld localToWorld) {
+            void Execute(Entity e, in TerrainSkirtLinkedParent skirtParent, in TerrainSkirt skirt, in LocalToWorld localToWorld) {
                 float3 skirtCenter = localToWorld.Position + localToWorld.Value.c0.w * VoxelUtils.PHYSICAL_CHUNK_SIZE * 0.5f;
                 float3 skirtDirection = DirectionOffsetUtils.FORWARD_DIRECTION_INCLUDING_NEGATIVE[(int)skirt.direction];
 
@@ -51,12 +58,16 @@ namespace jedjoud.VoxelTerrain {
 
             // if the chunks are occluded, then their skirts are occluded as well
             // also checks if the skirt should even be visible from the camera
-            EntityQuery query2 = SystemAPI.QueryBuilder().WithAll<TerrainSkirtLinkedParent, TerrainSkirt, LocalToWorld>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
-            new SkirtOcclusionJob() { lookup = SystemAPI.GetComponentLookup<TerrainOccludedTag>(), cameraCenter = cameraCenter }.ScheduleParallel(query2);
+            EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<TerrainSkirtLinkedParent, TerrainSkirt, LocalToWorld>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
+            new SkirtOcclusionJob() { lookup = SystemAPI.GetComponentLookup<OccludableTag>(), cameraCenter = cameraCenter }.ScheduleParallel(skirtQuery);
             
             // hide occluded chunks/skirts or those that are not visible due to their deferred visibility
-            EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, TerrainOccludedTag, RenderFilterSettings, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
-            new MaterialMeshInfoVisibilityJob().ScheduleParallel(query);
+            EntityQuery terrainEntities = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, OccludableTag, RenderFilterSettings, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
+            new MaterialMeshInfoVisibilityJob().ScheduleParallel(terrainEntities);
+
+            // hide occluded entities like props and other thingies
+            EntityQuery userEntities = SystemAPI.QueryBuilder().WithAll<OccludableTag, UserOccludableTag, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
+            new UserMaterialMeshInfoVisibilityJob().ScheduleParallel(userEntities);
         }
     }
 }

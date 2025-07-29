@@ -53,9 +53,9 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             JobHandle voxelizeHandle = voxelize.Schedule(OcclusionUtils.SIZE * OcclusionUtils.SIZE * OcclusionUtils.SIZE, 128);
             RasterizeJob rasterize = new RasterizeJob() {
                 proj = camera.projectionMatrix,
-                view = camera.worldToCamera,
+                view = camera.worldToCameraMatrix,
                 invProj = math.inverse(camera.projectionMatrix),
-                invView = math.inverse(camera.worldToCamera),
+                invView = math.inverse(camera.worldToCameraMatrix),
                 insideSurfaceVoxels = data.insideSurfaceVoxels,
                 screenDepth = data.rasterizedDdaDepth,
                 nearFarPlanes = camera.nearFarPlanes,

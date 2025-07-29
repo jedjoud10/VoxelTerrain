@@ -17,6 +17,8 @@ namespace jedjoud.VoxelTerrain.Props {
 
     class TerrainPropsConfigBaker : Baker<TerrainPropsConfigAuthoring> {
         public override void Bake(TerrainPropsConfigAuthoring authoring) {
+
+
             Entity self = GetEntity(TransformUsageFlags.None);
 
             // I LOVE LINQ!!!! I LOVE WRITING FUNCTIONAL CODE!!!!!!
@@ -49,17 +51,18 @@ namespace jedjoud.VoxelTerrain.Props {
                     if (material == null)
                         throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing main material");
 
-                    if (!material.HasTexture("_DiffuseMap"))
-                        throw new NullReferenceException($"Missing _DiffuseMap at material from type '{type.name}' at variant {i}");
-                    baked[i].diffuse = (Texture2D)material.GetTexture("_DiffuseMap");
+                    Texture2D GetMap(string map, Texture2D fallback) {
+                        if (material.HasTexture(map)) {
+                            return (Texture2D)material.GetTexture(map);
+                        } else {
+                            Debug.LogWarning($"Missing {map} at material from type '{type.name}' at variant {i}. Fallbacking to default...");
+                            return fallback;
+                        }
+                    }
 
-                    if (!material.HasTexture("_NormalMap"))
-                        throw new NullReferenceException($"Missing _NormalMap at material from type '{type.name}' at variant {i}");
-                    baked[i].normal = (Texture2D)material.GetTexture("_NormalMap");
-
-                    if (!material.HasTexture("_MaskMap"))
-                        throw new NullReferenceException($"Missing _MaskMap at material from type '{type.name}' at variant {i}");
-                    baked[i].mask = (Texture2D)material.GetTexture("_MaskMap");
+                    baked[i].diffuse = GetMap("_DiffuseMap", Texture2D.whiteTexture);
+                    baked[i].normal = GetMap("_NormalMap", Texture2D.normalTexture);
+                    baked[i].mask = GetMap("_MaskMap", Texture2D.redTexture);
                 }
 
                 return baked;
