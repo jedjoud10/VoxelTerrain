@@ -5,10 +5,10 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Edits {
-    public class TerrainEdits : IComponentData {
+    public struct TerrainEdits : IComponentData {
+        public NativeList<VoxelData> chunkEdits;
         public NativeHashMap<int3, int> chunkPositionsToChunkEditIndices;
-        public List<VoxelData> chunkEdits;
+        public NativeList<int3> modifiedChunkEditPositions;
         public JobHandle applySystemHandle;
-        public EditTypeRegistry registry;
     }
 }

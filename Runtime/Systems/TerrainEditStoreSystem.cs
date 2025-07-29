@@ -7,6 +7,7 @@ using UnityEngine;
 using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
+    /*
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
     [UpdateAfter(typeof(TerrainOctreeSystem))]
     [UpdateBefore(typeof(TerrainManagerSystem))]
@@ -141,29 +142,8 @@ namespace jedjoud.VoxelTerrain.Edits {
         }
 
         private void UpdateChunkMeshes(NativeArray<int3> modifiedChunkEditPositions) {
-            TerrainManager manager = SystemAPI.GetSingleton<TerrainManager>();
-            EntityManager mgr = EntityManager;
-            TerrainOctreeConfig octreeConfig = SystemAPI.GetSingleton<TerrainOctreeConfig>();
 
-            // notify the underlying chunks that contain these values
-            // the EditApplySystem automatically applies the modified voxel values to the chunks, so we don't have to worry abt that
-            // since we will only modify LOD0 chunks, we don't need to do any LOD related stuff either. you will ALWAYS modify the closest chunk, so they are the ones that need their mesh updated immediately
-            for (int i = 0; i < modifiedChunkEditPositions.Length; i++) {
-                int3 editChunkPosition = modifiedChunkEditPositions[i];
-                OctreeNode node = OctreeNode.LeafLodZeroNode(editChunkPosition, octreeConfig.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE);
-
-                if (manager.chunks.TryGetValue(node, out Entity entity)) {
-                    mgr.SetComponentEnabled<TerrainChunkMesh>(entity, false);
-                    mgr.SetComponentEnabled<TerrainChunkRequestCollisionTag>(entity, true);
-                    mgr.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
-                    mgr.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
-                    mgr.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, false);
-                    mgr.SetComponentEnabled<TerrainChunkVoxels>(entity, true);
-                    mgr.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
-                    mgr.SetComponentEnabled<TerrainChunkRequestLightingTag>(entity, true);
-                    SystemAPI.GetComponentRW<TerrainChunkRequestMeshingTag>(entity).ValueRW.deferredVisibility = false;
-                }
-            }
         }
     }
+    */
 }

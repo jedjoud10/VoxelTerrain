@@ -1,6 +1,7 @@
 using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Octree;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -12,17 +13,19 @@ namespace jedjoud.VoxelTerrain.Edits {
     [UpdateAfter(typeof(TerrainReadbackSystem))]
     [UpdateBefore(typeof(TerrainMeshingSystem))]
     [RequireMatchingQueriesForUpdate]
-    public partial class EditApplySystem : SystemBase {
-        protected override void OnCreate() {
-            RequireForUpdate<TerrainEdits>();
+    public partial struct TerrainEditApplySystem : ISystem {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) {
+            state.RequireForUpdate<TerrainEdits>();
         }
 
-        protected override void OnUpdate() {
-            TerrainEdits backing = SystemAPI.ManagedAPI.GetSingleton<TerrainEdits>();
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state) {
+            TerrainEdits backing = SystemAPI.GetSingleton<TerrainEdits>();
 
             NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = backing.chunkPositionsToChunkEditIndices;
             UnsafePtrListVoxelData chunkEditsCopyRaw = new UnsafePtrListVoxelData(Allocator.Persistent);
-            chunkEditsCopyRaw.AddReadOnlyRangePtrs(backing.chunkEdits);
+            chunkEditsCopyRaw.AddReadOnlyRangePtrs(backing.chunkEdits.AsArray());
 
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunkVoxels, TerrainChunk>().WithAny<TerrainChunkRequestMeshingTag, TerrainChunkRequestReadbackTag>().Build();
             NativeArray<TerrainChunk> chunks = query.ToComponentDataArray<TerrainChunk>(Allocator.Temp);

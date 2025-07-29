@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -6,62 +7,37 @@ using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain.Edits {
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup))]
-    [UpdateBefore(typeof(TerrainEditStoreSystem))]
-    [UpdateBefore(typeof(EditApplySystem))]
-    public partial class TerrainEditManagerSystem : SystemBase {
-        public TerrainEdits singleton;
-        const float BOUNDS_EXPAND_OFFSET = 2f;
-
-        protected override void OnCreate() {
-            singleton = new TerrainEdits {
+    [UpdateBefore(typeof(TerrainEditIncrementalModifySystem))]
+    [UpdateBefore(typeof(TerrainEditApplySystem))]
+    public partial struct TerrainEditManagerSystem : ISystem {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) {
+            state.EntityManager.CreateSingleton<TerrainEdits>(new TerrainEdits {
                 chunkPositionsToChunkEditIndices = new NativeHashMap<int3, int>(0, Allocator.Persistent),
-                chunkEdits = new List<VoxelData>(),
+                chunkEdits = new NativeList<VoxelData>(Allocator.Persistent),
+                modifiedChunkEditPositions = new NativeList<int3>(Allocator.Persistent),
                 applySystemHandle = default,
-                registry = new EditTypeRegistry(this),
-            };
-            EntityManager.CreateSingleton<TerrainEdits>(singleton);
-
-            singleton.registry.Register<TerrainSphereEdit>(this);
-            singleton.registry.Register<TerrainAddEdit>(this);
+            });
         }
 
-        protected override void OnDestroy() {
-            TerrainEdits backing = SystemAPI.ManagedAPI.GetSingleton<TerrainEdits>();
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state) {
+            TerrainEdits backing = SystemAPI.GetSingleton<TerrainEdits>();
+            backing.applySystemHandle.Complete();
 
             backing.chunkPositionsToChunkEditIndices.Dispose();
 
             foreach (var editData in backing.chunkEdits) {
                 editData.Dispose();
             }
+
+            backing.chunkEdits.Dispose();
+            backing.modifiedChunkEditPositions.Dispose();
         }
 
-        protected override void OnUpdate() {
-            singleton.registry.Update(this);
-        }
-
-        public static void CreateEditEntity<T>(EntityManager mgr, T edit) where T: unmanaged, IComponentData, IEdit {
-            Entity entity = mgr.CreateEntity();
-            mgr.AddComponent<TerrainEdit>(entity);
-            mgr.AddComponent<TerrainEditBounds>(entity);
-            mgr.AddComponent<T>(entity);
-
-            MinMaxAABB bounds = edit.GetBounds();
-            bounds.Expand(BOUNDS_EXPAND_OFFSET);
-
-            mgr.SetComponentData<TerrainEdit>(entity, new TerrainEdit { type = ComponentType.ReadOnly<T>().TypeIndex });
-            mgr.SetComponentData<TerrainEditBounds>(entity, new TerrainEditBounds() { bounds = bounds });
-            mgr.SetComponentData<T>(entity, edit);
-        }
-
-        public static void CreateEditEntity<T>(EntityCommandBuffer ecb, T edit) where T : unmanaged, IComponentData, IEdit {
-            Entity entity = ecb.CreateEntity();
-
-            MinMaxAABB bounds = edit.GetBounds();
-            bounds.Expand(BOUNDS_EXPAND_OFFSET);
-
-            ecb.AddComponent<TerrainEdit>(entity, new TerrainEdit { type = ComponentType.ReadOnly<T>().TypeIndex });
-            ecb.AddComponent<TerrainEditBounds>(entity, new TerrainEditBounds() { bounds = bounds });
-            ecb.AddComponent<T>(entity, edit);
+        public void OnUpdate(ref SystemState state) {
+            ref TerrainEdits backing = ref SystemAPI.GetSingletonRW<TerrainEdits>().ValueRW;
+            backing.modifiedChunkEditPositions.Clear();
         }
     }
 }

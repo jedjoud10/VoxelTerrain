@@ -107,7 +107,7 @@ namespace jedjoud.VoxelTerrain {
             layerPtrs = new UnsafePtrList<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
         }
 
-        public void AddReadOnlyRangePtrs(IEnumerable<VoxelData> datas) {
+        public void AddReadOnlyRangePtrs(NativeArray<VoxelData> datas) {
             unsafe {
                 foreach (var data in datas) {
                     AddReadOnlyPtrs(data);
