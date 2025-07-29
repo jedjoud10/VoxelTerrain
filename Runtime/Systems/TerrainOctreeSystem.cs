@@ -11,9 +11,6 @@ namespace jedjoud.VoxelTerrain.Octree {
         private NativeHashSet<OctreeNode> newNodesSet;
         private NativeList<TerrainLoader> loaders;
 
-        private bool initialized;
-
-
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<TerrainLoader>();
@@ -22,8 +19,8 @@ namespace jedjoud.VoxelTerrain.Octree {
 
             oldNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
             newNodesSet = new NativeHashSet<OctreeNode>(0, Allocator.Persistent);
-            initialized = false;
             loaders = new NativeList<TerrainLoader>(0, Allocator.Persistent);
+            state.EntityManager.CreateSingleton<TerrainOctree>(InitOctree());
         }
 
         private TerrainOctree InitOctree() {
@@ -52,12 +49,6 @@ namespace jedjoud.VoxelTerrain.Octree {
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-            if (!initialized) {
-                state.EntityManager.CreateSingleton<TerrainOctree>(InitOctree());
-                initialized = true;
-                return;
-            }
-
             TerrainOctreeConfig config = SystemAPI.GetSingleton<TerrainOctreeConfig>();
             int maxDepth = config.maxDepth;
 
@@ -159,7 +150,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             state.EntityManager.CompleteDependencyBeforeRW<TerrainOctree>();
             state.EntityManager.CompleteAllTrackedJobs();
 
-            if (initialized) {
+            if (SystemAPI.HasSingleton<TerrainOctree>()) {
                 TerrainOctree octree = SystemAPI.GetSingleton<TerrainOctree>();
                 DisposeOctree(octree);
             }

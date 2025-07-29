@@ -32,8 +32,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxels" }, new ComputeBuffer(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, GpuVoxel.size, ComputeBufferType.Structured)));
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, MultiReadbackExecutorParameters parameters, int kernelIndex) {
-            base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, MultiReadbackExecutorParameters parameters, int kernelIndex) {
+            base.SetComputeParams(commands, shader, parameters, kernelIndex);
 
             ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.OctalReadback);
             commands.SetBufferData(transformsBuffer, parameters.transforms);

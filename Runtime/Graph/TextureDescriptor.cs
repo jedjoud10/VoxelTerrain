@@ -13,30 +13,6 @@ namespace jedjoud.VoxelTerrain.Generation {
         public abstract ExecutorTexture Create();
     }
 
-    /*
-    public class TempTextureDescriptor : TextureDescriptor {
-        public VariableType type;
-        public string writeKernel;
-        public bool threeDimensions;
-        public int sizeReductionPower;
-        public bool mips;
-
-        public override ExecutorTexture Create(int size) {
-            RenderTexture rt;
-            int textureSize = size / (1 << sizeReductionPower);
-            textureSize = Mathf.Max(textureSize, 1);
-
-            if (threeDimensions) {
-                rt = TextureUtils.Create3DRenderTexture(textureSize, GraphUtils.ToGfxFormat(type), filter, wrap, mips);
-            } else {
-                rt = TextureUtils.Create2DRenderTexture(textureSize, GraphUtils.ToGfxFormat(type), filter, wrap, mips);
-            }
-
-            return new TemporaryExecutorTexture(name, readKernels, rt, writeKernel, mips, requestingNodeHash);
-        }
-    }
-    */
-
     public class GradientTextureDescriptor : TextureDescriptor {
         public int size;
 

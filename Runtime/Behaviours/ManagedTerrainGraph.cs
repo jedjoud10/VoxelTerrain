@@ -91,10 +91,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public class LayersOutput {
             public Variable<float4> layers;
-
-            public LayersOutput(Variable<float4> layers) {
-                this.layers = layers;
-            }
         }
 
         public abstract void Density(in Variable<float3> position, out Variable<float> density);

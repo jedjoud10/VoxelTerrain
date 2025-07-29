@@ -41,7 +41,6 @@ namespace jedjoud.VoxelTerrain.Segments {
                 kernelName = "CSVoxels",
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
-                seeder = ManagedTerrain.instance.seeder,
                 segment = segment,
             });
 

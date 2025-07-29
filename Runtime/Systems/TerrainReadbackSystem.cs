@@ -110,7 +110,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 };
 
                 // Disable the tag component since we won't need to readback anymore
-                EntityManager.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
+                SystemAPI.SetComponentEnabled<TerrainChunkRequestReadbackTag>(entity, false);
             }
 
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
@@ -120,7 +120,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 kernelName = "CSVoxels",
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
-                seeder = ManagedTerrain.instance.seeder,
                 multiSignCountersBuffer = multiSignCountersBuffer,
             };
 
@@ -205,19 +204,19 @@ namespace jedjoud.VoxelTerrain.Generation {
 
                     int max = VoxelUtils.VOLUME;
                     bool empty = count == max || count == -max;
-                    bool skipIfEmpty = EntityManager.GetComponentData<TerrainChunkRequestReadbackTag>(entity).skipMeshingIfEmpty;
-                    
+                    bool skipIfEmpty = SystemAPI.GetComponent<TerrainChunkRequestReadbackTag>(entity).skipMeshingIfEmpty;
+
                     // Voxel data is always ready no matter what
-                    EntityManager.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
+                    SystemAPI.SetComponentEnabled<TerrainChunkVoxelsReadyTag>(entity, true);
 
                     // Skip empty chunks!!!
                     if (empty && skipIfEmpty) {
-                        EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, false);
+                        SystemAPI.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, false);
 
                         // this chunk will directly go to the end of pipe, no need to deal with it anymore
-                        EntityManager.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, true);
+                        SystemAPI.SetComponentEnabled<TerrainChunkEndOfPipeTag>(entity, true);
                     } else {
-                        EntityManager.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
+                        SystemAPI.SetComponentEnabled<TerrainChunkRequestMeshingTag>(entity, true);
                     }
                 }
 

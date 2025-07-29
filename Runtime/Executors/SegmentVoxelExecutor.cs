@@ -24,8 +24,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             });
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, SegmentVoxelExecutorParameters parameters, int kernelIndex) {
-            base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, SegmentVoxelExecutorParameters parameters, int kernelIndex) {
+            base.SetComputeParams(commands, shader, parameters, kernelIndex);
 
             ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.SegmentVoxels);
             commands.SetComputeVectorParam(shader, "segment_offset", (Vector3)parameters.segment.WorldPosition);

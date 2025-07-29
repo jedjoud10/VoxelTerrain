@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 6566762760026143042}
   - component: {fileID: 7256880874899122132}
   - component: {fileID: 5790444678521601185}
-  - component: {fileID: 4781938216130763360}
   - component: {fileID: 5248115962012205478}
   - component: {fileID: 566389634701878972}
   m_Layer: 0
@@ -49,7 +48,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   compiler: {fileID: 0}
-  seeder: {fileID: 0}
   graph: {fileID: 0}
 --- !u!114 &5790444678521601185
 MonoBehaviour:
@@ -66,21 +64,6 @@ MonoBehaviour:
   hash: -1761390008
   dirty: 0
   shader: {fileID: 0}
---- !u!114 &4781938216130763360
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4296326610441593126}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b6dcce6796ecd274594a6a37e20cf884, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  seed: 1794
-  permutationSeed: {x: 914, y: -580, z: 504}
-  moduloSeed: {x: -51, y: -658, z: -337}
 --- !u!114 &5248115962012205478
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -95,12 +78,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   surfaceNetsCompute: {fileID: 7200000, guid: 414c71a72bcba394d921913198296aac, type: 3}
   customRenderingMaterial: {fileID: -876546973899608171, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
-  materialId: 0
-  blocky: 0
   flatshaded: 0
   size: 128
   scale: {x: 1, y: 1, z: 1}
   offset: {x: 0, y: -35.8, z: 0}
+  previewSeed: 1234
 --- !u!114 &566389634701878972
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -116,3 +98,6 @@ MonoBehaviour:
   debugGui: 0
   debugChunkBounds: 0
   debugSegmentBounds: 0
+  debugOcclusionCulling: 0
+  debugPropData: 0
+  debugOcclusionTextureOverlay: 0

@@ -5,6 +5,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
+using static jedjoud.VoxelTerrain.BatchUtils;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
     [UpdateBefore(typeof(TerrainVisibilitySystem))]
@@ -50,7 +51,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 chunkPositionsLookup = chunkPositionsLookup,
             };
 
-            JobHandle voxelizeHandle = voxelize.Schedule(OcclusionUtils.SIZE * OcclusionUtils.SIZE * OcclusionUtils.SIZE, 128);
+            JobHandle voxelizeHandle = voxelize.Schedule(OcclusionUtils.SIZE * OcclusionUtils.SIZE * OcclusionUtils.SIZE, OCCLUSION_VOXELIZE_BATCH);
             RasterizeJob rasterize = new RasterizeJob() {
                 proj = camera.projectionMatrix,
                 view = camera.worldToCameraMatrix,
@@ -62,7 +63,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 cameraPosition = cameraPosition
             };
 
-            JobHandle rasterizeHandle = rasterize.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, 4, voxelizeHandle);
+            JobHandle rasterizeHandle = rasterize.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, OCCLUSION_RASTERIZE_BATCH, voxelizeHandle);
 
 
             rasterizeHandle.Complete();

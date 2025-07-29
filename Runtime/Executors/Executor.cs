@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string commandBufferName;
         public bool updateInjected;
         public ManagedTerrainCompiler compiler;
-        public ManagedTerrainSeeder seeder;
+        public int seed = 1234;
     }
 
     public abstract class Executor<P> where P : ExecutorParameters {
@@ -32,9 +32,21 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        protected virtual void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, P parameters, int kernelIndex) {
-            commands.SetComputeIntParams(shader, "permutation_seed", new int[] { seeder.permutationSeed.x, seeder.permutationSeed.y, seeder.permutationSeed.z });
-            commands.SetComputeIntParams(shader, "modulo_seed", new int[] { seeder.moduloSeed.x, seeder.moduloSeed.y, seeder.moduloSeed.z });
+        Vector3Int permutationSeed = Vector3Int.zero;
+        Vector3Int moduloSeed = Vector3Int.zero;
+        private void ComputeSecondarySeeds(int seed) {
+            var random = new System.Random(seed);
+            permutationSeed.x = random.Next(-1000, 1000);
+            permutationSeed.y = random.Next(-1000, 1000);
+            permutationSeed.z = random.Next(-1000, 1000);
+            moduloSeed.x = random.Next(-1000, 1000);
+            moduloSeed.y = random.Next(-1000, 1000);
+            moduloSeed.z = random.Next(-1000, 1000);
+        }
+
+        protected virtual void SetComputeParams(CommandBuffer commands, ComputeShader shader, P parameters, int kernelIndex) {
+            commands.SetComputeIntParams(shader, "permutation_seed", new int[] { permutationSeed.x, permutationSeed.y, permutationSeed.z });
+            commands.SetComputeIntParams(shader, "modulo_seed", new int[] { moduloSeed.x, moduloSeed.y, moduloSeed.z });
         }
 
 
@@ -43,13 +55,9 @@ namespace jedjoud.VoxelTerrain.Generation {
                 throw new ArgumentNullException("Missing execution parameters");
 
             ManagedTerrainCompiler compiler = parameters.compiler;
-            ManagedTerrainSeeder seeder = parameters.seeder;
 
             if (compiler == null)
                 throw new ArgumentNullException("Compiler not set or missing");
-
-            if (seeder == null)
-                throw new ArgumentNullException("Seed not set or missing");
 
             if (compiler.ctx == null)
                 throw new ArgumentNullException("Compiler context missing (need to add more ParsedTranspilation() guards oops...)");
@@ -66,6 +74,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             if (textures == null || buffers == null) {
+                ComputeSecondarySeeds(parameters.seed);
                 CreateResources(compiler);
 
                 // Initializing the values will force us to update them
@@ -81,7 +90,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
 
-            SetComputeParams(commands, shader, seeder, parameters, id);
+            SetComputeParams(commands, shader, parameters, id);
 
             if (updateInjected) {
                 compiler.ctx.injector.UpdateInjected(commands, shader, textures);
@@ -144,8 +153,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             return ExecuteWithInvocationCount(new int3(size), parameters, previous);
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, P parameters, int kernelIndex) {
-            base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, P parameters, int kernelIndex) {
+            base.SetComputeParams(commands, shader, parameters, kernelIndex);
             commands.SetComputeIntParam(shader, "size", size);
         }
     }

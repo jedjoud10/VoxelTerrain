@@ -89,7 +89,6 @@ namespace jedjoud.VoxelTerrain.Segments {
                 kernelName = "CSProps",
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
-                seeder = ManagedTerrain.instance.seeder,
                 segment = segment,
                 tempCountersBuffer = temp.tempCountersBuffer,
                 tempBuffer = temp.tempBuffer,

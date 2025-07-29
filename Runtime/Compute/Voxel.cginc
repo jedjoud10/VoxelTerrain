@@ -4,7 +4,12 @@ struct Voxel {
 };
 
 struct PackedVoxel {
+    // density: first 2 bytes (as half)
+    // material: single byte
+    // padding: single byte
     uint first;
+
+    // 4 bytes for 4 layers
     uint second;
 };
 

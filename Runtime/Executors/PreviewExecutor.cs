@@ -24,8 +24,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             });
         }
 
-        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, ManagedTerrainSeeder seeder, PreviewExecutorParameters parameters, int kernelIndex) {
-            base.SetComputeParams(commands, shader, seeder, parameters, kernelIndex);
+        protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, PreviewExecutorParameters parameters, int kernelIndex) {
+            base.SetComputeParams(commands, shader, parameters, kernelIndex);
 
             ComputeKeywords.ApplyKeywords(commands, shader, ComputeKeywords.Type.Preview);
             commands.SetComputeVectorParam(shader, "preview_offset", parameters.offset);

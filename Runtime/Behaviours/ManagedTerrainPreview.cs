@@ -24,6 +24,9 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         private PreviewExecutor executor;
 
+        [Header("Seeding")]
+        public int previewSeed = 1234;
+
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
                 return;
@@ -76,10 +79,9 @@ namespace jedjoud.VoxelTerrain.Generation {
 
 #if UNITY_EDITOR
             ManagedTerrainCompiler compiler = GetComponent<ManagedTerrainCompiler>();
-            ManagedTerrainSeeder seeder = GetComponent<ManagedTerrainSeeder>();
 
-            if (compiler == null || seeder == null) {
-                Debug.LogWarning($"Compiler is null: {compiler == null}, Seeder is null: {seeder == null}");
+            if (compiler == null ) {
+                Debug.LogWarning($"Compiler is missing or could not be found");
                 return;
             }
 
@@ -97,7 +99,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 kernelName = "CSVoxels",
                 updateInjected = true,
                 compiler = compiler,
-                seeder = seeder,
+                seed = previewSeed,
             };
 
             if (executor != null)
