@@ -165,7 +165,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                             JobHandle handle = new GpuToCpuCopy {
                                 cpuData = voxels.data,
                                 rawGpuData = src,
-                            }.Schedule(VoxelUtils.VOLUME, BatchUtils.EIGHTH_BATCH, dep);
+                            }.Schedule(VoxelUtils.VOLUME, BatchUtils.HALF_BATCH, dep);
 
                             copies[j] = handle;
                             voxels.asyncWriteJobHandle = handle;

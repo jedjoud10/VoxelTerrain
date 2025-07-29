@@ -22,6 +22,14 @@
   density += voronoi.Evaluate(projected);
   ```
 
+- Software Voxel Occlusion Culling:
+  - Uses DDA to rasterize the LOD0 chunks data (nearest to player) using the job system & burst at a low resolution (``64x64``).
+  - Depth data then used for each chunk / skirt using AABBs to check if they're visible.
+  - Depth data is sent to the GPU for impostor / instanced culling (treats props as single pixel, not as AABB. Makes the occlusion check a lot faster).
+  - Relaxed by 1 voxel width to avoid over occlusion.
+  - Also works for non-terrain objects like user objects. Anything that has the ``UserOccludableAuthoring`` authoring component will get occluded by the occlusion culling system
+  - Bottleneck is currently the "relaxation" step, as that executes every frame even if voxel data has not been modified or the camera does not move.
+
 - Better optimized meshing jobs:
   - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled).
   - Optimized normal job by splitting it into a "prefetch" part and a "calculate" part. Prefetcher is vectorized by Burst, but not the calculate part (need to fix).
@@ -30,23 +38,23 @@
   - Improved surface detection: since we use a graph based system, we can now just fetch the voxel density at any given point, without having to write to a texture first. This allows us to use binary search with prop surface generation to place the props *exactly* on the surface of the terrain. Much better than the previous iteration.
   - Improved normals: Uses finite differences but with the slow density fetch instead of the cached one, so better quality normals!!!
   - Copy and culling compute are now asynchronous! (not like they are slow lol but that's nice anyways)
-  - Free memory block lookup is now on the CPU instead of GPU. Yes this does mean that we *need* to do counts readback, but considering that we're only reading a few ints (only a few) this is fine. Drops the complexity of the prop copy system by a lot by doing this on the CPU, worth the few frames of latency.
+  - Free memory block lookup is now on the CPU instead of GPU. Yes this does mean that we *need* to do counts readback, but considering that we're only reading a few ints this is fine. Drops the complexity of the prop copy system by a lot by doing this on the CPU, worth the few frames of latency.
 
 - Uses HLSL DXC compiler when possible, but reverts to FXC if not supported. Only reason I use DXC is for faster compile times, as the prop gen shader expands out to something HUGE (lots of density function calls to inline) 
+- Voxel data storage uses ``SoA`` instead of ``AoS``, should help with cache hits, though we can only read ``AoS`` data from the GPU, so we do some packing/unpacking (shouldn't be that expensive).
 
 # TODO / Ideas
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
-  - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices
+  - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices (WIP)
 - Figure out how to handle per voxel color (nointerpolation in shader trick)
 - Biome generation (custom data readback?)
 - Custom graph buffer initialization and readback (material, color, smoothness / metallic, custom user data)
   - Works for props, but I don't know if I should extend it to make it work with custom user input
 - Implement smart range checking using texture value summation (cached textures)
-- Switch the voxel data storage to ``SoA`` instead of ``AoS``, should help with cache hits, though we can only read ``AoS`` data from the GPU, so we'll need to do some packing/unpacking (shouldn't be that expensive).
 - Do some async chunk culling!!
   - There's this for caves: https://tomcc.github.io/2014/08/31/visibility-1.html
   - For surface chunks, ig do some funky stuff with bounds?  
-  - You can also do software rasterization with Burst and do some DDA / octree shenanigans
+  - You can also do software rasterization with Burst and do some DDA / octree shenanigans (IMPLEMENTED)
 - Do some material variant stuff with multiple optional UV channels on a PER CHUNK basis
   - In total we could have up 15 material variants per chunk (since 4 uv with 4 floats/half each, minus the single AO channel)
   - We can do the same dedupe/lookup system as normal material values.

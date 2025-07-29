@@ -51,18 +51,18 @@ namespace jedjoud.VoxelTerrain.Props {
                     if (material == null)
                         throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing main material");
 
-                    Texture2D GetMap(string map, Texture2D fallback) {
+                    Texture2D GetMap(string map) {
                         if (material.HasTexture(map)) {
                             return (Texture2D)material.GetTexture(map);
                         } else {
-                            Debug.LogWarning($"Missing {map} at material from type '{type.name}' at variant {i}. Fallbacking to default...");
-                            return fallback;
+                            Debug.LogWarning($"Missing {map} at material from type '{type.name}' at variant {i}");
+                            return null;
                         }
                     }
 
-                    baked[i].diffuse = GetMap("_DiffuseMap", Texture2D.whiteTexture);
-                    baked[i].normal = GetMap("_NormalMap", Texture2D.normalTexture);
-                    baked[i].mask = GetMap("_MaskMap", Texture2D.redTexture);
+                    baked[i].diffuse = GetMap("_DiffuseMap");
+                    baked[i].normal = GetMap("_NormalMap");
+                    baked[i].mask = GetMap("_MaskMap");
                 }
 
                 return baked;

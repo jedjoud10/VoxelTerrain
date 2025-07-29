@@ -137,7 +137,7 @@ namespace jedjoud.VoxelTerrain.Editor {
                     if (material.HasTexture(map)) {
                         return (Texture2D)material.GetTexture(map);
                     } else {
-                        Debug.LogWarning($"Missing {map} at material from type '{type.name}' at variant {variant}. Fallbacking to default...");
+                        Debug.LogWarning($"Missing {map} at material from type '{type.name}' at variant {variant}");
                         return fallback;
                     }
                 }
