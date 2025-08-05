@@ -18,7 +18,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
         const int MAX_MESH_HANDLERS_PER_TICK = 4;
-        private static readonly RenderMeshDescription mainMeshDescription = new RenderMeshDescription {
+        public static readonly RenderMeshDescription mainMeshDescription = new RenderMeshDescription {
             FilterSettings = new RenderFilterSettings {
                 ShadowCastingMode = ShadowCastingMode.TwoSided,
                 ReceiveShadows = true,
@@ -29,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             },
             LightProbeUsage = LightProbeUsage.Off,
         };
-        private static readonly RenderMeshDescription skirtsMeshDescription = new RenderMeshDescription {
+        public static readonly RenderMeshDescription skirtsMeshDescription = new RenderMeshDescription {
             FilterSettings = new RenderFilterSettings {
                 ShadowCastingMode = ShadowCastingMode.Off,
                 ReceiveShadows = false,
@@ -210,7 +210,8 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                     RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
 
-                    SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(skirtEntity, !deferredVisibility);
+                    bool skirtDeferredVisibility = BitUtils.IsBitSet(chunk.skirtMask, skirtIndex);
+                    SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(skirtEntity, false);
 
                     SystemAPI.SetComponent<RenderBounds>(skirtEntity, new RenderBounds() {
                         Value = localRenderBounds,

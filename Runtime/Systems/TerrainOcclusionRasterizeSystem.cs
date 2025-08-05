@@ -44,28 +44,29 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 }
             }
 
-            VoxelizeJob voxelize = new VoxelizeJob() {
-                insideSurfaceVoxels = data.insideSurfaceVoxels,
+            JobHandle voxelizeHandle = new VoxelizeJob() {
+                preRelaxationBits = data.preRelaxationBits,
                 cameraPosition = cameraPosition,
                 chunkDensityPtrs = chunkDensityPtrs,
                 chunkPositionsLookup = chunkPositionsLookup,
-            };
+            }.Schedule(OcclusionUtils.VOLUME / 32, OCCLUSION_VOXELIZE_BATCH / 32);
 
-            JobHandle voxelizeHandle = voxelize.Schedule(OcclusionUtils.SIZE * OcclusionUtils.SIZE * OcclusionUtils.SIZE, OCCLUSION_VOXELIZE_BATCH);
-            RasterizeJob rasterize = new RasterizeJob() {
+            JobHandle relaxHandle = new RelaxJob {
+                postRelaxationBools = data.postRelaxationBools,
+                preRelaxationBits = data.preRelaxationBits
+            }.Schedule(OcclusionUtils.VOLUME, OCCLUSION_VOXELIZE_BATCH, voxelizeHandle);
+
+            JobHandle rasterizeHandle = new RasterizeJob() {
                 proj = camera.projectionMatrix,
                 view = camera.worldToCameraMatrix,
                 invProj = math.inverse(camera.projectionMatrix),
                 invView = math.inverse(camera.worldToCameraMatrix),
-                insideSurfaceVoxels = data.insideSurfaceVoxels,
+                insideSurfaceVoxels = data.postRelaxationBools,
                 screenDepth = data.rasterizedDdaDepth,
                 nearFarPlanes = camera.nearFarPlanes,
                 cameraPosition = cameraPosition
-            };
-
-            JobHandle rasterizeHandle = rasterize.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, OCCLUSION_RASTERIZE_BATCH, voxelizeHandle);
-
-
+            }.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, OCCLUSION_RASTERIZE_BATCH, relaxHandle);
+            
             rasterizeHandle.Complete();
 
             chunkPositionsLookup.Dispose();

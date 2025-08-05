@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -11,32 +12,26 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         public NativeHashMap<int3, int> chunkPositionsLookup;
         public UnsafePtrList<half> chunkDensityPtrs;
 
-        [WriteOnly]
-        public NativeArray<bool> insideSurfaceVoxels;
         public float3 cameraPosition;
 
-        public void Execute(int index) {
-            int3 pos = (int3)VoxelUtils.IndexToPos(index, OcclusionUtils.SIZE);
-            pos -= OcclusionUtils.SIZE / 2;
-            pos += (int3)math.floor(cameraPosition);
+        [WriteOnly]
+        public NativeArray<uint> preRelaxationBits;
 
-            if (!IsVoxelSolid(pos)) {
-                insideSurfaceVoxels[index] = false;
-                return;
+        public void Execute(int batchIndex) {
+            uint packed = 0;
+            int count = math.min(OcclusionUtils.VOLUME - batchIndex * 32, 32);
+
+            for (int j = 0; j < count; j++) {
+                int index = j + batchIndex * 32;
+                int3 pos = (int3)VoxelUtils.IndexToPos(index, OcclusionUtils.SIZE);
+                pos -= OcclusionUtils.SIZE / 2;
+                pos += (int3)math.floor(cameraPosition);
+                bool solid = IsVoxelSolid(pos);
+                uint bit = solid ? 1u : 0u;
+                packed |= bit << j;
             }
 
-            for (int dz = -1; dz <= 1; dz++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dx = -1; dx <= 1; dx++) {
-                        if (!IsVoxelSolid(pos + new int3(dx, dy, dz))) {
-                            insideSurfaceVoxels[index] = false;
-                            return;
-                        }
-                    }
-                }
-            }
-
-            insideSurfaceVoxels[index] = true;
+            preRelaxationBits[batchIndex] = packed;
         }
 
         private bool IsVoxelSolid(int3 position) {

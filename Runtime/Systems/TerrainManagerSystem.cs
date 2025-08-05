@@ -256,18 +256,19 @@ namespace jedjoud.VoxelTerrain {
                     unregisterBuffer.Add(new TerrainUnregisterMeshBuffer { meshId = item });
                 }
 
-                {
-                    foreach (var (chunk, entity) in SystemAPI.Query<TerrainChunk>().WithEntityAccess()) {
-                        if (chunk.skirts.Length > 0) {
-                            for (int i = 0; i < 6; i++) {
-                                SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunk.skirts[i], BitUtils.IsBitSet(chunk.skirtMask, i));
-                            }
+                chunksToShow.Clear();
+                chunksToDestroy.Clear();
+            }
+
+
+            {
+                foreach (var (chunk, visible, entity) in SystemAPI.Query<TerrainChunk, EnabledRefRO<TerrainDeferredVisible>>().WithEntityAccess()) {
+                    if (chunk.skirts.Length > 0) {
+                        for (int i = 0; i < 6; i++) {
+                            SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunk.skirts[i], BitUtils.IsBitSet(chunk.skirtMask, i) && visible.ValueRO);
                         }
                     }
                 }
-
-                chunksToShow.Clear();
-                chunksToDestroy.Clear();
             }
         }
 
