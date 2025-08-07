@@ -24,9 +24,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         private PreviewExecutor executor;
 
-        [Header("Seeding")]
-        public int previewSeed = 1234;
-
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
                 return;
@@ -99,7 +96,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 kernelName = "CSVoxels",
                 updateInjected = true,
                 compiler = compiler,
-                seed = previewSeed,
+                seed = default,
             };
 
             if (executor != null)

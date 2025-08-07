@@ -1,3 +1,4 @@
+using jedjoud.VoxelTerrain.Meshing;
 using jedjoud.VoxelTerrain.Occlusion;
 using Unity.Burst;
 using Unity.Collections;
@@ -6,6 +7,7 @@ using Unity.Entities.Graphics;
 using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
+using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     public partial struct TerrainVisibilitySystem : ISystem {
@@ -23,8 +25,8 @@ namespace jedjoud.VoxelTerrain {
 
         [BurstCompile]
         public partial struct MaterialMeshInfoVisibilityJob : IJobEntity {
-            void Execute(EnabledRefRO<TerrainDeferredVisible> deferredVisible, EnabledRefRO<OccludableTag> occluded, EnabledRefRW<MaterialMeshInfo> toggle) {
-                toggle.ValueRW = deferredVisible.ValueRO && !occluded.ValueRO;
+            void Execute(EnabledRefRO<TerrainDeferredVisible> deferredVisible, EnabledRefRW<MaterialMeshInfo> meshInfo) {
+                meshInfo.ValueRW = deferredVisible.ValueRO;
             }
         }
 
@@ -74,14 +76,24 @@ namespace jedjoud.VoxelTerrain {
             // also checks if the skirt should even be visible from the camera
             EntityQuery skirtQuery = SystemAPI.QueryBuilder().WithAll<TerrainSkirtLinkedParent, TerrainSkirt, LocalToWorld>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
             new SkirtOcclusionJob() { lookup = SystemAPI.GetComponentLookup<OccludableTag>(), cameraCenter = cameraCenter }.ScheduleParallel(skirtQuery);
-            
-            // hide occluded chunks/skirts or those that are not visible due to their deferred visibility
-            EntityQuery terrainEntities = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, OccludableTag, RenderFilterSettings, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
-            new MaterialMeshInfoVisibilityJob().ScheduleParallel(terrainEntities);
 
+            // enable/disable the materialmeshinfo of deferred visible stuff (terrain chunks & skirts)
+            EntityQuery terrainDeferredVisibilityQuery = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
+            new MaterialMeshInfoVisibilityJob { }.ScheduleParallel(terrainDeferredVisibilityQuery);
+            
             // hide occluded entities like props and other thingies
+            // this DOES break shadows but since props are small and close this shouldn't be much of a problem
             EntityQuery userEntities = SystemAPI.QueryBuilder().WithAll<OccludableTag, UserOccludableTag, MaterialMeshInfo>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
             new UserMaterialMeshInfoVisibilityJob().ScheduleParallel(userEntities);
+
+            // change the shadow filtering mode of the occluded / non occluded terrain thingies
+            state.CompleteDependency();
+            var tmp = TerrainMeshingSystem.renderMeshDescription.FilterSettings;
+            EntityQuery nonOccludedTerrainThingsQuery = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, RenderFilterSettings>().WithDisabled<OccludableTag>().Build();
+            state.EntityManager.SetSharedComponent(nonOccludedTerrainThingsQuery, tmp);
+            EntityQuery occludedTerrainThingsQuery = SystemAPI.QueryBuilder().WithAll<TerrainDeferredVisible, RenderFilterSettings>().WithAll<OccludableTag>().Build();
+            tmp.ShadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            state.EntityManager.SetSharedComponent(occludedTerrainThingsQuery, tmp);
         }
     }
 }

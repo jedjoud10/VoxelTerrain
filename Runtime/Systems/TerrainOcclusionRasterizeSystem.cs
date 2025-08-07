@@ -20,8 +20,8 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             state.RequireForUpdate<TerrainOcclusionScreenData>();
             state.RequireForUpdate<TerrainOcclusionConfig>();
 
-            chunkPositionsLookup = new NativeHashMap<int3, int>(0, Allocator.TempJob);
-            chunkDensityPtrs = new UnsafePtrList<half>(0, Allocator.TempJob);
+            chunkPositionsLookup = new NativeHashMap<int3, int>(0, Allocator.Persistent);
+            chunkDensityPtrs = new UnsafePtrList<half>(0, Allocator.Persistent);
         }
 
         [BurstCompile]

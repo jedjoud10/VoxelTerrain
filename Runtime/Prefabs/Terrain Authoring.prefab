@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 2353808753231899350}
   - component: {fileID: 8273521940356345146}
   - component: {fileID: 1266974728089123365}
+  - component: {fileID: 1788835313760764134}
   m_Layer: 0
   m_Name: Terrain Authoring
   m_TagString: Untagged
@@ -137,3 +138,16 @@ MonoBehaviour:
   searchSize: 48
   nearPlaneDepthOffsetFactor: 0.005
   uvExpansionFactor: 0.02
+--- !u!114 &1788835313760764134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8238762861437603885}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bc12749d6f8268479051a880974d172, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  seed: 0

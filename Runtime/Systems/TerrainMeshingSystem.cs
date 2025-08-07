@@ -18,21 +18,10 @@ namespace jedjoud.VoxelTerrain.Meshing {
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
         const int MAX_MESH_HANDLERS_PER_TICK = 4;
-        public static readonly RenderMeshDescription mainMeshDescription = new RenderMeshDescription {
+        public static readonly RenderMeshDescription renderMeshDescription = new RenderMeshDescription {
             FilterSettings = new RenderFilterSettings {
-                ShadowCastingMode = ShadowCastingMode.TwoSided,
+                ShadowCastingMode = ShadowCastingMode.On,
                 ReceiveShadows = true,
-                MotionMode = MotionVectorGenerationMode.ForceNoMotion,
-                StaticShadowCaster = false,
-                Layer = 0,
-                RenderingLayerMask = ~0u,
-            },
-            LightProbeUsage = LightProbeUsage.Off,
-        };
-        public static readonly RenderMeshDescription skirtsMeshDescription = new RenderMeshDescription {
-            FilterSettings = new RenderFilterSettings {
-                ShadowCastingMode = ShadowCastingMode.Off,
-                ReceiveShadows = false,
                 MotionMode = MotionVectorGenerationMode.ForceNoMotion,
                 StaticShadowCaster = false,
                 Layer = 0,
@@ -173,7 +162,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                 bool deferredVisibility = SystemAPI.GetComponent<TerrainChunkRequestMeshingTag>(chunkEntity).deferredVisibility;
 
-                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, mainMeshDescription, materialMeshInfo);
+                RenderMeshUtility.AddComponents(chunkEntity, EntityManager, renderMeshDescription, materialMeshInfo);
 
                 SystemAPI.SetComponentEnabled<MaterialMeshInfo>(chunkEntity, !deferredVisibility);
                 SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(chunkEntity, !deferredVisibility);
@@ -211,7 +200,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
                     MaterialMeshInfo skirtMaterialMeshInfo = new MaterialMeshInfo(skirtMeshMaterialId, meshId, (ushort)(skirtIndex + 1));
 
-                    RenderMeshUtility.AddComponents(skirtEntity, EntityManager, skirtsMeshDescription, skirtMaterialMeshInfo);
+                    RenderMeshUtility.AddComponents(skirtEntity, EntityManager, renderMeshDescription, skirtMaterialMeshInfo);
 
                     bool skirtDeferredVisibility = BitUtils.IsBitSet(chunk.skirtMask, skirtIndex);
                     SystemAPI.SetComponentEnabled<TerrainDeferredVisible>(skirtEntity, false);

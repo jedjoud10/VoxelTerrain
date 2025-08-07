@@ -304,12 +304,8 @@ namespace jedjoud.VoxelTerrain.Segments {
 
                     for (int j = 0; j < tempSubBufferCount; j++) {
                         BlittableProp prop = transmuted[j];
-                        float3 position = 0f;
-                        float scale = 1f;
-                        quaternion rotation = quaternion.identity;
-                        byte variant = 0;
-
-                        PropUtils.UnpackProp(prop, out position, out scale, out rotation, out variant);
+                        
+                        PropUtils.UnpackProp(prop, out float3 position, out float scale, out quaternion rotation, out byte variant);
 
                         if (variant >= variants.Length) {
                             Debug.LogWarning($"Variant index {variant} exceeds prop type's (type: {i}) defined variant count {variants.Length}");

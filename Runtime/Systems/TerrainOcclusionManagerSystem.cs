@@ -1,7 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using UnityEditor.VersionControl;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
     [UpdateBefore(typeof(TerrainOcclusionRasterizeSystem))]

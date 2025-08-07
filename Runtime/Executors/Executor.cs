@@ -10,7 +10,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string commandBufferName;
         public bool updateInjected;
         public ManagedTerrainCompiler compiler;
-        public int seed = 1234;
+        public TerrainSeed seed;
     }
 
     public abstract class Executor<P> where P : ExecutorParameters {
@@ -32,17 +32,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        Vector3Int permutationSeed = Vector3Int.zero;
-        Vector3Int moduloSeed = Vector3Int.zero;
-        private void ComputeSecondarySeeds(int seed) {
-            var random = new System.Random(seed);
-            permutationSeed.x = random.Next(-1000, 1000);
-            permutationSeed.y = random.Next(-1000, 1000);
-            permutationSeed.z = random.Next(-1000, 1000);
-            moduloSeed.x = random.Next(-1000, 1000);
-            moduloSeed.y = random.Next(-1000, 1000);
-            moduloSeed.z = random.Next(-1000, 1000);
-        }
+
+        int3 permutationSeed = int3.zero;
+        int3 moduloSeed = int3.zero;
 
         protected virtual void SetComputeParams(CommandBuffer commands, ComputeShader shader, P parameters, int kernelIndex) {
             commands.SetComputeIntParams(shader, "permutation_seed", new int[] { permutationSeed.x, permutationSeed.y, permutationSeed.z });
@@ -53,6 +45,9 @@ namespace jedjoud.VoxelTerrain.Generation {
         public GraphicsFence ExecuteWithInvocationCount(int3 invocations, P parameters, GraphicsFence? previous = null) {
             if (parameters == null)
                 throw new ArgumentNullException("Missing execution parameters");
+
+            permutationSeed = parameters.seed.permutationSeed;
+            moduloSeed = parameters.seed.moduloSeed;
 
             ManagedTerrainCompiler compiler = parameters.compiler;
 
@@ -74,7 +69,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             if (textures == null || buffers == null) {
-                ComputeSecondarySeeds(parameters.seed);
                 CreateResources(compiler);
 
                 // Initializing the values will force us to update them
