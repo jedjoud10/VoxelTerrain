@@ -13,8 +13,10 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         [WriteOnly]
         public NativeArray<bool> postRelaxationBools;
 
+        public int size;
+
         public void Execute(int index) {
-            int3 pos = (int3)VoxelUtils.IndexToPos(index, OcclusionUtils.SIZE);
+            int3 pos = (int3)VoxelUtils.IndexToPos(index, size);
             for (int dz = -1; dz <= 1; dz++) {
                 for (int dy = -1; dy <= 1; dy++) {
                     for (int dx = -1; dx <= 1; dx++) {
@@ -30,8 +32,8 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         }
 
         private bool IsVoxelSolid(int3 position) {
-            if (VoxelUtils.CheckPositionInsideVolume(position, OcclusionUtils.SIZE)) {
-                int index = VoxelUtils.PosToIndex((uint3)position, OcclusionUtils.SIZE);
+            if (VoxelUtils.CheckPositionInsideVolume(position, size)) {
+                int index = VoxelUtils.PosToIndex((uint3)position, size);
                 int component = index / 32;
                 int shift = index % 32;
                 uint batch = preRelaxationBits[component];

@@ -22,7 +22,6 @@ namespace jedjoud.VoxelTerrain {
 
         private void Start() {
             world = World.DefaultGameObjectInjectionWorld;
-            occlusionTexture = new Texture2D(OcclusionUtils.WIDTH, OcclusionUtils.HEIGHT, TextureFormat.RFloat, false);
         }
 
         private void OnGUI() {
@@ -140,7 +139,12 @@ namespace jedjoud.VoxelTerrain {
             }
 
 #if UNITY_EDITOR
-            if (debugOcclusionCulling && Camera.current.cameraType == CameraType.Game) {
+            EntityQuery singletonQuery = world.EntityManager.CreateEntityQuery(typeof(TerrainOcclusionConfig));
+            if (debugOcclusionCulling && Camera.current.cameraType == CameraType.Game && singletonQuery.TryGetSingleton(out TerrainOcclusionConfig config)) {
+                if (occlusionTexture == null)
+                    occlusionTexture = new Texture2D(config.width, config.height, TextureFormat.RFloat, false);
+                
+
                 NativeArray<float> depth = world.EntityManager.CreateEntityQuery(typeof(TerrainOcclusionScreenData)).GetSingleton<TerrainOcclusionScreenData>().rasterizedDdaDepth;
                 occlusionTexture.SetPixelData(depth, 0, 0);
                 occlusionTexture.Apply();

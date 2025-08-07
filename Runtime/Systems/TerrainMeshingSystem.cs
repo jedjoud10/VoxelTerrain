@@ -63,17 +63,20 @@ namespace jedjoud.VoxelTerrain.Meshing {
             _ready.ValueRW.mesher = ready;
 
             if (SystemAPI.ManagedAPI.TryGetSingleton<TerrainMesherConfig>(out TerrainMesherConfig config) && graphics == null) {
-                //Material mainMeshMaterial = new Material(config.material.material);
-                /*
-                Material skirtMeshMaterial = new Material(config.material.material);
+                Material mainMeshMaterial, skirtMeshMaterial;
+                mainMeshMaterial = skirtMeshMaterial = config.material;
+                    
+                if (config.createCopyMaterial) {
+                    mainMeshMaterial = new Material(config.material);
+                    skirtMeshMaterial = new Material(config.material);
 
-                LocalKeyword keyword = skirtMeshMaterial.shader.keywordSpace.FindKeyword("_SKIRT");
-                skirtMeshMaterial.SetKeyword(keyword, true);
-                */
+                    LocalKeyword keyword = skirtMeshMaterial.shader.keywordSpace.FindKeyword("_SKIRT");
+                    skirtMeshMaterial.SetKeyword(keyword, true);
+                }
 
                 graphics = World.GetExistingSystemManaged<EntitiesGraphicsSystem>();
-                mainMeshMaterialId = graphics.RegisterMaterial(config.material);
-                skirtMeshMaterialId = graphics.RegisterMaterial(config.material);
+                mainMeshMaterialId = graphics.RegisterMaterial(mainMeshMaterial);
+                skirtMeshMaterialId = graphics.RegisterMaterial(skirtMeshMaterial);
             }
 
             foreach (var handler in handlers) {

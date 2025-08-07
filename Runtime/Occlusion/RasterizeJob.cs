@@ -15,15 +15,19 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         public float3 cameraPosition;
         public float2 nearFarPlanes;
 
+        public int width;
+        public int height;
+        public int size;
+
         [WriteOnly]
         public NativeArray<float> screenDepth;
 
         public void Execute(int index) {
             screenDepth[index] = 1f;
 
-            int x = index % OcclusionUtils.WIDTH;
-            int y = index / OcclusionUtils.WIDTH;
-            float2 uvs = new float2(x, y) / new float2(OcclusionUtils.WIDTH - 1, OcclusionUtils.HEIGHT - 1);
+            int x = index % width;
+            int y = index / width;
+            float2 uvs = new float2(x, y) / new float2(width - 1, height - 1);
             float4 clip = new float4(uvs * 2f - 1f, 1f, 1f);
             float4 rayView = math.mul(invProj, clip);
             rayView /= rayView.w;
@@ -37,15 +41,15 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             float3 flooredPos = math.floor(rayPos);
             float3 sideDist = flooredPos - rayPos + 0.5f + 0.5f * dirSign;
 
-            for (int i = 0; i < OcclusionUtils.SIZE*2; i++) {
+            for (int i = 0; i < size * 2; i++) {
                 int3 voxelPos = (int3)flooredPos;
 
                 int3 pos = voxelPos;
                 pos -= (int3)math.floor(cameraPosition);
-                pos += OcclusionUtils.SIZE / 2;
+                pos += size / 2;
                 
-                if (VoxelUtils.CheckPositionInsideVolume(pos, OcclusionUtils.SIZE)) {
-                    if (insideSurfaceVoxels[VoxelUtils.PosToIndex((uint3)pos, OcclusionUtils.SIZE)]) {
+                if (VoxelUtils.CheckPositionInsideVolume(pos, size)) {
+                    if (insideSurfaceVoxels[VoxelUtils.PosToIndex((uint3)pos, size)]) {
                         float3 test = (flooredPos - rayPos + 0.5f - 0.5f * dirSign) * invDir;
                         float max = math.cmax(test);
                         float3 world = rayPos + rayDir * max;

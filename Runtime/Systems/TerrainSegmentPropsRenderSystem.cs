@@ -23,7 +23,6 @@ namespace jedjoud.VoxelTerrain.Segments {
             RequireForUpdate<TerrainPropsConfig>();
             RequireForUpdate<TerrainPropPermBuffers>();
             RequireForUpdate<TerrainPropRenderingBuffers>();
-            RequireForUpdate<TerrainOcclusionScreenData>();
             RequireForUpdate<TerrainMainCamera>();
             initialized = false;
         }
@@ -32,7 +31,17 @@ namespace jedjoud.VoxelTerrain.Segments {
             config = SystemAPI.ManagedAPI.GetSingleton<TerrainPropsConfig>();
             perm = SystemAPI.ManagedAPI.GetSingleton<TerrainPropPermBuffers>();
             rendering = SystemAPI.ManagedAPI.GetSingleton<TerrainPropRenderingBuffers>();
-            NativeArray<float> occlusionDepth = SystemAPI.GetSingleton<TerrainOcclusionScreenData>().rasterizedDdaDepth; 
+
+            if (SystemAPI.TryGetSingleton<TerrainOcclusionScreenData>(out var data)) {
+                NativeArray<float> occlusionDepth = data.rasterizedDdaDepth;
+                var occlusionConfig1 = SystemAPI.GetSingleton<TerrainOcclusionConfig>();
+
+                if (occlusionTexture == null)
+                    occlusionTexture = new Texture2D(occlusionConfig1.width, occlusionConfig1.height, TextureFormat.RFloat, false);
+
+                occlusionTexture.SetPixelData(occlusionDepth, 0);
+                occlusionTexture.Apply();
+            }
 
             if (!initialized) {
                 instancedMaterial = new Material(config.instancedShader);
@@ -41,11 +50,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 impostorMaterial.renderQueue = 2500;
                 initialized = true;
                 quad = PropQuadGenerator.GenerateMuhQuad();
-                occlusionTexture = new Texture2D(OcclusionUtils.WIDTH, OcclusionUtils.HEIGHT, TextureFormat.RFloat, false);
             }
-
-            occlusionTexture.SetPixelData(occlusionDepth, 0);
-            occlusionTexture.Apply();
 
             int types = config.props.Count;
             Entity cameraEntity = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
@@ -78,10 +83,16 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             cmds.SetComputeVectorParam(config.cull, "camera_position", (Vector3)cameraTransform.Position);
 
+            if (SystemAPI.TryGetSingleton<TerrainOcclusionConfig>(out var occlusionConfig)) {
+                cmds.SetKeyword(config.cull, config.cull.keywordSpace.FindKeyword("_OCCLUSION_CULLING"), true);
+                cmds.SetComputeTextureParam(config.cull, 0, "occlusion_depth_texture", occlusionTexture);
+                cmds.SetComputeIntParam(config.cull, "occlusion_width", occlusionConfig.width);
+                cmds.SetComputeIntParam(config.cull, "occlusion_height", occlusionConfig.height);
+            } else {
+                cmds.SetKeyword(config.cull, config.cull.keywordSpace.FindKeyword("_OCCLUSION_CULLING"), false);
+            }
 
-            cmds.SetComputeTextureParam(config.cull, 0, "occlusion_depth_texture", occlusionTexture);
-            cmds.SetComputeIntParam(config.cull, "occlusion_width", OcclusionUtils.WIDTH);
-            cmds.SetComputeIntParam(config.cull, "occlusion_height", OcclusionUtils.HEIGHT);
+
 
             Matrix4x4 projection = camera.projectionMatrix;
             Matrix4x4 view = camera.worldToCameraMatrix;

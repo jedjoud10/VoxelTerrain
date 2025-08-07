@@ -10,27 +10,50 @@ using static jedjoud.VoxelTerrain.BatchUtils;
 namespace jedjoud.VoxelTerrain.Occlusion {
     [UpdateBefore(typeof(TerrainVisibilitySystem))]
     public partial struct TerrainOcclusionRasterizeSystem : ISystem {
+        private JobHandle asyncJobHandle;
+        private NativeHashMap<int3, int> chunkPositionsLookup;
+        private UnsafePtrList<half> chunkDensityPtrs;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<TerrainMainCamera>();
             state.RequireForUpdate<TerrainOcclusionScreenData>();
+            state.RequireForUpdate<TerrainOcclusionConfig>();
+
+            chunkPositionsLookup = new NativeHashMap<int3, int>(0, Allocator.TempJob);
+            chunkDensityPtrs = new UnsafePtrList<half>(0, Allocator.TempJob);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             TerrainOcclusionScreenData data = SystemAPI.GetSingleton<TerrainOcclusionScreenData>();
+            TerrainOcclusionConfig config = SystemAPI.GetSingleton<TerrainOcclusionConfig>();
 
+            
+            if (asyncJobHandle.Equals(default) || asyncJobHandle.IsCompleted) {
+                asyncJobHandle.Complete();
+                chunkPositionsLookup.Clear();
+                chunkDensityPtrs.Clear();
+                data.asyncRasterizedDdaDepth.CopyTo(data.rasterizedDdaDepth);
+                asyncJobHandle = BeginAsyncCullingJob(ref state, data, config);
+            }
+        }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state) {
+            asyncJobHandle.Complete();
+            chunkPositionsLookup.Dispose();
+            chunkDensityPtrs.Dispose();
+        }
+
+        private JobHandle BeginAsyncCullingJob(ref SystemState state, TerrainOcclusionScreenData data, TerrainOcclusionConfig config) {
             Entity cameraEntity = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
             TerrainMainCamera camera = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
             float3 cameraPosition = SystemAPI.GetComponent<LocalToWorld>(cameraEntity).Position;
 
-
-            NativeHashMap<int3, int> chunkPositionsLookup = new NativeHashMap<int3, int>(0, Allocator.TempJob);
-            UnsafePtrList<half> chunkDensityPtrs = new UnsafePtrList<half>(0, Allocator.TempJob);
-
             foreach (var (chunk, _voxels) in SystemAPI.Query<TerrainChunk, RefRW<TerrainChunkVoxels>>()) {
                 ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
-                
+
                 if (chunk.node.atMaxDepth) {
                     chunkPositionsLookup.Add(chunk.node.position / VoxelUtils.PHYSICAL_CHUNK_SIZE, chunkDensityPtrs.Length);
 
@@ -49,28 +72,32 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 cameraPosition = cameraPosition,
                 chunkDensityPtrs = chunkDensityPtrs,
                 chunkPositionsLookup = chunkPositionsLookup,
-            }.Schedule(OcclusionUtils.VOLUME / 32, OCCLUSION_VOXELIZE_BATCH / 32);
+
+                size = config.size,
+                volume = config.volume,
+            }.Schedule(config.volume / 32, OCCLUSION_VOXELIZE_BATCH / 32);
 
             JobHandle relaxHandle = new RelaxJob {
                 postRelaxationBools = data.postRelaxationBools,
-                preRelaxationBits = data.preRelaxationBits
-            }.Schedule(OcclusionUtils.VOLUME, OCCLUSION_VOXELIZE_BATCH, voxelizeHandle);
+                preRelaxationBits = data.preRelaxationBits,
+                size = config.size,
+            }.Schedule(config.volume, OCCLUSION_VOXELIZE_BATCH, voxelizeHandle);
 
-            JobHandle rasterizeHandle = new RasterizeJob() {
+            return new RasterizeJob() {
                 proj = camera.projectionMatrix,
                 view = camera.worldToCameraMatrix,
                 invProj = math.inverse(camera.projectionMatrix),
                 invView = math.inverse(camera.worldToCameraMatrix),
                 insideSurfaceVoxels = data.postRelaxationBools,
-                screenDepth = data.rasterizedDdaDepth,
+                screenDepth = data.asyncRasterizedDdaDepth,
                 nearFarPlanes = camera.nearFarPlanes,
-                cameraPosition = cameraPosition
-            }.Schedule(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, OCCLUSION_RASTERIZE_BATCH, relaxHandle);
-            
-            rasterizeHandle.Complete();
+                cameraPosition = cameraPosition,
 
-            chunkPositionsLookup.Dispose();
-            chunkDensityPtrs.Dispose();
+
+                size = config.size,
+                height = config.height,
+                width = config.width,
+            }.Schedule(config.height * config.width, OCCLUSION_RASTERIZE_BATCH, relaxHandle);
         }
     }
 }

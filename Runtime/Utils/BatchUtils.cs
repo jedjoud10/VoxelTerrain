@@ -12,7 +12,7 @@ namespace jedjoud.VoxelTerrain {
         public const int VERTEX_BATCH = 4096;
         public const int SMALLEST_VERTEX_BATCH = 32;
 
-        public const int OCCLUSION_VOXELIZE_BATCH = 64;
+        public const int OCCLUSION_VOXELIZE_BATCH = 1024;
         public const int OCCLUSION_RASTERIZE_BATCH = 4;
     }
 }

@@ -1,4 +1,5 @@
 #pragma kernel CSCull
+#pragma multi_compile __ _OCCLUSION_CULLING
 
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 
@@ -87,6 +88,8 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		}
 
 		bool occluded = true;
+
+#if defined(_OCCLUSION_CULLING)
 		float4 view_position = mul(camera_view_matrix, float4(culling_sphere_position, 1.0));
 		float4 clip_position = mul(camera_projection_matrix, view_position);
 		clip_position /= clip_position.w;
@@ -100,6 +103,9 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		if ((rasterized_depth + 0.005) > nearest_clip_space_z_val) {
 			occluded = false;
         }
+#else
+		occluded = false;
+#endif
 
 		float dist = distance(position, camera_position);
 		float max_dist = max_distances[type];

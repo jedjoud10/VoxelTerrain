@@ -17,14 +17,17 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         [WriteOnly]
         public NativeArray<uint> preRelaxationBits;
 
+        public int volume;
+        public int size;
+
         public void Execute(int batchIndex) {
             uint packed = 0;
-            int count = math.min(OcclusionUtils.VOLUME - batchIndex * 32, 32);
+            int count = math.min(volume - batchIndex * 32, 32);
 
             for (int j = 0; j < count; j++) {
                 int index = j + batchIndex * 32;
-                int3 pos = (int3)VoxelUtils.IndexToPos(index, OcclusionUtils.SIZE);
-                pos -= OcclusionUtils.SIZE / 2;
+                int3 pos = (int3)VoxelUtils.IndexToPos(index, size);
+                pos -= size / 2;
                 pos += (int3)math.floor(cameraPosition);
                 bool solid = IsVoxelSolid(pos);
                 uint bit = solid ? 1u : 0u;

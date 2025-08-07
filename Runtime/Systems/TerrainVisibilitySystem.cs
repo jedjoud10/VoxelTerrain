@@ -1,3 +1,4 @@
+using jedjoud.VoxelTerrain.Occlusion;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -11,6 +12,13 @@ namespace jedjoud.VoxelTerrain {
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<TerrainMainCamera>();
+        }
+
+        [BurstCompile]
+        public partial struct SetOccludableToVisible : IJobEntity {
+            void Execute(EnabledRefRW<OccludableTag> occluded) {
+                occluded.ValueRW = false;
+            }
         }
 
         [BurstCompile]
@@ -55,6 +63,12 @@ namespace jedjoud.VoxelTerrain {
             Entity mainCamera = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
             LocalToWorld worldTransform = SystemAPI.GetComponent<LocalToWorld>(mainCamera);
             float3 cameraCenter = worldTransform.Position;
+
+            // if terrain occlusion culling is disable, set the occludable state of all entities to "not occluded"
+            if (!SystemAPI.HasSingleton<TerrainOcclusionConfig>()) {
+                EntityQuery resetQuery = SystemAPI.QueryBuilder().WithAll<OccludableTag>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState).Build();
+                new SetOccludableToVisible() { }.ScheduleParallel(resetQuery);
+            }
 
             // if the chunks are occluded, then their skirts are occluded as well
             // also checks if the skirt should even be visible from the camera

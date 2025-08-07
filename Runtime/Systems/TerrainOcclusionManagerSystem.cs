@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using UnityEditor.VersionControl;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
     [UpdateBefore(typeof(TerrainOcclusionRasterizeSystem))]
@@ -8,19 +9,30 @@ namespace jedjoud.VoxelTerrain.Occlusion {
     public partial struct TerrainOcclusionManagerSystem : ISystem {
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
-            state.EntityManager.CreateSingleton<TerrainOcclusionScreenData>(new TerrainOcclusionScreenData {
-                rasterizedDdaDepth = new NativeArray<float>(OcclusionUtils.HEIGHT * OcclusionUtils.WIDTH, Allocator.Persistent),
-                preRelaxationBits = new NativeArray<uint>(OcclusionUtils.VOLUME / 32, Allocator.Persistent),
-                postRelaxationBools = new NativeArray<bool>(OcclusionUtils.VOLUME, Allocator.Persistent),
-            });
+            state.RequireForUpdate<TerrainOcclusionConfig>();
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state) {
+            TerrainOcclusionConfig config = SystemAPI.GetSingleton<TerrainOcclusionConfig>();
+            if (!SystemAPI.HasSingleton<TerrainOcclusionScreenData>()) {
+                state.EntityManager.CreateSingleton<TerrainOcclusionScreenData>(new TerrainOcclusionScreenData {
+                    rasterizedDdaDepth = new NativeArray<float>(config.width * config.height, Allocator.Persistent),
+                    asyncRasterizedDdaDepth = new NativeArray<float>(config.width * config.height, Allocator.Persistent),
+                    preRelaxationBits = new NativeArray<uint>(config.volume / 32, Allocator.Persistent),
+                    postRelaxationBools = new NativeArray<bool>(config.volume, Allocator.Persistent),
+                });
+            }
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state) {
-            TerrainOcclusionScreenData data = SystemAPI.GetSingleton<TerrainOcclusionScreenData>();
-            data.rasterizedDdaDepth.Dispose();
-            data.preRelaxationBits.Dispose();
-            data.postRelaxationBools.Dispose();
+            if (SystemAPI.TryGetSingleton<TerrainOcclusionScreenData>(out TerrainOcclusionScreenData data)) {
+                data.rasterizedDdaDepth.Dispose();
+                data.asyncRasterizedDdaDepth.Dispose();
+                data.preRelaxationBits.Dispose();
+                data.postRelaxationBools.Dispose();
+            }
         }
     }
 }

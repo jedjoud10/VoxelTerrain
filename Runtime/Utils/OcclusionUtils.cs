@@ -2,13 +2,6 @@ using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
     public static class OcclusionUtils {
-        public const int WIDTH = 64;
-        public const int HEIGHT = 64;
-        public const int SIZE = 32;
-        public const int VOLUME = SIZE * SIZE * SIZE;
-        public const float NEAR_PLANE_DEPTH_OFFSET_FACTOR = 0.005f;
-        public const float UV_EXPANSION_OFFSET = 0.02f;
-
         public static float LinearizeDepthStandard(float depth, float2 nearFarPlanes) {
             float near = nearFarPlanes.x;
             float far = nearFarPlanes.y;
