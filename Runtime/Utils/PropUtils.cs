@@ -5,7 +5,7 @@ namespace jedjoud.VoxelTerrain {
     public static class PropUtils {
         public const int IMPOSTOR_CAPTURE_AZIMUTH_ITERATIONS = 32;
 
-        public static void UnpackProp(BlittableProp prop, out float3 position, out float scale, out quaternion rotation, out byte variant) {
+        public static void UnpackProp(BlittableProp prop, out float3 position, out float scale, out quaternion rotation, out byte variant, out uint id) {
             position = new half3(prop.pos_x, prop.pos_y, prop.pos_z);
             scale = prop.scale;
 
@@ -15,6 +15,8 @@ namespace jedjoud.VoxelTerrain {
             rotation = new quaternion { value = quaterOnionUnpacked };
             
             variant = prop.variant;
+
+            id = ((uint)prop.id_byte1 | (uint)prop.id_byte2 << 8 | (uint)prop.id_byte3 << 16);
         }
     }
 }

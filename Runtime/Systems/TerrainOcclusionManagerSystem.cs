@@ -17,9 +17,9 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             if (!SystemAPI.HasSingleton<TerrainOcclusionScreenData>()) {
                 state.EntityManager.CreateSingleton<TerrainOcclusionScreenData>(new TerrainOcclusionScreenData {
                     rasterizedDdaDepth = new NativeArray<float>(config.width * config.height, Allocator.Persistent),
-                    asyncRasterizedDdaDepth = new NativeArray<float>(config.width * config.height, Allocator.Persistent),
                     preRelaxationBits = new NativeArray<uint>(config.volume / 32, Allocator.Persistent),
                     postRelaxationBools = new NativeArray<bool>(config.volume, Allocator.Persistent),
+                    copiedPostRelaxationBools = new NativeArray<bool>(config.volume, Allocator.Persistent),
                 });
             }
         }
@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         public void OnDestroy(ref SystemState state) {
             if (SystemAPI.TryGetSingleton<TerrainOcclusionScreenData>(out TerrainOcclusionScreenData data)) {
                 data.rasterizedDdaDepth.Dispose();
-                data.asyncRasterizedDdaDepth.Dispose();
+                data.copiedPostRelaxationBools.Dispose();
                 data.preRelaxationBits.Dispose();
                 data.postRelaxationBools.Dispose();
             }

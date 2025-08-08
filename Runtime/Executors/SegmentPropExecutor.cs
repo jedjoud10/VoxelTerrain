@@ -1,4 +1,5 @@
 using jedjoud.VoxelTerrain.Segments;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -9,6 +10,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public ComputeBuffer tempBuffer;
         public ComputeBuffer tempCountersBuffer;
         public Texture segmentDensityTexture;
+        public ComputeBuffer tempAllowedToSpawnBitsetBuffer;
         public int enabledPropsTypesFlag;
     }
 
@@ -26,6 +28,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             commands.SetComputeBufferParam(shader, kernelIndex, "temp_counters_buffer", parameters.tempCountersBuffer);
             commands.SetComputeBufferParam(shader, kernelIndex, "temp_buffer", parameters.tempBuffer);
             commands.SetComputeBufferParam(shader, kernelIndex, "temp_buffer_offsets_buffer", parameters.tempBufferOffsetsBuffer);
+            commands.SetComputeBufferParam(shader, kernelIndex, "spawnable_props_bits_buffer", parameters.tempAllowedToSpawnBitsetBuffer);
 
             commands.SetComputeTextureParam(shader, kernelIndex, "densities_texture_read", parameters.segmentDensityTexture);
             commands.SetComputeIntParam(shader, "max_combined_temp_props", parameters.tempBuffer.count);

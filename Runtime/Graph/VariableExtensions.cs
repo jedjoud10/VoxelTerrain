@@ -124,8 +124,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new SimpleTertiaryFunctionNode<float3, float3, float, quaternion>() { a = self, b = up ?? math.up(), c = roll ?? 0f, func = "LookAt" };
         }
 
-        public static Variable<T> Clamp<T>(Variable<T> t, Variable<T> a, Variable<T> b) {
-            return new SimpleTertiaryFunctionNode<T, T, T, T>() { a = a, b = b, c = t, func = "clamp" };
+        public static Variable<T> Clamp<T>(Variable<T> t, Variable<T> min, Variable<T> max) {
+            return new SimpleTertiaryFunctionNode<T, T, T, T>() { a = t, b = min, c = max, func = "clamp" };
         }
 
         public static Variable<T> Lerp<T>(Variable<T> a, Variable<T> b, Variable<T> t, bool saturate = false) {
@@ -142,6 +142,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             return new SimpleTertiaryFunctionNode<quaternion, quaternion, float, quaternion>() { a = a, b = b, c = t, func = "Slerp" };
+        }
+
+        public static Variable<float> Ease(this Variable<float> self, Easing mode) {
+            var tmp = self.Saturate();
+
+            string func = Enum.GetName(typeof(Easing), mode);
+            return new SimpleUnaryFunctionNode<float, float>() { a = tmp, func = func };
         }
     }
 }

@@ -83,6 +83,12 @@ namespace jedjoud.VoxelTerrain.Segments {
 
         [BurstCompile]
         private void Schedule(ref SystemState state) {
+            ref TerrainShouldUpdate shouldUpdate = ref SystemAPI.GetSingletonRW<TerrainShouldUpdate>().ValueRW;
+
+            if (!shouldUpdate.segments)
+                return;
+            shouldUpdate.segments = false;
+
             TerrainOctreeConfig config = SystemAPI.GetSingleton<TerrainOctreeConfig>();
 
             OctreeNode root = OctreeNode.RootNode(config.maxDepth, VoxelUtils.PHYSICAL_CHUNK_SIZE /* >> (int)terrain.voxelSizeReduction */);
@@ -117,8 +123,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                 Schedule(ref state);
             }
 
+            // TODO: rewrite this. please.
             bool areAllInEoP = true;
-
             foreach (var item in segmentsThatMustBeInEndOfPipe) {
                 areAllInEoP &= SystemAPI.IsComponentEnabled<TerrainSegmentEndOfPipeTag>(item);
             }

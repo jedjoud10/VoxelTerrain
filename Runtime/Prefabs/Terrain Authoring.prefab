@@ -135,7 +135,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   width: 32
   height: 32
-  searchSize: 48
+  searchSize: 128
   nearPlaneDepthOffsetFactor: 0.005
   uvExpansionFactor: 0.02
 --- !u!114 &1788835313760764134

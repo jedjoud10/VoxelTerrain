@@ -17,7 +17,7 @@ float4 UnpackPositionAndScale(uint2 packed) {
 	return float4(x, y, z, w);
 }
 
-uint2 PackRotationAndVariant(float4 rotation, int variant) {
+uint2 PackRotationAndVariantAndId(float4 rotation, int variant, int id) {
 	rotation = normalize(rotation);
 	rotation += 1;
 	rotation *= 0.5;
@@ -25,11 +25,11 @@ uint2 PackRotationAndVariant(float4 rotation, int variant) {
 	uint4 packedRotation = (uint4)rotation;
 
 	variant = variant & 0xFF;
+	id = clamp(id, 0, 0xFFFFFF);
 
 	uint first = packedRotation.x | (packedRotation.y << 8) | (packedRotation.z << 16) | (packedRotation.w << 24);
-	uint second = variant & 0xFF;
+	uint second = variant | (uint(id) << 8);
 
-	// TODO: USE THE REMAINING 3 BYTES!!!
 	return uint2(first, second);
 }
 

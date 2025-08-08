@@ -17,7 +17,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateAfter(typeof(TerrainReadbackSystem))]
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
-        const int MAX_MESH_HANDLERS_PER_TICK = 4;
+        const int MAX_MESH_HANDLERS_PER_TICK = 2;
         public static readonly RenderMeshDescription renderMeshDescription = new RenderMeshDescription {
             FilterSettings = new RenderFilterSettings {
                 ShadowCastingMode = ShadowCastingMode.On,

@@ -42,6 +42,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
                 segment = segment,
+                seed = SystemAPI.GetSingleton<TerrainSeed>(),
             });
 
             SystemAPI.SetComponentEnabled<TerrainSegmentRequestVoxelsTag>(entity, false);

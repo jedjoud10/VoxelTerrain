@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Segments {
@@ -24,6 +27,9 @@ namespace jedjoud.VoxelTerrain.Segments {
         private TerrainPropTempBuffers temp;
         int types;
 
+
+        private NativeHashMap<int3, NativeBitArray> modifiedTempRemovedBitsets;
+
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadySystems>();
             RequireForUpdate<TerrainPropsConfig>();
@@ -32,6 +38,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             free = true;
             propExecutor = new SegmentPropExecutor();
+            modifiedTempRemovedBitsets = new NativeHashMap<int3, NativeBitArray>(0, Allocator.Persistent);
         }        
 
         protected override void OnUpdate() {
@@ -39,6 +46,28 @@ namespace jedjoud.VoxelTerrain.Segments {
             perm = SystemAPI.ManagedAPI.GetSingleton<TerrainPropPermBuffers>();
             temp = SystemAPI.ManagedAPI.GetSingleton<TerrainPropTempBuffers>();
             types = config.props.Count;
+
+            Profiler.BeginSample("Tag Removed Props");
+            {
+                EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+
+                foreach (var (sharedCleanup, cleanup, entity) in SystemAPI.Query<TerrainPropSharedCleanup, TerrainPropCleanup>().WithAbsent<TerrainPropTag>().WithEntityAccess()) {
+                    ecb.RemoveComponent(entity, typeof(TerrainPropCleanup));
+                    ecb.RemoveComponent(entity, typeof(TerrainPropSharedCleanup));
+                    ecb.DestroyEntity(entity);
+
+                    if (modifiedTempRemovedBitsets.TryGetValue(sharedCleanup.segmentPosition, out NativeBitArray item)) {
+                        item.Set((int)cleanup.id + temp.tempBufferOffsets[sharedCleanup.type], true);
+                    } else {
+                        modifiedTempRemovedBitsets.Add(sharedCleanup.segmentPosition, new NativeBitArray(temp.maxCombinedTempProps, Allocator.Persistent));
+                    }
+                }
+
+                ecb.Playback(EntityManager);
+                ecb.Dispose();
+            }
+            Profiler.EndSample();
+
 
             if (free) {
                 TryBeginDispatchAndReadback();
@@ -49,22 +78,25 @@ namespace jedjoud.VoxelTerrain.Segments {
             RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
             _ready.ValueRW.segmentPropsDispatch = free;
 
-            EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+            Profiler.BeginSample("Handle Pending Removal Prop Segments");
+            {
+                EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+                foreach (var (buffer, segment) in SystemAPI.Query<DynamicBuffer<TerrainSegmentOwnedPropBuffer>, TerrainSegment>().WithAll<TerrainSegmentPendingRemoval>()) {
+                    DespawnPropEntities(buffer, segment, ref ecb);
+                }
 
-            foreach (var buffer in SystemAPI.Query<DynamicBuffer<TerrainSegmentOwnedPropBuffer>>().WithAll<TerrainSegmentPendingRemoval>()) {
-                DespawnPropEntities(buffer, ref ecb);
+                foreach (var component in SystemAPI.Query<TerrainSegmentPermPropLookup>().WithAll<TerrainSegmentPendingRemoval>()) {
+                    ResetPermBufferForSegment(component);
+                }
+
+                foreach (var _cleanup in SystemAPI.Query<RefRW<TerrainSegmentPendingRemoval>>()) {
+                    _cleanup.ValueRW.propsNeedCleanup = true;
+                }
+
+                ecb.Playback(EntityManager);
+                ecb.Dispose();
             }
-
-            foreach (var component in SystemAPI.Query<TerrainSegmentPermPropLookup>().WithAll<TerrainSegmentPendingRemoval>()) {
-                ResetPermBufferForSegment(component);
-            }
-
-            foreach (var _cleanup in SystemAPI.Query<RefRW<TerrainSegmentPendingRemoval>>()) {
-                _cleanup.ValueRW.propsNeedCleanup = true;
-            }
-
-            ecb.Playback(EntityManager);
-            ecb.Dispose();
+            Profiler.EndSample();
         }
 
 
@@ -77,10 +109,24 @@ namespace jedjoud.VoxelTerrain.Segments {
             if (entity == Entity.Null)
                 return;
 
+            Profiler.BeginSample("Begin Prop Dispatch & Readback");
+            
             this.segmentEntity = entity;
             lod = segment.lod;
             countersFetched = false;
             propsFetched = false;
+
+            if (modifiedTempRemovedBitsets.TryGetValue(segment.position, out var tempAllowedToSpawnBitset)) {
+                NativeArray<uint> src = tempAllowedToSpawnBitset.AsNativeArrayExt<uint>();
+                NativeArray<uint> dst = temp.tempRemovedBitset.AsNativeArrayExt<uint>();
+                dst.CopyFrom(src);
+            } else {
+                NativeArray<uint> dst = temp.tempRemovedBitset.AsNativeArrayExt<uint>();
+                dst.FillArray<uint>(0);
+            }
+
+            NativeArray<uint> data = temp.tempRemovedBitset.AsNativeArrayExt<uint>().GetSubArray(0, temp.removedBitsetUintCount);
+            temp.tempRemovedBitsetBuffer.SetData(data);
 
             int invocations = temp.maxCombinedTempProps;
             Texture segmentDensityTexture = dispatcher.voxelExecutor.Textures["densities"];
@@ -95,6 +141,8 @@ namespace jedjoud.VoxelTerrain.Segments {
                 tempBufferOffsetsBuffer = temp.tempBufferOffsetsBuffer,
                 segmentDensityTexture = segmentDensityTexture,
                 enabledPropsTypesFlag = (int)config.enabledPropTypesFlag,
+                tempAllowedToSpawnBitsetBuffer = temp.tempRemovedBitsetBuffer,
+                seed = SystemAPI.GetSingleton<TerrainSeed>(),
             }, previous: fence);
 
             CommandBuffer cmds = new CommandBuffer();
@@ -126,6 +174,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             Graphics.ExecuteCommandBuffer(cmds);
             SystemAPI.SetComponentEnabled<TerrainSegmentRequestPropsTag>(entity, false);
+            Profiler.EndSample();
         }
 
         private void TryCheckIfReadbackComplete() {
@@ -290,10 +339,10 @@ namespace jedjoud.VoxelTerrain.Segments {
         }
 
         public void SpawnPropEntities() {
+            Profiler.BeginSample("Spawn Segment Prop Entities");
             EntityManager.AddBuffer<TerrainSegmentOwnedPropBuffer>(segmentEntity);
+            int3 segmentPosition = SystemAPI.GetComponent<TerrainSegment>(segmentEntity).position;
 
-            EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
-            int index = 0;
             for (int i = 0; i < types; i++) {
                 int tempSubBufferOffset = temp.tempBufferOffsets[i];
                 int tempSubBufferCount = temp.tempCountersBufferReadback[i];
@@ -302,39 +351,97 @@ namespace jedjoud.VoxelTerrain.Segments {
                     NativeArray<BlittableProp> transmuted = raw.Reinterpret<BlittableProp>();
                     TerrainPropsConfig.BakedPropVariant[] variants = config.baked[i];
 
+                    Profiler.BeginSample($"Record Spawn Props (type: {i}, count:{tempSubBufferCount})");
+
+                    NativeList<int>[] usedVariantsCounts = new NativeList<int>[variants.Length];
+
+                    for (int v = 0; v < usedVariantsCounts.Length; v++) {
+                        usedVariantsCounts[v] = new NativeList<int>(0, Allocator.Temp);
+                    }
+
+                    NativeArray<LocalTransform> transforms = new NativeArray<LocalTransform>(tempSubBufferCount, Allocator.TempJob);
+                    NativeArray<TerrainPropCleanup> cleanup = new NativeArray<TerrainPropCleanup>(tempSubBufferCount, Allocator.TempJob);
+
+                    Profiler.BeginSample($"Unpack Props");
+                    int entityIndex = 0;                    
                     for (int j = 0; j < tempSubBufferCount; j++) {
                         BlittableProp prop = transmuted[j];
-                        
-                        PropUtils.UnpackProp(prop, out float3 position, out float scale, out quaternion rotation, out byte variant);
+
+                        PropUtils.UnpackProp(prop, out float3 position, out float scale, out quaternion rotation, out byte variant, out uint id);
 
                         if (variant >= variants.Length) {
                             Debug.LogWarning($"Variant index {variant} exceeds prop type's (type: {i}) defined variant count {variants.Length}");
                             continue;
                         }
 
-                        Entity prototype = variants[variant].prototype;
-                        Entity instantiated = ecb.Instantiate(prototype);
-
-                        ecb.SetComponent<LocalTransform>(instantiated, LocalTransform.FromPositionRotationScale(position, rotation, scale));
-                        ecb.AppendToBuffer(segmentEntity, new TerrainSegmentOwnedPropBuffer { entity = instantiated });
-                        index++;
+                        transforms[entityIndex] = LocalTransform.FromPositionRotationScale(position, rotation, scale);
+                        usedVariantsCounts[(int)variant].Add(entityIndex);
+                        cleanup[entityIndex] = new TerrainPropCleanup { id = id };
+                        entityIndex++;
                     }
+                    Profiler.EndSample();
+
+                    Profiler.BeginSample($"Instantiate Props");
+                    var shared = new TerrainPropSharedCleanup { segmentPosition = segmentPosition, type = i };
+                    NativeArray<Entity> dstEntities = new NativeArray<Entity>(entityIndex, Allocator.TempJob);
+                    for (int v = 0; v < variants.Length; v++) {
+                        NativeArray<Entity> tmpDstEntities = new NativeArray<Entity>(usedVariantsCounts[v].Length, Allocator.Temp);
+                        EntityManager.Instantiate(variants[v].prototype, tmpDstEntities);
+
+                        for (int n = 0; n < usedVariantsCounts[v].Length; n++) {
+                            int dstIndex = usedVariantsCounts[v][n];
+                            dstEntities[dstIndex] = tmpDstEntities[n];
+                        }
+                    }
+                    Profiler.EndSample();
+
+                    Profiler.BeginSample($"Set Prop Data");
+                    EntityManager.AddSharedComponent<TerrainPropSharedCleanup>(dstEntities, shared);
+                    EntityManager.AddComponent<TerrainPropCleanup>(dstEntities);
+
+
+                    for (int n = 0; n < dstEntities.Length; n++) {
+                        Entity entity = dstEntities[n];
+                        EntityManager.SetComponentData(entity, transforms[n]);
+                        EntityManager.SetComponentData(entity, cleanup[n]);
+                    }
+
+                    var ownedBuffer = EntityManager.GetBuffer<TerrainSegmentOwnedPropBuffer>(segmentEntity);
+                    ownedBuffer.AddRange(dstEntities.Reinterpret<TerrainSegmentOwnedPropBuffer>());
+
+
+                    transforms.Dispose();
+                    cleanup.Dispose();
+                    dstEntities.Dispose();
+                    Profiler.EndSample();
+
+
+                    Profiler.EndSample();
                 }
             }
 
-            ecb.Playback(EntityManager);
-            ecb.Dispose();
+            Profiler.EndSample();
         }
 
-        public void DespawnPropEntities(DynamicBuffer<TerrainSegmentOwnedPropBuffer> buffer, ref EntityCommandBuffer ecb) {
-            foreach (var prop in buffer) {
-                ecb.DestroyEntity(prop.entity);
-            }
+        public void DespawnPropEntities(DynamicBuffer<TerrainSegmentOwnedPropBuffer> buffer, TerrainSegment segment, ref EntityCommandBuffer ecb) {
+            Profiler.BeginSample("Despawn Segment Prop Entities");
+            NativeArray<Entity> entities = buffer.Reinterpret<Entity>().AsNativeArray();
+            ecb.DestroyEntity(entities);
+            ecb.RemoveComponent<TerrainPropTag>(entities);
+            ecb.RemoveComponent<TerrainPropSharedCleanup>(entities);
+            ecb.RemoveComponent<TerrainPropCleanup>(entities);
+            Profiler.EndSample();
         }
 
         protected override void OnDestroy() {
             AsyncGPUReadback.WaitAllRequests();
             propExecutor.DisposeResources();
+
+            foreach (var value in modifiedTempRemovedBitsets) {
+                value.Value.Dispose();
+            }
+
+            modifiedTempRemovedBitsets.Dispose();
         }
     }
 }

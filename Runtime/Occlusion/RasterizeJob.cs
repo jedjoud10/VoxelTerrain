@@ -13,6 +13,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         public float4x4 invProj;
         public float4x4 invView;
         public float3 cameraPosition;
+        public float3 cameraPositionDuringVoxelization;
         public float2 nearFarPlanes;
 
         public int width;
@@ -45,7 +46,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 int3 voxelPos = (int3)flooredPos;
 
                 int3 pos = voxelPos;
-                pos -= (int3)math.floor(cameraPosition);
+                pos -= (int3)math.floor(cameraPositionDuringVoxelization);
                 pos += size / 2;
                 
                 if (VoxelUtils.CheckPositionInsideVolume(pos, size)) {

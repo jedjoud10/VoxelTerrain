@@ -72,6 +72,7 @@ namespace jedjoud.VoxelTerrain {
 
             state.EntityManager.CreateSingleton<TerrainReadySystems>();
             state.EntityManager.CreateSingletonBuffer<TerrainUnregisterMeshBuffer>();
+            state.EntityManager.CreateSingleton<TerrainShouldUpdate>(new TerrainShouldUpdate { octree = true, segments = true });
 
             chunksToShow = new NativeList<Entity>(Allocator.Persistent);
             chunksToDestroy = new NativeList<Entity>(Allocator.Persistent);

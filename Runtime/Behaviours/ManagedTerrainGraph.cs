@@ -14,11 +14,13 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public class PropContext {
             internal CustomCodeChainedNode chain;
+            private Variable<int> dispatchIndex;
             private HashSet<int> defined;
 
-            public PropContext() {
-                chain = null;
-                defined = new HashSet<int>();
+            internal PropContext(Variable<int> dispatchIndex) {
+                this.chain = null;
+                this.defined = new HashSet<int>();
+                this.dispatchIndex = dispatchIndex;
             }
 
             public void DeclarePropSpawn(int type, Variable<bool> shouldSpawn, Props.GenerationProp prop) {
@@ -35,7 +37,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                     prop.variant.Handle(ctx);
                     shouldSpawn.Handle(ctx);
                     ctx.AddLine("// this is some very cool prop spawning call....");
-                    ctx.AddLine($"ConditionalSpawnPropOfType({ctx[shouldSpawn]}, type, {type}, {ctx[prop.position]}, {ctx[prop.scale]}, {ctx[prop.rotation]}, {ctx[prop.variant]});");                    
+                    ctx.AddLine($"ConditionalSpawnPropOfType({ctx[shouldSpawn]}, type, {type}, {ctx[prop.position]}, {ctx[prop.scale]}, {ctx[prop.rotation]}, {ctx[prop.variant]}, {ctx[dispatchIndex]});");                    
                 });
 
                 defined.Add(type);

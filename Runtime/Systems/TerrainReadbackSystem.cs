@@ -121,6 +121,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
                 multiSignCountersBuffer = multiSignCountersBuffer,
+                seed = SystemAPI.GetSingleton<TerrainSeed>(),
             };
 
             GraphicsFence fence = multiExecutor.Execute(parameters);

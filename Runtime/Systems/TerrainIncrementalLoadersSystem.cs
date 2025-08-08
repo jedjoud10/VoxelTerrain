@@ -12,19 +12,20 @@ namespace jedjoud.VoxelTerrain.Octree {
     public partial struct TerrainIncrementalLoadersSystem : ISystem {
         [BurstCompile]
         public void OnCreate(ref SystemState state) {
-            state.RequireForUpdate<TerrainOctree>();
+            state.RequireForUpdate<TerrainShouldUpdate>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-            ref TerrainOctree octree = ref SystemAPI.GetSingletonRW<TerrainOctree>().ValueRW;
+            ref TerrainShouldUpdate shouldUpdate = ref SystemAPI.GetSingletonRW<TerrainShouldUpdate>().ValueRW;
 
             foreach (var (loader, matrix) in SystemAPI.Query<RefRW<TerrainLoader>, LocalToWorld>()) {
                 ref float3 pos = ref loader.ValueRW.position;
                 float3 newPos = matrix.Position;
                 if (math.distance(pos, newPos) > 1f) {
                     loader.ValueRW.position = newPos;
-                    octree.shouldUpdate = true;
+                    shouldUpdate.octree = true;
+                    shouldUpdate.segments = true;
                 }
             }
         }

@@ -25,9 +25,12 @@ namespace jedjoud.VoxelTerrain.Props {
 
         // Prop variant
         public byte variant;
-        public byte _padding;
-        public byte _padding2;
-        public byte _padding3;
+
+        // Prop identifier (normalized dispatch index)
+        // id = dispatch index - temp prop offset
+        public byte id_byte1;
+        public byte id_byte2;
+        public byte id_byte3;
 
         public static BlittableProp None = new BlittableProp();
     }

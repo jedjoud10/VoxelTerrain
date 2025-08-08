@@ -99,11 +99,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new CastNode<T, U> { a = this };
         }
 
-        public Variable<T> Cached(string swizzle = "xyz") {
-            throw new NotImplementedException();
-            //return new CachedNode<T> { inner = this, swizzle = swizzle };
-        }
-
         public Variable<T> Min(Variable<T> other) {
             return new SimpleBinaryFunctionNode<T, T, T> { a = this, b = other, func = "min" };
         }

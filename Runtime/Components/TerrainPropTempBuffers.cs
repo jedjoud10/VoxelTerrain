@@ -24,6 +24,12 @@ namespace jedjoud.VoxelTerrain.Segments {
         public NativeArray<int> tempCountersBufferReadback;
         public NativeArray<uint4> tempBufferReadback;
 
+        // bitset that tells us the props that we are currently allowed to spawn for the segment we are currently executing the compute shaders for
+        // gets modified when the prop gets destroyed by the user so that we don't keep spawning it back into the world
+        public NativeBitArray tempRemovedBitset;
+        public ComputeBuffer tempRemovedBitsetBuffer;
+        public int removedBitsetUintCount;
+
         public void Init(TerrainPropsConfig config) {
             int types = config.props.Count;
 
@@ -46,6 +52,11 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             tempCountersBufferReadback = new NativeArray<int>(types, Allocator.Persistent);
             tempBufferReadback = new NativeArray<uint4>(maxCombinedTempProps, Allocator.Persistent);
+            tempRemovedBitset = new NativeBitArray(maxCombinedTempProps, Allocator.Persistent);
+
+            removedBitsetUintCount = (int)math.ceil((float)maxCombinedTempProps / 32.0f);
+            tempRemovedBitsetBuffer = new ComputeBuffer(removedBitsetUintCount, sizeof(uint), ComputeBufferType.Structured);
+            tempRemovedBitsetBuffer.SetData(tempRemovedBitset.AsNativeArrayExt<uint>().GetSubArray(0, removedBitsetUintCount));
         }
 
         public void Dispose() {
@@ -54,6 +65,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             tempBufferOffsetsBuffer.Dispose();
             tempCountersBufferReadback.Dispose();
             tempBufferReadback.Dispose();
+            tempRemovedBitsetBuffer.Dispose();
+            tempRemovedBitset.Dispose();
         }
     }
 }

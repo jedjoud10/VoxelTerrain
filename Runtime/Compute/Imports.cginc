@@ -15,6 +15,7 @@ SamplerState my_linear_clamp_sampler;
 #pragma warning (disable : 4714)
 
 
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Easing.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises.cginc"
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/SDF.cginc"
@@ -54,6 +55,7 @@ SamplerState my_linear_clamp_sampler;
     RWStructuredBuffer<uint> temp_counters_buffer;
     RWStructuredBuffer<uint> temp_buffer_offsets_buffer;
     RWStructuredBuffer<uint4> temp_buffer;
+    RWStructuredBuffer<uint> spawnable_props_bits_buffer;
 #endif
 
 #if defined(_ASYNC_READBACK_OCTAL)
@@ -181,13 +183,24 @@ SamplerState my_linear_clamp_sampler;
         return true;
     }
 
-    void ConditionalSpawnPropOfType(bool shouldSpawn, int targetType, int type, float3 position, float scale, float4 rotation, int variant) {
-        if (shouldSpawn && type < max_total_prop_types && targetType == type) {
+    bool CanSpawnPropOfType(int type, int dispatchIndex) {
+        uint idx = uint(dispatchIndex);
+        uint local = idx % 32;
+        uint batch = idx / 32;
+        uint val = spawnable_props_bits_buffer[batch];
+        return ((val >> local) & 1) == 0;
+    }
+
+    void ConditionalSpawnPropOfType(bool shouldSpawn, int targetType, int type, float3 position, float scale, float4 rotation, int variant, int dispatchIndex) {
+        if (shouldSpawn && type < max_total_prop_types && targetType == type && CanSpawnPropOfType(type, dispatchIndex)) {
             int index = 0;
             InterlockedAdd(temp_counters_buffer[type], 1, index);
             index += temp_buffer_offsets_buffer[type];
             uint2 first = PackPositionAndScale(position, scale);
-            uint2 second = PackRotationAndVariant(rotation, variant);
+
+            int id = dispatchIndex - temp_buffer_offsets_buffer[type];
+
+            uint2 second = PackRotationAndVariantAndId(rotation, variant, id);
             temp_buffer[index] = uint4(first, second);
         }
     }

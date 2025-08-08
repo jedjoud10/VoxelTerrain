@@ -7,7 +7,6 @@ namespace jedjoud.VoxelTerrain.Octree {
         public bool continuous;
         public bool pending;
         public bool readyToSpawn;
-        public bool shouldUpdate;
 
         public NativeList<OctreeNode> added;
         public NativeList<OctreeNode> removed;

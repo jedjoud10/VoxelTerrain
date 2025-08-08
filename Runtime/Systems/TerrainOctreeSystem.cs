@@ -35,7 +35,6 @@ namespace jedjoud.VoxelTerrain.Octree {
                 continuous = true,
                 pending = false,
                 readyToSpawn = false,
-                shouldUpdate = true,
             };
         }
 
@@ -53,6 +52,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             int maxDepth = config.maxDepth;
 
             ref TerrainOctree octree = ref SystemAPI.GetSingletonRW<TerrainOctree>().ValueRW;
+            ref TerrainShouldUpdate shouldUpdate = ref SystemAPI.GetSingletonRW<TerrainShouldUpdate>().ValueRW;
 
             if (octree.handle.IsCompleted && octree.pending) {
                 octree.handle.Complete();
@@ -72,11 +72,11 @@ namespace jedjoud.VoxelTerrain.Octree {
                 return;
             }
 
-            if (!octree.shouldUpdate) {
+            if (!shouldUpdate.octree) {
                 return;
             }
 
-            octree.shouldUpdate = false;
+            shouldUpdate.octree = false;
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainLoader>().Build();
             NativeArray<TerrainLoader> tempLoaders = query.ToComponentDataArray<TerrainLoader>(Allocator.Temp);
             loaders.CopyFrom(tempLoaders);
@@ -129,7 +129,7 @@ namespace jedjoud.VoxelTerrain.Octree {
             };
 
             JobHandle subdivideJobHandle = job.Schedule();
-            JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(octree.nodes, 256, subdivideJobHandle);
+            JobHandle neighbourJobHandle = neighbourJob.Schedule<NeighbourJob, OctreeNode>(octree.nodes, BatchUtils.NEIGHBOUR_BATCH, subdivideJobHandle);
 
             JobHandle setJobHandle = toHashSetJob.Schedule(neighbourJobHandle);
             JobHandle addedJobHandle = addedDiffJob.Schedule(setJobHandle);

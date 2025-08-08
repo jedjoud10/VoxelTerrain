@@ -155,7 +155,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 dispatch = (Variable<int>)dispatch.node,
                 type = (Variable<int>)type.node
             };
-            ManagedTerrainGraph.PropContext propContext = new ManagedTerrainGraph.PropContext();
+            ManagedTerrainGraph.PropContext propContext = new ManagedTerrainGraph.PropContext((Variable<int>)dispatch.node);
 
             // Run the graph for the props pass
             graph.Props(propInput, propContext);

@@ -97,7 +97,7 @@ void CSCull(uint3 id : SV_DispatchThreadID) {
 		float nearest_clip_space_z_val = saturate(linearizeDepth(clip_position.z, camera_near, camera_far));
 		
 		float2 clip_uv = saturate(clip_position.xy * 0.5 + 0.5);
-        int2 clip_pixel = int2(clip_uv * float2(occlusion_width - 1, occlusion_height - 1));
+        int2 clip_pixel = int2(clip_uv * float2(occlusion_width, occlusion_height));
 		float rasterized_depth = occlusion_depth_texture.Load(float3(clip_pixel, 0)).x; 
 
 		if ((rasterized_depth + 0.005) > nearest_clip_space_z_val) {
