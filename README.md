@@ -22,13 +22,15 @@
   density += voronoi.Evaluate(projected);
   ```
 
-- Software Voxel Occlusion Culling:
+- Async Software Voxel Occlusion Culling:
   - Uses DDA to rasterize the LOD0 chunks data (nearest to player) using the job system & burst at a low resolution (``64x64``).
   - Depth data then used for each chunk / skirt using AABBs to check if they're visible.
   - Depth data is sent to the GPU for impostor / instanced culling (treats props as single pixel, not as AABB. Makes the occlusion check a lot faster).
   - Relaxed by 1 voxel width to avoid over occlusion.
   - Also works for non-terrain objects like user objects. Anything that has the ``UserOccludableAuthoring`` authoring component will get occluded by the occlusion culling system
-  - Bottleneck is currently the "relaxation" step, as that executes every frame even if voxel data has not been modified or the camera does not move.
+  - Voxelization and relaxation steps are done asynchronously (with only 1-2 threads running the jobs) whilst the rasterization is done every frame.
+    - This allows the camera to freely look around and move around "local space" before it gets recomputed by the voxelization and relaxation steps
+    - Since relaxation is very expensive, running it in the background like this allows us to avoid stalling the main thread 
 
 - Better optimized meshing jobs:
   - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled).
