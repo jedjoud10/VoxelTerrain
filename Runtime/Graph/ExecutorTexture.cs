@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     public class ExecutorTexture {
         public string name;
-        public string writeKernel;
+        public List<string> writeKernels;
         public List<string> readKernels;
         public Texture texture;
         public int requestingNodeHash;
@@ -15,14 +15,18 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public virtual void BindToComputeShader(CommandBuffer commands, ComputeShader shader) {
-            if (writeKernel != null && writeKernel != "") {
-                int writeKernelId = shader.FindKernel(writeKernel);
-                commands.SetComputeTextureParam(shader, writeKernelId, name + "_texture_write", texture);
+            if (writeKernels != null) {
+                foreach (var writeKernel in writeKernels) {
+                    int writeKernelId = shader.FindKernel(writeKernel);
+                    commands.SetComputeTextureParam(shader, writeKernelId, name + "_texture_write", texture);
+                }
             }
 
-            foreach (var readKernel in readKernels) {
-                int readKernelId = shader.FindKernel(readKernel);
-                commands.SetComputeTextureParam(shader, readKernelId, name + "_texture_read", texture);
+            if (readKernels != null) {
+                foreach (var readKernel in readKernels) {
+                    int readKernelId = shader.FindKernel(readKernel);
+                    commands.SetComputeTextureParam(shader, readKernelId, name + "_texture_read", texture);
+                }
             }
         }
 

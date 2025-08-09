@@ -34,7 +34,7 @@ namespace jedjoud.VoxelTerrain {
 
             public void Finalize(int count) {
                 normal = math.normalizesafe(normal, math.up());
-                layers = math.normalizesafe(layers, 0f);
+                layers /= count;
                 position /= count;
             }
         }
@@ -77,15 +77,33 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public void SetMeshDataAttributes(int count, Mesh.MeshData data) {
-            NativeArray<VertexAttributeDescriptor> descriptors = new NativeArray<VertexAttributeDescriptor>(3, Allocator.Temp);
-            descriptors[0] = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, 0);
-            descriptors[1] = new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3, 1);
-            descriptors[2] = new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.Float32, 4, 2);
-
+            NativeArray<VertexAttributeDescriptor> descriptors = new NativeArray<VertexAttributeDescriptor>(4, Allocator.Temp);
+            descriptors[0] = new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float16, 4, 0);
+            descriptors[1] = new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.SNorm8, 4, 1);
+            descriptors[2] = new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4, 2);
+            descriptors[3] = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.UNorm8, 4, 3);
             data.SetVertexBufferParams(count, descriptors);
-            positions.GetSubArray(0, count).CopyTo(data.GetVertexData<float3>(0));
-            normals.GetSubArray(0, count).CopyTo(data.GetVertexData<float3>(1));
-            colours.GetSubArray(0, count).CopyTo(data.GetVertexData<float4>(2));
+
+
+            var dstPositions = data.GetVertexData<half4>(0);
+            for (int i = 0; i < count; i++) {
+                dstPositions[i] = (half4)new float4(positions[i], 0);
+            }
+
+            var dstNormals = data.GetVertexData<uint>(1);
+            for (int i = 0; i < count; i++) {
+                dstNormals[i] = BitUtils.PackSnorm8(new float4(normals[i], 0));
+            }
+
+            var dstColours = data.GetVertexData<uint>(2);
+            for (int i = 0; i < count; i++) {
+                dstColours[i] = BitUtils.PackUnorm8(colours[i]);
+            }
+
+            var dstLayers = data.GetVertexData<uint>(3);
+            for (int i = 0; i < count; i++) {
+                dstLayers[i] = BitUtils.PackUnorm8(layers[i]);
+            }
         }
 
         public Single this[int index] {

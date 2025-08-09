@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine.Experimental.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     [BurstCompile(CompileSynchronously = true)]
@@ -18,7 +19,7 @@ namespace jedjoud.VoxelTerrain {
             GpuVoxel voxel = *(rawGpuData + index);
             cpuData.densities[index] = voxel.density;
             cpuData.materials[index] = voxel.material;
-            cpuData.layers[index] = BitUtils.PackByteToUint(voxel.layer1, voxel.layer2, voxel.layer3, voxel.layer4);
+            cpuData.layers[index] = voxel.layers;
         }
     }
 
@@ -32,17 +33,10 @@ namespace jedjoud.VoxelTerrain {
         public byte _padding;
 
         // UINT2
-        public byte layer1;
-        public byte layer2;
-        public byte layer3;
-        public byte layer4;
+        public uint layers;
 
-        /*
-        // UINT3 and UINT4 (unused)
-        public uint _padding2;
-        public uint _padding3;
-        */
         public const int size = 2 * sizeof(uint);
+        public const GraphicsFormat format = GraphicsFormat.R32G32_UInt;
     }
 
     // Only used for editing, for ease of use

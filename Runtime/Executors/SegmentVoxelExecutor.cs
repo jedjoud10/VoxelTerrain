@@ -17,10 +17,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             base.CreateResources(compiler);
             textures.Add("densities", new ExecutorTexture {
                 name = "densities",
-                readKernels = new List<string>() { },
                 texture = TextureUtils.Create3DRenderTexture(SegmentUtils.SEGMENT_SIZE_PADDED, GraphicsFormat.R16_SFloat),
                 requestingNodeHash = -1,
-                writeKernel = "CSVoxels",
+                writeKernels = new List<string>() { "CSVoxels" },
             });
         }
 

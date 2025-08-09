@@ -103,5 +103,19 @@ namespace jedjoud.VoxelTerrain {
 
             return new float4(r, g, b, a);
         }
+
+        public static uint PackUInt4ToUInt(uint4 bytes) {
+            return (bytes.x & 0xFFu) | ((bytes.y & 0xFFu) << 8) | ((bytes.z & 0xFFu) << 16) | ((bytes.w & 0xFFu) << 24);
+        }
+
+        public static uint PackSnorm8(float4 value) {
+            float4 n = math.clamp(value * 127f, -128f, 127f);
+            return PackUInt4ToUInt((uint4)math.round(n));
+        }
+
+        public static uint PackUnorm8(float4 value) {
+            float4 n = math.saturate(value) * 255f;
+            return PackUInt4ToUInt((uint4)math.round(n));
+        }
     }
 }

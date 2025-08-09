@@ -17,9 +17,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             base.CreateResources(compiler);
             textures.Add("voxels", new ExecutorTexture {
                 name = "voxels",
-                readKernels = new List<string>() { },
-                texture = TextureUtils.Create3DRenderTexture(size, GraphicsFormat.R32_UInt),
-                writeKernel = "CSVoxels",
+                texture = TextureUtils.Create3DRenderTexture(size, GpuVoxel.format),
+                writeKernels = new List<string>() { "CSVoxels", "CSLayers" },
                 requestingNodeHash = -1,
             });
         }

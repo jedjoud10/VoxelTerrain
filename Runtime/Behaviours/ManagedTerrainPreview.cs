@@ -104,7 +104,10 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             executor = new PreviewExecutor(size);
             executor.Execute(parameters);
-            
+
+            parameters.kernelName = "CSLayers";
+            executor.Execute(parameters);
+
             RenderTexture voxels = (RenderTexture)executor.Textures["voxels"];
             Meshify(voxels);
 #endif

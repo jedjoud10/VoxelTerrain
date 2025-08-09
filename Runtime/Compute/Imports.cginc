@@ -215,11 +215,7 @@ SamplerState my_linear_clamp_sampler;
 #endif
 
 #if defined(_ASYNC_READBACK_OCTAL) || defined(_SEGMENT_VOXELS) || defined(_PREVIEW)
-    void StoreVoxel(uint3 id, float density, uint material) {
-        Voxel voxel;
-        voxel.density = density;
-        voxel.material = material;
-
+    void StoreVoxel(uint3 id, Voxel voxel) {
         #if defined(_ASYNC_READBACK_OCTAL)
             uint3 zero_to_three = id / LOGICAL_SIZE;
             int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
@@ -230,11 +226,37 @@ SamplerState my_linear_clamp_sampler;
             // this is a buffer!!!
             // contiguous buffer containing 64 chunks worth of data
             voxels_buffer[index] = packVoxelData(voxel);
-            CheckVoxelSign(id, density);
+            CheckVoxelSign(id, voxel.density);
         #elif defined(_PREVIEW)
             voxels_texture_write[id] = packVoxelData(voxel);
         #elif defined(_SEGMENT_VOXELS)
-            densities_texture_write[id] = density;
+            densities_texture_write[id] = voxel.density;
         #endif
+    }
+#endif
+
+#if defined(_ASYNC_READBACK_OCTAL) || defined(_PREVIEW)
+    Voxel ReadCachedVoxel(uint3 id) {
+        #if defined(_ASYNC_READBACK_OCTAL)
+            uint3 zero_to_three = id / LOGICAL_SIZE;
+            int chunk_index = zero_to_three.x + zero_to_three.z * 4 + zero_to_three.y * 16;
+            uint3 local_id = id % LOGICAL_SIZE;
+    
+            int index = local_id.x + local_id.z * LOGICAL_SIZE + local_id.y * LOGICAL_SIZE*LOGICAL_SIZE + chunk_index * LOGICAL_SIZE*LOGICAL_SIZE*LOGICAL_SIZE;
+    
+            // this is a buffer!!!
+            // contiguous buffer containing 64 chunks worth of data
+            return unpackVoxelData(voxels_buffer[index]);
+        #elif defined(_PREVIEW)
+            return unpackVoxelData(voxels_texture_write[id]);
+        #endif
+    }
+
+    float3 ReadCachedNormal(uint3 id) {
+        float base = ReadCachedVoxel(id).density;
+        float x = ReadCachedVoxel(id + uint3(1, 0, 0)).density;
+        float y = ReadCachedVoxel(id + uint3(0, 1, 0)).density;
+        float z = ReadCachedVoxel(id + uint3(0, 0, 1)).density;
+        return normalize(float3(x - base, y - base, z - base));
     }
 #endif

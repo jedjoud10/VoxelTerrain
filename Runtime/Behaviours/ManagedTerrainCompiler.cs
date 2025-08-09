@@ -106,79 +106,115 @@ namespace jedjoud.VoxelTerrain.Generation {
         // Parses the voxel graph into a tree context with all required nodes and everything!!!
         // TODO: PLEASE FOR THE LOVE OF GOD. PLEASE. PLEASE I BEG YOU PLEASE REWRITE THIS!!! THIS SHIT IS ASS!!!!!
         public void Parse() {
+            KernelBuilder VoxelKernel(ManagedTerrainGraph graph) {
+                var position = ScopeArgument.AsInput<float3>("position");
+
+                graph.Density((Variable<float3>)position.node, out Variable<float> density);
+
+                return new KernelBuilder {
+                    name = "CSVoxels",
+                    arguments = new ScopeArgument[] {
+                        position,
+                        ScopeArgument.AsOutput<float>("density", density),
+                        ScopeArgument.AsOutput<int>("material", 0)
+                    },
+                    dispatch = new VoxelKernelDispatch {
+                    },
+                    numThreads = new int3(8),
+                    dispatchGuards = new KeywordGuards(ComputeKeywords.OCTAL_READBACK, ComputeKeywords.PREVIEW, ComputeKeywords.SEGMENT_VOXELS),
+                    scopeGuards = null,
+                };
+            }
+
+            KernelBuilder LayerKernel(ManagedTerrainGraph graph) {
+                var position = ScopeArgument.AsInput<float3>("position");
+                var id = ScopeArgument.AsInput<uint3>("id");
+
+                Variable<float3> cachedNormal = CustomCode.WithCode<float3>((UntypedVariable self, TreeContext ctx) => {
+                    id.node.Handle(ctx);
+                    return @$"ReadCachedNormal({ctx[id.node]})";
+                });
+
+                Variable<float> cachedDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
+                    id.node.Handle(ctx);
+                    return @$"ReadCachedDensity({ctx[id.node]})";
+                });
+
+                graph.Layers((Variable<float3>)position.node, cachedNormal, cachedDensity, out Variable<float4> layers);
+
+                return new KernelBuilder {
+                    name = "CSLayers",
+                    arguments = new ScopeArgument[] {
+                        position,
+                        id,
+                        ScopeArgument.AsInput<float3>("cachedNormal", cachedNormal),
+                        ScopeArgument.AsInput<float>("cachedDensity", cachedDensity),
+                        ScopeArgument.AsOutput<float4>("layers", layers)
+                    },
+                    customCallback = (TreeContext ctx) => {
+                        cachedNormal.Handle(ctx);
+                        cachedDensity.Handle(ctx);
+                    },
+                    dispatch = new LayerKernelDispatch {
+                    },
+                    numThreads = new int3(8),
+                    dispatchGuards = new KeywordGuards(ComputeKeywords.OCTAL_READBACK, ComputeKeywords.PREVIEW),
+                    scopeGuards = new KeywordGuards(ComputeKeywords.OCTAL_READBACK, ComputeKeywords.PREVIEW),
+                };
+            }
+
+            KernelBuilder PropsKernel(ManagedTerrainGraph graph) {
+                var position = ScopeArgument.AsInput<float3>("position");
+
+                Variable<float> segmentSlowDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
+                    // need to do this since DensityAtSlow internally calls the voxels density function
+                    foreach (var (name, texture) in ctx.textures) {
+                        if (texture.readKernels.Contains("CSVoxels")) {
+                            texture.readKernels.Add($"CS{ctx.scopes[ctx.currentScope].name}");
+                        }
+                    }
+                    return @$"DensityAtSlow({position.name})";
+                });
+
+                ScopeArgument dispatch = ScopeArgument.AsInput<int>("dispatch");
+                ScopeArgument type = ScopeArgument.AsInput<int>("type");
+                ManagedTerrainGraph.PropInput propInput = new ManagedTerrainGraph.PropInput() {
+                    position = (Variable<float3>)position.node,
+                    density = segmentSlowDensity,
+                    dispatch = (Variable<int>)dispatch.node,
+                    type = (Variable<int>)type.node
+                };
+                ManagedTerrainGraph.PropContext propContext = new ManagedTerrainGraph.PropContext((Variable<int>)dispatch.node);
+
+                graph.Props(propInput, propContext);
+
+                return new KernelBuilder {
+                    name = "CSProps",
+                    arguments = new ScopeArgument[] {
+                        position, dispatch, type,
+                    },
+                    customCallback = (TreeContext ctx) => {
+                        segmentSlowDensity.Handle(ctx);
+                        propContext.chain?.Handle(ctx);
+                    },
+                    dispatch = new PropKernelDispatch {
+                    },
+                    dispatchGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
+                    scopeGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
+                    numThreads = new int3(64, 1, 1),
+                };
+            }
+
             ManagedTerrainGraph graph = GetComponent<ManagedTerrainGraph>();
 
             // TODO: for SOME fucking reason debug name causes problems
             // unity doesn't seem to be saving the debugNames field or doing some fucky fucky shit with it. pls fix
             ctx = new TreeContext(false);
             ctx.scopes = new List<TreeScope>();
-
-            // Create the external inputs that we use inside the function scope
-            ScopeArgument position = ScopeArgument.AsInput<float3>("position");
-
-            // Run the graph for the voxels pass
-            graph.Density((Variable<float3>)position.node, out Variable<float> density);
-
-            // Create the scope and kernel for the voxel generation step
-            // This will be used by the terrain previewer, terrain async readback system, and terrain segmentation system
-            KernelBuilder voxelKernelBuilder = new KernelBuilder {
-                name = "CSVoxels",
-                arguments = new ScopeArgument[] {
-                    position,
-                    ScopeArgument.AsOutput<float>("density", density),
-                    ScopeArgument.AsOutput<int>("material", 0)
-                },
-                dispatch = new VoxelKernelDispatch {
-                },
-                numThreads = new int3(8),
-                dispatchGuards = new KeywordGuards(ComputeKeywords.OCTAL_READBACK, ComputeKeywords.PREVIEW, ComputeKeywords.SEGMENT_VOXELS),
-                scopeGuards = null,
-            };
-
-            // Create a specific new node for sampling from the voxel texture
-            Variable<float> cachedDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
-                foreach (var (name, texture) in ctx.textures) {
-                    if (texture.readKernels.Contains("CSVoxels")) {
-                        texture.readKernels.Add($"CS{ctx.scopes[ctx.currentScope].name}");
-                    }
-                }
-                
-                return @$"DensityAtSlow({position.name})";
-            });
-
-            // Run the graph for the props pass
-            ScopeArgument dispatch = ScopeArgument.AsInput<int>("dispatch");
-            ScopeArgument type = ScopeArgument.AsInput<int>("type");
-            ManagedTerrainGraph.PropInput propInput = new ManagedTerrainGraph.PropInput() {
-                position = (Variable<float3>)position.node,
-                density = cachedDensity,
-                dispatch = (Variable<int>)dispatch.node,
-                type = (Variable<int>)type.node
-            };
-            ManagedTerrainGraph.PropContext propContext = new ManagedTerrainGraph.PropContext((Variable<int>)dispatch.node);
-
-            // Run the graph for the props pass
-            graph.Props(propInput, propContext);
-
-            // Create the scope and kernel for the prop generation step
-            KernelBuilder propKernelBuilder = new KernelBuilder {
-                name = "CSProps",
-                arguments = new ScopeArgument[] {
-                    position, dispatch, type,
-                },
-                customCallback = (TreeContext ctx) => {
-                    cachedDensity.Handle(ctx);
-                    propContext.chain?.Handle(ctx);
-                },
-                dispatch = new PropKernelDispatch {
-                },
-                dispatchGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
-                scopeGuards = new KeywordGuards(ComputeKeywords.SEGMENT_PROPS),
-                numThreads = new int3(64, 1, 1),
-            };
-
-            voxelKernelBuilder.Build(ctx);
-            propKernelBuilder.Build(ctx);
+            
+            VoxelKernel(graph).Build(ctx);
+            LayerKernel(graph).Build(ctx);
+            PropsKernel(graph).Build(ctx);
 
             ctx.dispatches.Sort((KernelDispatch a, KernelDispatch b) => { return b.depth.CompareTo(a.depth); });
         }

@@ -115,7 +115,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
             MultiReadbackExecutorParameters parameters = new MultiReadbackExecutorParameters() {
-                commandBufferName = "Terrain Readback System Async Dispatch",
+                commandBufferName = "Readback Async Dispatch",
                 transforms = posScaleOctals,
                 kernelName = "CSVoxels",
                 updateInjected = false,
@@ -125,6 +125,10 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
 
             GraphicsFence fence = multiExecutor.Execute(parameters);
+
+            parameters.kernelName = "CSLayers";
+            fence = multiExecutor.Execute(parameters, fence);
+
             CommandBuffer cmds = new CommandBuffer();
             cmds.name = "Terrain Readback System Async Readback";
             cmds.WaitOnAsyncGraphicsFence(fence, SynchronisationStageFlags.ComputeProcessing);

@@ -5,12 +5,7 @@
 #define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
 #include "UnityIndirect.cginc"
 
-
-int3 permutation_seed = int3(684, 2325, 31);
-int3 modulo_seed = int3(423, 4543, -23423);
-
 #include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
-#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/common.cginc"
 
 RWTexture3D<PackedVoxel> voxels;
 
@@ -18,10 +13,28 @@ Voxel fetch(uint3 id) {
     return unpackVoxelData(voxels[id]);
 }
 
+float3 RemapRGBAtoRGB(float4 layers)
+{
+    float r = layers.r;
+    float g = layers.g;
+    float b = layers.b;
+    float a = layers.a;
+    // Remap 'a' into rgb with a simple weighted blend
+    // This keeps the output continuous and visually traceable
+    
+    float3 rgb = float3(r, g, b);
+    
+    // Mix 'a' into each channel with different weights
+    rgb.r = lerp(rgb.r, a, 0.3);
+    rgb.g = lerp(rgb.g, a * 0.8, 0.3);
+    rgb.b = lerp(rgb.b, 1.0 - a, 0.3);
+    
+    return rgb;
+}
+
 RWTexture3D<uint> vertexIds;
 
 int size;
-
 RWStructuredBuffer<float3> vertices;
 RWStructuredBuffer<float3> normals;
 RWStructuredBuffer<float3> colors;
@@ -108,6 +121,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
     int count = 0;
     float3 sum = float3(0, 0, 0);
     float3 normalSum = float3(0, 0, 0);
+    float4 layersSum = float4(0,0,0,0);
 
     for (int i = 0; i < 12; i++) {
         uint3 first = edgePositions0[i];
@@ -121,6 +135,7 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
             float unlerped = invLerp(firstVoxel.density, secondVoxel.density, 0.0);
             sum += lerp(float3(first), float3(second), unlerped);
             normalSum += lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped);
+            layersSum += lerp(firstVoxel.layers, secondVoxel.layers, unlerped);
         }
     }
 
@@ -129,7 +144,8 @@ void CSVertex(uint3 id : SV_DispatchThreadID) {
         InterlockedAdd(atomicCounters[0], 1, oldValue); 
         vertices[oldValue] = float3(id) + sum/float(count);
         normals[oldValue] = length(normalSum) < 0.1 ? 1.0 : normalize(-normalSum);
-        colors[oldValue] = 1.0f;
+
+        colors[oldValue] = RemapRGBAtoRGB(layersSum / float(count));
         vertexIds[id] = oldValue;   
     }
 }

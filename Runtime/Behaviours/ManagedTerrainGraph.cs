@@ -85,16 +85,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             public Variable<int> type;
         }
 
-
-        public class LayersInput {
-            public Variable<float> density;
-            public Variable<float3> normal;
-        }
-
-        public class LayersOutput {
-            public Variable<float4> layers;
-        }
-
         public abstract void Density(in Variable<float3> position, out Variable<float> density);
         public abstract void Layers(in Variable<float3> position, in Variable<float3> normal, in Variable<float> density, out Variable<float4> layers);
         public abstract void Props(in PropInput input, PropContext propContext);

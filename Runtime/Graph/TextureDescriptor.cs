@@ -25,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 name = name,
                 readKernels = readKernels,
                 texture = texture,
-                writeKernel = null,
+                writeKernels = null,
                 requestingNodeHash = requestingNodeHash,
             };
         }
@@ -43,7 +43,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 name = name,
                 readKernels = readKernels,
                 texture = texture,
-                writeKernel = null,
+                writeKernels = null,
                 requestingNodeHash = requestingNodeHash,
             };
         }
@@ -57,7 +57,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 name = name,
                 readKernels = readKernels,
                 texture = texture,
-                writeKernel = null,
+                writeKernels = null,
                 requestingNodeHash = requestingNodeHash,
             };
         }

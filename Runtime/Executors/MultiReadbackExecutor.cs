@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -8,6 +9,7 @@ namespace jedjoud.VoxelTerrain.Generation {
     public struct MultiReadbackTransform {
         public Vector3 position;
         public float scale;
+        public const int size = sizeof(int) * 4;
     }
 
     public class MultiReadbackExecutorParameters : ExecutorParameters {
@@ -28,8 +30,8 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         protected override void CreateResources(ManagedTerrainCompiler compiler) {
             base.CreateResources(compiler);
-            transformsBuffer = new ComputeBuffer(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, sizeof(int) * 4, ComputeBufferType.Structured);
-            buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxels" }, new ComputeBuffer(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, GpuVoxel.size, ComputeBufferType.Structured)));
+            transformsBuffer = new ComputeBuffer(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, MultiReadbackTransform.size, ComputeBufferType.Structured);
+            buffers.Add("voxels", new ExecutorBuffer("voxels", new List<string>() { "CSVoxels", "CSLayers" }, new ComputeBuffer(VoxelUtils.VOLUME * VoxelUtils.MULTI_READBACK_CHUNK_COUNT, GpuVoxel.size, ComputeBufferType.Structured)));
         }
 
         protected override void SetComputeParams(CommandBuffer commands, ComputeShader shader, MultiReadbackExecutorParameters parameters, int kernelIndex) {

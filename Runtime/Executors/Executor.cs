@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain.Generation {
@@ -57,6 +58,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (compiler.ctx == null)
                 throw new ArgumentNullException("Compiler context missing (need to add more ParsedTranspilation() guards oops...)");
 
+            Profiler.BeginSample($"Executor record {parameters.commandBufferName} {parameters.kernelName}");
             // dawg...
             ComputeShader shader = compiler.shader;
             KernelDispatch dispatch = compiler.ctx.dispatches.Find(x => x.name == parameters.kernelName);
@@ -76,27 +78,34 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             CommandBuffer commands = new CommandBuffer();
-            commands.name = parameters.commandBufferName;
+            commands.name = $"{parameters.commandBufferName} {parameters.kernelName}";
             commands.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
 
             if (previous != null) {
                 commands.WaitOnAsyncGraphicsFence(previous.Value, SynchronisationStageFlags.ComputeProcessing);
             }
 
-
+            Profiler.BeginSample($"Set Compute Params");
             SetComputeParams(commands, shader, parameters, id);
+            Profiler.EndSample();
 
             if (updateInjected) {
+                Profiler.BeginSample($"Update Injected");
                 compiler.ctx.injector.UpdateInjected(commands, shader, textures);
+                Profiler.EndSample();
             }
 
+            Profiler.BeginSample($"Bind Textures {textures.Count}");
             foreach (var (name, texture) in textures) {
                 texture.BindToComputeShader(commands, shader);
             }
+            Profiler.EndSample();
 
+            Profiler.BeginSample($"Bind Buffers {buffers.Count}");
             foreach (var (name, buffer) in buffers) {
                 buffer.BindToComputeShader(commands, shader);
             }
+            Profiler.EndSample();
 
             float3 numThreads = (float3)dispatch.numThreads;
             float3 tempSize = (float3)invocations / numThreads;
@@ -107,6 +116,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             // If the target arch doesn't support async compute this will just revert to the normal queue
             GraphicsFence fence = commands.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
             Graphics.ExecuteCommandBufferAsync(commands, UnityEngine.Rendering.ComputeQueueType.Background);
+            Profiler.EndSample();
             return fence;
         }
 
