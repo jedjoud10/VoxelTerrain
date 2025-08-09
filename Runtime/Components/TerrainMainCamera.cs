@@ -9,5 +9,7 @@ namespace jedjoud.VoxelTerrain {
         public float4x4 projectionMatrix;
         public float4x4 worldToCameraMatrix;
         public float2 nearFarPlanes;
+        public float3 position;
+        public float3 up;
     }
 }

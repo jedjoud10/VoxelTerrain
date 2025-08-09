@@ -32,7 +32,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
             TerrainOcclusionConfig config = SystemAPI.GetSingleton<TerrainOcclusionConfig>();
             Entity cameraEntity = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
             TerrainMainCamera camera = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
-            float3 cameraPosition = SystemAPI.GetComponent<LocalToWorld>(cameraEntity).Position;
+            float3 cameraPosition = camera.position;
 
 
             if (asyncVoxelizationJobHandle.Equals(default) || asyncVoxelizationJobHandle.IsCompleted) {

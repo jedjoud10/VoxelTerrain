@@ -18,7 +18,9 @@ namespace jedjoud.VoxelTerrain {
                 SystemAPI.SetComponent<TerrainMainCamera>(cameraEntity, new TerrainMainCamera {
                     projectionMatrix = camera.projectionMatrix,
                     worldToCameraMatrix = camera.worldToCameraMatrix,
-                    nearFarPlanes = new float2(camera.nearClipPlane, camera.farClipPlane)
+                    nearFarPlanes = new float2(camera.nearClipPlane, camera.farClipPlane),
+                    position = camera.transform.position,
+                    up = camera.transform.up,
                 });
             }
         }

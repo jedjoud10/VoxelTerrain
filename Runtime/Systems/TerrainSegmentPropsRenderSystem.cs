@@ -3,6 +3,7 @@ using jedjoud.VoxelTerrain.Occlusion;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -55,7 +56,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             int types = config.props.Count;
             Entity cameraEntity = SystemAPI.GetSingletonEntity<TerrainMainCamera>();
             TerrainMainCamera camera = SystemAPI.GetComponent<TerrainMainCamera>(cameraEntity);
-            LocalToWorld cameraTransform = SystemAPI.GetComponent<LocalToWorld>(cameraEntity);
+            float3 cameraPosition = camera.position;
+            float3 cameraUp = camera.up;
 
 
             CommandBuffer cmds = new CommandBuffer();
@@ -81,7 +83,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             cmds.SetComputeIntParam(config.cull, "max_combined_perm_props", perm.maxCombinedPermProps);
             cmds.SetComputeIntParam(config.cull, "types", types);
 
-            cmds.SetComputeVectorParam(config.cull, "camera_position", (Vector3)cameraTransform.Position);
+            cmds.SetComputeVectorParam(config.cull, "camera_position", (Vector3)cameraPosition);
 
             if (SystemAPI.TryGetSingleton<TerrainOcclusionConfig>(out var occlusionConfig)) {
                 cmds.SetKeyword(config.cull, config.cull.keywordSpace.FindKeyword("_OCCLUSION_CULLING"), true);
@@ -141,7 +143,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 }
 
                 if (config.props[i].renderImpostors) {
-                    RenderImpostorPropsOfType(cameraTransform, config.props[i], i);
+                    RenderImpostorPropsOfType(cameraPosition, cameraUp, config.props[i], i);
                 }
             }
         }
@@ -185,7 +187,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             Graphics.RenderMeshIndirect(renderParams, mesh, rendering.instancedDrawArgsBuffer, 1, i);
         }
 
-        public void RenderImpostorPropsOfType(LocalToWorld cameraTransform, PropType type, int i) {
+        public void RenderImpostorPropsOfType(float3 cameraPosition, float3 cameraUp, PropType type, int i) {
             if (!rendering.typeImpostorsTextureArrays[i].IsValid()) {
                 Debug.LogWarning($"Missing captured impostor textures for prop '{type.name}' variant {i}");
                 return;
@@ -212,8 +214,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             mat.SetInt("_PropType", i);
             mat.SetInt("_MaxVariantCountForType", type.variants.Count);
 
-            mat.SetVector("_CameraPosition", (Vector3)cameraTransform.Position);
-            mat.SetVector("_CameraUp", (Vector3)cameraTransform.Up);
+            mat.SetVector("_CameraPosition", (Vector3)cameraPosition);
+            mat.SetVector("_CameraUp", (Vector3)cameraUp);
 
             mat.SetVector("_ImpostorOffset", type.impostorOffset);
             mat.SetFloat("_ImpostorScale", type.impostorScale);
