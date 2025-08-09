@@ -42,7 +42,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 data.copiedPostRelaxationBools.CopyFrom(data.postRelaxationBools);
                 cameraPositionDuringVoxelization = tmpThingMajig;
 
-                foreach (var (chunk, _voxels) in SystemAPI.Query<TerrainChunk, RefRW<TerrainChunkVoxels>>()) {
+                foreach (var (chunk, _voxels) in SystemAPI.Query<TerrainChunk, RefRW<TerrainChunkVoxels>>().WithAll<TerrainChunkVoxelsReadyTag>()) {
                     ref TerrainChunkVoxels voxels = ref _voxels.ValueRW;
 
                     if (chunk.node.atMaxDepth && voxels.asyncWriteJobHandle.IsCompleted) {

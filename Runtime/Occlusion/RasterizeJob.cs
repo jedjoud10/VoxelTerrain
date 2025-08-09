@@ -4,7 +4,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile()]
     public struct RasterizeJob : IJobParallelFor {
         [ReadOnly]
         public NativeArray<bool> insideSurfaceVoxels;
@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Occlusion {
 
             int x = index % width;
             int y = index / width;
-            float2 uvs = new float2(x, y) / new float2(width - 1, height - 1);
+            float2 uvs = new float2(x, y) / new float2(width-1, height-1);
             float4 clip = new float4(uvs * 2f - 1f, 1f, 1f);
             float4 rayView = math.mul(invProj, clip);
             rayView /= rayView.w;

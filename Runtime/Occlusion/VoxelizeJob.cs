@@ -5,7 +5,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Occlusion {
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile()]
     public struct VoxelizeJob : IJobParallelFor {
         [ReadOnly]
         public NativeHashMap<int3, int> chunkPositionsLookup;

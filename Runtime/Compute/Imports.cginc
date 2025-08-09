@@ -55,7 +55,7 @@ SamplerState my_linear_clamp_sampler;
     RWStructuredBuffer<uint> temp_counters_buffer;
     RWStructuredBuffer<uint> temp_buffer_offsets_buffer;
     RWStructuredBuffer<uint4> temp_buffer;
-    RWStructuredBuffer<uint> spawnable_props_bits_buffer;
+    RWStructuredBuffer<uint> destroyed_props_bits_buffer;
 #endif
 
 #if defined(_ASYNC_READBACK_OCTAL)
@@ -183,16 +183,16 @@ SamplerState my_linear_clamp_sampler;
         return true;
     }
 
-    bool CanSpawnPropOfType(int type, int dispatchIndex) {
+    bool CanSpawnProp(int dispatchIndex) {
         uint idx = uint(dispatchIndex);
         uint local = idx % 32;
         uint batch = idx / 32;
-        uint val = spawnable_props_bits_buffer[batch];
+        uint val = destroyed_props_bits_buffer[batch];
         return ((val >> local) & 1) == 0;
     }
 
     void ConditionalSpawnPropOfType(bool shouldSpawn, int targetType, int type, float3 position, float scale, float4 rotation, int variant, int dispatchIndex) {
-        if (shouldSpawn && type < max_total_prop_types && targetType == type && CanSpawnPropOfType(type, dispatchIndex)) {
+        if (shouldSpawn && type < max_total_prop_types && targetType == type && CanSpawnProp(dispatchIndex)) {
             int index = 0;
             InterlockedAdd(temp_counters_buffer[type], 1, index);
             index += temp_buffer_offsets_buffer[type];

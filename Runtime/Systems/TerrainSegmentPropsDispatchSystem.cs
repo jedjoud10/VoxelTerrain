@@ -28,7 +28,7 @@ namespace jedjoud.VoxelTerrain.Segments {
         int types;
 
 
-        private NativeHashMap<int3, NativeBitArray> modifiedTempRemovedBitsets;
+        private NativeHashMap<int3, NativeArray<uint>> modifiedTempRemovedBitsets;
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadySystems>();
@@ -38,7 +38,7 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             free = true;
             propExecutor = new SegmentPropExecutor();
-            modifiedTempRemovedBitsets = new NativeHashMap<int3, NativeBitArray>(0, Allocator.Persistent);
+            modifiedTempRemovedBitsets = new NativeHashMap<int3, NativeArray<uint>>(0, Allocator.Persistent);
         }        
 
         protected override void OnUpdate() {
@@ -56,11 +56,15 @@ namespace jedjoud.VoxelTerrain.Segments {
                     ecb.RemoveComponent(entity, typeof(TerrainPropSharedCleanup));
                     ecb.DestroyEntity(entity);
 
-                    if (modifiedTempRemovedBitsets.TryGetValue(sharedCleanup.segmentPosition, out NativeBitArray item)) {
-                        item.Set((int)cleanup.id + temp.tempBufferOffsets[sharedCleanup.type], true);
-                    } else {
-                        modifiedTempRemovedBitsets.Add(sharedCleanup.segmentPosition, new NativeBitArray(temp.maxCombinedTempProps, Allocator.Persistent));
+                    if (!modifiedTempRemovedBitsets.ContainsKey(sharedCleanup.segmentPosition)) {
+                        modifiedTempRemovedBitsets.Add(sharedCleanup.segmentPosition, new NativeArray<uint>(temp.removedBitsetUintCount, Allocator.Persistent));
                     }
+
+                    NativeArray<uint> item = modifiedTempRemovedBitsets[sharedCleanup.segmentPosition];
+                    int idx = (int)cleanup.id + temp.tempBufferOffsets[sharedCleanup.type];
+                    int local = idx % 32;
+                    int batch = idx / 32;
+                    item[batch] |= (uint)(1 << local);
                 }
 
                 ecb.Playback(EntityManager);
@@ -116,17 +120,12 @@ namespace jedjoud.VoxelTerrain.Segments {
             countersFetched = false;
             propsFetched = false;
 
+            NativeArray<uint> removedBitset = temp.tempRemovedBitsetEmptyDefault;
             if (modifiedTempRemovedBitsets.TryGetValue(segment.position, out var tempAllowedToSpawnBitset)) {
-                NativeArray<uint> src = tempAllowedToSpawnBitset.AsNativeArrayExt<uint>();
-                NativeArray<uint> dst = temp.tempRemovedBitset.AsNativeArrayExt<uint>();
-                dst.CopyFrom(src);
-            } else {
-                NativeArray<uint> dst = temp.tempRemovedBitset.AsNativeArrayExt<uint>();
-                dst.FillArray<uint>(0);
-            }
+                removedBitset = tempAllowedToSpawnBitset;
+            } 
 
-            NativeArray<uint> data = temp.tempRemovedBitset.AsNativeArrayExt<uint>().GetSubArray(0, temp.removedBitsetUintCount);
-            temp.tempRemovedBitsetBuffer.SetData(data);
+            temp.tempRemovedBitsetBuffer.SetData(removedBitset);
 
             int invocations = temp.maxCombinedTempProps;
             Texture segmentDensityTexture = dispatcher.voxelExecutor.Textures["densities"];
@@ -141,7 +140,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 tempBufferOffsetsBuffer = temp.tempBufferOffsetsBuffer,
                 segmentDensityTexture = segmentDensityTexture,
                 enabledPropsTypesFlag = (int)config.enabledPropTypesFlag,
-                tempAllowedToSpawnBitsetBuffer = temp.tempRemovedBitsetBuffer,
+                tempRemovedBitsetBuffer = temp.tempRemovedBitsetBuffer,
                 seed = SystemAPI.GetSingleton<TerrainSeed>(),
             }, previous: fence);
 
@@ -426,10 +425,10 @@ namespace jedjoud.VoxelTerrain.Segments {
         public void DespawnPropEntities(DynamicBuffer<TerrainSegmentOwnedPropBuffer> buffer, TerrainSegment segment, ref EntityCommandBuffer ecb) {
             Profiler.BeginSample("Despawn Segment Prop Entities");
             NativeArray<Entity> entities = buffer.Reinterpret<Entity>().AsNativeArray();
-            ecb.DestroyEntity(entities);
             ecb.RemoveComponent<TerrainPropTag>(entities);
             ecb.RemoveComponent<TerrainPropSharedCleanup>(entities);
             ecb.RemoveComponent<TerrainPropCleanup>(entities);
+            ecb.DestroyEntity(entities);
             Profiler.EndSample();
         }
 

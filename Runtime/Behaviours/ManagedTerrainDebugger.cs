@@ -141,8 +141,11 @@ namespace jedjoud.VoxelTerrain {
 #if UNITY_EDITOR
             EntityQuery singletonQuery = world.EntityManager.CreateEntityQuery(typeof(TerrainOcclusionConfig));
             if (debugOcclusionCulling && Camera.current.cameraType == CameraType.Game && singletonQuery.TryGetSingleton(out TerrainOcclusionConfig config)) {
-                if (occlusionTexture == null)
+                if (occlusionTexture == null) {
                     occlusionTexture = new Texture2D(config.width, config.height, TextureFormat.RFloat, false);
+                    occlusionTexture.filterMode = FilterMode.Point;
+                    occlusionTexture.wrapMode = TextureWrapMode.Clamp;
+                }
                 
 
                 NativeArray<float> depth = world.EntityManager.CreateEntityQuery(typeof(TerrainOcclusionScreenData)).GetSingleton<TerrainOcclusionScreenData>().rasterizedDdaDepth;
