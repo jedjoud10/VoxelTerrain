@@ -91,19 +91,6 @@ namespace jedjoud.VoxelTerrain {
             return math.tzcnt(math.bitmask(new bool4(b3, false)));
         }
 
-        public static uint PackByteToUint(byte a, byte b, byte c, byte d) {
-            return (uint)a | (uint)b << 8 | (uint)c << 16 | (uint)d << 24;
-        }
-
-        public static float4 Byte4ToFloat4(uint packed) {
-            float r = (packed & 0xFF) / 255.0f;
-            float g = ((packed >> 8) & 0xFF) / 255.0f;
-            float b = ((packed >> 16) & 0xFF) / 255.0f;
-            float a = ((packed >> 24) & 0xFF) / 255.0f;
-
-            return new float4(r, g, b, a);
-        }
-
         public static uint PackUInt4ToUInt(uint4 bytes) {
             return (bytes.x & 0xFFu) | ((bytes.y & 0xFFu) << 8) | ((bytes.z & 0xFFu) << 16) | ((bytes.w & 0xFFu) << 24);
         }
@@ -116,6 +103,32 @@ namespace jedjoud.VoxelTerrain {
         public static uint PackUnorm8(float4 value) {
             float4 n = math.saturate(value) * 255f;
             return PackUInt4ToUInt((uint4)math.round(n));
+        }
+
+        public static uint4 UnpackUInt4(uint packed) {
+            return new uint4(
+                packed & 0xFFu,
+                (packed >> 8) & 0xFFu,
+                (packed >> 16) & 0xFFu,
+                (packed >> 24) & 0xFFu
+            );
+        }
+
+        public static float4 UnpackUnorm8(uint packed) {
+            uint4 bytes = UnpackUInt4(packed);
+            return new float4(bytes) / 255f;
+        }
+
+        public static float4 UnpackSnorm8(uint packed) {
+            uint4 bytes = UnpackUInt4(packed);
+
+            float4 result;
+            result.x = (sbyte)bytes.x / 127f;
+            result.y = (sbyte)bytes.y / 127f;
+            result.z = (sbyte)bytes.z / 127f;
+            result.w = (sbyte)bytes.w / 127f;
+
+            return result;
         }
     }
 }

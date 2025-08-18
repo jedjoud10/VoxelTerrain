@@ -18,6 +18,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         private JobHandle? pendingCopies;
         private NativeArray<JobHandle> copies;
         private NativeArray<int> multiSignCounters;
+        private NativeArray<MultiReadbackTransform> transforms;
         private bool countersFetched, voxelsFetched;
         private bool disposed;
         private MultiReadbackExecutor multiExecutor;
@@ -30,6 +31,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             entities = new List<Entity>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT);
             copies = new NativeArray<JobHandle>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
             multiSignCounters = new NativeArray<int>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
+            transforms = new NativeArray<MultiReadbackTransform>(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, Allocator.Persistent);
             free = true;
             pendingCopies = null;
             voxelsFetched = false;
@@ -58,6 +60,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             copies.Dispose();
             multiExecutor.DisposeResources();
             multiSignCountersBuffer.Dispose();
+            transforms.Dispose();
         }
 
         protected override void OnUpdate() {
@@ -90,8 +93,6 @@ namespace jedjoud.VoxelTerrain.Generation {
                 
             int numChunks = math.min(VoxelUtils.MULTI_READBACK_CHUNK_COUNT, voxelsArray.Length);
 
-            MultiReadbackTransform[] posScaleOctals = new MultiReadbackTransform[VoxelUtils.MULTI_READBACK_CHUNK_COUNT];
-
             free = false;
 
             // Change chunk states, since we are now waiting for voxel readback
@@ -104,7 +105,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 float3 pos = (float3)chunk.node.position;
                 float scale = chunk.node.size / VoxelUtils.PHYSICAL_CHUNK_SIZE;
 
-                posScaleOctals[j] = new MultiReadbackTransform {
+                transforms[j] = new MultiReadbackTransform {
                     scale = scale,
                     position = pos
                 };
@@ -116,7 +117,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             // Size*4 since we are using octal generation!!!! (not really octal atp but wtv)
             MultiReadbackExecutorParameters parameters = new MultiReadbackExecutorParameters() {
                 commandBufferName = "Readback Async Dispatch",
-                transforms = posScaleOctals,
+                transforms = transforms,
                 kernelName = "CSVoxels",
                 updateInjected = false,
                 compiler = ManagedTerrain.instance.compiler,
@@ -157,7 +158,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                             // we can just do parallel copies from the source buffer at the appropriate offset
                             GpuVoxel* src = pointer + (VoxelUtils.VOLUME * j);
 
-                            bool enabled = EntityManager.IsComponentEnabled<TerrainChunkVoxels>(entity);
+                            bool enabled = SystemAPI.IsComponentEnabled<TerrainChunkVoxels>(entity);
 
                             if (!enabled)
                                 return;

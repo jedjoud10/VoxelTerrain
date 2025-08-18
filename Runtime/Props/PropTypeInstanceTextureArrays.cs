@@ -25,6 +25,7 @@ namespace jedjoud.VoxelTerrain.Props {
             int width = textures[0].width;
             int height = textures[0].height;
             int mips = textures[0].mipmapCount;
+            int mipmapLimit = textures[0].activeMipmapLimit;
             TextureFormat format = textures[0].format;
             FilterMode filterMode = textures[0].filterMode;
 
@@ -39,14 +40,20 @@ namespace jedjoud.VoxelTerrain.Props {
                     throw new Exception("All textures must have the same number of mipmaps!!!");
                 if (tex.filterMode != filterMode)
                     throw new Exception("All textures must have the same filter mode!!!");
+                if (tex.activeMipmapLimit != mipmapLimit)
+                    throw new Exception("All textures must have the same mip map limit!!!");
             }
 
-            Texture2DArray array = new Texture2DArray(width, height, textures.Length, format, mips, linear);
+            Texture2DArray array = new Texture2DArray(width, height, textures.Length, format, mips, linear, false, new MipmapLimitDescriptor(true, textures[0].mipmapLimitGroup));
             array.filterMode = filterMode;
+            array.ignoreMipmapLimit = false;
+
+            int applicableMips = Mathf.Max(mips - mipmapLimit, 0);
+            
 
             for (int i = 0; i < textures.Length; i++) {
                 Texture2D tex = textures[i];
-                for (int m = 0; m < mips; m++) {
+                for (int m = 0; m < applicableMips; m++) {
                     Graphics.CopyTexture(tex, 0, m, array, i, m);
                 }
             }

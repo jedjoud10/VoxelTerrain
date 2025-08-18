@@ -5,12 +5,7 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Props {
     [CreateAssetMenu(menuName = "Voxel Terrain/Create new Voxel Prop")]
     public class PropType : ScriptableObject {
-        [Serializable]
-        public class Variant {
-            public GameObject prefab = null;
-        }
-
-        public List<Variant> variants;
+        public List<GameObject> variants;
 
         // if true, spawns entities in the high quality segments
         // if false, spawns instances instead of the entities
@@ -26,6 +21,9 @@ namespace jedjoud.VoxelTerrain.Props {
         public float instanceMaxDistance = 100;
         public Mesh instancedMesh = null;
 
+        // when the main variants don't have a main mesh renderer attached to them
+        public Material overrideMaterial;
+
         // le sus
         public bool renderImpostors = true;
 
@@ -33,8 +31,8 @@ namespace jedjoud.VoxelTerrain.Props {
         public float impostorDistancePercentage = 0.5f;
         public Vector3 impostorOffset = Vector3.zero;
         public float impostorScale = 1f;
-        public int impostorTextureWidth = 128;
-        public int impostorTextureHeight = 128;
+        public int impostorTextureWidth = 32;
+        public int impostorTextureHeight = 32;
         public ImpostorCapturePolarAxis impostorCaptureAxis = ImpostorCapturePolarAxis.XZ;
 
         [HideInInspector]
@@ -47,15 +45,13 @@ namespace jedjoud.VoxelTerrain.Props {
         public enum ImpostorCapturePolarAxis {
             XZ,
             XY,
-            YZ
+            YZ,
+            NegativeXZ,
+            NegativeXY,
+            NegativeYZ,
         }
 
-        public enum Axis: int { X = 0, Y = 1, Z = 2, NegativeX = 3, NegativeY = 4, NegativeZ = 5 }
-
-        public Axis impostorNormalX = Axis.X;
-        public Axis impostorNormalY = Axis.Y;
-        public Axis impostorNormalZ = Axis.Z;
-        public bool impostorInvertAzimuth = false;
+        public bool impostorInvertAzimuth;
 
         [Min(1)] public int maxPropsPerSegment = 32 * 32 * 8;
         [Min(1)] public int maxPropsInTotal = 32 * 32 * 32 * 32;

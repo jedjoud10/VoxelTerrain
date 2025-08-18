@@ -8,6 +8,7 @@ using Unity.Entities.Graphics;
 using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
@@ -17,7 +18,6 @@ namespace jedjoud.VoxelTerrain.Meshing {
     [UpdateAfter(typeof(TerrainReadbackSystem))]
     public partial class TerrainMeshingSystem : SystemBase {
         private List<MeshJobHandler> handlers;
-        const int MAX_MESH_HANDLERS_PER_TICK = 2;
         public static readonly RenderMeshDescription renderMeshDescription = new RenderMeshDescription {
             FilterSettings = new RenderFilterSettings {
                 ShadowCastingMode = ShadowCastingMode.On,
@@ -36,25 +36,31 @@ namespace jedjoud.VoxelTerrain.Meshing {
 
         protected override void OnCreate() {
             RequireForUpdate<TerrainMesherConfig>();
-            handlers = new List<MeshJobHandler>(MAX_MESH_HANDLERS_PER_TICK);
-            for (int i = 0; i < MAX_MESH_HANDLERS_PER_TICK; i++) {
-                handlers.Add(new MeshJobHandler());
-            }
-
             graphics = null;
+            handlers = null;
         }
 
         protected override void OnUpdate() {
             EntityQuery query = SystemAPI.QueryBuilder().WithAll<TerrainChunk, TerrainChunkVoxels, TerrainChunkRequestMeshingTag, TerrainChunkVoxelsReadyTag>().Build();
-            bool ready = query.IsEmpty && handlers.All(x => x.Free);
 
             RefRW<TerrainReadySystems> _ready = SystemAPI.GetSingletonRW<TerrainReadySystems>();
-            _ready.ValueRW.mesher = ready;
+            if (handlers != null) {
+                bool ready = query.IsEmpty && handlers.All(x => x.Free);
+                _ready.ValueRW.mesher = ready;
+            } else {
+                _ready.ValueRW.mesher = false;
+            }
 
             if (SystemAPI.ManagedAPI.TryGetSingleton<TerrainMesherConfig>(out TerrainMesherConfig config) && graphics == null) {
+                int meshJobsPerTick = Mathf.Max(1, config.meshJobsPerTick);
+                handlers = new List<MeshJobHandler>(meshJobsPerTick);
+                for (int i = 0; i < meshJobsPerTick; i++) {
+                    handlers.Add(new MeshJobHandler());
+                }
+
                 Material mainMeshMaterial, skirtMeshMaterial;
                 mainMeshMaterial = skirtMeshMaterial = config.material;
-                    
+
                 if (config.createCopyMaterial) {
                     mainMeshMaterial = new Material(config.material);
                     skirtMeshMaterial = new Material(config.material);
@@ -223,11 +229,11 @@ namespace jedjoud.VoxelTerrain.Meshing {
         }
 
         protected override void OnDestroy() {
-            foreach (MeshJobHandler handler in handlers) {
-                handler.Dispose();
+            if (handlers != null) {
+                foreach (MeshJobHandler handler in handlers) {
+                    handler.Dispose();
+                }
             }
-
-            handlers.Clear();
         }
     }
 }

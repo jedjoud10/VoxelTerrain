@@ -46,10 +46,10 @@ namespace jedjoud.VoxelTerrain.Octree {
                 // clamp to the root node
                 float3 clamped = math.clamp(loader.position, root.Bounds.Min, root.Bounds.Max);
 
-                if (math.distance(node.Center, clamped) < factor * node.size) {
+                if ((math.distance(node.Center, clamped)) < factor * node.size) {
                     return true;
                 }
-            }
+            }            
 
             return false;
         }

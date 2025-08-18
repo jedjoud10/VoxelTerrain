@@ -36,6 +36,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             entity = entities[0];
             segment = segments[0];
 
+            // TODO: figure this out twin
             fence = voxelExecutor.Execute(new SegmentVoxelExecutorParameters() {
                 commandBufferName = "Terrain Segment Voxels Dispatch",
                 kernelName = "CSVoxels",
@@ -44,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Segments {
                 segment = segment,
                 seed = SystemAPI.GetSingleton<TerrainSeed>(),
             });
-
+            
             SystemAPI.SetComponentEnabled<TerrainSegmentRequestVoxelsTag>(entity, false);
         }
 

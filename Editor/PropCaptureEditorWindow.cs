@@ -4,6 +4,7 @@ using jedjoud.VoxelTerrain.Props;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using static jedjoud.VoxelTerrain.Props.PropType;
 
 
 namespace jedjoud.VoxelTerrain.Editor {
@@ -82,6 +83,10 @@ namespace jedjoud.VoxelTerrain.Editor {
             Texture2DArray maskMapOut = new Texture2DArray(width, height, type.variants.Count * AZIMUTH_ITERS, TextureFormat.DXT1, false);
             Texture2DArray[] tempOut = new Texture2DArray[3] { diffuseMapOut, normalMapOut, maskMapOut };
 
+            foreach (var tex in tempOut) {
+                tex.hideFlags = HideFlags.DontUnloadUnusedAsset;
+            }
+
             try {
                 for (int i = 0; i < type.variants.Count; i++) {
                     CaptureVariant(type, cam, rt, tempOut, i);
@@ -111,17 +116,19 @@ namespace jedjoud.VoxelTerrain.Editor {
 
                 AssetDatabase.Refresh();
             } finally {
+                EditorUtility.UnloadUnusedAssetsImmediate();
                 DestroyImmediate(cameraGO);
                 rt.Release();
+                DestroyImmediate(rt);
             }
         }
 
         private void CaptureVariant(PropType type, Camera cam, RenderTexture rt, Texture2DArray[] tempOut, int variant) {
-            if (type.variants[variant].prefab == null) {
+            if (type.variants[variant] == null) {
                 throw new NullReferenceException("Cannot take capture of prop variant without a prefab");
             }
 
-            GameObject faker = Instantiate(type.variants[variant].prefab);
+            GameObject faker = Instantiate(type.variants[variant]);
 
             try {
                 faker.layer = 31;
@@ -151,9 +158,10 @@ namespace jedjoud.VoxelTerrain.Editor {
                 captureMaterial.SetTexture("_CaptureNormalMap", normal);
                 captureMaterial.SetTexture("_CaptureMaskMap", mask);
 
-                captureMaterial.SetInt("_NormalXSwizzle", (int)type.impostorNormalX);
-                captureMaterial.SetInt("_NormalYSwizzle", (int)type.impostorNormalY);
-                captureMaterial.SetInt("_NormalZSwizzle", (int)type.impostorNormalZ);
+                var swizzle = GetNormalSwizzle(type.impostorCaptureAxis);
+                captureMaterial.SetInt("_NormalXSwizzle", (int)swizzle.normalX);
+                captureMaterial.SetInt("_NormalYSwizzle", (int)swizzle.normalY);
+                captureMaterial.SetInt("_NormalZSwizzle", (int)swizzle.normalZ);
 
                 faker.transform.position = Vector3.zero;
                 faker.transform.rotation = Quaternion.identity;
@@ -163,11 +171,34 @@ namespace jedjoud.VoxelTerrain.Editor {
                 }
             } finally {
                 DestroyImmediate(faker);
+                EditorApplication.QueuePlayerLoopUpdate();
+                Resources.UnloadUnusedAssets();
+                GC.Collect();
+                EditorApplication.QueuePlayerLoopUpdate();
+            }
+        }
+
+
+        enum Axis : int { X = 0, Y = 1, Z = 2, NegativeX = 3, NegativeY = 4, NegativeZ = 5 }
+        private static (Axis normalX, Axis normalY, Axis normalZ) GetNormalSwizzle(ImpostorCapturePolarAxis axis) {
+            switch (axis) {
+                case ImpostorCapturePolarAxis.XZ: return (Axis.X, Axis.Y, Axis.Z);
+                case ImpostorCapturePolarAxis.XY: return (Axis.X, Axis.Z, Axis.Y);
+                case ImpostorCapturePolarAxis.YZ: return (Axis.Z, Axis.Y, Axis.X);
+
+                case ImpostorCapturePolarAxis.NegativeXZ: return (Axis.NegativeX, Axis.Y, Axis.Z);
+                case ImpostorCapturePolarAxis.NegativeXY: return (Axis.NegativeX, Axis.Z, Axis.Y);
+                case ImpostorCapturePolarAxis.NegativeYZ: return (Axis.Z, Axis.Y, Axis.NegativeX);
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(axis), axis, "Unknown capture axis");
             }
         }
 
         private void CaptureMap(PropType type, Bounds bounds, Camera cam, RenderTexture rt, Texture2DArray output, int variant, int map) {
             captureMaterial.SetInt("_CaptureMapSelector", map);
+
+
 
             for (int azimuth = 0; azimuth < AZIMUTH_ITERS; azimuth++) {
                 Graphics.SetRenderTarget(rt);
@@ -175,9 +206,8 @@ namespace jedjoud.VoxelTerrain.Editor {
                 Graphics.SetRenderTarget(null);
 
                 (Vector3 camPos, Quaternion camRot) = CalculateCameraOrbit(type, bounds, (azimuth / (float)AZIMUTH_ITERS) * 360f);
-                cam.transform.position = camPos;
-                cam.transform.rotation = camRot;
-                cam.Render();
+                cam.transform.SetPositionAndRotation(camPos, camRot);
+                cam.RenderWithShader(null, null);
 
                 Texture2D compressed = new Texture2D(rt.width, rt.height, TextureFormat.ARGB32, false);
                 RenderTexture.active = rt;
@@ -185,9 +215,21 @@ namespace jedjoud.VoxelTerrain.Editor {
                 compressed.Apply();
                 RenderTexture.active = null;
                 EditorUtility.CompressTexture(compressed, output.format, 5);
-                
                 output.CopyPixels(compressed, 0, 0, variant * AZIMUTH_ITERS + azimuth, 0);
+                DestroyImmediate(compressed);
             }
+
+
+
+            GL.Flush();
+            GL.InvalidateState();
+
+            EditorApplication.QueuePlayerLoopUpdate();
+            Resources.UnloadUnusedAssets();
+            GC.Collect();
+            EditorApplication.QueuePlayerLoopUpdate();
+
+            EditorUtility.UnloadUnusedAssetsImmediate();
         }
 
         private (Vector3, Quaternion) CalculateCameraOrbit(PropType type, Bounds bounds, float azimuthAngle) {

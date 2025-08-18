@@ -1,3 +1,14 @@
+# TODO (so that I don't forget)
+- Fix prop "instanced mesh" requirement if rendering instanced meshes is off
+- Impl sub meshe merging to replace prop "instanced mesh" (based off of variant meshes)
+- Implement prop capture full rotations (not only azimuth, should be toggable)
+- Fix prop capture mipmap bug when quality mipmap setting is set (fixed)
+- Implement variable caching again (fixed texture, only between the density <-> layers stages)
+- Improve chunk LOD selection (add min LOD for further chunks so that it doesn't look like slop?)
+- Remove mesh renderer restrictions on props (does not work when prop has LOD group for example)
+- Automatically set normal map swap when capturing prop impostor 
+- Fixed out of memory issue when capturing lots of prop types. Need to fix memory leak
+
 # New Features compared to the main branch:
 - Chunk size of 32, with some pros:
   - Faster meshing (sub 1ms on 14 threads for 1-2 chunks, pretty darn good, though could be fasteerrrrr).

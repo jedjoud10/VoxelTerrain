@@ -43,6 +43,7 @@ namespace jedjoud.VoxelTerrain {
     public struct EditVoxel {
         public float density;
         public int material;
+        public float4 layers;
     }
 
     // SoA voxel data
@@ -65,12 +66,13 @@ namespace jedjoud.VoxelTerrain {
         }
 
         public EditVoxel FetchEditVoxel(int index) {
-            return new EditVoxel { density = densities[index], material = materials[index] };
+            return new EditVoxel { density = densities[index], material = materials[index], layers = BitUtils.UnpackUnorm8(layers[index]) };
         }
 
         public void StoreEditVoxels(int index, EditVoxel voxel) {
             densities[index] = (half)voxel.density;
             materials[index] = (byte)math.clamp(voxel.material, 0, 255);
+            layers[index] = BitUtils.PackUnorm8(voxel.layers);
         }
 
         public JobHandle CopyFromAsync(VoxelData other, JobHandle dep = default) {

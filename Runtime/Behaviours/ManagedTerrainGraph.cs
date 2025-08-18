@@ -24,8 +24,14 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             public void DeclarePropSpawn(int type, Variable<bool> shouldSpawn, Props.GenerationProp prop) {
-                if (prop.position == null || prop.rotation == null || prop.variant == null || prop.scale == null)
-                    throw new NullReferenceException("One of the prop variables is null");
+                if (prop.position == null)
+                    throw new NullReferenceException("Prop position cannot be null");
+                if (prop.rotation == null)
+                    throw new NullReferenceException("Prop rotation cannot be null");
+                if (prop.variant == null)
+                    throw new NullReferenceException("Prop variant cannot be null");
+                if (prop.scale == null)
+                    throw new NullReferenceException("Prop scale cannot be null");
 
                 if (defined.Contains(type))
                     throw new InvalidOperationException($"Spawn condition for type '{type}' has already been declared. Only one declaration is allowed per type.");

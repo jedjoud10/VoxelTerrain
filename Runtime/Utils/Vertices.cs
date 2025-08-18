@@ -18,8 +18,8 @@ namespace jedjoud.VoxelTerrain {
                 float3 endNormal = voxelNormals[endIndex];
                 normal += math.lerp(startNormal, endNormal, value);
 
-                float4 startLayers = BitUtils.Byte4ToFloat4(voxels.layers[startIndex]);
-                float4 endLayers = BitUtils.Byte4ToFloat4(voxels.layers[endIndex]);
+                float4 startLayers = BitUtils.UnpackUnorm8(voxels.layers[startIndex]);
+                float4 endLayers = BitUtils.UnpackUnorm8(voxels.layers[endIndex]);
                 layers += math.lerp(startLayers, endLayers, value);
             }
 

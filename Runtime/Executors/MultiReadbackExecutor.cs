@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -13,14 +15,16 @@ namespace jedjoud.VoxelTerrain.Generation {
     }
 
     public class MultiReadbackExecutorParameters : ExecutorParameters {
-        public MultiReadbackTransform[] transforms;
+        public NativeArray<MultiReadbackTransform> transforms;
         public ComputeBuffer multiSignCountersBuffer;
     }
 
     public class MultiReadbackExecutor : VolumeExecutor<MultiReadbackExecutorParameters> {
         private ComputeBuffer transformsBuffer;
+        private int[] defaultClearingInts;
 
         public MultiReadbackExecutor() : base(VoxelUtils.SIZE * VoxelUtils.MULTI_READBACK_CHUNK_SIZE_RATIO) {
+            defaultClearingInts = new int[VoxelUtils.MULTI_READBACK_CHUNK_COUNT];
         }
 
         public override void DisposeResources() {
@@ -41,7 +45,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             commands.SetBufferData(transformsBuffer, parameters.transforms);
             commands.SetComputeBufferParam(shader, kernelIndex, "multi_transforms_buffer", transformsBuffer);
 
-            commands.SetBufferData(parameters.multiSignCountersBuffer, new int[VoxelUtils.MULTI_READBACK_CHUNK_COUNT]);
+            commands.SetBufferData(parameters.multiSignCountersBuffer, defaultClearingInts);
             commands.SetComputeBufferParam(shader, kernelIndex, "multi_counters_buffer", parameters.multiSignCountersBuffer);
         }
     }

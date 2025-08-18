@@ -8,7 +8,7 @@ Shader "Custom/PropCapture"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType"="Opaque"  "ReplacementTag"="Capture" }
         LOD 200
 
         Pass
@@ -50,7 +50,6 @@ Shader "Custom/PropCapture"
 
         Pass
         {
-
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag

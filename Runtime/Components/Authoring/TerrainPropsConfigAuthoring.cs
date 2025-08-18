@@ -35,21 +35,27 @@ namespace jedjoud.VoxelTerrain.Props {
 
                 for (int i = 0; i < count; i++) {
                     baked[i] = new TerrainPropsConfig.BakedPropVariant();
-                    PropType.Variant variant = type.variants[i];
+                    GameObject variant = type.variants[i];
 
-                    if (variant.prefab == null)
+                    if (variant == null)
                         throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing prefab (always needed, even for instanced rendering or impostors)");
 
-                    baked[i].prototype = GetEntity(variant.prefab, TransformUsageFlags.Renderable);
+                    baked[i].prototype = GetEntity(variant, TransformUsageFlags.Renderable);
 
-                    MeshRenderer renderer = GetComponent<MeshRenderer>(variant.prefab);
-                    if (renderer == null)
-                        throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing mesh renderer");
+                    Material material;
+                    if (type.overrideMaterial == null) {
+                        MeshRenderer renderer = GetComponent<MeshRenderer>(variant);
+                        if (renderer == null)
+                            throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing mesh renderer");
 
-                    Material material = renderer.sharedMaterial;
+                        if (renderer.sharedMaterial == null)
+                            throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing main material");
+                        material = renderer.sharedMaterial;
+                    } else {
+                        material = type.overrideMaterial;
+                    }
 
-                    if (material == null)
-                        throw new NullReferenceException($"Type '{type.name}' at variant {i} is missing main material");
+
 
                     Texture2D GetMap(string map) {
                         if (material.HasTexture(map)) {
