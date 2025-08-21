@@ -6,8 +6,9 @@
 - Implement variable caching again (fixed texture, only between the density <-> layers stages)
 - Improve chunk LOD selection (add min LOD for further chunks so that it doesn't look like slop?)
 - Remove mesh renderer restrictions on props (does not work when prop has LOD group for example)
-- Automatically set normal map swap when capturing prop impostor 
-- Fixed out of memory issue when capturing lots of prop types. Need to fix memory leak
+- Automatically set normal map swap when capturing prop impostor (fixed)
+- Fix out of memory issue when capturing lots of prop types. Need to fix memory leak (fixed, but capturing code is shit now)
+- Implement remap node
 
 # New Features compared to the main branch:
 - Chunk size of 32, with some pros:

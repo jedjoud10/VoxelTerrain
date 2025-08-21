@@ -4,8 +4,6 @@ using Unity.Mathematics;
 using UnityEngine;
 
 namespace jedjoud.VoxelTerrain.Generation {
-
-    // A voxel graph is the base class to inherit from to be able to write custom voxel stuff
     public abstract partial class ManagedTerrainGraph : MonoBehaviour {
         private void OnValidate() {
             GetComponent<ManagedTerrainCompiler>().SoftRecompile();

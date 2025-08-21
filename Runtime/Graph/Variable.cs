@@ -71,10 +71,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new SimpleBinaryOperatorNode<T, T, T> { a = a, b = b, op = "/" };
         }
 
-        public static implicit operator Variable<T>(Inject<T> value) {
-            return new InjectedNode<T> { a = value };
-        }
-
         /*
         public static implicit operator Variable<T>(CustomCode<T> value) {
             return value.Execute();

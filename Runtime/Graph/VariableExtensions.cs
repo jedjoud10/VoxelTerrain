@@ -36,26 +36,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             };
         }
 
-        public static Variable<float> Curve(this Variable<float> mixer, UnityEngine.AnimationCurve curve, Variable<float> amplitude, int size = 128, bool invert = false) {
-            if (curve == null) {
-                throw new NullReferenceException("Unity AnimationCurve is not set");
-            }
-
-            if (amplitude == null) {
-                throw new NullReferenceException("curve amplitude needs to be set");
-            }
-
-            return new CurveNode {
-                curve = curve,
-                mixer = mixer,
-                size = size,
-                inputMin = -amplitude,
-                inputMax = amplitude,
-                invert = invert,
-                inner = new GeneratedTextureHelper(),
-            };
-        }
-
         public static Variable<T> Select<T>(this Variable<bool> self, Variable<T> falseVal, Variable<T> trueVal) {
             return new SelectorNode<T>() { falseVal = falseVal, trueVal = trueVal, selector = self };
         }
@@ -126,6 +106,16 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public static Variable<T> Clamp<T>(Variable<T> t, Variable<T> min, Variable<T> max) {
             return new SimpleTertiaryFunctionNode<T, T, T, T>() { a = t, b = min, c = max, func = "clamp" };
+        }
+
+        public static Variable<T> Remap<T>(Variable<T> t, Variable<T> inputMin, Variable<T> inputMax, Variable<T> outputMin, Variable<T> outputMax) {
+            return new RemapNode<T>() {
+                inputMin = inputMin,
+                inputMax = inputMax,
+                outputMin = outputMin,
+                outputMax = outputMax,
+                mixer = t,
+            };
         }
 
         public static Variable<T> Lerp<T>(Variable<T> a, Variable<T> b, Variable<T> t, bool saturate = false) {

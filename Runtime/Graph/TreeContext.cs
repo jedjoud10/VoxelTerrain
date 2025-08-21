@@ -75,7 +75,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             return randomizer.NextFloat4(-1000f, 1000f);
         }
 
-        public void Inject<T>(InjectedNode<T> node, string name, Func<object> func) {
+        public void Inject<T>(Inject<T> node, string name, Func<object> func) {
             if (!Contains(node)) {
                 string newName = GenId(name);
                 injector.injected.Add((cmds, compute, textures) => {
