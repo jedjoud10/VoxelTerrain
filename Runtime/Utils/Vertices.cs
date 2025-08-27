@@ -21,6 +21,7 @@ namespace jedjoud.VoxelTerrain {
                 float4 startLayers = BitUtils.UnpackUnorm8(voxels.layers[startIndex]);
                 float4 endLayers = BitUtils.UnpackUnorm8(voxels.layers[endIndex]);
                 layers += math.lerp(startLayers, endLayers, value);
+                //layers += math.select(startLayers, endLayers, value > 0.5f);
             }
 
 

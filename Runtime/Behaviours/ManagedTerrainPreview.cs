@@ -1,3 +1,4 @@
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -5,7 +6,14 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain.Generation {
     [ExecuteInEditMode]
     public class ManagedTerrainPreview : MonoBehaviour {
+        public enum PreviewType {
+            Mesh,
+            Volume,
+        }
+
         public ComputeShader surfaceNetsCompute;
+        public ComputeShader unpackPreviewCompute;
+
         private GraphicsBuffer indexBuffer;
         private GraphicsBuffer vertexBuffer;
         private GraphicsBuffer normalsBuffer;
@@ -23,12 +31,17 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Vector3 offset;
 
         private PreviewExecutor executor;
+        public PreviewType type;
+
+        [HideInInspector]
+        public RenderTexture handlesTexture;
+        public float volumeValueScale = -0.01f;
 
         public void InitializeForSize() {
             if (!isActiveAndEnabled)
                 return;
 
-            DisposeBuffers();
+            DisposeThings();
             if (indexBuffer != null && indexBuffer.IsValid())
                 return;
 
@@ -41,6 +54,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, GraphicsBuffer.IndirectDrawIndexedArgs.size);
             atomicCounters = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 2, sizeof(uint));
             tempVertexTexture = TextureUtils.Create3DRenderTexture(initSize, GraphicsFormat.R32_UInt, FilterMode.Point, TextureWrapMode.Repeat, false);
+            handlesTexture = TextureUtils.Create3DRenderTexture(initSize, GraphicsFormat.R32_SFloat, FilterMode.Bilinear, TextureWrapMode.Clamp, false);
 
             defaultArgs = new GraphicsBuffer.IndirectDrawIndexedArgs {
                 baseVertexIndex = 0,
@@ -54,7 +68,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         private void OnDisable() {
-            DisposeBuffers();
+            DisposeThings();
         }
 
         private void OnValidate() {
@@ -109,11 +123,25 @@ namespace jedjoud.VoxelTerrain.Generation {
             executor.Execute(parameters);
 
             RenderTexture voxels = (RenderTexture)executor.Textures["voxels"];
-            Meshify(voxels);
+
+            switch (type) {
+                case PreviewType.Mesh:
+                    Meshify(voxels);
+                    break;
+                case PreviewType.Volume:
+                    float tempSize = (size) / 4;
+                    int threadGroups = (int)math.ceil(math.max(tempSize, 1));
+
+                    unpackPreviewCompute.SetTexture(0, "srcVoxels", voxels);
+                    unpackPreviewCompute.SetTexture(0, "dstValues", handlesTexture);
+                    unpackPreviewCompute.SetFloat("volumeValueScale", volumeValueScale);
+                    unpackPreviewCompute.Dispatch(0, threadGroups, threadGroups, threadGroups);
+                    break;
+            }
 #endif
         }
 
-        public void DisposeBuffers() {
+        public void DisposeThings() {
             initSize = -1;
             if (indexBuffer != null && indexBuffer.IsValid()) {
                 indexBuffer.Dispose();
@@ -123,6 +151,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 atomicCounters.Dispose();
                 colorsBuffer.Dispose();
                 tempVertexTexture.Release();
+                handlesTexture.Release();
             }
         }
 
@@ -167,7 +196,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public void Update() {
-            if (GetComponent<ManagedTerrainGraph>() != null) {
+            if (GetComponent<ManagedTerrainGraph>() != null && type == PreviewType.Mesh) {
                 RenderIndexedIndirectMesh();
             }
         }

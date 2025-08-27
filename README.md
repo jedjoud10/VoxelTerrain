@@ -1,4 +1,4 @@
-# TODO (so that I don't forget)
+# TODO
 - Fix prop "instanced mesh" requirement if rendering instanced meshes is off
 - Impl sub meshe merging to replace prop "instanced mesh" (based off of variant meshes)
 - Implement prop capture full rotations (not only azimuth, should be toggable)
@@ -8,7 +8,13 @@
 - Remove mesh renderer restrictions on props (does not work when prop has LOD group for example)
 - Automatically set normal map swap when capturing prop impostor (fixed)
 - Fix out of memory issue when capturing lots of prop types. Need to fix memory leak (fixed, but capturing code is shit now)
-- Implement remap node
+- Implement remap node (already implemented, just needed to add the VariableExtension stuff)
+- Add pre-process step that generates world wide data-structures that we can sample in the voxel/prop generation step
+- Implement prop entities have a voxel "volume" that we use during the voxel occlusion cullig. Useful for very big props (larger than 2m)
+- Implement prefab SDF baking to be able to sample custom SDF shapes directly in the compute shader. Like SDF "brushes"
+- fix memory leaks, improve stability, optimize (priority in that order)
+- Optimize prop entity intantiation
+- Improve AO by doing it on a per voxel basis instead of per vertex
 
 # New Features compared to the main branch:
 - Chunk size of 32, with some pros:
@@ -19,8 +25,8 @@
 - Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues. Used for practically all the new compute shaders
 - Proper Surface Nets Skirts by running 2D and 1D S.N on the chunk boundary. Skirt entities are enabled/disabled based on the direction that they face relative to the octree loader position.
   - Implemented fallback normals system for flat shading so that skirts aren't as visible when you use DDY/DDX normals
-- Graph system. You can write the voxel generation code in C# and a *transplire* will compile it to HLSL in the editor which will then compile to GPU executable code.Basically a preprocessor "find and replace" but on steroids
-  - Allows you to simply define layers of noise that you add on top of each other like so:
+- Graph system. You can write the voxel generation code in C# and a *transpiler* will compile it to HLSL in the editor which will then compile to GPU executable code. Basically a preprocessor "find and replace" but on steroids
+  - Allows you to simply define variables that you add on top of each other like so:
   ```cs
   // Create simplex and fractal noise
   Simplex<float2> simplex = new Simplex<float2>(scale, amplitude);
@@ -33,8 +39,9 @@
   Voronoi<float3> voronoi = new Voronoi<float3>(voronoiScale, voronoiAmplitude);
   density += voronoi.Evaluate(projected);
   ```
+  - Should be easily convertable to a higher level abstraction using dedicated noise "layers" and "mixers" built on the underlying nodes
 
-- Async Software Voxel Occlusion Culling:
+## Async Software Voxel Occlusion Culling:
   - Uses DDA to rasterize the LOD0 chunks data (nearest to player) using the job system & burst at a low resolution (``64x64``).
   - Depth data then used for each chunk / skirt using AABBs to check if they're visible.
   - Depth data is sent to the GPU for impostor / instanced culling (treats props as single pixel, not as AABB. Makes the occlusion check a lot faster).
@@ -42,20 +49,26 @@
   - Also works for non-terrain objects like user objects. Anything that has the ``UserOccludableAuthoring`` authoring component will get occluded by the occlusion culling system
   - Voxelization and relaxation steps are done asynchronously (with only 1-2 threads running the jobs) whilst the rasterization is done every frame.
     - This allows the camera to freely look around and move around "local space" before it gets recomputed by the voxelization and relaxation steps
-    - Since relaxation is very expensive, running it in the background like this allows us to avoid stalling the main thread 
+    - Since relaxation is very expensive, running it in the background like this allows us to avoid oversaturating other threads that will be needed for rendering otherwise (until unity implements some sort of priority for their job system)
 
-- Better optimized meshing jobs:
+## Improved editing:
+  - No need to store duplicate octree, we can just edit the LOD0 chunks and have all other chunks downsample their data.
+  - Edits *actually* modify the underlying data, not stored as some sort of "delta" like the previous implementation
+  - Less buggy than the previous version since we don't have a weird factor to keep the voxel size at a power of two value (voxel size is actuall 34)
+
+## Improved meshing:
   - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled).
   - Optimized normal job by splitting it into a "prefetch" part and a "calculate" part. Prefetcher is vectorized by Burst, but not the calculate part (need to fix).
+  - Quantized mesh data (vertices, normals, uvs).
 
-- Better (but slower) prop generation:
+## Better (but slower) prop generation:
   - Improved surface detection: since we use a graph based system, we can now just fetch the voxel density at any given point, without having to write to a texture first. This allows us to use binary search with prop surface generation to place the props *exactly* on the surface of the terrain. Much better than the previous iteration.
   - Improved normals: Uses finite differences but with the slow density fetch instead of the cached one, so better quality normals!!!
   - Copy and culling compute are now asynchronous! (not like they are slow lol but that's nice anyways)
   - Free memory block lookup is now on the CPU instead of GPU. Yes this does mean that we *need* to do counts readback, but considering that we're only reading a few ints this is fine. Drops the complexity of the prop copy system by a lot by doing this on the CPU, worth the few frames of latency.
 
 - Uses HLSL DXC compiler when possible, but reverts to FXC if not supported. Only reason I use DXC is for faster compile times, as the prop gen shader expands out to something HUGE (lots of density function calls to inline) 
-- Voxel data storage uses ``SoA`` instead of ``AoS``, should help with cache hits, though we can only read ``AoS`` data from the GPU, so we do some packing/unpacking (shouldn't be that expensive).
+- Voxel data storage uses ``SoA`` instead of ``AoS``, should help with cache hits, though we can only read ``AoS`` data from the GPU, so we do some packing/unpacking
 
 # TODO / Ideas
 - *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour

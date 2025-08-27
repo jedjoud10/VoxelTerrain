@@ -37,6 +37,12 @@ namespace jedjoud.VoxelTerrain.Segments {
             maxCombinedTempProps = 0;
             for (int i = 0; i < types; i++) {
                 int count = config.props[i].maxPropsPerSegment;
+
+                // 24 bit limit due to the 3 id bytes in the prop
+                if (count >= 16777216) {
+                    Debug.LogWarning("Prop temp count is set higher than 16m. Will shit itself if you are expecting to delete the prop entities at runtime.");
+                }
+
                 tempBufferOffsets[i] = maxCombinedTempProps;
                 maxCombinedTempProps += count;
             }

@@ -206,6 +206,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
 
             ManagedTerrainGraph graph = GetComponent<ManagedTerrainGraph>();
+            graph.Init();
 
             // TODO: for SOME fucking reason debug name causes problems
             // unity doesn't seem to be saving the debugNames field or doing some fucky fucky shit with it. pls fix

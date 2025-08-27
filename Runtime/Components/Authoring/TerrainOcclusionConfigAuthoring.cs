@@ -10,7 +10,6 @@ namespace jedjoud.VoxelTerrain.Occlusion {
         [Min(8)]
         public int searchSize = 32;
 
-        [Min(0)]
         public float nearPlaneDepthOffsetFactor = 0.005f;
         [Min(0)]
         public float uvExpansionFactor = 0.02f;

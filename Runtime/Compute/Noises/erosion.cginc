@@ -28,10 +28,10 @@ float3 noised(in float2 p)
     float2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
     float2 du = 30.0 * f * f * (f * (f - 2.0) + 1.0);
 
-    float2 ga = hash(i + float2(0.0, 0.0));
-    float2 gb = hash(i + float2(1.0, 0.0));
-    float2 gc = hash(i + float2(0.0, 1.0));
-    float2 gd = hash(i + float2(1.0, 1.0));
+    float2 ga = hash(i + float2(0.0, 0.0) + modulo_seed.xz);
+    float2 gb = hash(i + float2(1.0, 0.0) + modulo_seed.xz);
+    float2 gc = hash(i + float2(0.0, 1.0) + modulo_seed.xz);
+    float2 gd = hash(i + float2(1.0, 1.0) + modulo_seed.xz);
 
     float va = dot(ga, f - float2(0.0, 0.0));
     float vb = dot(gb, f - float2(1.0, 0.0));
@@ -59,7 +59,7 @@ float3 erosion(in float2 p, float2 dir) {
     for (int i = -2; i <= 1; i++) {
         for (int j = -2; j <= 1; j++) {
             float2 o = float2(i, j);
-            float2 h = hash(ip - o) * 0.5;
+            float2 h = hash(ip - o + modulo_seed.xz) * 0.5;
             float2 pp = fp + o - h;
             float d = dot(pp, pp);
             float w = exp(-d * 2.0);
@@ -100,10 +100,10 @@ float3 mountain(float2 p, float s) {
     float3 h = 0;
     float a = 0.7 * (smoothstep(0.3, 0.5, n.x * 0.5 + 0.5)); //smooth the valleys
     float f = 1.0;
-    for (int k = 0; k < 5; k++) {
+    for (int k = 0; k < 7; k++) {
         h += erosion(p * f, dir + h.zy * float2(1.0, -1.0)) * a * float3(1.0, f, f);
-        a *= 0.4;
-        f *= 2.0;
+        a *= 0.36;
+        f *= 2.3;
     }
     //remap height to [0,1] and add erosion
     //looks best when erosion amount is small

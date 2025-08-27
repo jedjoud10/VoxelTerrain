@@ -77,12 +77,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   surfaceNetsCompute: {fileID: 7200000, guid: 414c71a72bcba394d921913198296aac, type: 3}
+  unpackPreviewCompute: {fileID: 7200000, guid: 745a614b182510f4c9c6503bb8c20fa8, type: 3}
   customRenderingMaterial: {fileID: -876546973899608171, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
   flatshaded: 0
   size: 128
   scale: {x: 1, y: 1, z: 1}
   offset: {x: 0, y: -35.8, z: 0}
-  previewSeed: 1234
+  type: 0
+  handlesTexture: {fileID: 0}
 --- !u!114 &566389634701878972
 MonoBehaviour:
   m_ObjectHideFlags: 0

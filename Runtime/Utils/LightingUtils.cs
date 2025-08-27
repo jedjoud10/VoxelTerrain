@@ -11,7 +11,7 @@ using UnityEngine.Rendering;
 namespace jedjoud.VoxelTerrain {
     public static class LightingUtils {
         public const int AO_SAMPLES_SEED = 1234;
-        public const int AO_SAMPLES = 16;
+        public const int AO_SAMPLES = 48;
         public const float AO_STRENGTH = 1f;
         public const float AO_GLOBAL_SPREAD = 0.5f;
         public const float AO_GLOBAL_OFFSET = 0.5f;

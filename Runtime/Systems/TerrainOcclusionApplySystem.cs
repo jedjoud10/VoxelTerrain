@@ -45,9 +45,9 @@ namespace jedjoud.VoxelTerrain.Occlusion {
                 for (int i = 0; i < 8; i++) {
                     float4 clipPos = math.mul(camera.projectionMatrix, math.mul(camera.worldToCameraMatrix, new float4(corners[i], 1.0f)));
                     clipPos /= clipPos.w;
-                    nearestClipSpaceZVal = math.min(OcclusionUtils.LinearizeDepthStandard(clipPos.z, camera.nearFarPlanes), nearestClipSpaceZVal);
-                    float2 screenUV = (new float2(clipPos.x, clipPos.y) + 1.0f) * 0.5f;
 
+                    float2 screenUV = (new float2(clipPos.x, clipPos.y) + 1.0f) * 0.5f;
+                    nearestClipSpaceZVal = math.min(OcclusionUtils.LinearizeDepthStandard(clipPos.z, camera.nearFarPlanes), nearestClipSpaceZVal);
                     minScreen = math.min(minScreen, screenUV);
                     maxScreen = math.max(maxScreen, screenUV);
                 }
