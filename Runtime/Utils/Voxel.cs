@@ -146,8 +146,10 @@ namespace jedjoud.VoxelTerrain {
             unsafe {
                 half* densities = densityPtrs[ptrIndex];
                 byte* materials = materialPtrs[ptrIndex];
+                uint* layers = layerPtrs[ptrIndex];
                 dst.densities[dstIndex] = densities[srcIndex];
                 dst.materials[dstIndex] = materials[srcIndex];
+                dst.layers[dstIndex] = layers[srcIndex];
             }
         }
 

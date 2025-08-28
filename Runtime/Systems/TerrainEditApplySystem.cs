@@ -21,7 +21,7 @@ namespace jedjoud.VoxelTerrain.Edits {
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-            TerrainEdits backing = SystemAPI.GetSingleton<TerrainEdits>();
+            ref TerrainEdits backing = ref SystemAPI.GetSingletonRW<TerrainEdits>().ValueRW;
 
             NativeHashMap<int3, int> chunkPositionsToChunkEditIndices = backing.chunkPositionsToChunkEditIndices;
             UnsafePtrListVoxelData chunkEditsCopyRaw = new UnsafePtrListVoxelData(Allocator.Persistent);

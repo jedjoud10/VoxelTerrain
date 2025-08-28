@@ -69,42 +69,51 @@ namespace jedjoud.VoxelTerrain {
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int CountTrue(bool2 b3) {
             return math.countbits(math.bitmask(new bool4(b3, false, false)));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int CountTrue(bool3 b3) {
             return math.countbits(math.bitmask(new bool4(b3, false)));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int CountTrue(bool4 b4) {
             return math.countbits(math.bitmask(b4));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int FindTrueIndex(bool4 b4) {
             DebugCheckOnlyOneBitMask(b4);
             return math.tzcnt(math.bitmask(b4));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int FindTrueIndex(bool3 b3) {
             DebugCheckOnlyOneBitMask(b3);
             return math.tzcnt(math.bitmask(new bool4(b3, false)));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint PackUInt4ToUInt(uint4 bytes) {
             return (bytes.x & 0xFFu) | ((bytes.y & 0xFFu) << 8) | ((bytes.z & 0xFFu) << 16) | ((bytes.w & 0xFFu) << 24);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint PackSnorm8(float4 value) {
             float4 n = math.clamp(value * 127f, -128f, 127f);
             return PackUInt4ToUInt((uint4)math.round(n));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint PackUnorm8(float4 value) {
             float4 n = math.saturate(value) * 255f;
             return PackUInt4ToUInt((uint4)math.round(n));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint4 UnpackUInt4(uint packed) {
             return new uint4(
                 packed & 0xFFu,
@@ -114,11 +123,13 @@ namespace jedjoud.VoxelTerrain {
             );
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float4 UnpackUnorm8(uint packed) {
             uint4 bytes = UnpackUInt4(packed);
             return new float4(bytes) / 255f;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float4 UnpackSnorm8(uint packed) {
             uint4 bytes = UnpackUInt4(packed);
 

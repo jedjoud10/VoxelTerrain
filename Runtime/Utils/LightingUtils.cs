@@ -10,13 +10,29 @@ using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     public static class LightingUtils {
-        public const int AO_SAMPLES_SEED = 1234;
-        public const int AO_SAMPLES = 48;
-        public const float AO_STRENGTH = 1f;
+        public struct AmbientOcclusionCache {
+            public NativeArray<float4> precomputedSamples;
+            public UnsafePtrList<half> densityPtrs;
+            public NativeArray<half> what;
+
+            public void Init() {
+                densityPtrs = new UnsafePtrList<half>(27, Allocator.Persistent);
+                what = new NativeArray<half>(VoxelUtils.VOLUME, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+                precomputedSamples = LightingUtils.PrecomputeAoSamples(Allocator.Persistent);
+            }
+
+            public void Dispose() {
+                precomputedSamples.Dispose();
+                densityPtrs.Dispose();
+                what.Dispose();
+            }
+        }
+
         public const float AO_GLOBAL_SPREAD = 0.5f;
-        public const float AO_GLOBAL_OFFSET = 0.5f;
-        public const float AO_MIN_DOT_NORMAL = 0.4f;
-        public const int AO_SAMPLE_CUBE_SIZE = 4;
+        public const float AO_GLOBAL_OFFSET = 0.0f;
+        public const float AO_MIN_DOT_NORMAL = 0.2f;
+        public const int AO_SAMPLES = (AO_SAMPLE_CUBE_SIZE*2+1) * (AO_SAMPLE_CUBE_SIZE * 2 + 1) * (AO_SAMPLE_CUBE_SIZE * 2 + 1);
+        public const int AO_SAMPLE_CUBE_SIZE = 2;
 
         private static bool TryCheckShouldCalculateLighting(EntityManager entityManager, Entity entity, out NativeArray<Entity> entities) {
             TerrainManager terrainManager = new EntityQueryBuilder(Allocator.Temp).WithAll<TerrainManager>().Build(entityManager).GetSingleton<TerrainManager>();
@@ -70,18 +86,17 @@ namespace jedjoud.VoxelTerrain {
             EntityManager mgr,
             Entity chunkEntity,
             Vertices vertices,
-            NativeArray<float3> precomputedSamples,
-            ref UnsafePtrList<half> densityPtrs,
+            ref AmbientOcclusionCache cache,
             JobHandle dependency,
             int* deferredVertexCountPtr,
             out JobHandle handle
         ) {
             handle = default;
 
-            densityPtrs.Clear();
+            cache.densityPtrs.Clear();
 
             for (var i = 0; i < 27; i++) {
-                densityPtrs.Add((half*)IntPtr.Zero);
+                cache.densityPtrs.Add((half*)IntPtr.Zero);
             }
 
             if (TryCheckShouldCalculateLighting(mgr, chunkEntity, out NativeArray<Entity> chunks)) {
@@ -91,21 +106,35 @@ namespace jedjoud.VoxelTerrain {
                     if (chunks[j] != Entity.Null) {
                         TerrainChunkVoxels voxels = mgr.GetComponentData<TerrainChunkVoxels>(chunks[j]);
                         voxels.asyncWriteJobHandle.Complete();
-                        densityPtrs[j] = (half*)NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(voxels.data.densities);
+                        cache.densityPtrs[j] = (half*)NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(voxels.data.densities);
                     }
-                }                
+                }
+
+                /*
+                AoBlurJob blur = new AoBlurJob {
+                    densityDataPtrs = cache.densityPtrs,
+                    dstData = cache.what,
+                    neighbourMask = neighbourMask,
+                };
+
+                AoApplyJob apply = new AoApplyJob {
+                    colours = vertices.colours,
+                    dstData = cache.what,
+                    positions = vertices.positions,
+                };
+
+                JobHandle blurHandle = blur.Schedule(VoxelUtils.VOLUME, BatchUtils.QUARTER_BATCH, dependency);
+                handle = apply.Schedule(deferredVertexCountPtr, BatchUtils.SMALLEST_VERTEX_BATCH, blurHandle);
+                */
 
                 AoJob job = new AoJob() {
                     positions = vertices.positions,
                     normals = vertices.normals,
                     colours = vertices.colours,
 
-                    strength = LightingUtils.AO_STRENGTH,
-                    globalOffset = LightingUtils.AO_GLOBAL_OFFSET,
-
                     neighbourMask = neighbourMask,
-                    densityDataPtrs = densityPtrs,
-                    precomputedSamples = precomputedSamples
+                    densityDataPtrs = cache.densityPtrs,
+                    precomputedSamples = cache.precomputedSamples
                 };
                 handle = job.Schedule(deferredVertexCountPtr, BatchUtils.SMALLEST_VERTEX_BATCH, dependency);
 
@@ -121,38 +150,26 @@ namespace jedjoud.VoxelTerrain {
                 return false;
             }            
         }
-        public static NativeArray<float3> PrecomputeAoSamples(Allocator allocator) {
-            NativeList<float3> tmp = new NativeList<float3>(Allocator.Temp);
+        public static NativeArray<float4> PrecomputeAoSamples(Allocator allocator) {
+            NativeArray<float4> tmp = new NativeArray<float4>(AO_SAMPLES, allocator);
 
+            int index = 0;
             for (int x = -AO_SAMPLE_CUBE_SIZE; x <= AO_SAMPLE_CUBE_SIZE; x++) {
                 for (int y = -AO_SAMPLE_CUBE_SIZE; y <= AO_SAMPLE_CUBE_SIZE; y++) {
                     for (int z = -AO_SAMPLE_CUBE_SIZE; z <= AO_SAMPLE_CUBE_SIZE; z++) {
                         float3 offset = new float3(x, y, z) * AO_GLOBAL_SPREAD;
-
-                        if (math.all(offset == 0f)) {
-                            continue;
-                        }
-
                         float3 vec = math.forward();
 
-                        if (math.dot(math.normalize(offset), vec) > AO_MIN_DOT_NORMAL) {
-                            tmp.Add(offset);
-                        } else {
-                            continue;
-                        }
+                        float dotted = math.dot(math.normalize(offset), vec);
+                        float strength = math.select(0, 1, dotted < AO_MIN_DOT_NORMAL);
+                        tmp[index] = new float4(offset, 1 - strength);
+                        index++;
                     }
                 }
             }
 
-            NativeArray<float3> precomputedSamples = new NativeArray<float3>(AO_SAMPLES, allocator);
 
-            Unity.Mathematics.Random rng = new Unity.Mathematics.Random(AO_SAMPLES_SEED);
-            for (int i = 0; i < AO_SAMPLES; i++) {
-                int srcIndex = rng.NextInt(tmp.Length);
-                precomputedSamples[i] = tmp[srcIndex];
-            }
-
-            return precomputedSamples;
+            return tmp;
         }
     }
 }

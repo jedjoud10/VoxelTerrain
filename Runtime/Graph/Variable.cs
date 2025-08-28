@@ -2,6 +2,8 @@ using System;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract partial class Variable<T> : UntypedVariable {
+        public override VariableType Type => VariableType.TypeOf<T>();
+
         public static implicit operator Variable<T>(T value) {
             return new DefineNode<T> { value = VariableType.ToDefinableString(value), constant = true };
         }

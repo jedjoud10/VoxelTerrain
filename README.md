@@ -14,6 +14,7 @@
 - Implement prefab SDF baking to be able to sample custom SDF shapes directly in the compute shader. Like SDF "brushes"
 - fix memory leaks, improve stability, optimize (priority in that order)
 - Optimize prop entity intantiation
+- Add height map based normal maps for further chunks
 - Improve AO by doing it on a per voxel basis instead of per vertex
 
 # New Features compared to the main branch:

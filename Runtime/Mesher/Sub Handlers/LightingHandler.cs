@@ -7,22 +7,20 @@ using Unity.Entities;
 namespace jedjoud.VoxelTerrain.Meshing {
     internal struct LightingHandler : ISubHandler {
         public JobHandle jobHandle;
-        private NativeArray<float3> precomputedSamples;
-        private UnsafePtrList<half> densityPtrs;
-
+        public LightingUtils.AmbientOcclusionCache aoCache;
 
         public void Init() {
-            densityPtrs = new UnsafePtrList<half>(0, Allocator.Persistent);
-            precomputedSamples = LightingUtils.PrecomputeAoSamples(Allocator.Persistent);
+            aoCache.Init();
         }
 
-
         public void Schedule(ref VoxelData voxels, ref MergeMeshHandler merger, JobHandle dependency, Entity entity, EntityManager mgr) {
+            JobHandle dep = JobHandle.CombineDependencies(merger.jobHandle, dependency);
+            jobHandle = AsyncMemCpyUtils.FillAsync(merger.mergedVertices.colours, new float4(1), dep);
+            /*
             Vertices vertices = merger.mergedVertices;
 
             unsafe {
-                JobHandle dep = JobHandle.CombineDependencies(merger.jobHandle, dependency);
-                if (LightingUtils.TryCalculateLightingForChunkEntity(mgr, entity, vertices, precomputedSamples, ref densityPtrs, dep, merger.totalVertexCount.GetUnsafePtrWithoutChecks(), out JobHandle handle)) {
+                if (LightingUtils.TryCalculateLightingForChunkEntity(mgr, entity, vertices, ref aoCache, dep, merger.totalVertexCount.GetUnsafePtrWithoutChecks(), out JobHandle handle)) {
                     jobHandle = handle;
                 } else {
                     jobHandle = default;
@@ -31,12 +29,12 @@ namespace jedjoud.VoxelTerrain.Meshing {
                     mgr.SetComponentEnabled<TerrainChunkRequestLightingTag>(entity, true);
                 }
             }
+            */
         }
 
         public void Dispose() {
-            precomputedSamples.Dispose();
             jobHandle.Complete();
-            densityPtrs.Dispose();
+            aoCache.Dispose();
         }
     }
 }

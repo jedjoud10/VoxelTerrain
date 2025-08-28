@@ -27,6 +27,7 @@ namespace jedjoud.VoxelTerrain.Meshing {
             triangleCounter.Count = 0;
             vertexCounter.Count = 0;
 
+
             // Generate the *shared* vertices of the main mesh
             VertexJob vertexJob = new VertexJob {
                 enabled = codeSubHandler.enabled,

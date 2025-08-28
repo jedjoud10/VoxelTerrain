@@ -6,5 +6,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
         public abstract void HandleInternal(TreeContext context);
+        public abstract VariableType Type { get; }
     }
 }

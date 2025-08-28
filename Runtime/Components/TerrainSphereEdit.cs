@@ -8,6 +8,8 @@ namespace jedjoud.VoxelTerrain.Edits {
     public struct TerrainSphereEdit : IComponentData, IEdit {
         public float3 center;
         public float radius;
+        public float4 layers;
+        public bool add;
 
         public MinMaxAABB GetBounds() {
             return MinMaxAABB.CreateFromCenterAndHalfExtents(center, radius);
@@ -15,7 +17,13 @@ namespace jedjoud.VoxelTerrain.Edits {
 
         public void Modify(float3 position, ref EditVoxel voxel) {
             float sphere = math.length(position - center) - radius;
-            voxel.density = math.max(voxel.density, -sphere);
+            
+            if (add) {
+                voxel.layers = math.select(voxel.layers, layers, sphere < voxel.density); 
+                voxel.density = math.min(voxel.density, sphere);
+            } else {
+                voxel.density = math.max(voxel.density, -sphere);
+            }
         }
     }
 }

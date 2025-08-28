@@ -18,40 +18,35 @@ namespace jedjoud.VoxelTerrain.Meshing {
         [ReadOnly]
         public BitField32 neighbourMask;
         [ReadOnly]
-        public NativeArray<float3> precomputedSamples;
+        public NativeArray<float4> precomputedSamples;
         
-        public float globalOffset;
-        public float strength;
-
         public void Execute(int index) {
-            colours[index] = new float4(0, 0, 0, 1);
-            /*
             float3 vertex = positions[index];
             float3 normal = normals[index];
 
-            int sum = 0;
+            float sum = 0;
             
             quaternion rotation = quaternion.LookRotationSafe(normal, math.up());
             float3x3 matrix = new float3x3(rotation);
             //float3x3 matrix = float3x3.identity;
 
             for (int i = 0; i < LightingUtils.AO_SAMPLES; i++) {
-                float3 sample = math.mul(matrix, precomputedSamples[i]);
-                float3 position = vertex + sample + globalOffset;
+                float4 rsample = precomputedSamples[i];
+                float3 sample = math.mul(matrix, rsample.xyz);
+                float3 position = vertex + sample + LightingUtils.AO_GLOBAL_OFFSET;
                 int3 floored = (int3)math.floor(position);
 
                 if (VoxelUtils.CheckCubicVoxelPosition(floored, neighbourMask)) {
                     half density = VoxelUtils.SampleDensityInterpolated(position, ref densityDataPtrs);
                     if (density < 0.0) {
-                        sum++;
+                        sum += rsample.w;
                     }
                 }
             }
 
             float factor = math.clamp((float)sum / (float)LightingUtils.AO_SAMPLES, 0f, 1f);
-            float ao = math.saturate(1 - factor * strength);
+            float ao = math.saturate(1 - factor);
             colours[index] = new float4(0, 0, 0, ao);
-            */
         }
     }
 }
