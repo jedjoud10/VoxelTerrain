@@ -1,6 +1,5 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Jobs;
 
 namespace jedjoud.VoxelTerrain {
     public static class NativeExtensions {

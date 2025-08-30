@@ -8,7 +8,6 @@ using Unity.Entities.Graphics;
 using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;

@@ -1,12 +1,5 @@
-using jedjoud.VoxelTerrain.Octree;
-using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
-using Unity.Rendering;
-using Unity.Transforms;
-using UnityEngine.Rendering;
 
 namespace jedjoud.VoxelTerrain {
     [UpdateInGroup(typeof(TerrainFixedStepSystemGroup), OrderFirst = true)]

@@ -30,6 +30,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string op;
 
         public override void HandleInternal(TreeContext ctx) {
+            ctx.Hash(op);
             a.Handle(ctx);
             b.Handle(ctx);
             ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_op_{ctx[b]}", $"{ctx[a]} {op} {ctx[b]}");
@@ -42,6 +43,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string func;
 
         public override void HandleInternal(TreeContext ctx) {
+            ctx.Hash(func);
             a.Handle(ctx);
             b.Handle(ctx);
             ctx.DefineAndBindNode<O>(this, $"{ctx[a]}_func_{ctx[b]}", $"{func}({ctx[a]},{ctx[b]})");
@@ -55,6 +57,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string func;
 
         public override void HandleInternal(TreeContext ctx) {
+            ctx.Hash(func);
             a.Handle(ctx);
             b.Handle(ctx);
             c.Handle(ctx);
@@ -67,6 +70,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public string func;
 
         public override void HandleInternal(TreeContext ctx) {
+            ctx.Hash(func);
             a.Handle(ctx);
             ctx.DefineAndBindNode<O>(this, $"{ctx[a]}_func", $"({func}({ctx[a]}))");
         }
@@ -74,13 +78,13 @@ namespace jedjoud.VoxelTerrain.Generation {
 
     public class SmoothAbs<T> : Variable<T> {
         public Variable<T> a;
-        public Variable<T> smoothing;
+        public Variable<float> smoothing;
 
         public override void HandleInternal(TreeContext ctx) {
             a.Handle(ctx);
             smoothing.Handle(ctx);
 
-            ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_smooth_abs", $"sqrt(pow({ctx[a]},2.0) + {ctx[smoothing]})");
+            ctx.DefineAndBindNode<T>(this, $"{ctx[a]}_smooth_abs", $"sqrt(pow({ctx[a]},2.0) + max({ctx[smoothing]},0))");
         }
     }
 
@@ -114,6 +118,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         public Variable<float>[] others;
 
         public override void HandleInternal(TreeContext ctx) {
+            ctx.Hash(swizzle);
+
             int input = VariableType.Dimensionality<O>();
             int output = swizzle.Length;
             a.Handle(ctx);

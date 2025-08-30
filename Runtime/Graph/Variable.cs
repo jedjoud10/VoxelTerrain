@@ -97,20 +97,28 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new CastNode<T, U> { a = this };
         }
 
-        public Variable<T> Min(Variable<T> other) {
-            return new SimpleBinaryFunctionNode<T, T, T> { a = this, b = other, func = "min" };
+        public Variable<T> Min(Variable<T> other, Variable<float> smooth = null) {
+            if (smooth == null) {
+                return new SimpleBinaryFunctionNode<T, T, T> { a = this, b = other, func = "min" };
+            } else {
+                return new SimpleTertiaryFunctionNode<T, T, float, T> { a = this, b = other, c = smooth, func = "opSmoothUnion" };
+            }
         }
 
-        public Variable<T> Max(Variable<T> other) {
-            return new SimpleBinaryFunctionNode<T, T, T> { a = this, b = other, func = "max" };
+        public Variable<T> Max(Variable<T> other, Variable<float> smooth = null) {
+            if (smooth == null) {
+                return new SimpleBinaryFunctionNode<T, T, T> { a = this, b = other, func = "max" };
+            } else {
+                return new SimpleTertiaryFunctionNode<T, T, float, T> { a = -this, b = other, c = smooth, func = "opSmoothSubtraction" };
+            }
         }
 
-        public Variable<T> Abs() {
-            return new SimpleUnaryFunctionNode<T, T> { a = this, func = "abs" };
-        }
-
-        public Variable<T> SmoothAbs(Variable<T> smoothing) {
-            return new SmoothAbs<T> { a = this, smoothing = smoothing };
+        public Variable<T> Abs(Variable<float> smooth = null) {
+            if (smooth == null) {
+                return new SimpleUnaryFunctionNode<T, T> { a = this, func = "abs" };
+            } else {
+                return new SmoothAbs<T> { a = this, smoothing = smooth };
+            }
         }
 
         public Variable<T> Saturate() {

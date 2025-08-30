@@ -134,11 +134,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             return new SimpleTertiaryFunctionNode<quaternion, quaternion, float, quaternion>() { a = a, b = b, c = t, func = "Slerp" };
         }
 
-        public static Variable<float> Ease(this Variable<float> self, Easing mode) {
+        public static Variable<float> Ease(this Variable<float> self, Easing mode, bool remapNormalize = false) {
             var tmp = self.Saturate();
 
             string func = Enum.GetName(typeof(Easing), mode);
-            return new SimpleUnaryFunctionNode<float, float>() { a = tmp, func = func };
+            var variable = new SimpleUnaryFunctionNode<float, float>() { a = tmp, func = func };
+
+            return remapNormalize ? variable * 2f - 1f : variable;
         }
     }
 }

@@ -33,7 +33,7 @@ namespace jedjoud.VoxelTerrain.Editor {
             }
 
             if (GUILayout.Button("Recompile")) {
-                script.Compile(true);
+                script.Compile();
                 script.GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
             }
 

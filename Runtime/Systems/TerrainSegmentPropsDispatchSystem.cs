@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using jedjoud.VoxelTerrain.Generation;
 using jedjoud.VoxelTerrain.Props;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
@@ -27,9 +25,6 @@ namespace jedjoud.VoxelTerrain.Segments {
         private TerrainPropTempBuffers temp;
         int types;
 
-
-        private NativeHashMap<int3, NativeArray<uint>> modifiedTempRemovedBitsets;
-
         protected override void OnCreate() {
             RequireForUpdate<TerrainReadySystems>();
             RequireForUpdate<TerrainPropsConfig>();
@@ -38,7 +33,6 @@ namespace jedjoud.VoxelTerrain.Segments {
 
             free = true;
             propExecutor = new SegmentPropExecutor();
-            modifiedTempRemovedBitsets = new NativeHashMap<int3, NativeArray<uint>>(0, Allocator.Persistent);
         }        
 
         protected override void OnUpdate() {
@@ -56,11 +50,11 @@ namespace jedjoud.VoxelTerrain.Segments {
                     ecb.RemoveComponent(entity, typeof(TerrainPropSharedCleanup));
                     ecb.DestroyEntity(entity);
 
-                    if (!modifiedTempRemovedBitsets.ContainsKey(sharedCleanup.segmentPosition)) {
-                        modifiedTempRemovedBitsets.Add(sharedCleanup.segmentPosition, new NativeArray<uint>(temp.removedBitsetUintCount, Allocator.Persistent));
+                    if (!temp.modifiedTempRemovedBitsets.ContainsKey(sharedCleanup.segmentPosition)) {
+                        temp.modifiedTempRemovedBitsets.Add(sharedCleanup.segmentPosition, new NativeArray<uint>(temp.removedBitsetUintCount, Allocator.Persistent));
                     }
 
-                    NativeArray<uint> item = modifiedTempRemovedBitsets[sharedCleanup.segmentPosition];
+                    NativeArray<uint> item = temp.modifiedTempRemovedBitsets[sharedCleanup.segmentPosition];
                     int idx = (int)cleanup.id + temp.tempBufferOffsets[sharedCleanup.type];
                     int local = idx % 32;
                     int batch = idx / 32;
@@ -121,7 +115,7 @@ namespace jedjoud.VoxelTerrain.Segments {
             propsFetched = false;
 
             NativeArray<uint> removedBitset = temp.tempRemovedBitsetEmptyDefault;
-            if (modifiedTempRemovedBitsets.TryGetValue(segment.position, out var tempAllowedToSpawnBitset)) {
+            if (temp.modifiedTempRemovedBitsets.TryGetValue(segment.position, out var tempAllowedToSpawnBitset)) {
                 removedBitset = tempAllowedToSpawnBitset;
             } 
 
@@ -435,12 +429,6 @@ namespace jedjoud.VoxelTerrain.Segments {
         protected override void OnDestroy() {
             AsyncGPUReadback.WaitAllRequests();
             propExecutor.DisposeResources();
-
-            foreach (var value in modifiedTempRemovedBitsets) {
-                value.Value.Dispose();
-            }
-
-            modifiedTempRemovedBitsets.Dispose();
         }
     }
 }

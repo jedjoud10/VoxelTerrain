@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using jedjoud.VoxelTerrain.Generation;
 using UnityEditor;
 using UnityEngine;

@@ -6,7 +6,7 @@ using UnityEngine;
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract partial class ManagedTerrainGraph : MonoBehaviour {
         private void OnValidate() {
-            GetComponent<ManagedTerrainCompiler>().SoftRecompile();
+            GetComponent<ManagedTerrainCompiler>().SoftRecompile(true);
             GetComponent<ManagedTerrainPreview>()?.OnPropertiesChanged();
         }
 

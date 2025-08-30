@@ -1,5 +1,3 @@
-using System;
-
 namespace jedjoud.VoxelTerrain.Generation {
     public enum Easing {
         Linear,

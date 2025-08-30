@@ -82,6 +82,12 @@ namespace jedjoud.VoxelTerrain {
             return JobHandle.CombineDependencies(a, b, c);
         }
 
+        public void Serialize(ref SerializationWriter writer) {
+            writer.WriteArray(densities);
+            writer.WriteArray(materials);
+            writer.WriteArray(layers);
+        }
+
         public void Dispose() {
             densities.Dispose();
             materials.Dispose();

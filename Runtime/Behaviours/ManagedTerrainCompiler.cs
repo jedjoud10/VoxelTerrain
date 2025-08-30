@@ -12,6 +12,8 @@ using UnityEditor;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class ManagedTerrainCompiler : MonoBehaviour {
+        public bool autoRecompile = true;
+
         [HideInInspector]
         public TreeContext ctx;
 
@@ -34,8 +36,8 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         // Checks if we need to recompile the shader by checking the hash changes.
-        // If the context hash changed, then we will recompile the shader
-        public void SoftRecompile() {
+        // If the context hash changed, mark as "dirty" so that we can recompile
+        public void SoftRecompile(bool recompile = false) {
             if (!gameObject.activeSelf)
                 return;
 
@@ -48,18 +50,19 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (hash != ctx.hash) {
                 hash = ctx.hash;
                 dirty = true;
+
+                if (recompile && autoRecompile) {
+                    Compile();
+                }
             }
         }
 
 
         // Writes the transpiled shader code to a file and recompiles it automatically (through AssetDatabase)
-        public void Compile(bool force) {
+        public void Compile() {
 #if UNITY_EDITOR
             dirty = false;
-
-            if (force) {
-                ctx = null;
-            }
+            ctx = null;
 
             string source = Transpile();
             string name = this.gameObject.name.ToLower().Replace(' ', '_');

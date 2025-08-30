@@ -30,6 +30,9 @@ namespace jedjoud.VoxelTerrain.Segments {
         public ComputeBuffer tempRemovedBitsetBuffer;
         public int removedBitsetUintCount;
 
+        // stores the bitset of the destroyed props stored in the world GLOBALLY
+        public NativeHashMap<int3, NativeArray<uint>> modifiedTempRemovedBitsets;
+
         public void Init(TerrainPropsConfig config) {
             int types = config.props.Count;
 
@@ -62,6 +65,8 @@ namespace jedjoud.VoxelTerrain.Segments {
             removedBitsetUintCount = (int)math.ceil((float)maxCombinedTempProps / 32.0f);
             tempRemovedBitsetBuffer = new ComputeBuffer(removedBitsetUintCount, sizeof(uint), ComputeBufferType.Structured);
             tempRemovedBitsetEmptyDefault = new NativeArray<uint>(removedBitsetUintCount, Allocator.Persistent);
+
+            modifiedTempRemovedBitsets = new NativeHashMap<int3, NativeArray<uint>>(0, Allocator.Persistent);
         }
 
         public void Dispose() {
@@ -72,6 +77,12 @@ namespace jedjoud.VoxelTerrain.Segments {
             tempBufferReadback.Dispose();
             tempRemovedBitsetBuffer.Dispose();
             tempRemovedBitsetEmptyDefault.Dispose();
+
+            foreach (var value in modifiedTempRemovedBitsets) {
+                value.Value.Dispose();
+            }
+
+            modifiedTempRemovedBitsets.Dispose();
         }
     }
 }
