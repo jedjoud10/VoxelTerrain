@@ -140,5 +140,12 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             return new SwizzleNode<T, O> { a = this, swizzle = new string('x', VariableType.Dimensionality<O>()) };
         }
+
+        public Variable<T> Func(Func<string, string> func) {
+            return CustomCode.WithCode<T>((TreeContext ctx) => {
+                this.Handle(ctx);
+                return func(ctx[this]);
+            });
+        }
     }
 }

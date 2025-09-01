@@ -1,3 +1,6 @@
+using System;
+using Unity.Mathematics;
+
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract partial class Variable<T> : UntypedVariable {
         public static Variable<T> New(Variable<float> x) { return new ConstructNode<T>() { inputs = new Variable<float>[] { x } }; }

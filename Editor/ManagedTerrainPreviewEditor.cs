@@ -9,9 +9,17 @@ namespace jedjoud.VoxelTerrain.Editor {
         Gradient gradient;
         private void OnSceneViewGUI(SceneView sv) {
             var preview = (ManagedTerrainPreview)target;
-            if (preview.type == ManagedTerrainPreview.PreviewType.Volume) {
-                Handles.matrix = Matrix4x4.TRS(Vector3.one * preview.size * 0.5f, Quaternion.identity, Vector3.one * preview.size);
-                Handles.DrawTexture3DVolume(preview.handlesTexture, 1f, useColorRamp: true, customColorRamp: gradient);
+
+            Handles.matrix = Matrix4x4.TRS(Vector3.one * preview.size * 0.5f, Quaternion.identity, Vector3.one * preview.size);
+            switch (preview.type) {
+                case ManagedTerrainPreview.PreviewType.Volume:
+                    Handles.DrawTexture3DVolume(preview.handlesTexture, 1f, useColorRamp: true, customColorRamp: gradient);
+                    break;
+                case ManagedTerrainPreview.PreviewType.Slice:
+                    Handles.DrawTexture3DSlice(preview.handlesTexture, Vector3.zero, useColorRamp: true, customColorRamp: gradient);
+                    break;
+                default:
+                    break;
             }
         }
 

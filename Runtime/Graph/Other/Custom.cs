@@ -1,9 +1,11 @@
+using System;
+
 namespace jedjoud.VoxelTerrain.Generation {
     public class CustomCodeNode<T> : Variable<T> {
-        public CustomCode.Callback callback;
+        public Func<TreeContext, string> callback;
 
         public override void HandleInternal(TreeContext ctx) {
-            string result = callback?.Invoke(this, ctx);
+            string result = callback?.Invoke(ctx);
             ctx.DefineAndBindNode<T>(this, "__", result);
         }
     }
@@ -14,16 +16,16 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public override void HandleInternal(TreeContext ctx) {
             last?.Handle(ctx);
-            callback?.Invoke(this, ctx);
+            callback?.Invoke(ctx);
             ctx.BindNode<int>(this);
         }
     }
 
     public class CustomCode {
-        public delegate string Callback(UntypedVariable self, TreeContext ctx);
-        public delegate void ChainCallback(UntypedVariable self, TreeContext ctx);
+        public delegate string Callback(TreeContext ctx);
+        public delegate void ChainCallback(TreeContext ctx);
 
-        public static Variable<T> WithCode<T>(Callback callback) {
+        public static Variable<T> WithCode<T>(Func<TreeContext, string> callback) {
             return new CustomCodeNode<T> {
                 callback = callback,
             };

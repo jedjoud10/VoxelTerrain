@@ -5,24 +5,23 @@ using System.Linq;
 
 namespace jedjoud.VoxelTerrain.Generation {
     public class TreeScope {
-        public KeywordGuards keywordGuards = null;
+        public KeywordGuards keywordGuards;
         public List<string> lines;
         public Dictionary<UntypedVariable, string> nodesToNames;
-        public int depth;
-
+        
         // TODO: this should NOT be stored here. "arguments" is also a wrong name for this, as this stores parameter data as well (incoming variable names from outside the scope)
         // what TreeScope should store is just proper "arguments" (name and type, nothin related to actual nodes). Everything else (parameters) should be given from the outside
         public ScopeArgument[] arguments;
         public string name;
         public int indent;
 
-        public TreeScope(int depth) {
+        public TreeScope() {
             this.lines = new List<string>();
             this.nodesToNames = new Dictionary<UntypedVariable, string>();
             this.indent = 1;
-            this.depth = depth;
             this.arguments = null;
             this.name = "TreeScopeNameWasNotSet!!!";
+            this.keywordGuards = null;
         }
 
         public void AddLine(string line) {
@@ -77,7 +76,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public List<string> CreateScope(int scopeIndex) {
             List<string> outputLines = new List<string>();
-            outputLines.Add($"// defined nodes: {nodesToNames.Count}, depth: {depth}, index: {scopeIndex}, total lines: {lines.Count}, argument count: {arguments.Length} ");
+            outputLines.Add($"// defined nodes: {nodesToNames.Count}, index: {scopeIndex}, total lines: {lines.Count}, argument count: {arguments.Length} ");
             // Create a string containing all the required arguments and stuff
             string argumentsCode = "";
             for (int i = 0; i < arguments.Length; i++) {
@@ -107,7 +106,11 @@ namespace jedjoud.VoxelTerrain.Generation {
                         throw new NullReferenceException($"Output argument '{item.name}' is null");
                     }
 
-                    outputLines.Add($"    {item.name} = {nodesToNames[item.node]};");
+                    if (nodesToNames.TryGetValue(item.node, out string nodeName)) {
+                        outputLines.Add($"    {item.name} = {nodeName};");
+                    } else {
+                        throw new NullReferenceException($"Node {item.node} does not have name in nodesToNames");
+                    }
                 }
             }
 

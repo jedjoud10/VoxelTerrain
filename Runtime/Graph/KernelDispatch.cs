@@ -3,17 +3,14 @@ using Unity.Mathematics;
 namespace jedjoud.VoxelTerrain.Generation {
     public abstract class KernelDispatch {
         public string name;
-        public int depth;
         public string scopeName;
-        public int scopeIndex;
+        public TreeScope scope;
         public KeywordGuards keywordGuards = null;
         public int3 numThreads;
 
         public virtual string InjectBeforeScopeInit(TreeContext ctx) => "";
         public virtual string InjectAfterScopeCalls(TreeContext ctx) => "";
         public virtual string CreateKernel(TreeContext ctx) {
-            TreeScope scope = ctx.scopes[scopeIndex];
-
             string beginSomeSortOfGuard = "";
             string endSomeSortOfGuard = "";
 
@@ -32,7 +29,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             string code = $@"#pragma kernel CS{scopeName}
 [numthreads({numThreads.x}, {numThreads.y}, {numThreads.z})]
-// Name: {name}, Scope name: {scopeName}, Scope index: {scopeIndex}, Arguments: {scope.arguments.Length}, Nodes: {scope.nodesToNames.Count}
+// Name: {name}, Scope name: {scopeName}, Arguments: {scope.arguments.Length}, Nodes: {scope.nodesToNames.Count}
 void CS{scopeName}(uint3 id : SV_DispatchThreadID) {{
 {beginSomeSortOfGuard}
 {before}

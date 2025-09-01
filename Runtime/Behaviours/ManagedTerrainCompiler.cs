@@ -133,12 +133,12 @@ namespace jedjoud.VoxelTerrain.Generation {
                 var position = ScopeArgument.AsInput<float3>("position");
                 var id = ScopeArgument.AsInput<uint3>("id");
 
-                Variable<float3> cachedNormal = CustomCode.WithCode<float3>((UntypedVariable self, TreeContext ctx) => {
+                Variable<float3> cachedNormal = CustomCode.WithCode<float3>((TreeContext ctx) => {
                     id.node.Handle(ctx);
                     return @$"ReadCachedNormal({ctx[id.node]})";
                 });
 
-                Variable<float> cachedDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
+                Variable<float> cachedDensity = CustomCode.WithCode<float>((TreeContext ctx) => {
                     id.node.Handle(ctx);
                     return @$"ReadCachedDensity({ctx[id.node]})";
                 });
@@ -169,11 +169,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             KernelBuilder PropsKernel(ManagedTerrainGraph graph) {
                 var position = ScopeArgument.AsInput<float3>("position");
 
-                Variable<float> segmentSlowDensity = CustomCode.WithCode<float>((UntypedVariable self, TreeContext ctx) => {
+                Variable<float> segmentSlowDensity = CustomCode.WithCode<float>((TreeContext ctx) => {
                     // need to do this since DensityAtSlow internally calls the voxels density function
                     foreach (var (name, texture) in ctx.textures) {
                         if (texture.readKernels.Contains("CSVoxels")) {
-                            texture.readKernels.Add($"CS{ctx.scopes[ctx.currentScope].name}");
+                            texture.readKernels.Add($"CS{ctx.currentScope.name}");
                         }
                     }
                     return @$"DensityAtSlow({position.name})";
@@ -219,8 +219,6 @@ namespace jedjoud.VoxelTerrain.Generation {
             VoxelKernel(graph).Build(ctx);
             LayerKernel(graph).Build(ctx);
             PropsKernel(graph).Build(ctx);
-
-            ctx.dispatches.Sort((KernelDispatch a, KernelDispatch b) => { return b.depth.CompareTo(a.depth); });
         }
 
         // Gotta add a check as it seems like adding the pragma just makes the shader un-compilable???
@@ -246,10 +244,6 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             lines.AddRange(ctx.Properties);
             lines.Add("#include \"Packages/com.jedjoud.voxelterrain/Runtime/Compute/Imports.cginc\"");
-
-            // Sort the scopes based on their depth
-            // We want the scopes that don't require other scopes to be defined at the top, and scopes that require scopes to be defined at the bottom
-            ctx.scopes.Sort((TreeScope a, TreeScope b) => { return b.depth.CompareTo(a.depth); });
 
             // Define each scope as a separate function with its arguments (input / output)
             for (int i = 0; i < ctx.scopes.Count; i++) {

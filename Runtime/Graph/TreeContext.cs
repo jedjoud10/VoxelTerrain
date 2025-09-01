@@ -20,17 +20,16 @@ namespace jedjoud.VoxelTerrain.Generation {
         public int counter;
         public bool debugNames;
         public List<TreeScope> scopes;
-        public int currentScope = 0;
-        public int scopeDepth = 0;
+        public TreeScope currentScope;
         public HashSet<string> dedupe;
 
         public string this[UntypedVariable node] {
-            get => scopes[currentScope].nodesToNames[node];
+            get => currentScope.nodesToNames[node];
         }
 
         public int Indent {
-            get => scopes[currentScope].indent;
-            set => scopes[currentScope].indent = value;
+            get => currentScope.indent;
+            set => currentScope.indent = value;
         }
 
         public HashSet<string> Properties { get { return properties; } }
@@ -41,13 +40,12 @@ namespace jedjoud.VoxelTerrain.Generation {
             this.varNamesToId = new Dictionary<string, int>();
             this.debugNames = debugNames;
             this.scopes = new List<TreeScope> {
-                new TreeScope(0)
+                new TreeScope()
             };
 
             this.hash = 0;
 
-            this.currentScope = 0;
-            this.scopeDepth = 0;
+            this.currentScope = null;
             this.counter = 0;
             this.dedupe = new HashSet<string>();
             this.computeKernels = new List<string>();
@@ -86,10 +84,11 @@ namespace jedjoud.VoxelTerrain.Generation {
             }
         }
 
-        public TreeScope AddScope(string name, int depth, KeywordGuards guards, params ScopeArgument[] arguments) {
+        /*
+        public TreeScope AddScope(string name, KeywordGuards guards, params ScopeArgument[] arguments) {
             int idx = scopes.Count;
-            currentScope = idx;
-            var scope = new TreeScope(1);
+            currentScopeIndex = idx;
+            var scope = new TreeScope();
             scopes.Add(scope);
             scopes[idx].name = name;
             scopes[idx].arguments = arguments;
@@ -105,6 +104,7 @@ namespace jedjoud.VoxelTerrain.Generation {
 
             return scope;
         }
+        */
 
         public void Inject(Action<CommandBuffer, ComputeShader, Dictionary<string, ExecutorTexture>> func) {
             injector.injected.Add(func);
@@ -112,18 +112,18 @@ namespace jedjoud.VoxelTerrain.Generation {
 
         public void Add(UntypedVariable node, string name) {
             //Hash(node);
-            scopes[currentScope].nodesToNames.Add(node, name);
+            currentScope.nodesToNames.Add(node, name);
         }
 
         public bool Contains(UntypedVariable node) {
-            return scopes[currentScope].nodesToNames.ContainsKey(node);
+            return currentScope.nodesToNames.ContainsKey(node);
         }
 
         public void AddLine(string line) {
             string[] aaa = line.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.None);
 
             foreach (var item in aaa) {
-                scopes[currentScope].AddLine(item);
+                currentScope.AddLine(item);
             }
         }
 

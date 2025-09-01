@@ -34,7 +34,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 if (defined.Contains(type))
                     throw new InvalidOperationException($"Spawn condition for type '{type}' has already been declared. Only one declaration is allowed per type.");
 
-                chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
+                chain = CustomCode.WithNext(chain, (TreeContext ctx) => {
                     prop.position.Handle(ctx);
                     prop.scale.Handle(ctx);
                     prop.rotation.Handle(ctx);
@@ -65,7 +65,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 Variable<float3> hitPosition = Variable<float3>.NonConst(float3.zero);
                 Variable<float3> hitNormal = Variable<float3>.NonConst(float3.zero);
 
-                chain = CustomCode.WithNext(chain, (UntypedVariable self, TreeContext ctx) => {
+                chain = CustomCode.WithNext(chain, (TreeContext ctx) => {
                     position.Handle(ctx);
                     hit.Handle(ctx);
                     hitPosition.Handle(ctx);

@@ -25,7 +25,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             if (!context.Contains(this)) {
                 HandleInternal(context);
             } else {
-                context.textures[tempTextureName].readKernels.Add($"CS{context.scopes[context.currentScope].name}");
+                context.textures[tempTextureName].readKernels.Add($"CS{context.currentScope.name}");
             }
         }
 
@@ -56,7 +56,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             context.DefineAndBindNode<T>(this, "aaa", $"{context[aaa]}.{GraphUtils.SwizzleFromFloat4<T>()}");
 
             context.textures.Add(tempTextureName, new UserTextureDescriptor {
-                readKernels = new List<string>() { $"CS{context.scopes[context.currentScope].name}" },
+                readKernels = new List<string>() { $"CS{context.currentScope.name}" },
                 name = tempTextureName,
                 texture = sampler.texture,
                 requestingNodeHash = this.GetHashCode(),

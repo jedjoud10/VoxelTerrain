@@ -31,7 +31,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public void RegisterCurrentScopeAsReading(TreeContext context) {
-            context.textures[name].readKernels.Add($"CS{context.scopes[context.currentScope].name}");
+            context.textures[name].readKernels.Add($"CS{context.currentScope.name}");
         }
 
         public Variable<float4> SampleLevelAtCoords(TreeContext context, Variable<float2> coords) {

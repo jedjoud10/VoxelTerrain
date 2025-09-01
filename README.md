@@ -16,6 +16,8 @@
 - Optimize prop entity intantiation
 - Add height map based normal maps for further chunks
 - Improve AO by doing it on a per voxel basis instead of per vertex
+- Figure out "collision map" for prop generation to avoid generating props inside of each other (must be segment wide, but also work across segments)
+- Add dithering / scaling when starting to show instanced only type props (like pebbles in HD2) to avoid pop-in. Could be also applied as a "transition" layer between prop entities and impostors
 
 # New Features compared to the main branch:
 - Chunk size of 32, with some pros:

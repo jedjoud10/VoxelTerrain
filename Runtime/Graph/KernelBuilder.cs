@@ -16,8 +16,9 @@ namespace jedjoud.VoxelTerrain.Generation {
             string scopeName = name.Substring(2);
 
             int idx = ctx.scopes.Count;
-            ctx.currentScope = idx;
-            ctx.scopes.Add(new TreeScope(0));
+            TreeScope scope = new TreeScope();
+            ctx.currentScope = scope;
+            ctx.scopes.Add(scope);
             ctx.scopes[idx].name = scopeName;
             ctx.scopes[idx].arguments = arguments;
             ctx.scopes[idx].keywordGuards = scopeGuards;
@@ -33,9 +34,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             customCallback?.Invoke(ctx);
 
             dispatch.name = name;
-            dispatch.depth = 0;
             dispatch.scopeName = scopeName;
-            dispatch.scopeIndex = idx;
+            dispatch.scope = scope;
             dispatch.keywordGuards = dispatchGuards;
             dispatch.numThreads = numThreads;
             ctx.dispatches.Add(dispatch);

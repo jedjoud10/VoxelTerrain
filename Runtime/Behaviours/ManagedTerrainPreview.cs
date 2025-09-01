@@ -9,6 +9,7 @@ namespace jedjoud.VoxelTerrain.Generation {
         public enum PreviewType {
             Mesh,
             Volume,
+            Slice,
         }
 
         public ComputeShader surfaceNetsCompute;
@@ -128,7 +129,7 @@ namespace jedjoud.VoxelTerrain.Generation {
                 case PreviewType.Mesh:
                     Meshify(voxels);
                     break;
-                case PreviewType.Volume:
+                case PreviewType.Volume or PreviewType.Slice:
                     float tempSize = (size) / 4;
                     int threadGroups = (int)math.ceil(math.max(tempSize, 1));
 

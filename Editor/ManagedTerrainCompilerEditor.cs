@@ -56,10 +56,9 @@ namespace jedjoud.VoxelTerrain.Editor {
                     TreeScope scope = scopes[i];
 
                     EditorGUI.indentLevel++;
-                    EditorGUILayout.LabelField($"Name: {scope.name}", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField($"Name: {scope.name} (i={i})", EditorStyles.boldLabel);
                     EditorGUI.indentLevel++;
                     EditorGUILayout.LabelField($"Name: {scope.name}");
-                    EditorGUILayout.LabelField($"Depth: {scope.depth}");
                     EditorGUI.indentLevel--;
                     EditorGUI.indentLevel--;
                 }
