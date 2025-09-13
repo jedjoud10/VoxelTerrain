@@ -1,3 +1,8 @@
+Note:
+The project is still in development, but I am focusing on the ECS port of the system for now. 
+ECS scales a lot better than GameObjects for this specific scenario, and there are things that I can only do with ECS unfortunately.
+You can check that out on the ecs branch.
+
 # A procedural terrain generator that makes use of your GPU and CPU to generate volumetric and fully destructible terrain
 
 ## Features
