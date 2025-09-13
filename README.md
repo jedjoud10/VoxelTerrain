@@ -102,7 +102,7 @@ Better pic with the new prop generator + instanced indirect + async GPU culling
 Editor GPU preview & material ID colouring
 ![image](https://github.com/user-attachments/assets/79bbe315-f015-403e-a6d6-1ea756db7128)
 
-also supports height-map simplification (which is what I think I will use to replace LODs)
+also supports height-map simplification
 ![image](https://github.com/user-attachments/assets/c65636cb-95a2-4b03-972e-db5864f594c5)
 
 the C# graph that was used for the terrain. This gets converted to HLSL and then executed on the GPU.
