@@ -1,6 +1,6 @@
 # TODO
 - Fix prop "instanced mesh" requirement if rendering instanced meshes is off
-- Impl sub meshe merging to replace prop "instanced mesh" (based off of variant meshes)
+- Impl sub-mesh merging to replace prop "instanced mesh" (based off of variant meshes)
 - Implement prop capture full rotations (not only azimuth, should be toggable)
 - Fix prop capture mipmap bug when quality mipmap setting is set (fixed)
 - Implement variable caching again (fixed texture, only between the density <-> layers stages)
@@ -10,10 +10,10 @@
 - Fix out of memory issue when capturing lots of prop types. Need to fix memory leak (fixed, but capturing code is shit now)
 - Implement remap node (already implemented, just needed to add the VariableExtension stuff)
 - Add pre-process step that generates world wide data-structures that we can sample in the voxel/prop generation step
-- Implement prop entities have a voxel "volume" that we use during the voxel occlusion cullig. Useful for very big props (larger than 2m)
+- Implement prop entities have a voxel "volume" that we use during the voxel occlusion culling. Useful for very big props (larger than 2m)
 - Implement prefab SDF baking to be able to sample custom SDF shapes directly in the compute shader. Like SDF "brushes"
-- fix memory leaks, improve stability, optimize (priority in that order)
-- Optimize prop entity intantiation
+- Fix memory leaks, improve stability, optimize (priority in that order)
+- Optimize prop entity instantiation
 - Add height map based normal maps for further chunks
 - Improve AO by doing it on a per voxel basis instead of per vertex
 - Figure out "collision map" for prop generation to avoid generating props inside of each other (must be segment wide, but also work across segments)
