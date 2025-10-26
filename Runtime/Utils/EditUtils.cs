@@ -7,6 +7,10 @@ using MinMaxAABB = Unity.Mathematics.Geometry.MinMaxAABB;
 
 namespace jedjoud.VoxelTerrain {
     public static class EditUtils {
+        /// <summary>
+        /// Struct that you actually store to handle edits of a specific type
+        /// </summary>
+        /// <typeparam name="T">Type of the generic edit</typeparam>
         public struct BootstrappedEditStorage<T> where T : unmanaged, IComponentData, IEdit {
             EntityQuery query;
             public BootstrappedEditStorage(ref SystemState state) {

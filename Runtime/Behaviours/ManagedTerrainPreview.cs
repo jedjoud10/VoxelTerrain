@@ -3,6 +3,10 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 namespace jedjoud.VoxelTerrain.Generation {
     [ExecuteInEditMode]
     public class ManagedTerrainPreview : MonoBehaviour {
@@ -12,8 +16,8 @@ namespace jedjoud.VoxelTerrain.Generation {
             Slice,
         }
 
-        public ComputeShader surfaceNetsCompute;
-        public ComputeShader unpackPreviewCompute;
+        private ComputeShader surfaceNetsCompute;
+        private ComputeShader unpackPreviewCompute;
 
         private GraphicsBuffer indexBuffer;
         private GraphicsBuffer vertexBuffer;
@@ -38,7 +42,24 @@ namespace jedjoud.VoxelTerrain.Generation {
         public RenderTexture handlesTexture;
         public float volumeValueScale = -0.01f;
 
+#if UNITY_EDITOR
+        // https://anja-haumann.de/unity-load-assets-in-editor/
+        public static T LoadAsset<T>(string guid) where T : class {
+            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+            var asset = AssetDatabase.LoadAssetAtPath(assetPath, typeof(T)) as T;
+            return asset;
+        }
+#endif
         public void InitializeForSize() {
+#if UNITY_EDITOR
+            if (surfaceNetsCompute == null)
+                surfaceNetsCompute = LoadAsset<ComputeShader>("414c71a72bcba394d921913198296aac");
+            if (unpackPreviewCompute == null)
+                unpackPreviewCompute = LoadAsset<ComputeShader>("745a614b182510f4c9c6503bb8c20fa8");
+#else
+            throw new System.Exception("should not be calling initialize for size outside the editor");
+#endif
+
             if (!isActiveAndEnabled)
                 return;
 
@@ -157,11 +178,13 @@ namespace jedjoud.VoxelTerrain.Generation {
         }
 
         public void Meshify(RenderTexture voxels) {
+#if UNITY_EDITOR
             if (initSize == -1 || voxels.width > initSize) {
                 InitializeForSize();
             }
 
             ExecuteSurfaceNetsMesher(voxels);
+#endif
         }
 
         public void ExecuteSurfaceNetsMesher(RenderTexture voxels) {

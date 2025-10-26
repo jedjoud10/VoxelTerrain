@@ -4,8 +4,15 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace jedjoud.VoxelTerrain.Edits {
+    /// <summary>
+    /// Structure that contains all the modified chunks and their respective data
+    /// Edits are stored as "Edited Chunks"
+    /// </summary>
     public struct TerrainEdits : IComponentData {
-        // stores the modified LOD0 voxel data for chunk edits.
+        /// <summary>
+        /// Stores the read and modified LOD0 voxel data for chunks
+        /// Contains the original chunk's data after the edits were applied to it
+        /// </summary>
         public NativeList<VoxelData> chunkEdits;
         
         // stores a mapping between 3D space and the index used within chunkEdit

@@ -97,7 +97,6 @@ namespace jedjoud.VoxelTerrain {
 
         }
 
-
         private void OnDrawGizmos() {
             if (world == null)
                 return;
