@@ -1,71 +1,90 @@
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Burst;
 
-// This will handle spawning the prop segments from scratch and to be diffed later
-[BurstCompile(CompileSynchronously = true)]
-public struct SegmentSpawnJob : IJob {
-    public NativeHashSet<int4> oldPropSegments;
-    public NativeHashSet<int4> propSegments;
-    public TerrainLoader.Target target;
+namespace jedjoud.VoxelTerrain.Segments {
+    [BurstCompile(CompileSynchronously = true)]
+    public struct SegmentSpawnJob : IJob {
+        public NativeHashSet<TerrainSegment> oldSegments;
+        public NativeHashSet<TerrainSegment> newSegments;
 
-    [WriteOnly]
-    public NativeList<int4> addedSegments;
+        [ReadOnly]
+        public NativeList<TerrainLoader> loaders;
+        
+        [WriteOnly]
+        public NativeList<TerrainSegment> addedSegments;
 
-    [WriteOnly]
-    public NativeList<int4> removedSegments;
+        [WriteOnly]
+        public NativeList<TerrainSegment> removedSegments;
 
-    public int maxSegmentsInWorld;
+        public int maxSegmentsInWorld;
+        public float worldSegmentSize;
 
-    public float propSegmentSize;
+        public void Execute() {
+            newSegments.Clear();
 
-    public void Execute() {
-        propSegments.Clear();
+            // TODO: implement clustering algorithm to make this faster...
+            for (int l = 0; l < loaders.Length; l++) {
+                TerrainLoader loader = loaders[l];
+                float3 center = loader.position;
+                int3 extent = loader.segmentExtent;
+                int3 extentHigh = loader.segmentExtentHigh;
 
-        int3 c = (int3)target.propSegmentExtent;
-        int3 min = new int3(-maxSegmentsInWorld, -maxSegmentsInWorld, -maxSegmentsInWorld);
-        int3 max = new int3(maxSegmentsInWorld, maxSegmentsInWorld, maxSegmentsInWorld);
 
-        int3 offset = (int3)math.round(target.center / propSegmentSize);
+                int3 c = (int3)extent;
+                int3 min = new int3(-maxSegmentsInWorld);
+                int3 max = new int3(maxSegmentsInWorld);
 
-        for (int x = -c.x; x < c.x; x++) {
-            for (int y = -c.y; y < c.y; y++) {
-                for (int z = -c.z; z < c.z; z++) {
-                    int3 segment = new int3(x, y, z) + offset;
+                int3 offset = (int3)math.round(center / worldSegmentSize);
 
-                    float3 segmentPos = new float3(segment.x, segment.y, segment.z) * propSegmentSize + new float3(1, 1, 1) * (propSegmentSize / 2.0f);
-                    float distance = math.distance(target.center, segmentPos) / propSegmentSize;
+                // TODO: pls ooptimuze...
+                for (int x = -c.x; x < c.x; x++) {
+                    for (int y = -c.y; y < c.y; y++) {
+                        for (int z = -c.z; z < c.z; z++) {
+                            int3 localSegment = new int3(x, y, z);
+                            int3 worldSegment = localSegment + offset;
 
-                    int lod = (int)math.round(distance / math.max(target.propSegmentLodMultiplier, 0.01));
-                    lod = math.clamp(lod, 0, 1);
+                            float3 segmentCenter = ((float3)worldSegment + 0.5f) * worldSegmentSize;
+                            float distance = math.distance(center, segmentCenter) / worldSegmentSize;
 
-                    if (math.all(segment >= min) && math.all(segment < max)) {
-                        propSegments.Add(new int4(segment, lod));
+                            if (math.all(worldSegment >= min) && math.all(worldSegment < max)) {
+                                var lod = TerrainSegment.LevelOfDetail.Low;
+
+                                if (math.all(localSegment >= -extentHigh) && math.all(localSegment < extentHigh)) {
+                                    lod = TerrainSegment.LevelOfDetail.High;
+                                }
+
+                                newSegments.Add(new TerrainSegment {
+                                    position = worldSegment,
+                                    lod = lod,
+                                });
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        addedSegments.Clear();
-        removedSegments.Clear();
 
-        foreach (var item in propSegments) {
-            if (!oldPropSegments.Contains(item)) {
-                addedSegments.Add(item);
+            addedSegments.Clear();
+            removedSegments.Clear();
+
+            foreach (var item in newSegments) {
+                if (!oldSegments.Contains(item)) {
+                    addedSegments.Add(item);
+                }
             }
-        }
 
-        foreach (var item in oldPropSegments) {
-            if (!propSegments.Contains(item)) {
-                removedSegments.Add(item);
+            foreach (var item in oldSegments) {
+                if (!newSegments.Contains(item)) {
+                    removedSegments.Add(item);
+                }
             }
-        }
 
-        oldPropSegments.Clear();
-
-        foreach (var item in propSegments) {
-            oldPropSegments.Add(item);
+            oldSegments.Clear();
+            foreach (var item in newSegments) {
+                oldSegments.Add(item);
+            }
         }
     }
 }

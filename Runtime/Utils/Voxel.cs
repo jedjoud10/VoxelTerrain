@@ -1,66 +1,174 @@
+using System;
 using System.Runtime.InteropServices;
+using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine.Experimental.Rendering;
 
-// CPU representation of what a voxel is. The most important value here is the density value
-[StructLayout(LayoutKind.Sequential)]
-public struct Voxel {
-    public const int size = sizeof(int);
+namespace jedjoud.VoxelTerrain {
+    [BurstCompile(CompileSynchronously = true)]
+    public unsafe struct GpuToCpuCopy : IJobParallelFor {
+        public VoxelData cpuData;
 
-    // Density of the voxel as a half to save some memory
-    public half density;
+        [NativeDisableUnsafePtrRestriction]
+        public GpuVoxel* rawGpuData;
+        
+        public void Execute(int index) {
+            GpuVoxel voxel = *(rawGpuData + index);
+            cpuData.densities[index] = voxel.density;
+            cpuData.materials[index] = voxel.material;
+            cpuData.layers[index] = voxel.layers;
+        }
+    }
 
-    // Material of the voxel that depicts its color and other parameters
-    public byte material;
+    // AoS gpu voxel data
+    // Must be at least one uint wide
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GpuVoxel {
+        // UINT1
+        public half density;
+        public byte material;
+        public byte _padding;
 
-    // Used for extra color data on a per vertex basis
-    public byte _padding;
+        // UINT2
+        public uint layers;
 
-    // Empty voxel with the empty material
-    public readonly static Voxel Empty = new Voxel {
-        density = half.zero,
-        material = byte.MaxValue,
-        _padding = 0,
-    };
-}
+        public const int size = 2 * sizeof(uint);
+        public const GraphicsFormat format = GraphicsFormat.R32G32_UInt;
+    }
 
-// Delta data that contains the voxel values for any arbitrarily sized chunk
-public struct SparseVoxelDeltaData {
-    public float3 position;
-    public float scalingFactor;
+    // Only used for editing, for ease of use
+    public struct EditVoxel {
+        public float density;
+        public int material;
+        public float4 layers;
+    }
 
-    // Densities that we will compress using a lossless compression algorithm
-    public NativeArray<half> densities;
+    // SoA voxel data
+    public struct VoxelData {
+        public NativeArray<half> densities;
+        public NativeArray<byte> materials;
+        public NativeArray<uint> layers;
 
-    // Byte that we will compress using RLE
-    // byte.max represents a value that the user has not modified yet
-    public NativeArray<byte> materials;
 
-    // Job handle for the "apply" task for this sparse voxel data
-    public JobHandle applyJobHandle;
+        public VoxelData(Allocator allocator) {
+            densities = new NativeArray<half>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+            materials = new NativeArray<byte>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+            layers = new NativeArray<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+        }
 
-    // Last counters for the chunk for this delta node
-    // Used to calculate delta counter values
-    public NativeArray<int> lastCounters;
+        public void CopyFrom(VoxelData other) {
+            densities.CopyFrom(other.densities);
+            materials.CopyFrom(other.materials);
+            layers.CopyFrom(other.layers);
+        }
 
-    // Create sparse voxel data for an unnaffected delta chunk
-    public static SparseVoxelDeltaData Empty = new SparseVoxelDeltaData {
-        densities = default,
-        materials = default,
-        applyJobHandle = new JobHandle(),
-        position = new float3(0, 0, 0),
-        scalingFactor = -1,
-        lastCounters = default,
-    };
-}
+        public EditVoxel FetchEditVoxel(int index) {
+            return new EditVoxel { density = densities[index], material = materials[index], layers = BitUtils.UnpackUnorm8(layers[index]) };
+        }
 
-// Voxel container with custom dispose methods
-// (implemented for voxel readback request and voxel edit request)
-public abstract class VoxelTempContainer {
-    public NativeArray<Voxel> voxels;
-    public VoxelChunk chunk;
+        public void StoreEditVoxels(int index, EditVoxel voxel) {
+            densities[index] = (half)voxel.density;
+            materials[index] = (byte)math.clamp(voxel.material, 0, 255);
+            layers[index] = BitUtils.PackUnorm8(voxel.layers);
+        }
 
-    // Dispose of the voxel container
-    public abstract void TempDispose();
+        public JobHandle CopyFromAsync(VoxelData other, JobHandle dep = default) {
+            JobHandle a = AsyncMemCpyUtils.CopyAsync(other.densities, densities, dep);
+            JobHandle b = AsyncMemCpyUtils.CopyAsync(other.materials, materials, dep);
+            JobHandle c = AsyncMemCpyUtils.CopyAsync(other.layers, layers, dep);
+            return JobHandle.CombineDependencies(a, b, c);
+        }
+
+        public void Serialize(ref SerializationWriter writer) {
+            writer.WriteArray(densities);
+            writer.WriteArray(materials);
+            writer.WriteArray(layers);
+        }
+
+        public void Dispose() {
+            densities.Dispose();
+            materials.Dispose();
+            layers.Dispose();
+        }
+    }
+
+    // SoA unsafe ptr list voxel data
+    public struct UnsafePtrListVoxelData {
+        public UnsafePtrList<half> densityPtrs;
+        public UnsafePtrList<byte> materialPtrs;
+        public UnsafePtrList<uint> layerPtrs;
+
+
+        public UnsafePtrListVoxelData(Allocator allocator) {
+            densityPtrs = new UnsafePtrList<half>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+            materialPtrs = new UnsafePtrList<byte>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+            layerPtrs = new UnsafePtrList<uint>(VoxelUtils.VOLUME, allocator, NativeArrayOptions.UninitializedMemory);
+        }
+
+        public void AddReadOnlyRangePtrs(NativeArray<VoxelData> datas) {
+            unsafe {
+                foreach (var data in datas) {
+                    AddReadOnlyPtrs(data);
+                }
+            }
+        }
+
+        public void AddReadOnlyPtrs(VoxelData data) {
+            unsafe {
+                densityPtrs.Add(data.densities.GetUnsafeReadOnlyPtr());
+                materialPtrs.Add(data.materials.GetUnsafeReadOnlyPtr());
+                layerPtrs.Add(data.layers.GetUnsafeReadOnlyPtr());
+            }
+        }
+
+        public void AddNullPtrs(int count) {
+            for (int i = 0; i < count; i++) {
+                AddNullPtrs();
+            }
+        }
+
+        public void AddNullPtrs() {
+            unsafe {
+                densityPtrs.Add(IntPtr.Zero);
+                materialPtrs.Add(IntPtr.Zero);
+                layerPtrs.Add(IntPtr.Zero);
+            }
+        }
+
+        public VoxelData this[int index] {
+            set {
+                unsafe {
+                    densityPtrs[index] = (half*)value.densities.GetUnsafeReadOnlyPtr();
+                    materialPtrs[index] = (byte*)value.materials.GetUnsafeReadOnlyPtr();
+                    layerPtrs[index] = (uint*)value.layers.GetUnsafeReadOnlyPtr();
+                }
+            }
+        }
+
+        public void CopyToDataAtIndex(int ptrIndex, int srcIndex, VoxelData dst, int dstIndex) {
+            unsafe {
+                half* densities = densityPtrs[ptrIndex];
+                byte* materials = materialPtrs[ptrIndex];
+                uint* layers = layerPtrs[ptrIndex];
+                dst.densities[dstIndex] = densities[srcIndex];
+                dst.materials[dstIndex] = materials[srcIndex];
+                dst.layers[dstIndex] = layers[srcIndex];
+            }
+        }
+
+        public void Dispose(JobHandle handle) {
+            densityPtrs.Dispose(handle);
+            materialPtrs.Dispose(handle);
+            layerPtrs.Dispose(handle);
+        }
+
+        public void Dispose() {
+            densityPtrs.Dispose();
+            materialPtrs.Dispose();
+            layerPtrs.Dispose();
+        }
+    }
 }

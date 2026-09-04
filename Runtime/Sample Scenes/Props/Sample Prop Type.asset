@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 812a0afee8139e54db49ed7682d6760d, type: 3}
+  m_Name: Sample Prop Type
+  m_EditorClassIdentifier: 
+  variants:
+  - {fileID: 2323238589370873022, guid: 7ed76a8724cf09942bb534a9a49c2c47, type: 3}
+  spawnEntities: 1
+  alwaysSpawnInstances: 0
+  renderInstances: 1
+  renderInstancesShadow: 1
+  instanceMaxDistance: 2000
+  instancedMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  overrideMaterial: {fileID: 0}
+  renderImpostors: 1
+  impostorDistancePercentage: 0.3
+  impostorOffset: {x: 0, y: 0, z: 0}
+  impostorScale: 1
+  impostorTextureWidth: 64
+  impostorTextureHeight: 64
+  impostorCaptureAxis: 0
+  impostorDiffuseMaps: {fileID: 18700000, guid: fc385de9a12185f4c94afe6d0849f3d3, type: 2}
+  impostorNormalMaps: {fileID: 18700000, guid: d8c78620148d4b0478bda1c5ffaa285d, type: 2}
+  impostorMaskMaps: {fileID: 18700000, guid: bd5ee1dfc3e983342bbb459bc9677684, type: 2}
+  impostorInvertAzimuth: 0
+  maxPropsPerSegment: 32768
+  maxPropsInTotal: 1048576

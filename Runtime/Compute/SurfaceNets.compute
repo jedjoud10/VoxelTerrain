@@ -1,0 +1,194 @@
+#pragma kernel CSVertex
+#pragma kernel CSQuad
+#pragma warning (disable : 4714)
+
+#define UNITY_INDIRECT_DRAW_ARGS IndirectDrawIndexedArgs
+#include "UnityIndirect.cginc"
+
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
+
+RWTexture3D<PackedVoxel> voxels;
+
+Voxel fetch(uint3 id) {
+    return unpackVoxelData(voxels[id]);
+}
+
+float3 RemapRGBAtoRGB(float4 layers)
+{
+    float r = layers.r;
+    float g = layers.g;
+    float b = layers.b;
+    float a = layers.a;
+    // Remap 'a' into rgb with a simple weighted blend
+    // This keeps the output continuous and visually traceable
+    
+    float3 rgb = float3(r, g, b);
+    
+    // Mix 'a' into each channel with different weights
+    rgb.r = lerp(rgb.r, a, 0.3);
+    rgb.g = lerp(rgb.g, a * 0.8, 0.3);
+    rgb.b = lerp(rgb.b, 1.0 - a, 0.3);
+    
+    return rgb;
+}
+
+RWTexture3D<uint> vertexIds;
+
+int size;
+RWStructuredBuffer<float3> vertices;
+RWStructuredBuffer<float3> normals;
+RWStructuredBuffer<float3> colors;
+RWStructuredBuffer<int> indices;
+
+RWStructuredBuffer<uint> atomicCounters;
+
+RWStructuredBuffer<UNITY_INDIRECT_DRAW_ARGS> cmdBuffer;
+
+static uint3 edgePositions0[12] = {
+    uint3(0, 0, 0),
+    uint3(1, 0, 0),
+    uint3(1, 1, 0),
+    uint3(0, 1, 0),
+    uint3(0, 0, 1),
+    uint3(1, 0, 1),
+    uint3(1, 1, 1),
+    uint3(0, 1, 1),
+    uint3(0, 0, 0),
+    uint3(1, 0, 0),
+    uint3(1, 1, 0),
+    uint3(0, 1, 0),
+};
+
+static uint3 edgePositions1[12] = {
+    uint3(1, 0, 0),
+    uint3(1, 1, 0),
+    uint3(0, 1, 0),
+    uint3(0, 0, 0),
+    uint3(1, 0, 1),
+    uint3(1, 1, 1),
+    uint3(0, 1, 1),
+    uint3(0, 0, 1),
+    uint3(0, 0, 1),
+    uint3(1, 0, 1),
+    uint3(1, 1, 1),
+    uint3(0, 1, 1),
+};
+
+static uint3 test[3] = {
+    uint3(1, 0, 0),
+    uint3(0, 1, 0),
+    uint3(0, 0, 1),
+};
+
+
+static uint3 offsets[12] = {
+    uint3(0, 0, 0),
+    uint3(0, 1, 0),
+    uint3(0, 1, 1),
+    uint3(0, 0, 1),
+
+    uint3(0, 0, 0),
+    uint3(0, 0, 1),
+    uint3(1, 0, 1),
+    uint3(1, 0, 0),
+
+    uint3(0, 0, 0),
+    uint3(1, 0, 0),
+    uint3(1, 1, 0),
+    uint3(0, 1, 0)
+};
+
+// https://www.ronja-tutorials.com/post/047-invlerp_remap/
+float invLerp(float from, float to, float value){
+  return (value - from) / (to - from);
+}
+
+float3 normalMaxx(uint3 id) {
+    float base = fetch(id).density;
+    float x = fetch(id + uint3(1, 0, 0)).density;
+    float y = fetch(id + uint3(0, 1, 0)).density;
+    float z = fetch(id + uint3(0, 0, 1)).density;
+    return normalize(float3(base-x, base-y, base-z));
+}
+
+
+[numthreads(4, 4, 4)]
+void CSVertex(uint3 id : SV_DispatchThreadID) {
+    if (any(id >= (uint)size)) {
+        return;
+    }
+
+    int count = 0;
+    float3 sum = float3(0, 0, 0);
+    float3 normalSum = float3(0, 0, 0);
+    float4 layersSum = float4(0,0,0,0);
+
+    for (int i = 0; i < 12; i++) {
+        uint3 first = edgePositions0[i];
+        uint3 second = edgePositions1[i];
+        Voxel firstVoxel = fetch(id + first);
+        Voxel secondVoxel = fetch(id + second);
+
+        if (firstVoxel.density < 0.0 ^ secondVoxel.density < 0.0) {
+            count++;
+
+            float unlerped = invLerp(firstVoxel.density, secondVoxel.density, 0.0);
+            sum += lerp(float3(first), float3(second), unlerped);
+            normalSum += lerp(normalMaxx(id + first), normalMaxx(id + second), unlerped);
+            layersSum += lerp(firstVoxel.layers, secondVoxel.layers, unlerped);
+        }
+    }
+
+    if (count > 0) {
+        uint oldValue = 0;
+        InterlockedAdd(atomicCounters[0], 1, oldValue); 
+        vertices[oldValue] = float3(id) + sum/float(count);
+        normals[oldValue] = length(normalSum) < 0.1 ? 1.0 : normalize(-normalSum);
+
+        colors[oldValue] = RemapRGBAtoRGB(layersSum / float(count));
+        vertexIds[id] = oldValue;   
+    }
+}
+
+
+[numthreads(8, 8, 8)]
+void CSQuad(uint3 id : SV_DispatchThreadID) {
+    if (any(id == (uint)(size-1)) || any(id <= 2)) {
+        return;
+    }
+
+    for (int i = 0; i < 3; i++) {
+        float firstDensity = fetch(id).density;
+        float secondDensity = fetch(id + test[i]).density;
+        bool flip = firstDensity < 0.0;
+
+        if (firstDensity < 0.0 ^ secondDensity < 0.0) {
+            int check[4] = { 0, 0, 0, 0 };
+
+            bool valid = true;
+            for (int j = 0; j < 4; j++) {
+                check[j] = vertexIds[id + test[i] + offsets[j + i * 4] - 1];
+            
+                if (check[j] <= 0) {
+                    valid = false;
+                }
+            }
+
+            if (valid) {
+                uint oldValue = 0;
+                InterlockedAdd(atomicCounters[1], 6, oldValue); 
+                
+                indices[oldValue + (flip ? 0 : 2)] = check[0];
+                indices[oldValue + 1] = check[1];
+                indices[oldValue + (flip ? 2 : 0)] = check[2];
+                
+                indices[oldValue + (flip ? 4 : 3)] = check[2];
+                indices[oldValue + 5] = check[3];
+                indices[oldValue + (flip ? 3 : 4)] = check[0];
+                
+    
+                InterlockedAdd(cmdBuffer[0].indexCountPerInstance, 6); 
+            }
+        }
+    }
+}

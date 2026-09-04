@@ -1,0 +1,14 @@
+#pragma kernel CSApply
+
+// REMEMBER: instanceCount is the second field
+RWStructuredBuffer<uint> instanced_draw_args_buffer;
+RWStructuredBuffer<uint> impostor_draw_args_buffer;
+StructuredBuffer<uint> visibility_counters_buffer;
+
+[numthreads(1, 1, 1)]
+void CSApply(uint3 id : SV_DispatchThreadID) {
+	int dst = id.x * 5 + 1;
+
+	instanced_draw_args_buffer[dst] = visibility_counters_buffer[id.x * 2];
+	impostor_draw_args_buffer[dst] = visibility_counters_buffer[id.x * 2 + 1];
+}

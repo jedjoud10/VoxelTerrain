@@ -1,0 +1,55 @@
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+
+namespace jedjoud.VoxelTerrain.Meshing {
+    [BurstCompile(CompileSynchronously = true)]
+    public struct SkirtClosestSurfaceJob : IJobParallelFor {
+        [WriteOnly]
+        public NativeArray<bool> withinThreshold;
+
+        [ReadOnly]
+        public VoxelData voxels;
+            
+        const int PADDING_SEARCH_AREA = 3;
+        public void Execute(int index) {
+            withinThreshold[index] = false;
+            
+            int face = index / VoxelUtils.FACE;
+            int direction = face % 3;
+            bool negative = face < 3;
+            int localIndex = index % VoxelUtils.FACE;
+            uint missing = negative ? 0 : ((uint)VoxelUtils.SIZE - 2);
+
+            {
+                uint2 flattened = VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
+                uint3 position = SkirtUtils.UnflattenFromFaceRelative(flattened, direction, missing);
+
+                // skip if this is air, we will never generate forced skirts in the air
+                if (voxels.densities[VoxelUtils.PosToIndex(position, VoxelUtils.SIZE)] > 0) {
+                    return;
+                }
+            }
+
+            int2 basePosition2D = (int2)VoxelUtils.IndexToPos2D(localIndex, VoxelUtils.SIZE);
+            
+            bool within = false;
+            for (int x = -PADDING_SEARCH_AREA; x <= PADDING_SEARCH_AREA; x++) {
+                for (int y = -PADDING_SEARCH_AREA; y <= PADDING_SEARCH_AREA; y++) {
+                    int2 offset = new int2(x, y);
+                    int3 global = SkirtUtils.UnflattenFromFaceRelative(offset + basePosition2D, direction, (int)missing);
+
+                    if (math.all(global >= 0 & global < VoxelUtils.SIZE)) {
+                        if (voxels.densities[VoxelUtils.PosToIndex((uint3)global, VoxelUtils.SIZE)] >= 0) {
+                            within = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            withinThreshold[index] = within;
+        }
+    }
+}

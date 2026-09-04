@@ -1,0 +1,128 @@
+#pragma kernel CSCull
+#pragma multi_compile __ _OCCLUSION_CULLING
+
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
+
+StructuredBuffer<uint4> perm_buffer;
+StructuredBuffer<uint> perm_props_in_use_bitset_buffer;
+StructuredBuffer<int> perm_buffer_counts_buffer;
+StructuredBuffer<int> perm_buffer_offsets_buffer;
+
+RWStructuredBuffer<uint> instanced_indirection_buffer;
+RWStructuredBuffer<uint> impostor_indirection_buffer;
+RWStructuredBuffer<uint> visibility_counters_buffer;
+
+#define MAX_PROP_TYPE_COUNT 32
+
+int max_combined_perm_props;
+int types;
+
+float4 camera_frustum_planes[6];
+float4 culling_spheres[MAX_PROP_TYPE_COUNT];
+float max_distances[MAX_PROP_TYPE_COUNT];
+float impostor_distance_percentage[MAX_PROP_TYPE_COUNT];
+
+float3 camera_position;
+
+float4x4 camera_projection_matrix;
+float4x4 camera_view_matrix;
+float camera_near;
+float camera_far;
+
+Texture2D occlusion_depth_texture;
+int occlusion_width;
+int occlusion_height;
+
+float linearizeDepth(float depth, float near, float far) {
+    return (2.0 * near) / (far + near - depth * (far - near));
+}
+
+[numthreads(64, 1, 1)]
+void CSCull(uint3 id : SV_DispatchThreadID) {
+	int block = perm_props_in_use_bitset_buffer[id.x];
+
+	if (block == 0) {
+		return;
+	}
+
+	for (int i = 0; i < 32; i++) {
+		int local = i;
+		int index = id.x * 32 + i;
+
+		int type = -1;
+		for (int j = 0; j < types; j++) {
+			if (index >= perm_buffer_offsets_buffer[j]) {
+				type = j;
+			} else {
+				break;
+			}
+		}
+
+		if (type == -1) {
+			continue;
+		}
+		
+		if (index >= max_combined_perm_props) {
+			return;
+		}
+
+		bool valid = ((block >> local) & 1) == 1;
+
+		uint4 prop = perm_buffer[index];
+		float4 position_scale = UnpackPositionAndScale(prop.xy);
+		float3 position = position_scale.xyz;
+		float scale = position_scale.w;
+
+		float3 culling_sphere_position = culling_spheres[type].xyz + position;
+		float culling_sphere_radius = culling_spheres[type].w * scale;
+
+		bool visible_in_frustum = true;
+		for (int f = 0; f < 6; f++) {
+			float3 plane_normal = camera_frustum_planes[f].xyz;
+			float plane_distance = camera_frustum_planes[f].w;
+
+			if ((dot(plane_normal, culling_sphere_position) + plane_distance) < (-culling_sphere_radius * 2.0)) {
+				visible_in_frustum = false;
+				break;
+			}
+		}
+
+		bool occluded = true;
+
+#if defined(_OCCLUSION_CULLING)
+		float4 view_position = mul(camera_view_matrix, float4(culling_sphere_position, 1.0));
+		float4 clip_position = mul(camera_projection_matrix, view_position);
+		clip_position /= clip_position.w;
+
+		float nearest_clip_space_z_val = saturate(linearizeDepth(clip_position.z, camera_near, camera_far));
+		
+		float2 clip_uv = saturate(clip_position.xy * 0.5 + 0.5);
+        int2 clip_pixel = int2(clip_uv * float2(occlusion_width, occlusion_height));
+		float rasterized_depth = occlusion_depth_texture.Load(float3(float2(clip_pixel), 0)).x; 
+
+		if ((rasterized_depth + 0.005) > nearest_clip_space_z_val) {
+			occluded = false;
+        }
+#else
+		occluded = false;
+#endif
+
+		float dist = distance(position, camera_position);
+		float max_dist = max_distances[type];
+		float max_instance_dist = max_dist * impostor_distance_percentage[type];
+		float max_impostor_dist = max_dist;
+		
+		if (valid && visible_in_frustum && !occluded) {
+			uint dst_index_offset = (uint)perm_buffer_offsets_buffer[type];
+			uint local_dst_index;
+
+			if (dist < max_instance_dist) {
+				InterlockedAdd(visibility_counters_buffer[type * 2], 1u, local_dst_index);
+				instanced_indirection_buffer[local_dst_index + dst_index_offset] = index;
+			} else if (dist < max_impostor_dist) {
+				InterlockedAdd(visibility_counters_buffer[type * 2 + 1], 1u, local_dst_index);
+				impostor_indirection_buffer[local_dst_index + dst_index_offset] = index;
+			}
+		}
+	}
+}

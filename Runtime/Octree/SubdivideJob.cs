@@ -1,49 +1,77 @@
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Burst;
 
-// This will handle generating the nodes for one of the starting nodes
-[BurstCompile(CompileSynchronously = true)]
-public struct SubdivideJob<T> : IJob where T: struct, IOctreeSubdivider {
-    // The total nodes that where generated
-    public NativeList<OctreeNode> nodes;
+namespace jedjoud.VoxelTerrain.Octree {
+    [BurstCompile(CompileSynchronously = true)]
+    public struct SubdivideJob : IJob {
+        public NativeList<OctreeNode> nodes;
+        public NativeList<BitField32> neighbourMasks;
+        public OctreeNode root;
 
-    // Currently pending nodes for generation
-    public NativeQueue<OctreeNode> pending;
+        [ReadOnly]
+        public NativeList<TerrainLoader> loaders;
 
-    [ReadOnly]
-    public TerrainLoader.Target target;
+        public int maxDepth;
 
-    [ReadOnly] public int maxDepth;
-    public T subdivider;
+        public void Execute() {
+            NativeQueue<OctreeNode> pending = new NativeQueue<OctreeNode>(Allocator.Temp);
+            pending.Enqueue(root);
 
-    public void Execute() {
-        while (pending.TryDequeue(out OctreeNode node)) {
-            TrySubdivide(ref node);
+            while (pending.TryDequeue(out OctreeNode node)) {
+                if (ShouldSubdivide(ref node) && node.depth < maxDepth) {
+                    Subdivide(node, ref pending);
+                }
+            }
         }
-    }
 
-    // Try to subdivide the current node into 8 octants
-    public void TrySubdivide(ref OctreeNode node) {
-        if (subdivider.ShouldSubdivide(ref node, ref target) && node.depth < maxDepth) {
+        public static readonly int3[] OCTREE_CHILD_OFFSETS = new int3[] {
+            new int3(0, 0, 0),
+            new int3(1, 0, 0),
+            new int3(0, 1, 0),
+            new int3(1, 1, 0),
+            new int3(0, 0, 1),
+            new int3(1, 0, 1),
+            new int3(0, 1, 1),
+            new int3(1, 1, 1),
+        };
+
+        private bool ShouldSubdivide(ref OctreeNode node) {
+            // TODO: implement clustering algorithm to make this faster...
+            foreach (TerrainLoader loader in loaders) {
+                // pls add me back...
+                float factor = math.clamp(loader.octreeNodeFactor + 1, 1f, 2f);
+
+                // clamp to the root node
+                float3 clamped = math.clamp(loader.position, root.Bounds.Min, root.Bounds.Max);
+
+                if ((math.distance(node.Center, clamped)) < factor * node.size) {
+                    return true;
+                }
+            }            
+
+            return false;
+        }
+
+        private void Subdivide(OctreeNode node, ref NativeQueue<OctreeNode> pending) {
             node.childBaseIndex = nodes.Length;
 
             for (int i = 0; i < 8; i++) {
-                float3 offset = math.float3(VoxelUtils.OctreeChildOffset[i]);
+                int3 offset = OCTREE_CHILD_OFFSETS[i];
                 OctreeNode child = new OctreeNode {
-                    position = offset * (node.size / 2.0F) + node.position,
+                    position = offset * (node.size / 2) + node.position,
                     depth = node.depth + 1,
                     size = node.size / 2,
                     parentIndex = node.index,
                     index = node.childBaseIndex + i,
                     childBaseIndex = -1,
-                    skirts = 0,
-                    scalingFactor = node.scalingFactor / 2.0F,
+                    atMaxDepth = (node.depth + 1) == maxDepth,
                 };
 
                 pending.Enqueue(child);
                 nodes.Add(child);
+                neighbourMasks.Add(new BitField32(0));
             }
 
             nodes[node.index] = node;

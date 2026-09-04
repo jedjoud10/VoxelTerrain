@@ -1,0 +1,68 @@
+using System;
+using UnityEngine;
+using System.Linq;
+
+namespace jedjoud.VoxelTerrain.Props {
+    public class PropTypeInstanceTextureArrays {
+        public Texture2DArray diffuse;
+        public Texture2DArray normal;
+        public Texture2DArray mask;
+
+        public PropTypeInstanceTextureArrays(TerrainPropsConfig.BakedPropVariant[] variants) {
+            Texture2D[] diffuse = variants.Select(variant => variant.diffuse ?? Texture2D.whiteTexture).ToArray();
+            Texture2D[] normal = variants.Select(variant => variant.normal ?? Texture2D.normalTexture).ToArray();
+            Texture2D[] mask = variants.Select(variant => variant.mask ?? Texture2D.redTexture).ToArray();
+
+            this.diffuse = CreateTexArray(diffuse, false);
+            this.normal = CreateTexArray(normal, true);
+            this.mask = CreateTexArray(mask, true);
+        }
+
+        private static Texture2DArray CreateTexArray(Texture2D[] textures, bool linear) {
+            if (textures == null || textures.Length == 0 || textures[0] == null)
+                return null;
+
+            int width = textures[0].width;
+            int height = textures[0].height;
+            int mips = textures[0].mipmapCount;
+            int mipmapLimit = textures[0].activeMipmapLimit;
+            TextureFormat format = textures[0].format;
+            FilterMode filterMode = textures[0].filterMode;
+
+            foreach (Texture2D tex in textures) {
+                if (tex == null)
+                    throw new Exception("That is why I don't even bother");
+                if (tex.width != width || tex.height != height)
+                    throw new Exception("All textures must have the same width and height!!!! Desu nee");
+                if (tex.format != format)
+                    throw new Exception("All textures must have the same format!!!");
+                if (tex.mipmapCount != mips)
+                    throw new Exception("All textures must have the same number of mipmaps!!!");
+                if (tex.filterMode != filterMode)
+                    throw new Exception("All textures must have the same filter mode!!!");
+                if (tex.activeMipmapLimit != mipmapLimit)
+                    throw new Exception("All textures must have the same mip map limit!!!");
+            }
+
+            Texture2DArray array = new Texture2DArray(width, height, textures.Length, format, mips, linear, false, new MipmapLimitDescriptor(true, textures[0].mipmapLimitGroup));
+            array.filterMode = filterMode;
+            array.ignoreMipmapLimit = false;
+
+            int applicableMips = Mathf.Max(mips - mipmapLimit, 0);
+            
+
+            for (int i = 0; i < textures.Length; i++) {
+                Texture2D tex = textures[i];
+                for (int m = 0; m < applicableMips; m++) {
+                    Graphics.CopyTexture(tex, 0, m, array, i, m);
+                }
+            }
+
+            return array;
+        }
+
+        public bool IsValid() {
+            return diffuse != null && normal != null && mask != null;
+        }
+    }
+}
