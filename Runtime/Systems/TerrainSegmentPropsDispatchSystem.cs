@@ -374,39 +374,60 @@ namespace jedjoud.VoxelTerrain.Segments {
                     }
                     Profiler.EndSample();
 
-                    Profiler.BeginSample($"Instantiate Props");
-                    var shared = new TerrainPropSharedCleanup { segmentPosition = segmentPosition, type = i };
-                    NativeArray<Entity> dstEntities = new NativeArray<Entity>(entityIndex, Allocator.TempJob);
+                    // should we keep this just in case?
+                    // I figured out the cause of the problem (i.e why some prototype entities where invalid)
+                    // but it might be best to keep this as a safe guard as well again
+                    bool allSrcEntitiesValid = true;
                     for (int v = 0; v < variants.Length; v++) {
-                        NativeArray<Entity> tmpDstEntities = new NativeArray<Entity>(usedVariantsCounts[v].Length, Allocator.Temp);
-                        EntityManager.Instantiate(variants[v].prototype, tmpDstEntities);
+                        var k = EntityManager.HasComponent<Prefab>(variants[v].prototype);
 
-                        for (int n = 0; n < usedVariantsCounts[v].Length; n++) {
-                            int dstIndex = usedVariantsCounts[v][n];
-                            dstEntities[dstIndex] = tmpDstEntities[n];
+                        if (!EntityManager.Exists(variants[v].prototype)) {
+                            allSrcEntitiesValid = false;
                         }
                     }
-                    Profiler.EndSample();
+                    
+                    if (allSrcEntitiesValid) {
+                        Profiler.BeginSample($"Instantiate Props");
+                        var shared = new TerrainPropSharedCleanup { segmentPosition = segmentPosition, type = i };
+                        NativeArray<Entity> dstEntities = new NativeArray<Entity>(entityIndex, Allocator.TempJob);
 
-                    Profiler.BeginSample($"Set Prop Data");
-                    EntityManager.AddSharedComponent<TerrainPropSharedCleanup>(dstEntities, shared);
-                    EntityManager.AddComponent<TerrainPropCleanup>(dstEntities);
 
 
-                    for (int n = 0; n < dstEntities.Length; n++) {
-                        Entity entity = dstEntities[n];
-                        EntityManager.SetComponentData(entity, transforms[n]);
-                        EntityManager.SetComponentData(entity, cleanup[n]);
+                        for (int v = 0; v < variants.Length; v++) {
+                            NativeArray<Entity> tmpDstEntities = new NativeArray<Entity>(usedVariantsCounts[v].Length, Allocator.Temp);
+                            EntityManager.Instantiate(variants[v].prototype, tmpDstEntities);
+
+                            for (int n = 0; n < usedVariantsCounts[v].Length; n++) {
+                                int dstIndex = usedVariantsCounts[v][n];
+                                dstEntities[dstIndex] = tmpDstEntities[n];
+                            }
+                        }
+                        Profiler.EndSample();
+
+                        Profiler.BeginSample($"Set Prop Data");
+                        EntityManager.AddSharedComponent<TerrainPropSharedCleanup>(dstEntities, shared);
+                        EntityManager.AddComponent<TerrainPropCleanup>(dstEntities);
+
+
+                        for (int n = 0; n < dstEntities.Length; n++) {
+                            Entity entity = dstEntities[n];
+                            EntityManager.SetComponentData(entity, transforms[n]);
+                            EntityManager.SetComponentData(entity, cleanup[n]);
+                        }
+
+                        var ownedBuffer = EntityManager.GetBuffer<TerrainSegmentOwnedPropBuffer>(segmentEntity);
+                        ownedBuffer.AddRange(dstEntities.Reinterpret<TerrainSegmentOwnedPropBuffer>());
+
+
+                        dstEntities.Dispose();
+                        Profiler.EndSample();
+                    } else {
+                        Debug.LogWarning("some prop prefab entities are invalid. aborting prop entity instantiation");
                     }
-
-                    var ownedBuffer = EntityManager.GetBuffer<TerrainSegmentOwnedPropBuffer>(segmentEntity);
-                    ownedBuffer.AddRange(dstEntities.Reinterpret<TerrainSegmentOwnedPropBuffer>());
 
 
                     transforms.Dispose();
                     cleanup.Dispose();
-                    dstEntities.Dispose();
-                    Profiler.EndSample();
 
 
                     Profiler.EndSample();

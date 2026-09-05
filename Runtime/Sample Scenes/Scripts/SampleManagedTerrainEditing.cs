@@ -10,6 +10,7 @@ public class TestTerrainEditor : MonoBehaviour
 {
     void Update()
     {
+        /*
         EntityManager mgr = World.DefaultGameObjectInjectionWorld.EntityManager;
         bool add = Input.GetKey(KeyCode.Q);
 
@@ -40,6 +41,7 @@ public class TestTerrainEditor : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.L)) {
             mgr.CreateSingleton<TerrainSerializeTag>();
         }
+        */
     }
 
     void DoRaycastAndDestroyEntity() {

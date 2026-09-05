@@ -1,4 +1,5 @@
 # TODO
+- Fix invisible instantiated prop entities in the editor view when sub-scene is loaded. When sub-scene is unloaded, the entities are visible in the editor. 
 - Fix prop "instanced mesh" requirement if rendering instanced meshes is off
 - Impl sub-mesh merging to replace prop "instanced mesh" (based off of variant meshes)
 - Implement prop capture full rotations (not only azimuth, should be toggable)

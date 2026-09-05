@@ -79,7 +79,8 @@ namespace jedjoud.VoxelTerrain.Generation {
                 sw.Write(source);
             }
 
-            // fix this pls...
+            /*
+            // FIXME: fix this pls...
             AssetDatabase.SaveAssets();
             AssetDatabase.ImportAsset(filePath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
             AssetDatabase.Refresh();
@@ -88,11 +89,13 @@ namespace jedjoud.VoxelTerrain.Generation {
             EditorUtility.SetDirty(gameObject);
             AssetDatabase.SaveAssets();
             EditorSceneManager.SaveOpenScenes();
+            */
 
             //UnityEngine.Experimental.Rendering.ShaderWarmup.WarmupShader(shader, new UnityEngine.Experimental.Rendering.ShaderWarmupSetup() { vdecl = null });
 
             if (shader == null) {
-                Debug.LogWarning("wut?");
+                Debug.LogWarning("shader is not set. you should create a prefab copy of the ManagedTerrain, and recompile shader and set the shader generated file in the editor");
+                // FIXME: I have tried automating this with the hacky shit above but it does not work well and gives more problems.
                 return;
             }
 
