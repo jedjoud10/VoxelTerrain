@@ -1,353 +1,258 @@
 using System.Runtime.CompilerServices;
-using Unity.Burst.CompilerServices;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 
-// Common terrain utility methods
-public static class VoxelUtils {
-    // Scaling value applied to the vertices
-    public static float VertexScaling => (float)Size / ((float)Size - 3.0F);
+namespace jedjoud.VoxelTerrain {
+    // Common terrain utility methods
+    public static class VoxelUtils {
+        // number of "multi" chunks that will get their voxel values computed in the same compute shader dispatch
+        public const int MULTI_READBACK_CHUNK_SIZE_RATIO = 4;
+        public const int MULTI_READBACK_CHUNK_COUNT = 64;
 
-    // Voxel scaling size
-    public static int VoxelSizeReduction { get; internal set; }
+        // "physical" size of the chunks, how big their entities are
+        public const int PHYSICAL_CHUNK_SIZE = 32;
 
-    // Scaling factor when using voxel size reduction
-    // Doesn't actually represent the actual size of the voxel (since we do some scaling anyways)
-    public static float VoxelSizeFactor => 1F / Mathf.Pow(2F, VoxelSizeReduction);
+        // "logical" size of the chunks; how many voxels they store in one axis
+        // technically this only needs to be 65 for skirts to work, but we also need normals to work so this must be 66
+        public const int SIZE = 34;
+        public const int FACE = SIZE * SIZE;
+        public const int VOLUME = SIZE * SIZE * SIZE;
 
-    // Global world size in meters
-    public static float GlobalWorldSize => Mathf.CeilToInt(Mathf.Pow(2F, (float)MaxDepth) * VoxelSizeFactor * Size);
+        // skirts will still spawn on the v=64 boundary though, we just need to add a 2 unit padding to handle literal 2D edge cases
+        public const int SKIRT_SIZE = 34;
+        public const int SKIRT_FACE = SKIRT_SIZE * SKIRT_SIZE;
 
-    // Max depth of the octree world
-    public static int MaxDepth { get; internal set; }
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckBounds(int3 coordinates, int size) {
+            if (math.cmax(coordinates) >= size || math.cmin(coordinates) < 0) {
+                throw new System.OverflowException(
+                    $"An element of coordinates {coordinates} is larger than the maximum {size - 1} or less than the minimum 0 (size={size})");
+            }
+        }
 
-    // Current chunk resolution
-    public static int Size { get; internal set; }
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckBounds(uint3 coordinates, int size) {
+            if (math.cmax(coordinates) >= size) {
+                throw new System.OverflowException(
+                    $"An element of coordinates {coordinates} is larger than the maximum {size - 1} (size={size})");
+            }
+        }
 
-    // How many chunks fit in a single prop segment
-    public static int ChunksPerPropSegment { get; internal set; }
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckIndex(int index, int size) {
+            if (index >= (size * size * size)) {
+                throw new System.OverflowException(
+                    $"The given index {index} is larger then the maximum {size * size * size}");
+            }
 
-    // Total size of a prop segment
-    public static int PropSegmentSize => (int)(ChunksPerPropSegment * Size);
+            if (index < 0) {
+                throw new System.OverflowException(
+                    $"The given index is negative");
+            }
+        }
 
-    // Max segments that we will ever have in the world
-    public static int MaxSegments { get; internal set; }
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckBounds2D(uint2 coordinates, int size) {
+            if (math.cmax(coordinates) >= size) {
+                throw new System.OverflowException(
+                    $"An element of coordinates {coordinates} is larger than the maximum {size - 1} (size={size})");
+            }
+        }
 
-    // Max segments that we will ever remove in the world
-    public static int MaxSegmentsToRemove { get; internal set; }
+        [System.Diagnostics.Conditional("ENABLE_UNITY_COLLECTIONS_CHECKS")]
+        static void DebugCheckIndex2D(int index, int size) {
+            if (index >= (size * size)) {
+                throw new System.OverflowException(
+                    $"The given index {index} is larger then the maximum {size * size}");
+            }
 
-    // Chunk resolution for prop chunks (remember that prop chunks are 8 times as big as normal chunks)
-    public static int PropSegmentResolution { get; internal set; }
+            if (index < 0) {
+                throw new System.OverflowException(
+                    $"The given index is negative");
+            }
+        }
 
-    // Number of prop segments per world
-    public static int PropSegmentsCount => (int)GlobalWorldSize / PropSegmentSize;
+        // Order of increments: X, Z, Y
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint3 IndexToPos(int index, int size) {
+            DebugCheckIndex(index, size);
 
-    // Should we use skirts when meshing?
-    public static bool Skirts { get; internal set; }
+            // N(ABC) -> N(A) x N(BC)
+            int y = index / (size * size);   // x in N(A)
+            int w = index % (size * size);  // w in N(BC)
 
-    // Total number of voxels in a chunk
-    public static int Volume => Size * Size * Size;
+            // N(BC) -> N(B) x N(C)
+            int z = w / size;        // y in N(B)
+            int x = w % size;        // z in N(C)
+            return (uint3)new int3(x, y, z);
+        }
 
-    // Minimum density at which we enable skirting
-    public static float MinSkirtDensityThreshold { get; internal set; }
+        // Order of increments: X, Z, Y
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int PosToIndex(uint3 position, int size) {
+            DebugCheckBounds(position, size);
+            return (int)(position.y * size * size + (position.z * size) + position.x);
+        }
 
-    // Should we enable smoothing when meshing?
-    public static bool Smoothing { get; internal set; }
+        // Order of increments: X, Y
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint2 IndexToPos2D(int index, int size) {
+            DebugCheckIndex2D(index, size);
+            return new uint2((uint)(index % size), (uint)(index / size));
+        }
 
-    // Should we calculate per vertex normals
-    public static bool PerVertexNormals { get; internal set; }
+        // Order of increments: X, Y
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int PosToIndex2D(uint2 position, int size) {
+            DebugCheckBounds2D(position, size);
+            return (int)(position.x + position.y * size);
+        }
 
-    // Full control over how the ambient occlusion is calculated
-    public static float AmbientOcclusionOffset { get; internal set; }
-    public static float AmbientOcclusionPower { get; internal set; }
-    public static float AmbientOcclusionSpread { get; internal set; }
-    public static float AmbientOcclusionGlobalOffset { get; internal set; }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint3 Mod(int3 val, int size) {
+            int3 r = val % size;
+            return (uint3)math.select(r, r + size, r < 0);
+        }
 
-    // Should we calculate per vertex density and ambient occlusion?
-    public static bool PerVertexUvs { get; internal set; }
 
-    // Max possible number of materials supported by the terrain mesh
-    public const int MAX_MATERIAL_COUNT = 256;
+        // Fetch the Voxels with neighbour data fallback, but consider ALL 26 neighbours, not just the ones in the positive axii
+        // Solely used for AO, since that needs to fetch data from all the neighbours
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static half FetchDensityNeighbours(int3 position, ref UnsafePtrList<half> voxelDataPtrs) {
+            // remap -1,1 to 0,2
+            position += new int3(PHYSICAL_CHUNK_SIZE);
+            int3 chunkPosition = position / PHYSICAL_CHUNK_SIZE;
+            int chunkIndex = PosToIndex((uint3)chunkPosition, 3);
+            int voxelIndex = PosToIndex((uint3)Mod(position, PHYSICAL_CHUNK_SIZE), SIZE);
 
-    // Max possible number of dynamic edit types supported by the terrain
-    public const int MAX_DYNAIMC_EDIT_TYPE_COUNT = 256;
+            unsafe {
+                half* ptr = voxelDataPtrs[chunkIndex];
 
-    // Offsets used for octree generation
-    public static readonly int3[] OctreeChildOffset = {
-        new int3(0, 0, 0),
-        new int3(0, 0, 1),
-        new int3(1, 0, 0),
-        new int3(1, 0, 1),
-        new int3(0, 1, 0),
-        new int3(0, 1, 1),
-        new int3(1, 1, 0),
-        new int3(1, 1, 1),
-    };
-
-    // Stolen from https://gist.github.com/dwilliamson/c041e3454a713e58baf6e4f8e5fffecd
-    public static readonly ushort[] EdgeMasks = new ushort[] {
-        0x0, 0x109, 0x203, 0x30a, 0x80c, 0x905, 0xa0f, 0xb06,
-        0x406, 0x50f, 0x605, 0x70c, 0xc0a, 0xd03, 0xe09, 0xf00,
-        0x190, 0x99, 0x393, 0x29a, 0x99c, 0x895, 0xb9f, 0xa96,
-        0x596, 0x49f, 0x795, 0x69c, 0xd9a, 0xc93, 0xf99, 0xe90,
-        0x230, 0x339, 0x33, 0x13a, 0xa3c, 0xb35, 0x83f, 0x936,
-        0x636, 0x73f, 0x435, 0x53c, 0xe3a, 0xf33, 0xc39, 0xd30,
-        0x3a0, 0x2a9, 0x1a3, 0xaa, 0xbac, 0xaa5, 0x9af, 0x8a6,
-        0x7a6, 0x6af, 0x5a5, 0x4ac, 0xfaa, 0xea3, 0xda9, 0xca0,
-        0x8c0, 0x9c9, 0xac3, 0xbca, 0xcc, 0x1c5, 0x2cf, 0x3c6,
-        0xcc6, 0xdcf, 0xec5, 0xfcc, 0x4ca, 0x5c3, 0x6c9, 0x7c0,
-        0x950, 0x859, 0xb53, 0xa5a, 0x15c, 0x55, 0x35f, 0x256,
-        0xd56, 0xc5f, 0xf55, 0xe5c, 0x55a, 0x453, 0x759, 0x650,
-        0xaf0, 0xbf9, 0x8f3, 0x9fa, 0x2fc, 0x3f5, 0xff, 0x1f6,
-        0xef6, 0xfff, 0xcf5, 0xdfc, 0x6fa, 0x7f3, 0x4f9, 0x5f0,
-        0xb60, 0xa69, 0x963, 0x86a, 0x36c, 0x265, 0x16f, 0x66,
-        0xf66, 0xe6f, 0xd65, 0xc6c, 0x76a, 0x663, 0x569, 0x460,
-        0x460, 0x569, 0x663, 0x76a, 0xc6c, 0xd65, 0xe6f, 0xf66,
-        0x66, 0x16f, 0x265, 0x36c, 0x86a, 0x963, 0xa69, 0xb60,
-        0x5f0, 0x4f9, 0x7f3, 0x6fa, 0xdfc, 0xcf5, 0xfff, 0xef6,
-        0x1f6, 0xff, 0x3f5, 0x2fc, 0x9fa, 0x8f3, 0xbf9, 0xaf0,
-        0x650, 0x759, 0x453, 0x55a, 0xe5c, 0xf55, 0xc5f, 0xd56,
-        0x256, 0x35f, 0x55, 0x15c, 0xa5a, 0xb53, 0x859, 0x950,
-        0x7c0, 0x6c9, 0x5c3, 0x4ca, 0xfcc, 0xec5, 0xdcf, 0xcc6,
-        0x3c6, 0x2cf, 0x1c5, 0xcc, 0xbca, 0xac3, 0x9c9, 0x8c0,
-        0xca0, 0xda9, 0xea3, 0xfaa, 0x4ac, 0x5a5, 0x6af, 0x7a6,
-        0x8a6, 0x9af, 0xaa5, 0xbac, 0xaa, 0x1a3, 0x2a9, 0x3a0,
-        0xd30, 0xc39, 0xf33, 0xe3a, 0x53c, 0x435, 0x73f, 0x636,
-        0x936, 0x83f, 0xb35, 0xa3c, 0x13a, 0x33, 0x339, 0x230,
-        0xe90, 0xf99, 0xc93, 0xd9a, 0x69c, 0x795, 0x49f, 0x596,
-        0xa96, 0xb9f, 0x895, 0x99c, 0x29a, 0x393, 0x99, 0x190,
-        0xf00, 0xe09, 0xd03, 0xc0a, 0x70c, 0x605, 0x50f, 0x406,
-        0xb06, 0xa0f, 0x905, 0x80c, 0x30a, 0x203, 0x109, 0x0,
-    };
-
-    // Create a 3D render texture with the specified size and format
-    public static RenderTexture Create3DRenderTexture(int size, GraphicsFormat format) {
-        RenderTexture texture = new RenderTexture(size, size, 0, format);
-        texture.height = size;
-        texture.width = size;
-        texture.depth = 0;
-        texture.volumeDepth = size;
-        texture.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
-        texture.enableRandomWrite = true;
-        texture.Create();
-        return texture;
-    }
-
-    // Create a 2D render texture with the specified size and format
-    public static RenderTexture Create2DRenderTexture(int size, GraphicsFormat format) {
-        RenderTexture texture = new RenderTexture(size, size, 0, format);
-        texture.height = size;
-        texture.width = size;
-        texture.depth = 0;
-        texture.volumeDepth = 1;
-        texture.dimension = UnityEngine.Rendering.TextureDimension.Tex2D;
-        texture.enableRandomWrite = true;
-        texture.Create();
-        return texture;
-    }
-
-    // Custom modulo operator to discard negative numbers
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint3 Mod(int3 val, int size) {
-        int3 r = val % size;
-        return (uint3)math.select(r, r + size, r < 0);
-    }
-
-    // Custom modulo operator to discard negative numbers
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 Mod(float3 val, float size) {
-        float3 r = val % size;
-        return math.select(r, r + size, r < 0);
-    }
-
-    // Convert an index to a 3D position (morton coding)
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint3 IndexToPos(int index) {
-        return Morton.DecodeMorton32((uint)index);
-    }
-
-    // Convert a 3D position into an index (morton coding)
-    [return: AssumeRange(0u, 262144)]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int PosToIndex(uint3 position) {
-        return (int)Morton.EncodeMorton32(position);
-    }
-
-    // Convert an index to a 3D position
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static uint3 IndexToPos(int index, uint size) {
-        uint index2 = (uint)index;
-
-        // N(ABC) -> N(A) x N(BC)
-        uint y = index2 / (size * size);   // x in N(A)
-        uint w = index2 % (size * size);  // w in N(BC)
-
-        // N(BC) -> N(B) x N(C)
-        uint z = w / size;        // y in N(B)
-        uint x = w % size;        // z in N(C)
-        return new uint3(x, y, z);
-    }
-
-    // Convert a 3D position into an index
-    [return: AssumeRange(0u, 262144)]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int PosToIndex(uint3 position, uint size) {
-        return (int)math.round((position.y * size * size + (position.z * size) + position.x));
-    }
-
-    // Sampled the voxel grid using trilinear filtering
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static half SampleGridInterpolated(float3 position, ref NativeArray<Voxel> voxels, int size) {
-        float3 frac = math.frac(position);
-        uint3 voxPos = (uint3)math.floor(position);
-        voxPos = math.min(voxPos, math.uint3(size - 2));
-        voxPos = math.max(voxPos, math.uint3(0));
-
-        float d000 = voxels[PosToIndex(voxPos)].density;
-        float d100 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 0))].density;
-        float d010 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 0))].density;
-        float d110 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
-
-        float d001 = voxels[PosToIndex(voxPos + math.uint3(0, 0, 1))].density;
-        float d101 = voxels[PosToIndex(voxPos + math.uint3(1, 0, 1))].density;
-        float d011 = voxels[PosToIndex(voxPos + math.uint3(0, 1, 1))].density;
-        float d111 = voxels[PosToIndex(voxPos + math.uint3(1, 1, 1))].density;
-
-        float mixed0 = math.lerp(d000, d100, frac.x);
-        float mixed1 = math.lerp(d010, d110, frac.x);
-        float mixed2 = math.lerp(d001, d101, frac.x);
-        float mixed3 = math.lerp(d011, d111, frac.x);
-
-        float mixed4 = math.lerp(mixed0, mixed2, frac.z);
-        float mixed5 = math.lerp(mixed1, mixed3, frac.z);
-
-        float mixed6 = math.lerp(mixed4, mixed5, frac.y);
-
-        return (half)mixed6;
-    }
-
-    // Calculate the normals at a specific position
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float3 SampleGridNormal(uint3 position, ref NativeArray<Voxel> voxels, int size) {
-        position = math.min(position, math.uint3(size - 2));
-
-        float baseVal = voxels[PosToIndex(position)].density;
-        float xVal = voxels[PosToIndex(position + math.uint3(1, 0, 0))].density;
-        float yVal = voxels[PosToIndex(position + math.uint3(0, 1, 0))].density;
-        float zVal = voxels[PosToIndex(position + math.uint3(0, 0, 1))].density;
-
-        return new float3(baseVal - xVal, baseVal - yVal, baseVal - zVal);
-    }
-
-    // Calculate ambient occlusion around a specific point
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float CalculateVertexAmbientOcclusion(float3 position, ref NativeArray<Voxel> voxels, int size, float offset, float power, float spread, float globalOffset) {
-        float ao = 0.0f;
-        float minimum = 200000;
-        
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
-                    // 2 => 0.5
-                    // 1 = 1.5
-                    float density = SampleGridInterpolated(position + new float3(x, y, z) * spread + new float3(globalOffset), ref voxels, size);
-                    density = math.min(density, 0);
-                    ao += density;
-                    minimum = math.min(minimum, density);
+                if (ptr != null) {
+                    half* offset = (ptr + voxelIndex);
+                    return *offset;
+                } else {
+                    return half.zero;
                 }
             }
         }
 
-        ao = ao / (3 * 3 * 3 * (minimum + 0.001f));
-        ao = math.clamp(1 - math.pow(ao + offset, power), 0, 1);
-        return ao;
-    }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe half FetchDensity(uint3 position, half* basePtr) {
+            int voxelIndex = PosToIndex(position, SIZE);
 
-    // Check if we can use delta compression using the current and last densities
-    // Basically checks if the 9 bit MSBs are equal
-    public static bool CouldDelta(ushort last, ushort current) {
-        int test1 = last & ~0x7F;
-        int test2 = current & ~0x7F;
-        return test1 == test2;
-    }
+            unsafe {
+                half* ptr = basePtr;
 
-    // Encode delta values for the density (7 LSbs)
-    public static byte EncodeDelta(ushort density) {
-        return (byte)(0b1 << 7 | density & 0x7F);
-    }
-
-    // Decode delta values for the density (7 LSbs)
-    public static ushort DecodeDelta(byte encoded) {
-        return (ushort)(encoded & 0x7F);
-    }
-
-    // Normalize a density value to it's compressed, lossy form
-    public static half NormalizeHalf(half val) {
-        return val;
-    }
-
-    // Convert a half to a ushort
-    public static ushort AsUshort(half val) {
-        return val.value;
-    }
-
-    // Convert a ushort to a half
-    public static half AsHalf(ushort val) {
-        return new half {
-            value = (ushort)(val)
-        };
-    }
-
-    // Convert a ushort to two bytes
-    public static (byte, byte) UshortToBytes(ushort val) {
-        return ((byte)(val >> 8), (byte)(val & 0xFF));
-    }
-
-    // Convert a uint to four bytes
-    public static (byte, byte, byte, byte) UintToBytes(uint val) {
-        return ((byte)(val >> 16), (byte)(val >> 16), (byte)(val >> 8), (byte)(val & 0xFF));
-    }
-
-    // Convert two bytes to a ushort
-    public static ushort BytesToUshort(byte first, byte second) {
-        return (ushort)(first << 8 | second);
-    }
-
-    // Uncompress the rotation of a blittable prop type
-    public static Vector3 UncompressPropRotation(ref BlittableProp prop) {
-        return UncompressPropRotationFromRaw(prop.rot_x, prop.rot_y, prop.rot_z);
-    }
-
-    // Convert all compressed prop rotations to euler angles
-    public static Vector3 UncompressPropRotationFromRaw(byte xRot, byte yRot, byte zRot) {
-        static float Single(byte rot) {
-            const float RATIO = 360.0f / 255.0f;
-            return ((float)rot * RATIO);
+                if (ptr != null) {
+                    half* offset = (ptr + voxelIndex);
+                    return *offset;
+                } else {
+                    return half.zero;
+                }
+            }
         }
 
-        return new Vector3(Single(xRot), Single(yRot), Single(zRot));
-    }
+        // Check if a 2x2x2 region starting from a specific voxel is accessible
+        // Required for vertex job, corner job, quad job. Yk, meshing stuff
+        // TODO: PLEASE IMPROVE PERFORMANCE THIS IS HORRID. There's definitely a smarter way to tackle this lol
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckCubicVoxelPosition(int3 position, BitField32 mask) {
+            bool all = true;
+            for (int i = 0; i < 8; i++) {
+                all &= CheckPositionInsideMultipleChunks(position + (int3)IndexToPos(i, 2), mask);
+            }
+            return all;
+        }
 
-    // Convert local prop type dispatch index to global per segment bitmask index
-    public static int FetchPropBitmaskIndex(int propType, ushort dispatchIndex) {
-        return dispatchIndex + (PropSegmentResolution * PropSegmentResolution * PropSegmentResolution * propType);
-    }
+        // Checks if the given GLOBAL position (could be negative) is valid with the given neighbours
+        // Checks if it's a valid position for all 26 neighbours (including the ones in the negative direction)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckPositionInsideMultipleChunks(int3 position, BitField32 mask) {
+            int3 temp1 = position + PHYSICAL_CHUNK_SIZE;
 
-    // Rotate a bound using a matrix
-    public static Bounds RotatedBy(this Bounds self, float3x3 rotation) {
-        Vector3 min = self.min - self.center;
-        Vector3 max = self.max - self.center;
+            DebugCheckBounds(temp1, PHYSICAL_CHUNK_SIZE * 3);
 
-        Vector3 corner3 = new Vector3(min.x, min.y, max.z);
-        Vector3 corner4 = new Vector3(min.x, max.y, min.z);
-        Vector3 corner5 = new Vector3(max.x, min.y, min.z);
-        Vector3 corner6 = new Vector3(max.x, max.y, min.z);
-        Vector3 corner7 = new Vector3(min.x, max.y, max.z);
-        Vector3 corner8 = new Vector3(max.x, min.y, max.z);
+            int3 chunkPosition = temp1 / SIZE;
 
-        float4x4 reconstructed = new float4x4(rotation, self.center);
-        return GeometryUtility.CalculateBounds(new Vector3[8] { min, max, corner3, corner4, corner5, corner6, corner7, corner8 }, reconstructed);
+            //Debug.Log(chunkPosition);
+            int index1 = PosToIndex((uint3)chunkPosition, 3);
+
+            return mask.IsSet(index1);
+        }
+
+        // Converts a world space voxel position to a chunk position and a chunk local voxel position
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WorldVoxelPosToChunkSpace(int3 worldSpaceVoxelPos, out int3 chunkPosition, out uint3 chunkSpaceVoxelPos) {
+            chunkPosition = (int3)math.floor((float3)worldSpaceVoxelPos / PHYSICAL_CHUNK_SIZE);
+            chunkSpaceVoxelPos = Mod(worldSpaceVoxelPos, PHYSICAL_CHUNK_SIZE);
+        }
+
+        // Checks if a position is stored inside the volume
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckPositionInsideVolume(int3 position, int size) {
+            return math.all(position >= 0 & position < size);
+        }
+
+        // Checks if a position is stored inside the chunk
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool CheckPositionInsideChunk(int3 position) {
+            return CheckPositionInsideVolume(position, SIZE);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static half SampleDensityInterpolated(float3 position, ref UnsafePtrList<half> neighbours) {
+            float3 frac = math.frac(position);
+            int3 voxPos = (int3)math.floor(position);
+
+            float d000 = FetchDensityNeighbours(voxPos, ref neighbours);
+            float d100 = FetchDensityNeighbours(voxPos + math.int3(1, 0, 0), ref neighbours);
+            float d010 = FetchDensityNeighbours(voxPos + math.int3(0, 1, 0), ref neighbours);
+            float d110 = FetchDensityNeighbours(voxPos + math.int3(1, 1, 0), ref neighbours);
+
+            float d001 = FetchDensityNeighbours(voxPos + math.int3(0, 0, 1), ref neighbours);
+            float d101 = FetchDensityNeighbours(voxPos + math.int3(1, 0, 1), ref neighbours);
+            float d011 = FetchDensityNeighbours(voxPos + math.int3(0, 1, 1), ref neighbours);
+            float d111 = FetchDensityNeighbours(voxPos + math.int3(1, 1, 1), ref neighbours);
+
+            float4 d0 = new float4(d000, d010, d001, d011);
+            float4 d1 = new float4(d100, d110, d101, d111);
+            float4 interpX = math.lerp(d0, d1, frac.x);
+
+            float2 m01 = new float2(interpX.x, interpX.y);
+            float2 m23 = new float2(interpX.z, interpX.w);
+            float2 m = math.lerp(m01, m23, frac.z);
+            float mixed6 = math.lerp(m.x, m.y, frac.y);
+
+            return (half)mixed6;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe half SampleDensityInterpolated(float3 position, half* basePtr) {
+            float3 frac = math.frac(position);
+            uint3 voxPos = (uint3)math.floor(position);
+
+            float d000 = FetchDensity(voxPos, basePtr);
+            float d100 = FetchDensity(voxPos + math.uint3(1, 0, 0), basePtr);
+            float d010 = FetchDensity(voxPos + math.uint3(0, 1, 0), basePtr);
+            float d110 = FetchDensity(voxPos + math.uint3(1, 1, 0), basePtr);
+
+            float d001 = FetchDensity(voxPos + math.uint3(0, 0, 1), basePtr);
+            float d101 = FetchDensity(voxPos + math.uint3(1, 0, 1), basePtr);
+            float d011 = FetchDensity(voxPos + math.uint3(0, 1, 1), basePtr);
+            float d111 = FetchDensity(voxPos + math.uint3(1, 1, 1), basePtr);
+
+            float4 d0 = new float4(d000, d010, d001, d011);
+            float4 d1 = new float4(d100, d110, d101, d111);
+            float4 interpX = math.lerp(d0, d1, frac.x);
+
+            float2 m01 = new float2(interpX.x, interpX.y);
+            float2 m23 = new float2(interpX.z, interpX.w);
+            float2 m = math.lerp(m01, m23, frac.z);
+            float mixed6 = math.lerp(m.x, m.y, frac.y);
+
+            return (half)mixed6;
+        }
     }
 }

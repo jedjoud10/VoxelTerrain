@@ -1,0 +1,16 @@
+#pragma kernel CSUnpack
+#pragma warning (disable : 4714)
+
+
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Voxel.cginc"
+
+RWTexture3D<PackedVoxel> srcVoxels;
+RWTexture3D<float> dstValues;
+
+float volumeValueScale;
+
+[numthreads(4, 4, 4)]
+void CSUnpack(uint3 id : SV_DispatchThreadID) {
+	Voxel voxel = unpackVoxelData(srcVoxels[id]);
+	dstValues[id] = voxel.density * volumeValueScale;
+}

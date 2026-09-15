@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4296326610441593126
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6566762760026143042}
+  - component: {fileID: 7256880874899122132}
+  - component: {fileID: 5790444678521601185}
+  - component: {fileID: 5248115962012205478}
+  - component: {fileID: 566389634701878972}
+  m_Layer: 0
+  m_Name: Managed Terrain
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6566762760026143042
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4296326610441593126}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7256880874899122132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4296326610441593126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67629de0b6144d04ca976524e6cd8137, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  compiler: {fileID: 0}
+  graph: {fileID: 0}
+--- !u!114 &5790444678521601185
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4296326610441593126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58434f8453e85cc4f8ff4c1a8508bf6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hash: -1761390008
+  dirty: 0
+  shader: {fileID: 0}
+--- !u!114 &5248115962012205478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4296326610441593126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da33b108665b10e46b54a74737b9dc80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  surfaceNetsCompute: {fileID: 7200000, guid: 414c71a72bcba394d921913198296aac, type: 3}
+  unpackPreviewCompute: {fileID: 7200000, guid: 745a614b182510f4c9c6503bb8c20fa8, type: 3}
+  customRenderingMaterial: {fileID: -876546973899608171, guid: 166e54d3613b4364a8b5b79a8bc94764, type: 3}
+  flatshaded: 0
+  size: 128
+  scale: {x: 1, y: 1, z: 1}
+  offset: {x: 0, y: -35.8, z: 0}
+  type: 0
+  handlesTexture: {fileID: 0}
+--- !u!114 &566389634701878972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4296326610441593126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b200131b1e403ca4e882e48a59b95e04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugGui: 0
+  debugChunkBounds: 0
+  debugSegmentBounds: 0
+  debugOcclusionCulling: 0
+  debugPropData: 0
+  debugOcclusionTextureOverlay: 0

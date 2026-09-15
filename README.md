@@ -1,82 +1,119 @@
-Note:
-The project is still in development, but I am focusing on the ECS port of the system for now. 
-ECS scales a lot better than GameObjects for this specific scenario, and there are things that I can only do with ECS unfortunately.
-You can check that out on the ecs branch.
+# TODO
+- Fix prop "instanced mesh" requirement if rendering instanced meshes is off
+- Impl sub-mesh merging to replace prop "instanced mesh" (based off of variant meshes)
+- Implement prop capture full rotations (not only azimuth, should be toggable)
+- Fix prop capture mipmap bug when quality mipmap setting is set (fixed)
+- Implement variable caching again (fixed texture, only between the density <-> layers stages)
+- Improve chunk LOD selection (add min LOD for further chunks so that it doesn't look like slop?)
+- Remove mesh renderer restrictions on props (does not work when prop has LOD group for example)
+- Automatically set normal map swap when capturing prop impostor (fixed)
+- Fix out of memory issue when capturing lots of prop types. Need to fix memory leak (fixed, but capturing code is shit now)
+- Implement remap node (already implemented, just needed to add the VariableExtension stuff)
+- Add pre-process step that generates world wide data-structures that we can sample in the voxel/prop generation step
+- Implement prop entities have a voxel "volume" that we use during the voxel occlusion culling. Useful for very big props (larger than 2m)
+- Implement prefab SDF baking to be able to sample custom SDF shapes directly in the compute shader. Like SDF "brushes"
+- Fix memory leaks, improve stability, optimize (priority in that order)
+- Optimize prop entity instantiation
+- Add height map based normal maps for further chunks
+- Improve AO by doing it on a per voxel basis instead of per vertex
+- Figure out "collision map" for prop generation to avoid generating props inside of each other (must be segment wide, but also work across segments)
+- Add dithering / scaling when starting to show instanced only type props (like pebbles in HD2) to avoid pop-in. Could be also applied as a "transition" layer between prop entities and impostors
 
-# A procedural terrain generator that makes use of your GPU and CPU to generate volumetric and fully destructible terrain
+# New Features compared to the main branch:
+- Chunk size of 32, with some pros:
+  - Faster meshing (sub 1ms on 14 threads for 1-2 chunks, pretty darn good, though could be fasteerrrrr).
+  - We can now compute 64 chunks on the GPU all at *once* in the same compute dispatch instead of 8. This speeds up meshing a lot since we catch empty chunks and discard them early.
+  - Faster rendering (less triangles). Does make mushy terrain since we don't have any proper terrain-wide normals but I'm only going to use this for low-poly games so whatever lol.
+  - MUCH MUCH MUCH FASTER MESH COLLIDER BAKING!!!! (8ms vs 40ms) Why is it so fucking slow with a chunk size of 64??? Unity ECS Physics gotta lock in frfr.
+- Async Compute Queue Support (DX12 works on Win11, Vulkan not workey (plus also very slow for some reason)) with fallback to normal queues. Used for practically all the new compute shaders
+- Proper Surface Nets Skirts by running 2D and 1D S.N on the chunk boundary. Skirt entities are enabled/disabled based on the direction that they face relative to the octree loader position.
+  - Implemented fallback normals system for flat shading so that skirts aren't as visible when you use DDY/DDX normals
+- Graph system. You can write the voxel generation code in C# and a *transpiler* will compile it to HLSL in the editor which will then compile to GPU executable code. Basically a preprocessor "find and replace" but on steroids
+  - Allows you to simply define variables that you add on top of each other like so:
+  ```cs
+  // Create simplex and fractal noise
+  Simplex<float2> simplex = new Simplex<float2>(scale, amplitude);
+  Fractal<float2> fractal = new Fractal<float2>(simplex, FractalMode.Ridged, octaves, others);
 
-## Features
-* 3D Octree for worlds up to 32km with sub-meter voxel precision
-* GPU Voxel Generation with Async CPU readback
-* Morton encoding to improve CPU cache locality (didn't actually test but I just implemented it for the funny)
-* Multithreaded and Jobified CPU meshing implementing the Surface Nets algorithm
-  *  Supports vertex merging and custom materials
-  *  Supports custom per vertex ambient occlusion and UV pass-through data
-  *  Async Collision Baking using the job system and PhysX
-  *  Custom skirts system for meshes with different resolution to avoid gaps between chunks (kinda works)
-* Terrain editing using duplicate octree
-  * Supports dynamic edits which are applied on a global scale (non-destructive)
-  * Supports voxel edits which are applied on a local voxel-to-voxel scale
-  * Generic dynamic edits/ voxel edits allowing you to write your own editing shapes and brushes (using Job system as well) 
-  * Callback for voxel edits to detect how much volume was added/removed for each material type
-  * Custom frame limit to limit number of in-flight meshing jobs to reduce latency
-* GPU Based Prop Generation
-  * Avoids unecessary CPU callbacks
-  * Uses density and surface data to generate props
-  * Multiple prop "variants" supported
-  * Uses the GPU for indirect instanced rendering directly
-  * Uses impostors (advanced billboards) system for props that are further away
-    * Makes use of albedo, mask, and normal map data to create billboards procedurally
-    * Texture captures are done automatically at the start of the frame
-    * Custom camera position, rotation and scale when capturing textures 
-    * Handles different prop variants using texture arrays
-  * Uses a compute based culler executed before indirect rendering 
-* Serialization / deserialization system that supports terrain edits, terrain seed, and modified/destoyed props
-  * Uses RLE and delta compression for voxel data
-  * Uses RLE for prop masks
-* In editor SDF/Volume/Slice preview using unity Handles API 
- 
- ## WIP Features to be added
-  * Structure generation
-  * Custom prop spawning / modifiers (using CSG)
-  * Optimize rendering & voxel editing
-  * Better compresion ratio for saved worlds
-  * Better compression algorithms for props and voxel data
-  * Better lighting effects (AO/GI)
-  * Voxel Occlusion culling for props and terrain chunks
-  * Fully GPU-driven voxel chunks using indirect draw
-    * Maybe mess around with nvidia mesh/task shaders?
-    * Compute based fallback for chunks further away, to reduce readback
-  * Voxel graph / interpreter to create voxel terrains in C# or visually
-    * Full world biome generation (big low-res 3d texture)
-    * Per-biome localized volumetric fog
-  * Multiplayer support (theoretically should be easy)
-    * Just need to share seed to all clients
-    * And whenever we do a new edit, send an edit "request" to all clients who need it
-    * Apply delta compression for edits and possible send the whole dupe octree sometimes
-    * For props since they implement INetworkSerializable you just need to share their values 
+  // Execute fractal noise as 2D function
+  Variable<float> density = fractal.Evaluate(xz) + y;
 
-## Main issues
-  * Still riddled with bugs
-    * Editing terrain sometimes leaves gaps
-    * Prop generation sometimes breaks out of nowhere
-  * Terrain chunk scheduling is non-conservative. Always over-estimates the amount of chunks _actually_ containing terrain
-  * Bad performance when editing large voxel/dynamic edits (due to the dupe-octree nature of voxel edits)
-  * Bad memory consumption / saved world size due to dupe-octree
-  * Slow async GPU readback which causes frame time spikes when there is more than 1 request per frame
-  * Billboarded prop normals don't seem to match up with their gameobject counterpart (seem fine at a distance, only noticeable at some lighting conditions)
-  * Floating terrain segments (could fix by running a flood fill and seeing the parts that aren't "connected")
-  * Floating props (due to low-resolution segment voxel grid)
+  // Create some extra "detail" voronoi noise
+  Voronoi<float3> voronoi = new Voronoi<float3>(voronoiScale, voronoiAmplitude);
+  density += voronoi.Evaluate(projected);
+  ```
+  - Should be easily convertable to a higher level abstraction using dedicated noise "layers" and "mixers" built on the underlying nodes
 
-## Showcase:
-![image](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/506140cb-6bd8-4c07-a3aa-9438115872b1)
-![image](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/8b0d434b-0d18-4e3c-806d-a9ceb16e024c)
-![image](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/5291314d-16da-420f-8a26-cda33c42060d)
-![image](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/1fedfe2e-fc9e-4672-bbfa-dd413d86448d)
-![image](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/51a05c97-5f5b-4822-901b-3aac0f442a42)
+## Async Software Voxel Occlusion Culling:
+  - Uses DDA to rasterize the LOD0 chunks data (nearest to player) using the job system & burst at a low resolution (``64x64``).
+  - Depth data then used for each chunk / skirt using AABBs to check if they're visible.
+  - Depth data is sent to the GPU for impostor / instanced culling (treats props as single pixel, not as AABB. Makes the occlusion check a lot faster).
+  - Relaxed by 1 voxel width to avoid over occlusion.
+  - Also works for non-terrain objects like user objects. Anything that has the ``UserOccludableAuthoring`` authoring component will get occluded by the occlusion culling system
+  - Voxelization and relaxation steps are done asynchronously (with only 1-2 threads running the jobs) whilst the rasterization is done every frame.
+    - This allows the camera to freely look around and move around "local space" before it gets recomputed by the voxelization and relaxation steps
+    - Since relaxation is very expensive, running it in the background like this allows us to avoid oversaturating other threads that will be needed for rendering otherwise (until unity implements some sort of priority for their job system)
+
+## Improved editing:
+  - No need to store duplicate octree, we can just edit the LOD0 chunks and have all other chunks downsample their data.
+  - Edits *actually* modify the underlying data, not stored as some sort of "delta" like the previous implementation
+  - Less buggy than the previous version since we don't have a weird factor to keep the voxel size at a power of two value (voxel size is actuall 34)
+
+## Improved meshing:
+  - Optimized corner (mc-mask opt) & check job (bitsetter) using custom intrinsics that actually do something!!! (profiled).
+  - Optimized normal job by splitting it into a "prefetch" part and a "calculate" part. Prefetcher is vectorized by Burst, but not the calculate part (need to fix).
+  - Quantized mesh data (vertices, normals, uvs).
+
+## Better (but slower) prop generation:
+  - Improved surface detection: since we use a graph based system, we can now just fetch the voxel density at any given point, without having to write to a texture first. This allows us to use binary search with prop surface generation to place the props *exactly* on the surface of the terrain. Much better than the previous iteration.
+  - Improved normals: Uses finite differences but with the slow density fetch instead of the cached one, so better quality normals!!!
+  - Copy and culling compute are now asynchronous! (not like they are slow lol but that's nice anyways)
+  - Free memory block lookup is now on the CPU instead of GPU. Yes this does mean that we *need* to do counts readback, but considering that we're only reading a few ints this is fine. Drops the complexity of the prop copy system by a lot by doing this on the CPU, worth the few frames of latency.
+
+- Uses HLSL DXC compiler when possible, but reverts to FXC if not supported. Only reason I use DXC is for faster compile times, as the prop gen shader expands out to something HUGE (lots of density function calls to inline) 
+- Voxel data storage uses ``SoA`` instead of ``AoS``, should help with cache hits, though we can only read ``AoS`` data from the GPU, so we do some packing/unpacking
+
+# TODO / Ideas
+- *Some* VXAO. Currently disabled with the octree system since it is not only very slow but also requires re-meshing every-time we get a new neighbour
+  - If we decouple "neighbour-fetching" jobs (like AO and a possible light propagation system) from our main meshing we could avoid having to recalculate the WHOLE mesh and instead only modify the vertices (WIP)
+- Figure out how to handle per voxel color (nointerpolation in shader trick)
+- Biome generation (custom data readback?)
+- Custom graph buffer initialization and readback (material, color, smoothness / metallic, custom user data)
+  - Works for props, but I don't know if I should extend it to make it work with custom user input
+- Implement smart range checking using texture value summation (cached textures)
+- Do some async chunk culling!!
+  - There's this for caves: https://tomcc.github.io/2014/08/31/visibility-1.html
+  - For surface chunks, ig do some funky stuff with bounds?  
+  - You can also do software rasterization with Burst and do some DDA / octree shenanigans (IMPLEMENTED)
+- Do some material variant stuff with multiple optional UV channels on a PER CHUNK basis
+  - In total we could have up 15 material variants per chunk (since 4 uv with 4 floats/half each, minus the single AO channel)
+  - We can do the same dedupe/lookup system as normal material values.
+  - Maybe rename "materials" to shaders and "material variants" to materials? would make more sense...
+- Do some sort of Minecraft-style spreading lighting calculations
+
+# Current Screenies
+Runtime terrain gen with some shiddy old props
+![Screenshot 2025-04-23 162113](https://github.com/user-attachments/assets/69548b73-7dc9-409a-85c0-98f5f2279cc6)
+![Screenshot 2025-04-23 162127](https://github.com/user-attachments/assets/4e6c4f6e-8cac-418a-8f66-9f0612d59771)
+
+Better pic with the new prop generator + instanced indirect + async GPU culling
+![Screenshot 2025-05-31 202859](https://github.com/user-attachments/assets/9da85ead-e4b7-46e7-8fd7-caf62ca1fd86)
+
+Editor GPU preview & material ID colouring
+![image](https://github.com/user-attachments/assets/79bbe315-f015-403e-a6d6-1ea756db7128)
+
+also supports height-map simplification
+![image](https://github.com/user-attachments/assets/c65636cb-95a2-4b03-972e-db5864f594c5)
+
+the C# graph that was used for the terrain. This gets converted to HLSL and then executed on the GPU.
+![image](https://github.com/user-attachments/assets/7180872a-1e4f-4311-9d18-f4895e9aa1a6)
+
+screenie with some triplanar texturing (thanks to PolyHaven)
+![image](https://github.com/user-attachments/assets/5232947a-bc81-4e0e-91bf-36166efdcc71)
+
+vehicle demo test (posted on subreddit a few days ago)
+![image](https://github.com/user-attachments/assets/1857ebc8-06d1-475d-ba71-c39e9e05c515)
 
 
-## In Editor Previews
-![Screenshot 2024-04-08 135853](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/c719561f-05d4-4b1a-9e6c-fae8e4e29cb8)
-![Screenshot 2024-04-08 141419](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/3228c033-1ef9-4d56-bf6d-5efa8a58177f)
-![2222image](https://github.com/jedjoud10/VoxelTerrainGenerator/assets/34755598/a736877a-9a96-4212-9bd7-634db644438f)
+# Credits
+- PolyHaven for their free awesome PBR 4k textures and models. I used these in the "Default" folder for default testing materials and some default props (non shiddy)

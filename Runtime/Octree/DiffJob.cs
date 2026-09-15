@@ -1,25 +1,26 @@
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
-using Unity.Burst;
 
-// Two of these jobs put out in parallel to handle diffing
-[BurstCompile(CompileSynchronously = true)]
-public struct DiffJob : IJob {
-    [ReadOnly]
-    public NativeHashSet<OctreeNode> oldNodesHashSet;
+namespace jedjoud.VoxelTerrain.Octree {
+    [BurstCompile(CompileSynchronously = true)]
+    public struct DiffJob : IJob {
+        [ReadOnly]
+        public NativeHashSet<OctreeNode> src1;
 
-    [ReadOnly]
-    public NativeHashSet<OctreeNode> newNodesHashSet;
+        [ReadOnly]
+        public NativeHashSet<OctreeNode> src2;
 
-    [WriteOnly]
-    public NativeList<OctreeNode> diffedNodes;
+        [WriteOnly]
+        public NativeList<OctreeNode> diffedNodes;
 
-    public void Execute() {
-        diffedNodes.Clear();
+        public void Execute() {
+            diffedNodes.Clear();
 
-        foreach (var node in oldNodesHashSet) {
-            if (!newNodesHashSet.Contains(node)) {
-                diffedNodes.Add(node);
+            foreach (var node in src1) {
+                if (!src2.Contains(node)) {
+                    diffedNodes.Add(node);
+                }
             }
         }
     }

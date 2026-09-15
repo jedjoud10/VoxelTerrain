@@ -1,19 +1,20 @@
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 
-public static class NativeExtensions {
-    // FOR FUCKS SAKE UNITY WHY ARE YOU SO FUCKING ANNOYING
-    // Why on GOD's GREEN FUCKING EARTH DO I NEED TO TO DO THIS SHIT I FUCKING HATE YOU GO KILL YOURSELF
-    // (all love no hate)
-    // TODO: Submit bug report
-    public static NativeArray<T> AsNativeArrayExt<T>(this NativeBitArray self) where T : unmanaged {
+namespace jedjoud.VoxelTerrain {
+    public static class NativeExtensions {
+        // https://discussions.unity.com/t/cant-use-nativebitarray-asnativearray-assertion-failed-on-expression-issecondaryversion-handle/1488470/3
+        // unity can't stop hugging L's. dawg... 
+        // yet another bug
+        public static NativeArray<T> AsNativeArrayExt<T>(this NativeBitArray self) where T : unmanaged {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-        AtomicSafetyHandle handle = NativeBitArrayUnsafeUtility.GetAtomicSafetyHandle(self);
+            AtomicSafetyHandle handle = NativeBitArrayUnsafeUtility.GetAtomicSafetyHandle(self);
 #endif
-        var arr = self.AsNativeArray<T>();
+            var arr = self.AsNativeArray<T>();
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-        NativeBitArrayUnsafeUtility.SetAtomicSafetyHandle(ref self, handle);
+            NativeBitArrayUnsafeUtility.SetAtomicSafetyHandle(ref self, handle);
 #endif
-        return arr;
+            return arr;
+        }
     }
 }

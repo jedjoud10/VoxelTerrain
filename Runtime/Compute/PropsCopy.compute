@@ -1,0 +1,62 @@
+#pragma kernel CSCopy
+
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Props.cginc"
+
+StructuredBuffer<int> temp_buffer_offsets_buffer;
+StructuredBuffer<int> copy_offsets_buffer;
+StructuredBuffer<int> copy_type_lookup_buffer;
+StructuredBuffer<uint4> temp_buffer;
+RWStructuredBuffer<uint4> perm_buffer;
+StructuredBuffer<int> perm_buffer_dst_copy_offsets_buffer;
+RWStructuredBuffer<float4x4> perm_matrices_buffer;
+
+int invocations;
+int what;
+
+[numthreads(64, 1, 1)]
+void CSCopy(uint3 id : SV_DispatchThreadID) {
+	int index = id.x;
+
+	if (index >= invocations) {
+		return;
+	}
+
+	int type = -1;
+	int sub_array_index = -1;
+
+	// index: 5
+	// copy_type_lookup_buffer: 0, 10, 15, 20
+	// type => 0
+	for (int j = 0; j < what; j++) {
+		if (copy_offsets_buffer[j] == -1) {
+			return;
+		}
+
+		if (index >= copy_offsets_buffer[j]) {
+			sub_array_index = j;
+			type = copy_type_lookup_buffer[j];
+		} else {
+			break;
+		}
+	};
+
+	if (type == -1 || sub_array_index == -1) {
+		return;
+	}
+
+	int in_type_sub_array_index = index - copy_offsets_buffer[sub_array_index];
+
+	if (perm_buffer_dst_copy_offsets_buffer[type] == -1) {
+		return;
+	}
+
+	int temp_buffer_src_offset = temp_buffer_offsets_buffer[type];
+	int perm_buffer_dst_offset = perm_buffer_dst_copy_offsets_buffer[type];
+
+	int src = in_type_sub_array_index + temp_buffer_src_offset;
+	int dst = in_type_sub_array_index + perm_buffer_dst_offset;
+
+	uint4 prop = temp_buffer[src];
+	perm_buffer[dst] = prop;
+	perm_matrices_buffer[dst] = UnpackPropToMatrix(prop);
+}

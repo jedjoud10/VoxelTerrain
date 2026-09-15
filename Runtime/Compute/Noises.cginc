@@ -1,0 +1,7 @@
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/common.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/cellular2D.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/cellular3D.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/erosion.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/noise2D.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/noise3D.cginc"
+#include "Packages/com.jedjoud.voxelterrain/Runtime/Compute/Noises/voronoise.cginc"
