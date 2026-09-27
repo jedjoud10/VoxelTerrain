@@ -32,7 +32,7 @@ namespace jedjoud.VoxelTerrain.Generation {
             for (int i = 0; i < dimensionality; i++) {
                 string swizzle = swizzleAxii[i];
 
-                string formatted_offset = StringFormater.Format(arr[i]);
+                string formatted_offset = VariableType.ToDefinableString(arr[i]);
 
                 Variable<T> offsetted = context.AssignTempVariable<T>($"{context[position]}_{swizzle}_offset", $"(({context[position]} + {formatted_offset}.{swizzleTest}) * {context[axialScale]}.{swizzle})");
                 
